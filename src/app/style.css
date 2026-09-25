@@ -130,7 +130,8 @@ body {
 }
 
 .field input {
-  width: 110px;
+  width: 96px;
+  flex: none;
   background: var(--bg-0);
   border: 1px solid var(--border);
   color: var(--text-0);
@@ -221,6 +222,14 @@ body {
   display: flex;
   gap: 8px;
   align-items: flex-start;
+}
+
+.issue.clickable {
+  cursor: pointer;
+}
+
+.issue.clickable:hover {
+  background: var(--bg-2);
 }
 
 .issue-icon {

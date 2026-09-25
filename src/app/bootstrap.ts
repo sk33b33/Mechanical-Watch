@@ -3,7 +3,7 @@ import { createDemoMovement } from "./demoMovement";
 import { Viewport } from "@/viewport/viewport";
 import { mountHeader } from "./panels/header";
 import { mountComponentTree } from "./panels/componentTree";
-import { mountInspector } from "./panels/inspector";
+import { mountInspector } from "./panels/inspector/index";
 import { mountValidationConsole } from "./panels/validationConsole";
 
 function panel(parent: HTMLElement, className: string): HTMLDivElement {

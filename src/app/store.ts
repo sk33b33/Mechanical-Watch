@@ -1,5 +1,5 @@
 import type { Movement } from "@/domain/movement";
-import type { GearId } from "@/domain/gear";
+import type { EntityId } from "@/domain/ids";
 import { analyzeMovement, EMPTY_ANALYSIS, type MovementAnalysis } from "@/analysis/analyzeMovement";
 import type { ValidationIssue } from "@/validation/validationIssue";
 import {
@@ -26,7 +26,7 @@ export class AppStore {
   simulation: SimulationState;
   /** Set when the simulation hit a non-finite state; it stays stopped until the design changes. */
   simulationHalted = false;
-  selectedGearId: GearId | null = null;
+  selectedId: EntityId | null = null;
 
   private readonly listeners = new Set<() => void>();
   private simulationIssue: ValidationIssue | null = null;
@@ -86,8 +86,9 @@ export class AppStore {
     this.notify();
   }
 
-  selectGear(gearId: GearId | null): void {
-    this.selectedGearId = gearId;
+  select(id: EntityId | null): void {
+    if (id === this.selectedId) return;
+    this.selectedId = id;
     this.notify();
   }
 

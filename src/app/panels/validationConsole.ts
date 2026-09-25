@@ -1,6 +1,7 @@
 import type { AppStore } from "@/app/store";
 import type { ValidationSeverity } from "@/validation/validationIssue";
 import { VALIDATION_LEVEL_LABELS } from "@/reference/validationLevels";
+import { findEntity } from "@/domain/lookup";
 
 const SEVERITY_ORDER: ValidationSeverity[] = ["blocker", "error", "warning", "info"];
 const SEVERITY_GLYPH: Record<ValidationSeverity, string> = {
@@ -56,6 +57,14 @@ export function mountValidationConsole(container: HTMLElement, store: AppStore):
         body.appendChild(refs);
       }
       row.append(icon, body);
+      const target = issue.entityIds.find((id) => findEntity(store.movement, id) !== undefined);
+      if (target !== undefined) {
+        row.classList.add("clickable");
+        row.title = "Select the affected part";
+        row.addEventListener("click", () => {
+          store.select(target);
+        });
+      }
       container.appendChild(row);
     }
   }
