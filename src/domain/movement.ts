@@ -4,6 +4,8 @@ import { createId } from "./ids";
 import type { Gear, GearId } from "./gear";
 import type { Shaft, ShaftId } from "./shaft";
 import type { GearMesh, GearMeshId } from "./gearMesh";
+import type { Frame, FrameId } from "./frame";
+import type { Jewel, JewelId } from "./jewel";
 import type { ValidationLevel } from "@/reference/validationLevels";
 
 export type MovementId = EntityId<"movement">;
@@ -21,6 +23,9 @@ export interface Movement {
   shafts: Record<ShaftId, Shaft>;
   gears: Record<GearId, Gear>;
   gearMeshes: Record<GearMeshId, GearMesh>;
+  /** Mainplate and bridges. A movement with no frames is a free-floating gear sandbox. */
+  frames: Record<FrameId, Frame>;
+  jewels: Record<JewelId, Jewel>;
   /** The externally driven shaft, e.g. the mainspring/barrel arbor in a full movement, or the input gear in the sandbox. */
   drivingShaftId: ShaftId | null;
   drivingAngularVelocity: AngularVelocity;
@@ -44,6 +49,8 @@ export function createMovement(
     shafts: {},
     gears: {},
     gearMeshes: {},
+    frames: {},
+    jewels: {},
     drivingShaftId: null,
     drivingAngularVelocity: 0 as AngularVelocity,
   };
@@ -61,10 +68,42 @@ export function addGearMesh(movement: Movement, mesh: GearMesh): Movement {
   return { ...movement, gearMeshes: { ...movement.gearMeshes, [mesh.id]: mesh } };
 }
 
+export function addFrame(movement: Movement, frame: Frame): Movement {
+  return { ...movement, frames: { ...movement.frames, [frame.id]: frame } };
+}
+
+export function addJewel(movement: Movement, jewel: Jewel): Movement {
+  return { ...movement, jewels: { ...movement.jewels, [jewel.id]: jewel } };
+}
+
+export function updateFrame(
+  movement: Movement,
+  frameId: FrameId,
+  patch: Partial<Omit<Frame, "id" | "type">>,
+): Movement {
+  const existing = movement.frames[frameId];
+  if (existing === undefined) {
+    throw new Error(`Unknown frame id: ${frameId}`);
+  }
+  return { ...movement, frames: { ...movement.frames, [frameId]: { ...existing, ...patch } } };
+}
+
+export function updateJewel(
+  movement: Movement,
+  jewelId: JewelId,
+  patch: Partial<Omit<Jewel, "id" | "type">>,
+): Movement {
+  const existing = movement.jewels[jewelId];
+  if (existing === undefined) {
+    throw new Error(`Unknown jewel id: ${jewelId}`);
+  }
+  return { ...movement, jewels: { ...movement.jewels, [jewelId]: { ...existing, ...patch } } };
+}
+
 export function updateGear(
   movement: Movement,
   gearId: GearId,
-  patch: Partial<Pick<Gear, "toothCount" | "module" | "thickness" | "pressureAngle" | "name">>,
+  patch: Partial<Omit<Gear, "id" | "type">>,
 ): Movement {
   const existing = movement.gears[gearId];
   if (existing === undefined) {

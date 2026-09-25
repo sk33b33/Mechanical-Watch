@@ -57,6 +57,30 @@ export const ASSUMPTIONS = {
     scope: "Demo movement",
     status: "Active",
   },
+  "ASM-0010": {
+    summary:
+      "Frames (mainplate, bridges) are flat slabs of uniform thickness; pillars, screws, recesses and sinks are not modeled",
+    scope: "Frames / interference",
+    status: "Active",
+  },
+  "ASM-0011": {
+    summary:
+      "Bearing faces are flush with the frames' inner faces; cap jewels, chatons and oil sinks are not modeled",
+    scope: "Bearings / endshake",
+    status: "Active",
+  },
+  "ASM-0012": {
+    summary:
+      "Arbors and jewels are drawn at placeholder sizes when their dimensions are unknown; visual (L0) only",
+    scope: "Viewport",
+    status: "Active",
+  },
+  "ASM-0013": {
+    summary:
+      "Side shake is reported as diametral clearance (bore − pivot diameter); the horological convention is still to be confirmed against a source",
+    scope: "Bearings / side shake",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

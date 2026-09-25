@@ -16,6 +16,10 @@ Machine-readable equivalent: `src/reference/assumptions.ts`. A test
 | ASM-0007 | The drive is a prescribed angular velocity (kinematic input); no energy source, torque or mainspring is modeled | Gear sandbox | Active |
 | ASM-0008 | Numerical parameters (comparison tolerances, fixed simulation timestep) are numerical-method choices, not physical or manufacturing values | Math / simulation | Active |
 | ASM-0009 | Demo movement dimensions are illustrative design inputs, not sourced watch specifications | Demo movement | Active |
+| ASM-0010 | Frames (mainplate, bridges) are flat slabs of uniform thickness; pillars, screws, recesses and sinks are not modeled | Frames / interference | Active |
+| ASM-0011 | Bearing faces are flush with the frames' inner faces; cap jewels, chatons and oil sinks are not modeled | Bearings / endshake | Active |
+| ASM-0012 | Arbors and jewels are drawn at placeholder sizes when their dimensions are unknown; visual (L0) only | Viewport | Active |
+| ASM-0013 | Side shake is reported as diametral clearance (bore − pivot diameter); the horological convention is still to be confirmed against a source | Bearings / side shake | Active |
 
 Rules:
 1. Never hide an assumption.

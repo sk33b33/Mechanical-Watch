@@ -5,11 +5,21 @@ import type { ValidationIssue } from "./validationIssue";
 import type { Rule, RuleContext } from "./rules/context";
 import { gearParameterRules, meshRules } from "./rules/gearRules";
 import { placementRules } from "./rules/placementRules";
-import { interferenceRules } from "./rules/interferenceRules";
+import { gearAxialRules, interferenceRules } from "./rules/interferenceRules";
+import { bearingRules, frameRules } from "./rules/bearingRules";
 import { kinematicRules } from "./rules/kinematicRules";
 
 /** Rule families, in the order their issues are reported. */
-const RULES: readonly Rule[] = [placementRules, gearParameterRules, meshRules, interferenceRules, kinematicRules];
+const RULES: readonly Rule[] = [
+  placementRules,
+  frameRules,
+  gearParameterRules,
+  gearAxialRules,
+  meshRules,
+  bearingRules,
+  interferenceRules,
+  kinematicRules,
+];
 
 /**
  * Runs every implemented rule (reference/validation/VALIDATION_RULES.md).

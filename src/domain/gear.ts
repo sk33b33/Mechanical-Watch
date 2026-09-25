@@ -1,4 +1,5 @@
 import type { Length } from "@/units/length";
+import { metres } from "@/units/length";
 import type { Angle } from "@/units/angle";
 import { pitchDiameter } from "@/math/gearMath";
 import type { EntityId } from "./ids";
@@ -36,6 +37,11 @@ export interface Gear {
    */
   pressureAngle: Angle | null;
   thickness: Length;
+  /**
+   * Axial position of the gear's mid-plane in movement coordinates. The
+   * gear occupies [zCentre - thickness/2, zCentre + thickness/2].
+   */
+  zCentre: Length;
   shaftId: ShaftId;
 }
 
@@ -45,6 +51,8 @@ export interface CreateGearParams {
   module: Length;
   thickness: Length;
   shaftId: ShaftId;
+  /** Defaults to the coordinate origin (z = 0), a coordinate choice rather than a dimension. */
+  zCentre?: Length;
   profileModel?: GearProfileModel;
   pressureAngle?: Angle | null;
 }
@@ -57,6 +65,7 @@ export function createGear(params: CreateGearParams): Gear {
     toothCount: params.toothCount,
     module: params.module,
     thickness: params.thickness,
+    zCentre: params.zCentre ?? metres(0),
     shaftId: params.shaftId,
     profileModel: params.profileModel ?? "PITCH_MODEL",
     pressureAngle: params.pressureAngle ?? null,

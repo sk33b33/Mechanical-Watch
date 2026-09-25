@@ -19,7 +19,15 @@ export const RULE_IDS = [
   "ESC-002",
   "MFG-001",
   "MFG-002",
+  "GEAR-101",
+  "GEAR-102",
   "KIN-001",
+  "FRAME-001",
+  "BRG-001",
+  "BRG-002",
+  "BRG-003",
+  "BRG-004",
+  "BRG-005",
   "VAL-001",
 ] as const;
 

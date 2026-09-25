@@ -3,6 +3,7 @@ import type { Gear } from "@/domain/gear";
 import type { EntityId } from "@/domain/ids";
 import { isValidModule, isValidToothCount } from "@/math/gearMath";
 import { computeGearMeshGeometry } from "@/kinematics/gearMeshGeometry";
+import { gearZRange, zOverlaps } from "@/assembly/assemblyGeometry";
 import type { ValidationIssue } from "../validationIssue";
 import { hasValidGearParameters, issue, mm, type Rule } from "./context";
 
@@ -89,6 +90,16 @@ export const meshRules: Rule = ({ movement, placement }) => {
           `${pairName}: different modules cannot mesh.`, ["REF-ENG §5.6"]),
       );
       continue;
+    }
+
+    const axialOk = [drivingGear, drivenGear].every(
+      (g) => Number.isFinite(g.zCentre) && Number.isFinite(g.thickness) && g.thickness > 0,
+    );
+    if (axialOk && !zOverlaps(gearZRange(drivingGear), gearZRange(drivenGear))) {
+      issues.push(
+        issue("GEAR-101", "axial-engagement", "error", "L1_GEOMETRIC", pair,
+          `${pairName}: the gears do not overlap axially, so they cannot engage.`, []),
+      );
     }
 
     const geometry = computeGearMeshGeometry(movement, mesh, placement);

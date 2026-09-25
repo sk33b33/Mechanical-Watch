@@ -27,17 +27,28 @@ export type ShaftEnd = "LOWER" | "UPPER";
 
 /**
  * A shaft (arbor). All axes are parallel and perpendicular to the
- * mainplate, i.e. the viewport Z axis (ASM-0006).
+ * mainplate, i.e. the viewport Z axis (ASM-0006). Pivot diameters and
+ * the shoulder span (axial distance between the two pivot shoulders)
+ * are null when unknown and are never defaulted (REF-ENG §12).
  */
 export interface Shaft {
   readonly id: ShaftId;
   readonly type: "Shaft";
   name: string;
   placement: ShaftPlacement;
+  pivotDiameter: Record<ShaftEnd, Length | null>;
+  shoulderSpan: Length | null;
 }
 
 export function createShaft(name: string, placement: ShaftPlacement): Shaft {
-  return { id: createId("shaft"), type: "Shaft", name, placement };
+  return {
+    id: createId("shaft"),
+    type: "Shaft",
+    name,
+    placement,
+    pivotDiameter: { LOWER: null, UPPER: null },
+    shoulderSpan: null,
+  };
 }
 
 export function fixedAt(x: Length, y: Length): ShaftPlacement {

@@ -1,5 +1,5 @@
 import { AppStore } from "./store";
-import { createTwoGearDemoMovement } from "./demoMovement";
+import { createDemoMovement } from "./demoMovement";
 import { Viewport } from "@/viewport/viewport";
 import { mountHeader } from "./panels/header";
 import { mountComponentTree } from "./panels/componentTree";
@@ -22,7 +22,7 @@ export function bootstrapApp(root: HTMLElement): void {
   const inspector = panel(workspace, "panel inspector");
   const consoleEl = panel(workspace, "panel console");
 
-  const store = new AppStore(createTwoGearDemoMovement());
+  const store = new AppStore(createDemoMovement());
 
   mountHeader(header, store);
   mountComponentTree(tree, store);
