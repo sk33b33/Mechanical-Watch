@@ -1,6 +1,5 @@
 import type { Length } from "@/units/length";
 import type { Angle } from "@/units/angle";
-import { degrees } from "@/units/angle";
 import { pitchDiameter } from "@/math/gearMath";
 import type { EntityId } from "./ids";
 import { createId } from "./ids";
@@ -8,13 +7,21 @@ import type { ShaftId } from "./shaft";
 
 export type GearId = EntityId<"gear">;
 
-/** Standard involute pressure angle used unless a gear overrides it. */
-export const DEFAULT_PRESSURE_ANGLE: Angle = degrees(20);
+/**
+ * Tooth-profile scope, per reference/REFERENCE_ENGINEERING.md §6. A gear
+ * is never silently promoted between these. Only PITCH_MODEL is
+ * implemented.
+ */
+export type GearProfileModel =
+  | "PITCH_MODEL"
+  | "INVOLUTE_PROFILE"
+  | "WATCH_SPECIFIC_PROFILE"
+  | "MANUFACTURING_VALIDATED_PROFILE";
 
 /**
  * A single gear wheel, mounted on a shaft. Geometry (pitch diameter, tooth
  * shape) is always derived from these parameters — never stored
- * redundantly — per docs/MASTER_BUILD_PROMPT.md "Single source of truth".
+ * redundantly.
  */
 export interface Gear {
   readonly id: GearId;
@@ -22,7 +29,12 @@ export interface Gear {
   name: string;
   toothCount: number;
   module: Length;
-  pressureAngle: Angle;
+  profileModel: GearProfileModel;
+  /**
+   * `null` means not modeled/unknown. A PITCH_MODEL gear has no tooth
+   * flank, so no pressure angle is assumed for it.
+   */
+  pressureAngle: Angle | null;
   thickness: Length;
   shaftId: ShaftId;
 }
@@ -33,7 +45,8 @@ export interface CreateGearParams {
   module: Length;
   thickness: Length;
   shaftId: ShaftId;
-  pressureAngle?: Angle;
+  profileModel?: GearProfileModel;
+  pressureAngle?: Angle | null;
 }
 
 export function createGear(params: CreateGearParams): Gear {
@@ -45,7 +58,8 @@ export function createGear(params: CreateGearParams): Gear {
     module: params.module,
     thickness: params.thickness,
     shaftId: params.shaftId,
-    pressureAngle: params.pressureAngle ?? DEFAULT_PRESSURE_ANGLE,
+    profileModel: params.profileModel ?? "PITCH_MODEL",
+    pressureAngle: params.pressureAngle ?? null,
   };
 }
 

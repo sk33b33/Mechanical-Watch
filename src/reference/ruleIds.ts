@@ -1,0 +1,26 @@
+/** Mirror of reference/validation/RULE_IDS.md (kept in sync by registers.test.ts). */
+export const RULE_IDS = [
+  "UNIT-001",
+  "UNIT-002",
+  "GEAR-001",
+  "GEAR-002",
+  "GEAR-003",
+  "GEAR-004",
+  "GEAR-005",
+  "GEAR-006",
+  "SHAFT-001",
+  "SHAFT-002",
+  "ASSY-001",
+  "ASSY-002",
+  "SIM-001",
+  "SIM-002",
+  "SIM-003",
+  "ESC-001",
+  "ESC-002",
+  "MFG-001",
+  "MFG-002",
+  "KIN-001",
+  "VAL-001",
+] as const;
+
+export type RuleId = (typeof RULE_IDS)[number];

@@ -143,11 +143,10 @@ export class Viewport {
   };
 
   private readonly animate = (timestampMs: number): void => {
-    const dtSeconds =
-      this.lastTimestampMs === null ? 0 : Math.min((timestampMs - this.lastTimestampMs) / 1000, 0.25);
+    const elapsedSeconds = this.lastTimestampMs === null ? 0 : (timestampMs - this.lastTimestampMs) / 1000;
     this.lastTimestampMs = timestampMs;
 
-    this.store.tick(dtSeconds);
+    this.store.tick(elapsedSeconds);
     this.applyKinematicRotation();
     this.applySelectionHighlight();
     this.controls.update();

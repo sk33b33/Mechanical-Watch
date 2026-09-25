@@ -25,3 +25,10 @@ ESC-002 Simplified escapement must not claim physical contact validation.
 
 MFG-001 Nominal dimensions must not be treated as toleranced dimensions.
 MFG-002 Manufacturing readiness requires explicit validation evidence.
+
+## Project additions
+
+These IDs were added by the project, not the original reference pack.
+
+KIN-001 Every shaft in a kinematic train should be connected to the declared drive.
+VAL-001 The validation engine must complete; if it cannot, the design cannot be represented safely.

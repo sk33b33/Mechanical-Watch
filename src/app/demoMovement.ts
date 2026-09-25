@@ -14,10 +14,11 @@ import { meshCentreDistance } from "@/math/gearMath";
 import type { Movement } from "@/domain/movement";
 
 /**
- * Milestone-1 teaching demo: two meshed gears, driven by an external
- * input on the driving shaft. Deliberately simple and explicitly
- * labeled as a demo (isTeachingDemo), per docs/PRODUCT_SPEC.md
- * "Starter movement" — this is not a production caliber.
+ * Teaching demo: two meshed gears with a prescribed drive (ASM-0007).
+ * Explicitly flagged isTeachingDemo (docs/PRODUCT_SPEC.md) — not a
+ * production caliber. Module, tooth counts, thickness and drive speed
+ * are illustrative design inputs, not sourced watch specifications
+ * (ASM-0009).
  */
 export function createTwoGearDemoMovement(): Movement {
   const module = millimetres(0.2);

@@ -88,6 +88,28 @@ Use explicit validation levels:
 
 A design must never silently move from one level to another.
 
+The code implements the finer L0–L5 scale from
+`reference/REFERENCE_ENGINEERING.md` §15, which contains the levels above:
+GEOMETRIC → L1, KINEMATIC → L2, DYNAMIC_SIMPLIFIED → L3,
+PHYSICAL_VALIDATION_PENDING → anything below L5. See
+`src/reference/validationLevels.ts`.
+
+## Engineering reference layer
+
+`reference/` is the evidence and assumptions layer. Before implementing
+any nontrivial watchmaking equation, follow
+`reference/CLAUDE_REFERENCE_INSTRUCTIONS.md`:
+- look for a source or rule in `reference/`;
+- cite rule IDs (`reference/validation/RULE_IDS.md`), assumptions
+  (`reference/assumptions/ASSUMPTION_REGISTER.md`) and sources
+  (`reference/sources/SOURCES.yml`) in code and in validation issues;
+- record every new equation in `reference/TRACEABILITY.md`;
+- never invent an engineering constant. Mark it `UNKNOWN`, ask for a
+  source, or register an explicit assumption.
+
+The assumption register and rule IDs have code mirrors in
+`src/reference/`; `src/reference/registers.test.ts` fails if they drift.
+
 ## Core component model
 
 Initial domain entities:

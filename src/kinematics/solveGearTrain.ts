@@ -4,6 +4,7 @@ import { meshSpeedRatio, isValidToothCount } from "@/math/gearMath";
 import type { Movement } from "@/domain/movement";
 import type { ShaftId } from "@/domain/shaft";
 import type { GearMeshId } from "@/domain/gearMesh";
+import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 
 export interface GearTrainConflict {
   shaftId: ShaftId;
@@ -24,24 +25,24 @@ export interface GearTrainSolution {
   conflicts: readonly GearTrainConflict[];
 }
 
-const RELATIVE_TOLERANCE = 1e-6;
-
 function nearlyEqual(a: number, b: number): boolean {
-  return Math.abs(a - b) <= RELATIVE_TOLERANCE * Math.max(1, Math.abs(a), Math.abs(b));
+  const tolerance = NUMERICAL_PARAMETERS.solverRelativeTolerance;
+  return Math.abs(a - b) <= tolerance * Math.max(1, Math.abs(a), Math.abs(b));
 }
 
 /**
  * Deterministically propagates angular velocity from
- * `movement.drivingShaftId` across every gear mesh, stage by stage,
- * per docs/ENGINEERING_RULES.md "Compound trains". This is a pure,
- * kinematic (not dynamic) solve: it assumes rigid shafts and ideal,
- * lossless meshes.
+ * `movement.drivingShaftId` across every gear mesh, stage by stage
+ * (REFERENCE_ENGINEERING.md §5.3, §7). Pure kinematic solve (L2):
+ * rigid shafts and ideal meshes (ASM-0001), parallel axes (ASM-0006),
+ * prescribed drive velocity (ASM-0007).
  */
 export function solveGearTrain(movement: Movement): GearTrainSolution {
   const shaftAngularVelocity = new Map<ShaftId, AngularVelocity>();
   const conflicts: GearTrainConflict[] = [];
 
-  if (movement.drivingShaftId !== null) {
+  // SIM-001: a non-finite drive is reported by validation, never propagated.
+  if (movement.drivingShaftId !== null && Number.isFinite(movement.drivingAngularVelocity)) {
     shaftAngularVelocity.set(movement.drivingShaftId, movement.drivingAngularVelocity);
 
     const queue: ShaftId[] = [movement.drivingShaftId];

@@ -4,6 +4,7 @@ import { createId } from "./ids";
 import type { Gear, GearId } from "./gear";
 import type { Shaft, ShaftId } from "./shaft";
 import type { GearMesh, GearMeshId } from "./gearMesh";
+import type { ValidationLevel } from "@/reference/validationLevels";
 
 export type MovementId = EntityId<"movement">;
 
@@ -23,13 +24,23 @@ export interface Movement {
   /** The externally driven shaft, e.g. the mainspring/barrel arbor in a full movement, or the input gear in the sandbox. */
   drivingShaftId: ShaftId | null;
   drivingAngularVelocity: AngularVelocity;
+  /**
+   * The level this design's model targets (REFERENCE_ENGINEERING.md §15).
+   * Set explicitly by the author; never raised automatically.
+   */
+  declaredValidationLevel: ValidationLevel;
 }
 
-export function createMovement(name: string, isTeachingDemo: boolean): Movement {
+export function createMovement(
+  name: string,
+  isTeachingDemo: boolean,
+  declaredValidationLevel: ValidationLevel = "L2_KINEMATIC",
+): Movement {
   return {
     id: createId("movement"),
     name,
     isTeachingDemo,
+    declaredValidationLevel,
     shafts: {},
     gears: {},
     gearMeshes: {},

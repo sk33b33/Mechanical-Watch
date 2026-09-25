@@ -4,28 +4,37 @@ import type { GearId } from "@/domain/gear";
 import { solveGearTrain, type GearTrainSolution } from "@/kinematics/solveGearTrain";
 import { validateMovement } from "@/validation/validateMovement";
 import type { ValidationIssue } from "@/validation/validationIssue";
-import { createSimulationState, stepSimulation, type SimulationState } from "@/simulation/simulationState";
+import {
+  advanceSimulation,
+  createSimulationState,
+  type SimulationState,
+} from "@/simulation/simulationState";
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 /**
  * The single client-side owner of application state. The domain model
  * (`movement`) is authoritative; `solution`, `issues` and `simulation`
- * are all derived from it, never the other way around (see
- * docs/MASTER_BUILD_PROMPT.md "Single source of truth").
+ * are all derived from it, never the other way around.
  */
 export class AppStore {
   movement: Movement;
-  solution: GearTrainSolution;
-  issues: ValidationIssue[];
+  solution: GearTrainSolution = { shaftAngularVelocity: new Map(), unreachableShaftIds: [], conflicts: [] };
+  issues: ValidationIssue[] = [];
   simulation: SimulationState;
+  /** Set when the simulation hit a non-finite state; it stays stopped until the design changes. */
+  simulationHalted = false;
   selectedGearId: GearId | null = null;
 
   private readonly listeners = new Set<() => void>();
+  private simulationIssue: ValidationIssue | null = null;
 
   constructor(movement: Movement) {
     this.movement = movement;
-    this.solution = solveGearTrain(movement);
-    this.issues = validateMovement(movement);
     this.simulation = createSimulationState(movement);
+    this.recompute();
   }
 
   subscribe(listener: () => void): () => void {
@@ -42,11 +51,8 @@ export class AppStore {
   }
 
   /**
-   * Recomputes derived state. Deliberately defensive: a bug in a
-   * validation rule must never leave the store silently un-notified
-   * (stale UI) — it is surfaced as an issue instead, per
-   * docs/MASTER_BUILD_PROMPT.md "the application must never imply ...
-   * accuracy beyond what has actually been validated".
+   * Recomputes derived state. If validation itself fails, that is a
+   * VAL-001 blocker shown to the user; the UI is never left stale.
    */
   private recompute(): void {
     try {
@@ -56,20 +62,25 @@ export class AppStore {
       this.solution = { shaftAngularVelocity: new Map(), unreachableShaftIds: [], conflicts: [] };
       this.issues = [
         {
-          id: "issue_validation_internal_error",
-          severity: "error",
-          category: "internal",
+          id: "VAL-001:engine",
+          rule: "VAL-001",
+          severity: "blocker",
           entityIds: [],
-          message: `Validation could not complete: ${error instanceof Error ? error.message : String(error)}`,
-          rule: "validation-engine-error",
-          validationLevel: "GEOMETRIC",
+          message: `Validation could not complete: ${errorMessage(error)}`,
+          validationLevel: "L1_GEOMETRIC",
+          references: [],
         },
       ];
+    }
+    if (this.simulationIssue !== null) {
+      this.issues.push(this.simulationIssue);
     }
   }
 
   updateGearParams(gearId: GearId, patch: Parameters<typeof updateGear>[2]): void {
     this.movement = updateGear(this.movement, gearId, patch);
+    this.simulationHalted = false;
+    this.simulationIssue = null;
     this.recompute();
     this.notify();
   }
@@ -80,13 +91,29 @@ export class AppStore {
   }
 
   /**
-   * Advances the visual simulation only — never mutates `movement`, and
-   * deliberately does not notify subscribers: this runs once per
-   * animation frame, and DOM panels (tree/inspector/console) must not
-   * re-render at that rate. The viewport reads `simulation` directly
-   * after calling this.
+   * Feeds real elapsed time to the fixed-step simulation (SIM-002). Never
+   * mutates `movement`. Does not notify subscribers on normal frames, so
+   * DOM panels don't re-render at frame rate.
    */
-  tick(dtSeconds: number): void {
-    this.simulation = stepSimulation(this.simulation, this.solution, dtSeconds);
+  tick(elapsedRealSeconds: number): void {
+    if (this.simulationHalted) {
+      return;
+    }
+    try {
+      this.simulation = advanceSimulation(this.simulation, this.solution, elapsedRealSeconds);
+    } catch (error) {
+      this.simulationHalted = true;
+      this.simulationIssue = {
+        id: "SIM-001:halted",
+        rule: "SIM-001",
+        severity: "blocker",
+        entityIds: [],
+        message: `Simulation stopped: ${errorMessage(error)}`,
+        validationLevel: "L2_KINEMATIC",
+        references: [],
+      };
+      this.issues = [...this.issues, this.simulationIssue];
+      this.notify();
+    }
   }
 }

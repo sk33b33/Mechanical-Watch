@@ -1,0 +1,81 @@
+# Source records for the sources listed in SOURCE_INDEX.md.
+#
+# Only metadata present in SOURCE_INDEX.md is recorded here. Fields that
+# have not been retrieved and checked are null — do not fill them from
+# memory. Set `retrieved: true` and `accessed` only after the source has
+# actually been consulted.
+
+- id: SRC-0001
+  title: NIST Special Publication 330 (The International System of Units)
+  author: NIST
+  year: null
+  type: standard
+  url: null
+  topics: [units]
+  claims_supported:
+    - SI units for length, time, angle, angular velocity and torque
+  retrieved: false
+  accessed: null
+  notes: Tier 1 (primary standards). Cited by REFERENCE_ENGINEERING.md §4.
+
+- id: SRC-0002
+  title: NIST Guide to the SI (Chapter 8; Appendix B.9)
+  author: NIST
+  year: null
+  type: standard
+  url: null
+  topics: [units]
+  claims_supported:
+    - rad/s as the SI unit of angular velocity, distinct from frequency (Hz)
+  retrieved: false
+  accessed: null
+  notes: Tier 1. Basis for keeping angular velocity and frequency separate (UNIT-002).
+
+- id: SRC-0003
+  title: Watchmaking.com
+  author: null
+  year: null
+  type: specialist_reference
+  url: null
+  topics: [wheel-trains, escapements, balance-and-hairspring]
+  claims_supported: []
+  retrieved: false
+  accessed: null
+  notes: Tier 6. Specialist reference; not an automatic authority for numerical values.
+
+- id: SRC-0004
+  title: Swiss Lever Escapement Mechanism
+  author: Fu & Du
+  year: 2008
+  type: academic_chapter
+  doi: 10.1201/9780849307768-3
+  topics: [escapement]
+  claims_supported:
+    - mechanism structure, operating principle and dynamic-model concepts
+  retrieved: false
+  accessed: null
+  notes: Tier 2. Not yet used by any implementation.
+
+- id: SRC-0005
+  title: null  # Tribology International, 2017 — Swiss lever escapement contact instrumentation / FEM / contact dynamics
+  author: null
+  year: 2017
+  type: peer_reviewed
+  url: null
+  topics: [escapement, tribology]
+  claims_supported: []
+  retrieved: false
+  accessed: null
+  notes: Metadata incomplete in SOURCE_INDEX.md. Not yet used.
+
+- id: SRC-0006
+  title: null  # Wear, 2017 — experimental tribological analysis of the Swiss lever escapement
+  author: null
+  year: 2017
+  type: peer_reviewed
+  url: null
+  topics: [escapement, wear]
+  claims_supported: []
+  retrieved: false
+  accessed: null
+  notes: Metadata incomplete in SOURCE_INDEX.md. Not yet used.

@@ -1,13 +1,13 @@
 import * as THREE from "three";
 import type { Gear } from "@/domain/gear";
+import { gearPitchDiameter } from "@/domain/gear";
 import { toMetres } from "@/units/length";
-import { generateGearOutline } from "./gearOutline";
+import { generateGearOutline, GEAR_VISUALIZATION_PROPORTIONS } from "./gearOutline";
 
 /**
  * Builds a Three.js geometry from a Gear's domain parameters. Presentation
- * only — the domain model in src/domain remains the authoritative source
- * of the mechanical state (see docs/MASTER_BUILD_PROMPT.md "Single source
- * of truth").
+ * only (validation level L0 for the tooth shape, ASM-0005); the domain
+ * model remains the authoritative mechanical state.
  */
 export function createGearGeometry(gear: Gear): THREE.ExtrudeGeometry {
   const outline = generateGearOutline(gear);
@@ -26,8 +26,12 @@ export function createGearGeometry(gear: Gear): THREE.ExtrudeGeometry {
   }
   shape.closePath();
 
+  const p = GEAR_VISUALIZATION_PROPORTIONS;
   const bore = new THREE.Path();
-  const boreRadius = Math.max(toMetres(gear.module) * 1.5, toMetres(gear.module));
+  const boreRadius = Math.min(
+    toMetres(gear.module) * p.boreRadiusInModules,
+    (toMetres(gearPitchDiameter(gear)) / 2) * p.maxBoreRadiusFractionOfPitch,
+  );
   bore.absarc(0, 0, boreRadius, 0, Math.PI * 2, false);
   shape.holes.push(bore);
 

@@ -70,6 +70,7 @@ body {
   grid-area: header;
   display: flex;
   align-items: center;
+  gap: 10px;
   padding: 0 12px;
   background: var(--bg-2);
   border-bottom: 1px solid var(--border);
@@ -153,9 +154,65 @@ body {
   letter-spacing: 0.03em;
 }
 
-.badge-geometric {
-  background: #23303f;
-  color: var(--accent);
+.badge-ok {
+  background: #1d3327;
+  color: var(--ok);
+}
+
+.badge-fail {
+  background: #3a1f1f;
+  color: var(--error);
+}
+
+.badge-demo {
+  background: #3a2f1c;
+  color: var(--warn);
+}
+
+.badge-muted {
+  background: var(--bg-1);
+  color: var(--text-1);
+  border: 1px solid var(--border);
+}
+
+.header-title {
+  margin-right: 6px;
+}
+
+.section-header {
+  padding: 10px 10px 2px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-1);
+}
+
+.muted {
+  color: var(--text-1);
+}
+
+.field input.invalid {
+  border-color: var(--error);
+}
+
+.assumption {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-1);
+}
+
+.assumption-id {
+  display: block;
+  color: var(--text-0);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 2px;
+}
+
+.assumption-planned,
+.assumption-pending {
+  opacity: 0.6;
 }
 
 .issue {
@@ -166,12 +223,35 @@ body {
   align-items: flex-start;
 }
 
+.issue-icon {
+  width: 12px;
+  flex: none;
+  text-align: center;
+  font-weight: 700;
+}
+
+.issue-blocker,
 .issue-error {
   color: var(--error);
 }
 
 .issue-warning {
   color: var(--warn);
+}
+
+.issue-info {
+  color: var(--accent);
+}
+
+.issue-meta {
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.issue-refs {
+  color: var(--text-1);
+  font-size: 11px;
+  margin-top: 2px;
 }
 
 .issue-ok {

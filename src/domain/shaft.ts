@@ -7,10 +7,9 @@ import { createId } from "./ids";
 export type ShaftId = EntityId<"shaft">;
 
 /**
- * A shaft's rotational axis. Assumption: all shafts in a movement are
- * parallel, oriented perpendicular to the mainplate (the Z axis in the
- * viewport). This matches a conventional watch movement layout and is
- * an explicit simplification (see docs/MASTER_BUILD_PROMPT.md).
+ * A shaft's rotational axis. All shafts are parallel and perpendicular to
+ * the mainplate, i.e. the viewport Z axis (ASM-0006). Pivots, jewels and
+ * bearing clearances are not modeled yet (REF-ENG §12).
  */
 export interface Shaft {
   readonly id: ShaftId;

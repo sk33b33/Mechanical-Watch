@@ -144,10 +144,10 @@ describe("solveGearTrain", () => {
       thickness: millimetres(0.2),
       shaftId: shaftA.id,
     });
-    // Mid-edit invalid state: below the minimum tooth count.
+    // Mid-edit invalid state (GEAR-001: not a positive integer).
     const gearB = createGear({
       name: "B",
-      toothCount: 2,
+      toothCount: 0,
       module: millimetres(0.2),
       thickness: millimetres(0.2),
       shaftId: shaftB.id,
