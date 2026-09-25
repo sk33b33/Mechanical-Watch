@@ -1,72 +1,76 @@
 # Status
 
-## Milestone 1: complete, aligned with the engineering reference pack
+Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
-A two-gear kinematic sandbox (`docs/MASTER_BUILD_PROMPT.md` "First milestone"):
-TypeScript/Vite/Three.js, SI domain units, parametric gear math, a
-Gear/Shaft/GearMesh domain model, a deterministic gear-train solver, a
-domain-driven viewport, an inspector and an always-visible validation
-console.
+## Phase 2 — Movement assembly: complete
 
-After `reference/` was added, the code was brought in line with it:
+- **Placement constraints.** A shaft is either FIXED or placed at a
+  mesh's ideal centre distance from a reference shaft (MESH_POLAR).
+  Positions are solved in dependency order. Changing tooth counts or
+  module moves dependent shafts because the user declared the
+  constraint. Cycles, dangling references and invalid meshes are
+  reported (ASSY-001), never guessed.
+- **Frames.** Mainplate and bridges are flat slabs (ASM-0010) with
+  circle or polygon outlines, a height and a thickness.
+- **Bearings.** Jewels (or plain holes) support each shaft end in a
+  frame. They sit on the shaft's solved axis, so a shaft's two bearings
+  are always coaxial. Pivot diameters, bores and shoulder span are
+  optional: unknown stays null, and side shake and endshake are computed
+  only from values actually given. They are never judged against a
+  range, because no range has a source (BRG-005).
+- **Wheel placement in 3D.** Every gear has an axial position. Meshing
+  requires axial overlap (GEAR-101).
+- **Interference (ASSY-002) in 3D.** It covers:
+  - unmeshed gears at the same height;
+  - two gears on one arbor;
+  - a gear inside a frame slab;
+  - a wheel crossing another shaft's arbor.
+- **Viewport.** Frames, arbors, jewels and gears drawn at their solved
+  positions and heights. Click any part to select it. Parts with unknown
+  sizes are drawn at placeholder sizes (ASM-0012).
+- **Inspector.** Sections for gears, arbors (placement, pivots,
+  clearances), bearings and frames. The tree groups parts under their
+  arbors, and clicking an issue selects the part it concerns.
+- **Demo.** A three-arbor compound train (60/10, 48/8, plus an output
+  wheel) in a mainplate and one bridge. All dimensions are illustrative
+  (ASM-0009), bearing dimensions are unknown, and it validates with no
+  errors or warnings.
 
-- **Rule IDs and severities.** Validation issues use the rule IDs in
-  `reference/validation/RULE_IDS.md` and the four severities
-  (info/warning/error/blocker). Each issue cites its basis (REF-ENG
-  section, assumption or source). Issue IDs are deterministic.
-- **Validation levels.** The code uses the L0–L5 levels (REF-ENG §15).
-  A movement declares its target level (the demo declares L2 Kinematic).
-  The UI shows whether that level is satisfied and never raises it.
-- **No invented constants.** The unsourced 4-tooth minimum and 20°
-  default pressure angle are gone. GEAR-001 only requires a positive
-  integer, and a PITCH_MODEL gear has no pressure angle (`null`, shown
-  as "not modeled"). The visual tooth proportions, numerical tolerances
-  and the simulation timestep are named config objects tied to
-  registered assumptions (ASM-0005, ASM-0008).
-- **Profile scope.** Gears carry `profileModel` (REF-ENG §6). Only
-  `PITCH_MODEL` exists, and meshing different profile models is a
-  GEAR-003 error.
-- **Interference.** Overlapping pitch circles are an ASSY-002 error.
-  Overlap of only the visual tooth tips is an L0 warning citing
-  ASM-0005, because tip geometry isn't modeled.
-- **Deterministic simulation (SIM-002).** A fixed-timestep accumulator
-  replaces frame-time stepping. A non-finite state halts the simulation
-  with a SIM-001 blocker.
-- **User input is never altered.** 6.5 teeth is kept and flagged, not
-  truncated. An empty field is "no value" (NaN), not 0. Edits commit on
-  change, so typing isn't interrupted.
-- **Assumptions are visible.** The left panel lists every registered
-  assumption. The header shows teaching-demo status, the declared level
-  and "physical validation pending". SIM-003 always states that the
-  drive is prescribed, not an energy source.
-- **New math.** §5.4 torque takes an optional efficiency that must cite a
-  source or assumption; there is no default η. §5.5 pitch-line velocity
-  is added.
-- **Traceability.** `reference/TRACEABILITY.md` maps each equation to
-  its code, basis, assumptions, evidence state, level and tests.
-  `reference/sources/SOURCES.yml` gives SRC IDs to the indexed sources,
-  with metadata only as far as the index provides it.
+89 unit tests pass, typecheck, lint and build are clean, and it was
+checked in a browser: edits propagate through placement, unknown
+dimensions round-trip, and picking and issue selection work.
 
-60 unit tests pass, including register/code sync checks. Typecheck, lint
-and build are clean. Verified in a browser with real keyboard input.
+## Earlier work
+
+- Milestone 1 / Phase 1: gear math, gear-train solver, viewport,
+  inspector, validation console.
+- Reference-pack alignment: rule IDs, severities, cited bases, no
+  invented constants, deterministic simulation, assumption register,
+  traceability (`reference/TRACEABILITY.md`).
 
 ## Open decisions
 
-- **Validation-level scheme.** CLAUDE.md and the reference pack define
-  different scales. The code adopts L0–L5 with a mapping (see CLAUDE.md,
-  "Validation levels"). Confirm or choose otherwise.
 - **External citations for gear equations.** REF-ENG §5 cites no primary
   source for d = m z etc. They are marked DERIVED with the citation
   pending.
+- **Side-shake convention (ASM-0013).** Reported as diametral clearance
+  until a source confirms the horological convention.
+- **Acceptable bearing clearances.** Side shake and endshake are
+  computed but not judged. Judging them needs sourced ranges.
 
-## Not yet implemented (see `docs/ROADMAP.md`)
+## Known limitations
 
-- Creating/deleting components in the UI; the demo is fixed and only
-  parameters can be edited.
-- Assembly constraints beyond shaft placement; pivots, jewels and
-  bearings (REF-ENG §12).
-- Persistence / save-load.
-- Exploded view, section view, measurement tools.
-- Involute profile (REF-ENG §6), torque in the solver, motion works
-  (§8), escapement (§9), balance/hairspring (§10), mainspring (§11).
-- Tolerance model (§14) and any export.
+- Arbor diameters aren't modeled. The wheel/arbor check treats the
+  arbor as its axis line, a lower bound.
+- Frame outlines are read-only in the UI. Parts can't yet be
+  added or removed from the UI; the demo is the only movement.
+- The selected-arbor highlight is hard to see behind large wheels.
+
+## Next (see `docs/ROADMAP.md`)
+
+- Persistence with a versioned schema (Phase 0 "design serialization"
+  is still outstanding).
+- Phase 3, kinematic movement: barrel, centre/third/fourth/escape wheels,
+  and motion works as a separate subsystem with a slipping cannon pinion
+  (REF-ENG §8).
+- Phase 4 workspace: exploded view, section view, measurement tools.
