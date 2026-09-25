@@ -6,11 +6,12 @@ import {
   addGear,
   addGearMesh,
   setDrivingShaft,
+  updateShaft,
 } from "@/domain/movement";
-import { createShaft } from "@/domain/shaft";
+import { createShaft, fixedAt } from "@/domain/shaft";
+import { degrees } from "@/units/angle";
 import { createGear } from "@/domain/gear";
 import { createGearMesh } from "@/domain/gearMesh";
-import { meshCentreDistance } from "@/math/gearMath";
 import type { Movement } from "@/domain/movement";
 
 /**
@@ -22,40 +23,36 @@ import type { Movement } from "@/domain/movement";
  */
 export function createTwoGearDemoMovement(): Movement {
   const module = millimetres(0.2);
-  const drivingTeeth = 60;
-  const drivenTeeth = 10;
-  const centreDistance = meshCentreDistance(module, drivingTeeth, drivenTeeth);
 
-  const drivingShaft = createShaft("Driving shaft", {
-    x: millimetres(0),
-    y: millimetres(0),
-  });
-  const drivenShaft = createShaft("Driven shaft", {
-    x: centreDistance,
-    y: millimetres(0),
-  });
+  const drivingShaft = createShaft("Driving shaft", fixedAt(millimetres(0), millimetres(0)));
+  // Placeholder placement; replaced by a mesh constraint once the mesh exists.
+  const drivenShaft = createShaft("Driven shaft", fixedAt(millimetres(0), millimetres(0)));
 
   const drivingGear = createGear({
     name: "Driving gear",
-    toothCount: drivingTeeth,
+    toothCount: 60,
     module,
     thickness: millimetres(0.2),
     shaftId: drivingShaft.id,
   });
   const drivenGear = createGear({
     name: "Driven gear",
-    toothCount: drivenTeeth,
+    toothCount: 10,
     module,
     thickness: millimetres(0.2),
     shaftId: drivenShaft.id,
   });
+  const mesh = createGearMesh(drivingGear.id, drivenGear.id);
 
   let movement = createMovement("Two-gear teaching sandbox", true);
   movement = addShaft(movement, drivingShaft);
   movement = addShaft(movement, drivenShaft);
   movement = addGear(movement, drivingGear);
   movement = addGear(movement, drivenGear);
-  movement = addGearMesh(movement, createGearMesh(drivingGear.id, drivenGear.id));
+  movement = addGearMesh(movement, mesh);
+  movement = updateShaft(movement, drivenShaft.id, {
+    placement: { kind: "MESH_POLAR", referenceShaftId: drivingShaft.id, meshId: mesh.id, angle: degrees(0) },
+  });
   movement = setDrivingShaft(movement, drivingShaft.id, rpmToRadPerSecond(6));
 
   return movement;

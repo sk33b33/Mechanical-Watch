@@ -9,9 +9,10 @@ import {
   addGearMesh,
   setDrivingShaft,
   updateGear,
+  updateShaft,
   type Movement,
 } from "@/domain/movement";
-import { createShaft } from "@/domain/shaft";
+import { createShaft, fixedAt } from "@/domain/shaft";
 import { createGear, type CreateGearParams } from "@/domain/gear";
 import { createGearMesh } from "@/domain/gearMesh";
 import { RULE_IDS } from "@/reference/ruleIds";
@@ -26,8 +27,8 @@ interface Options {
 }
 
 function twoGears({ centreDistanceMm = 7, gearB = {}, meshed = true }: Options = {}): Movement {
-  const shaftA = createShaft("A", { x: millimetres(0), y: millimetres(0) });
-  const shaftB = createShaft("B", { x: millimetres(centreDistanceMm), y: millimetres(0) });
+  const shaftA = createShaft("A", fixedAt(millimetres(0), millimetres(0)));
+  const shaftB = createShaft("B", fixedAt(millimetres(centreDistanceMm), millimetres(0)));
   const a = createGear({
     name: "A",
     toothCount: 60,
@@ -95,17 +96,11 @@ describe("validateMovement", () => {
     expect(issue?.references).toEqual(expect.arrayContaining(["REF-ENG §5.2", "ASM-0008"]));
   });
 
-  it("SHAFT-001: flags a non-finite shaft axis", () => {
+  it("SHAFT-001: flags a non-finite shaft placement", () => {
     const movement = twoGears();
     const [firstShaftId] = Object.keys(movement.shafts) as (keyof Movement["shafts"])[];
     if (firstShaftId === undefined) throw new Error("no shaft");
-    const broken: Movement = {
-      ...movement,
-      shafts: {
-        ...movement.shafts,
-        [firstShaftId]: { ...movement.shafts[firstShaftId], position: { x: Number.NaN, y: 0 } },
-      },
-    };
+    const broken = updateShaft(movement, firstShaftId, { placement: fixedAt(millimetres(Number.NaN), millimetres(0)) });
     expect(rules(broken)).toContain("SHAFT-001");
   });
 
@@ -126,7 +121,7 @@ describe("validateMovement", () => {
   });
 
   it("KIN-001: warns about shafts unreachable from the driving shaft", () => {
-    const movement = addShaft(twoGears(), createShaft("C", { x: millimetres(50), y: millimetres(50) }));
+    const movement = addShaft(twoGears(), createShaft("C", fixedAt(millimetres(50), millimetres(50))));
     const issue = validateMovement(movement).find((i) => i.rule === "KIN-001");
     expect(issue?.severity).toBe("warning");
   });

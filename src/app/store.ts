@@ -1,8 +1,6 @@
 import type { Movement } from "@/domain/movement";
-import { updateGear } from "@/domain/movement";
 import type { GearId } from "@/domain/gear";
-import { solveGearTrain, type GearTrainSolution } from "@/kinematics/solveGearTrain";
-import { validateMovement } from "@/validation/validateMovement";
+import { analyzeMovement, EMPTY_ANALYSIS, type MovementAnalysis } from "@/analysis/analyzeMovement";
 import type { ValidationIssue } from "@/validation/validationIssue";
 import {
   advanceSimulation,
@@ -16,12 +14,14 @@ function errorMessage(error: unknown): string {
 
 /**
  * The single client-side owner of application state. The domain model
- * (`movement`) is authoritative; `solution`, `issues` and `simulation`
- * are all derived from it, never the other way around.
+ * (`movement`) is authoritative. `analysis` (placement, gear train,
+ * validation) and `simulation` are derived from it, never the other way
+ * around.
  */
 export class AppStore {
   movement: Movement;
-  solution: GearTrainSolution = { shaftAngularVelocity: new Map(), unreachableShaftIds: [], conflicts: [] };
+  analysis: MovementAnalysis = EMPTY_ANALYSIS;
+  /** Validation issues plus any simulation-runtime issue. */
   issues: ValidationIssue[] = [];
   simulation: SimulationState;
   /** Set when the simulation hit a non-finite state; it stays stopped until the design changes. */
@@ -51,34 +51,35 @@ export class AppStore {
   }
 
   /**
-   * Recomputes derived state. If validation itself fails, that is a
-   * VAL-001 blocker shown to the user; the UI is never left stale.
+   * Recomputes derived state. If analysis itself fails, that is a VAL-001
+   * blocker shown to the user; the UI is never left stale.
    */
   private recompute(): void {
     try {
-      this.solution = solveGearTrain(this.movement);
-      this.issues = validateMovement(this.movement);
+      this.analysis = analyzeMovement(this.movement);
     } catch (error) {
-      this.solution = { shaftAngularVelocity: new Map(), unreachableShaftIds: [], conflicts: [] };
-      this.issues = [
-        {
-          id: "VAL-001:engine",
-          rule: "VAL-001",
-          severity: "blocker",
-          entityIds: [],
-          message: `Validation could not complete: ${errorMessage(error)}`,
-          validationLevel: "L1_GEOMETRIC",
-          references: [],
-        },
-      ];
+      this.analysis = {
+        ...EMPTY_ANALYSIS,
+        issues: [
+          {
+            id: "VAL-001:engine",
+            rule: "VAL-001",
+            severity: "blocker",
+            entityIds: [],
+            message: `Validation could not complete: ${errorMessage(error)}`,
+            validationLevel: "L1_GEOMETRIC",
+            references: [],
+          },
+        ],
+      };
     }
-    if (this.simulationIssue !== null) {
-      this.issues.push(this.simulationIssue);
-    }
+    this.issues =
+      this.simulationIssue === null ? this.analysis.issues : [...this.analysis.issues, this.simulationIssue];
   }
 
-  updateGearParams(gearId: GearId, patch: Parameters<typeof updateGear>[2]): void {
-    this.movement = updateGear(this.movement, gearId, patch);
+  /** Applies a pure domain update, then re-derives everything. */
+  edit(update: (movement: Movement) => Movement): void {
+    this.movement = update(this.movement);
     this.simulationHalted = false;
     this.simulationIssue = null;
     this.recompute();
@@ -100,7 +101,7 @@ export class AppStore {
       return;
     }
     try {
-      this.simulation = advanceSimulation(this.simulation, this.solution, elapsedRealSeconds);
+      this.simulation = advanceSimulation(this.simulation, this.analysis.train, elapsedRealSeconds);
     } catch (error) {
       this.simulationHalted = true;
       this.simulationIssue = {
@@ -112,7 +113,7 @@ export class AppStore {
         validationLevel: "L2_KINEMATIC",
         references: [],
       };
-      this.issues = [...this.issues, this.simulationIssue];
+      this.issues = [...this.analysis.issues, this.simulationIssue];
       this.notify();
     }
   }

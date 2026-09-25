@@ -2,15 +2,15 @@ import { describe, expect, it } from "vitest";
 import { millimetres } from "@/units/length";
 import { rpmToRadPerSecond, toRpm, radiansPerSecond } from "@/units/angularVelocity";
 import { createMovement, addShaft, addGear, addGearMesh, setDrivingShaft } from "@/domain/movement";
-import { createShaft } from "@/domain/shaft";
+import { createShaft, fixedAt } from "@/domain/shaft";
 import { createGear } from "@/domain/gear";
 import { createGearMesh } from "@/domain/gearMesh";
 import { solveGearTrain } from "./solveGearTrain";
 
 describe("solveGearTrain", () => {
   it("propagates angular velocity across a single mesh with direction reversal", () => {
-    const shaftA = createShaft("A", { x: millimetres(0), y: millimetres(0) });
-    const shaftB = createShaft("B", { x: millimetres(7), y: millimetres(0) });
+    const shaftA = createShaft("A", fixedAt(millimetres(0), millimetres(0)));
+    const shaftB = createShaft("B", fixedAt(millimetres(7), millimetres(0)));
     const gearA = createGear({
       name: "A",
       toothCount: 60,
@@ -47,9 +47,9 @@ describe("solveGearTrain", () => {
   });
 
   it("propagates through a compound train stage by stage", () => {
-    const shaft1 = createShaft("S1", { x: millimetres(0), y: millimetres(0) });
-    const shaft2 = createShaft("S2", { x: millimetres(7), y: millimetres(0) });
-    const shaft3 = createShaft("S3", { x: millimetres(14), y: millimetres(0) });
+    const shaft1 = createShaft("S1", fixedAt(millimetres(0), millimetres(0)));
+    const shaft2 = createShaft("S2", fixedAt(millimetres(7), millimetres(0)));
+    const shaft3 = createShaft("S3", fixedAt(millimetres(14), millimetres(0)));
     const gear1 = createGear({
       name: "G1",
       toothCount: 60,
@@ -92,9 +92,9 @@ describe("solveGearTrain", () => {
   });
 
   it("flags a conflict when a triangular mesh loop is inconsistent", () => {
-    const shaftA = createShaft("A", { x: millimetres(0), y: millimetres(0) });
-    const shaftB = createShaft("B", { x: millimetres(7), y: millimetres(0) });
-    const shaftC = createShaft("C", { x: millimetres(3.5), y: millimetres(6) });
+    const shaftA = createShaft("A", fixedAt(millimetres(0), millimetres(0)));
+    const shaftB = createShaft("B", fixedAt(millimetres(7), millimetres(0)));
+    const shaftC = createShaft("C", fixedAt(millimetres(3.5), millimetres(6)));
     const gearA = createGear({
       name: "A",
       toothCount: 60,
@@ -135,8 +135,8 @@ describe("solveGearTrain", () => {
   });
 
   it("treats a mesh with an invalid tooth count as impassable, without throwing", () => {
-    const shaftA = createShaft("A", { x: millimetres(0), y: millimetres(0) });
-    const shaftB = createShaft("B", { x: millimetres(7), y: millimetres(0) });
+    const shaftA = createShaft("A", fixedAt(millimetres(0), millimetres(0)));
+    const shaftB = createShaft("B", fixedAt(millimetres(7), millimetres(0)));
     const gearA = createGear({
       name: "A",
       toothCount: 60,
@@ -168,8 +168,8 @@ describe("solveGearTrain", () => {
   });
 
   it("reports shafts with no path from the driving shaft as unreachable", () => {
-    const shaftA = createShaft("A", { x: millimetres(0), y: millimetres(0) });
-    const shaftIsolated = createShaft("Isolated", { x: millimetres(20), y: millimetres(20) });
+    const shaftA = createShaft("A", fixedAt(millimetres(0), millimetres(0)));
+    const shaftIsolated = createShaft("Isolated", fixedAt(millimetres(20), millimetres(20)));
     const gearA = createGear({
       name: "A",
       toothCount: 60,

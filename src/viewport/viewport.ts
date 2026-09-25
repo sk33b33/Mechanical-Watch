@@ -86,8 +86,8 @@ export class Viewport {
     this.gearMeshes.clear();
 
     for (const gear of Object.values(this.store.movement.gears)) {
-      const shaft = this.store.movement.shafts[gear.shaftId];
-      if (shaft === undefined) {
+      const axis = this.store.analysis.placement.shaftPositions.get(gear.shaftId);
+      if (axis === undefined) {
         continue;
       }
 
@@ -106,7 +106,7 @@ export class Viewport {
         roughness: 0.5,
       });
       const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.set(toMetres(shaft.position.x), toMetres(shaft.position.y), 0);
+      mesh.position.set(toMetres(axis.x), toMetres(axis.y), 0);
       mesh.userData.gearId = gear.id;
       this.scene.add(mesh);
       this.gearMeshes.set(gear.id, mesh);

@@ -76,6 +76,18 @@ export function updateGear(
   };
 }
 
+export function updateShaft(
+  movement: Movement,
+  shaftId: ShaftId,
+  patch: Partial<Omit<Shaft, "id" | "type">>,
+): Movement {
+  const existing = movement.shafts[shaftId];
+  if (existing === undefined) {
+    throw new Error(`Unknown shaft id: ${shaftId}`);
+  }
+  return { ...movement, shafts: { ...movement.shafts, [shaftId]: { ...existing, ...patch } } };
+}
+
 export function setDrivingShaft(
   movement: Movement,
   shaftId: ShaftId,

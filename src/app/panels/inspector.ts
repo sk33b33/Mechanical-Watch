@@ -4,6 +4,7 @@ import { toDegrees } from "@/units/angle";
 import { toRpm } from "@/units/angularVelocity";
 import { toMillimetresPerSecond } from "@/units/linearVelocity";
 import { gearPitchDiameter } from "@/domain/gear";
+import { updateGear } from "@/domain/movement";
 import { isValidModule, isValidToothCount, pitchLineVelocity } from "@/math/gearMath";
 import { declaredLevelStatus } from "@/validation/validationIssue";
 import { VALIDATION_LEVEL_LABELS } from "@/reference/validationLevels";
@@ -95,7 +96,7 @@ export function mountInspector(container: HTMLElement, store: AppStore): () => v
     container.appendChild(sectionHeader("Parameters"));
     container.appendChild(
       numberInputRow("Tooth count", String(gear.toothCount), "1", isValidToothCount(gear.toothCount), (v) => {
-        store.updateGearParams(gear.id, { toothCount: v });
+        store.edit((m) => updateGear(m, gear.id, { toothCount: v }));
       }),
     );
     container.appendChild(
@@ -105,7 +106,7 @@ export function mountInspector(container: HTMLElement, store: AppStore): () => v
         "0.01",
         isValidModule(gear.module),
         (v) => {
-          store.updateGearParams(gear.id, { module: millimetres(v) });
+          store.edit((m) => updateGear(m, gear.id, { module: millimetres(v) }));
         },
       ),
     );
@@ -133,7 +134,7 @@ export function mountInspector(container: HTMLElement, store: AppStore): () => v
     }
     container.appendChild(row("Pitch diameter", pitchText, "d = m z (REF-ENG §5.1)"));
 
-    const angularVelocity = store.solution.shaftAngularVelocity.get(gear.shaftId);
+    const angularVelocity = store.analysis.train.shaftAngularVelocity.get(gear.shaftId);
     container.appendChild(
       row(
         "Angular velocity",
