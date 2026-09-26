@@ -3,6 +3,7 @@ import { createTeachingMovement } from "./teachingMovement";
 import { Viewport } from "@/viewport/viewport";
 import { mountViewportControls } from "@/viewport/viewportControls";
 import { mountMeasurementPanel } from "./panels/measurementPanel";
+import { mountProjectsDialog } from "./panels/projectsDialog";
 import { browserStore, loadAutosave, writeAutosave } from "@/persistence/autosave";
 import { mountHeader } from "./panels/header";
 import { mountToolbar } from "./panels/toolbar";
@@ -39,6 +40,9 @@ export function bootstrapApp(root: HTMLElement): void {
   const viewport = new Viewport(viewportEl, store);
   mountViewportControls(viewportEl, viewport, store);
   mountMeasurementPanel(viewportEl, store);
+
+  const projects = mountProjectsDialog(root, store, storage, (message, kind) => { toolbar.notify(message, kind); });
+  toolbar.addFileAction("Projects…", "Designs saved in this browser", () => { projects.open(); });
 
   if (saved.status === "UNREADABLE") {
     toolbar.notify(

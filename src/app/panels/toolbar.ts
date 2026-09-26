@@ -12,6 +12,8 @@ export interface Toolbar {
   /** Shows a message that stays until dismissed or replaced. */
   notify(message: string, kind: "error" | "info"): void;
   setAutosaveStatus(text: string): void;
+  /** Adds a button to the file group (after Save). */
+  addFileAction(label: string, title: string, onClick: () => void): void;
 }
 
 function fileName(movement: Movement): string {
@@ -231,6 +233,9 @@ export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
       noticeText.textContent = message;
       notice.className = `toolbar-notice notice-${kind}`;
       notice.hidden = false;
+    },
+    addFileAction(label, title, onClick) {
+      fileGroup.insertBefore(button(label, title, onClick), picker);
     },
     setAutosaveStatus(text) {
       autosave.textContent = text;
