@@ -11,6 +11,8 @@ import { mountToolbar } from "./panels/toolbar";
 import { mountComponentTree } from "./panels/componentTree";
 import { mountInspector } from "./panels/inspector/index";
 import { mountValidationConsole } from "./panels/validationConsole";
+import { PanelLayout } from "./layout/panelWindows";
+import { mountLayoutControls } from "./layout/layoutControls";
 
 function panel(parent: HTMLElement, className: string): HTMLDivElement {
   const el = document.createElement("div");
@@ -23,21 +25,25 @@ export function bootstrapApp(root: HTMLElement): void {
   root.innerHTML = "";
   const workspace = panel(root, "workspace");
   const header = panel(workspace, "header");
+  const headerInfo = panel(header, "header-info");
+  const layoutControlsEl = panel(header, "layout-controls");
   const toolbarEl = panel(workspace, "toolbar");
-  const tree = panel(workspace, "panel tree");
   const viewportEl = panel(workspace, "viewport");
-  const inspector = panel(workspace, "panel inspector");
-  const consoleEl = panel(workspace, "panel console");
+  const readouts = panel(viewportEl, "sim-readouts");
 
   const storage = browserStore();
   const saved = loadAutosave(storage);
   const store = new AppStore(saved.status === "LOADED" ? saved.movement : createTeachingMovement());
 
-  mountHeader(header, store);
-  const toolbar = mountToolbar(toolbarEl, store);
-  mountComponentTree(tree, store);
-  mountInspector(inspector, store);
-  mountValidationConsole(consoleEl, store);
+  mountHeader(headerInfo, store);
+  const toolbar = mountToolbar(toolbarEl, store, readouts);
+  // Side panels live in windows that can dock, float over the movement, open separately or close.
+  const layout = new PanelLayout(workspace, storage, (message, kind) => { toolbar.notify(message, kind); });
+  mountComponentTree(layout.add("tree", "panel tree").body, store);
+  mountInspector(layout.add("inspector", "panel inspector").body, store);
+  const consoleWindow = layout.add("console", "panel console");
+  mountValidationConsole(consoleWindow.body, store, consoleWindow.setTitle);
+  mountLayoutControls(layoutControlsEl, layout);
   const viewport = new Viewport(viewportEl, store);
   mountViewportControls(viewportEl, viewport, store);
   mountMeasurementPanel(viewportEl, store);

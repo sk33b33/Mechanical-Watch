@@ -11,20 +11,19 @@ const SEVERITY_GLYPH: Record<ValidationSeverity, string> = {
   info: "i",
 };
 
-export function mountValidationConsole(container: HTMLElement, store: AppStore): () => void {
+/** `setTitle` shows the counts in the panel's title bar, wherever the panel is. */
+export function mountValidationConsole(container: HTMLElement, store: AppStore, setTitle: (text: string) => void): () => void {
   function render(): void {
     container.innerHTML = "";
-    const header = document.createElement("div");
-    header.className = "panel-header";
     const counts = SEVERITY_ORDER.map((severity) => ({
       severity,
       count: store.issues.filter((i) => i.severity === severity).length,
     })).filter((c) => c.count > 0);
-    header.textContent =
+    setTitle(
       counts.length === 0
         ? "Validation"
-        : `Validation: ${counts.map((c) => `${String(c.count)} ${c.severity}`).join(" · ")}`;
-    container.appendChild(header);
+        : `Validation: ${counts.map((c) => `${String(c.count)} ${c.severity}`).join(" · ")}`,
+    );
 
     const issues = [...store.issues].sort(
       (a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity),

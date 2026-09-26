@@ -31,7 +31,12 @@ function button(label: string, title: string, onClick: () => void): HTMLButtonEl
   return el;
 }
 
-export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
+/**
+ * `readoutHost` receives the simulation readouts (time, dial reading,
+ * spring wind), e.g. a corner of the viewport; without it they stay in
+ * the toolbar.
+ */
+export function mountToolbar(container: HTMLElement, store: AppStore, readoutHost?: HTMLElement): Toolbar {
   container.innerHTML = "";
 
   const fileGroup = document.createElement("div");
@@ -201,10 +206,8 @@ export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
       store.resetSimulation();
     }),
     rateSelect,
-    clock,
-    dial,
-    reserve,
   );
+  (readoutHost ?? simGroup).append(clock, dial, reserve);
 
   const editGroup = document.createElement("div");
   editGroup.className = "toolbar-group";

@@ -7,6 +7,7 @@ export function mountHeader(container: HTMLElement, store: AppStore): () => void
     container.innerHTML = "";
     const title = document.createElement("span");
     title.className = "header-title";
+    title.title = store.movement.name;
     title.textContent = `Mechanical Watchmaker 3D — ${store.movement.name}`;
     container.appendChild(title);
 

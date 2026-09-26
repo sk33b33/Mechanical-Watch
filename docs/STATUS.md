@@ -2,6 +2,30 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Workspace: panel windows and focus view
+
+- Each side panel (Components, Inspector, Validation) has a title bar
+  with controls: dock, float over the movement, open in its own browser
+  window (e.g. on a second screen), or hide.
+- Floating panels are dragged by the title bar and resized from the
+  corner, and always keep their title bar on screen.
+- A separate window shares the page's styles and stays live. Selecting in
+  the main window updates it, edits made in it change the design, and
+  undo/redo shortcuts work there too. Closing it docks the panel back. If
+  the browser blocks the window, the panel floats instead and says why.
+- The header has a button per panel (hide, or reopen where it was) and
+  **Focus**, which hides the docked panels so the movement fills the
+  window. Panels opened in focus view float.
+- The simulation readouts (time, dial reading, spring wind and reserve)
+  moved from the toolbar onto the viewport, so the toolbar no longer
+  overflows at 1400 px and the readouts stay visible in focus view.
+- The layout is remembered per browser. A separate window reopens in the
+  page after a reload, since browsers only open windows on a click.
+- SIM-003's wording no longer says no power reserve is modeled; it now
+  points to the separate simplified energy model.
+
+313 unit tests and 24 browser tests pass.
+
 ## Pallet geometry (L1) and the energy chain (L3)
 
 - **Pallet geometry (ASM-0025).** Optional per escapement: span in
@@ -47,7 +71,7 @@ Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 - Design files move to schema 7.
 - The movement's declared level stays capped at L2.
 
-303 unit tests and 20 browser tests pass.
+303 unit tests and 20 browser tests passed at that point.
 
 ## Balance dynamics: simplified dynamic model (L3)
 
@@ -417,6 +441,10 @@ dimensions round-trip, and picking and issue selection work.
 - Measurements are between whole parts. There is no point-to-point
   picking on surfaces yet.
 - Long dropdown labels are truncated in the narrow inspector.
+- Resizing the viewport (docking, floating or closing panels, focus
+  view) keeps the camera where it is; it does not re-fit the movement.
+- Docked panels have fixed widths; they can't be resized by dragging
+  their edge (float them to resize).
 - The camera is framed once per loaded design or view change. A design
   built up from empty keeps the default view until you orbit or switch
   view.

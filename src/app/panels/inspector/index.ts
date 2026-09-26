@@ -40,13 +40,10 @@ function relatedIds(entity: SelectableEntity): EntityId[] {
 export function mountInspector(container: HTMLElement, store: AppStore): () => void {
   function render(): void {
     // Preserve which field had focus across the re-render an edit causes.
-    const focused = (document.activeElement as HTMLElement | null)?.dataset.field;
+    // The panel may live in a separate window, so ask its own document.
+    const focused = (container.ownerDocument.activeElement as HTMLElement | null)?.dataset.field;
 
     container.innerHTML = "";
-    const header = document.createElement("div");
-    header.className = "panel-header";
-    header.textContent = "Inspector";
-    container.appendChild(header);
 
     const entity = store.selectedId === null ? undefined : findEntity(store.movement, store.selectedId);
     if (entity === undefined) {

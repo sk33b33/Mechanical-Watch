@@ -99,6 +99,18 @@ numerical parameters. Tests keep them in sync with `reference/`.
 Panels, inspector, validation console and the Three.js viewport. UI code
 never calculates engineering relationships.
 
+The side panels (components, inspector, validation) live in panel
+windows (`src/app/layout/`). Each can dock in the workspace grid, float
+over the viewport (drag by its title bar, resize from the corner), open
+in its own browser window, or hide. Focus view hides the docked panels
+so the movement fills the window. `layoutState.ts` is the pure, tested
+layout model; `panelWindows.ts` applies it to the DOM. A panel keeps
+rendering into its body wherever that body is, so a panel in a separate
+window stays live, and edits made there go through the same store.
+Layout is per-viewer UI state in browser storage (`mw3d.layout`); it is
+never part of a design. The simulation readouts (time, dial reading,
+spring wind) sit on the viewport.
+
 Workspace views are display only. The exploded view stretches axial
 positions (not thicknesses), and the section view clips with a vertical
 plane. Neither changes the design, validation or measurements.

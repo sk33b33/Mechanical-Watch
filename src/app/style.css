@@ -37,8 +37,9 @@ body {
 
 .workspace {
   display: grid;
-  grid-template-columns: 260px 1fr 320px;
-  grid-template-rows: 40px 36px 1fr 200px;
+  /* Docked panel sizes are set by the panel layout (0 when a panel floats, pops out or is closed). */
+  grid-template-columns: var(--tree-width, 260px) minmax(0, 1fr) var(--inspector-width, 320px);
+  grid-template-rows: 40px 36px minmax(0, 1fr) var(--console-height, 200px);
   grid-template-areas:
     "header header header"
     "toolbar toolbar toolbar"
@@ -76,10 +77,179 @@ body {
   background: var(--bg-2);
   border-bottom: 1px solid var(--border);
   font-weight: 600;
+  min-width: 0;
 }
 
-.tree {
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.header-info .badge {
+  flex: none;
+}
+
+.header-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layout-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  font-weight: 400;
+}
+
+.layout-controls button {
+  padding: 2px 8px;
+  color: var(--text-1);
+}
+
+.layout-controls button.active {
+  border-color: var(--accent);
+  color: var(--text-0);
+}
+
+.layout-controls button[data-testid="focus-view"] {
+  margin-left: 6px;
+}
+
+.layout-controls button[data-testid="focus-view"].active {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+/* Side panel windows: docked in the grid, floating over the movement, or in their own browser window. */
+.panel-frame {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.panel-frame[hidden] {
+  display: none;
+}
+
+.panel-frame-tree {
   grid-area: tree;
+}
+
+.panel-frame-inspector {
+  grid-area: inspector;
+}
+
+.panel-frame-console {
+  grid-area: console;
+}
+
+.panel-frame > .panel {
+  flex: 1;
+  min-height: 0;
+  border: none;
+}
+
+.panel-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  height: 28px;
+  padding: 0 4px 0 10px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-1);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.panel-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button.panel-control {
+  flex: none;
+  padding: 0 6px;
+  line-height: 20px;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-1);
+}
+
+button.panel-control:hover:not(:disabled) {
+  color: var(--text-0);
+}
+
+.panel-frame[data-mode="DOCKED"] .panel-control[data-action="dock"],
+.panel-frame[data-mode="FLOATING"] .panel-control[data-action="float"],
+.panel-frame[data-mode="WINDOW"] .panel-control[data-action="window"] {
+  display: none;
+}
+
+.panel-frame[data-mode="FLOATING"] {
+  position: fixed;
+  resize: both;
+  border-color: #3a4652;
+  border-radius: 6px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  z-index: 30;
+}
+
+.panel-frame[data-mode="FLOATING"] .panel-titlebar {
+  cursor: move;
+}
+
+/* A panel in its own browser window fills it. */
+.popout-body {
+  overflow: hidden;
+}
+
+.popout-body .panel-frame {
+  height: 100vh;
+  border: none;
+}
+
+/* Simulation readouts sit on the viewport, so they stay visible whatever the panels do. */
+.sim-readouts {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 4px 8px;
+  background: rgba(20, 23, 27, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.sim-readouts .toolbar-clock {
+  min-width: 0;
+  font-size: 12px;
+}
+
+.sim-readouts .toolbar-clock[hidden] {
+  display: none;
 }
 
 .viewport {
@@ -94,13 +264,6 @@ body {
   height: 100%;
 }
 
-.inspector {
-  grid-area: inspector;
-}
-
-.console {
-  grid-area: console;
-}
 
 .tree-item {
   padding: 6px 10px;
@@ -177,9 +340,6 @@ body {
   border: 1px solid var(--border);
 }
 
-.header-title {
-  margin-right: 6px;
-}
 
 .section-header {
   padding: 10px 10px 2px;
