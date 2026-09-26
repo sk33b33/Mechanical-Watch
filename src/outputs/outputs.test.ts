@@ -39,7 +39,8 @@ describe("bill of materials", () => {
     expect(escapementRows.map((r) => r.name)).toEqual(
       ["Escapement", "Escape wheel", "Pallet fork", "Pallet stones", "Balance", "Hairspring", "Roller and impulse pin"],
     );
-    expect(escapementRows.find((r) => r.name === "Hairspring")?.specification).toBe("not modeled");
+    expect(escapementRows.find((r) => r.name === "Hairspring")?.specification).toBe("stiffness 246.70 µN·mm/rad (entered)");
+    expect(escapementRows.find((r) => r.name === "Roller and impulse pin")?.specification).toBe("not modeled");
     expect(others).toHaveLength(count(teaching.frames) + count(teaching.shafts) + count(teaching.gears) + count(teaching.jewels) + count(teaching.dials));
     expect(new Set(others.map((r) => r.entityId)).size).toBe(others.length);
     expect(new Set(bom.map((r) => r.item)).size).toBe(bom.length);
@@ -248,6 +249,15 @@ describe("movement report", () => {
     expect(html).toMatch(/Manufacturing readiness<\/b> not validated/);
     expect(html).toMatch(/none declared: every dimension in this report is nominal only \(MFG-001\)/);
     expect(html).toContain("Teaching demo");
+  });
+
+  it("reports the balance's free frequency and predicted rate at L3", () => {
+    const esc = componentReports(teaching, analysis).find((c) => c.kind === "Escapement");
+    const free = esc?.derived.find((d) => d.label === "Free balance frequency");
+    expect(free?.level).toBe("L3_SIMPLIFIED_DYNAMIC");
+    expect(free?.references).toContain("ASM-0024");
+    // Under the nominal-time variant used here, the rate is what it would be if the balance governed.
+    expect(esc?.derived.find((d) => d.label === "Daily rate if the balance governed")?.text).toBe("-7.02 s/day");
   });
 
   it("reports the escapement as a simplified model with its derived beat rate", () => {

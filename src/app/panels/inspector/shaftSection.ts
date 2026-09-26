@@ -10,6 +10,7 @@ import {
   addGear,
   addJewel,
   clearDrive,
+  drivenShaftId,
   setPrescribedDrive,
   updateShaft,
   type Movement,
@@ -275,6 +276,11 @@ function driveRows(store: AppStore, shaft: Shaft): Section {
       onCommit: (raw) => { store.edit((m) => setPrescribedDrive(m, shaft.id, rpmToRadPerSecond(parseRequired(raw)))); },
     }));
     out.push(actionRow("Remove drive", "The train will be unpowered", () => { store.edit(clearDrive); }));
+    return out;
+  }
+  if (drive?.kind === "BALANCE" && drivenShaftId(movement) === shaft.id) {
+    out.push(readonlyRow("Driven by", "the balance (escape wheel one tooth per balance period)",
+      "Simplified dynamic model, L3 (ASM-0021, ASM-0024). See the escapement for the predicted rate."));
     return out;
   }
   if (drive?.kind === "NOMINAL_TIME" && shaft.hand === "MINUTES") {

@@ -95,7 +95,7 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
     for (const shaft of Object.values(movement.shafts)) {
       const tags = [
         ...(shaft.hand === null ? [] : [`${shaft.hand.toLowerCase()} hand`]),
-        ...(shaft.id === driven ? [movement.drive?.kind === "NOMINAL_TIME" ? "nominal time" : "drive"] : []),
+        ...(shaft.id === driven ? [movement.drive?.kind === "NOMINAL_TIME" ? "nominal time" : movement.drive?.kind === "BALANCE" ? "balance-governed" : "drive"] : []),
       ];
       const driving = tags.length === 0 ? undefined : `(${tags.join(", ")})`;
       container.appendChild(item(shaft.name, shaft.id, 0, driving));

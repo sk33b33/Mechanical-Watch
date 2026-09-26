@@ -130,7 +130,7 @@ export function renderMovementReport(movement: Movement, analysis: MovementAnaly
     ? "none declared: every dimension in this report is nominal only (MFG-001)"
     : `${String(tolerances.length)} declared; worst-case stacks shown for side shake and endshake; all other dimensions are nominal (MFG-001, ASM-0017)`}</div>
 <div><b>Manufacturing readiness</b> not validated. No manufacturing or physical validation has been performed (MFG-002, L5 not reached).</div>
-${Object.keys(movement.escapements).length > 0 ? `<div><b>Escapement</b> SIMPLIFIED ESCAPEMENT MODEL (kinematic). Beat rate is derived from the train; the balance is shown at a declared amplitude; rate accuracy is not modeled (ESC-001, ESC-002).</div>` : ""}
+${Object.keys(movement.escapements).length > 0 ? `<div><b>Escapement</b> SIMPLIFIED ESCAPEMENT MODEL (kinematic). Beat rate is derived from the train${movement.drive?.kind === "BALANCE" ? ", which is governed by the balance's free frequency (simplified dynamic model, L3, ASM-0024)" : ""}; the balance is shown at a declared amplitude; rate accuracy is not modeled (ESC-001, ESC-002).</div>` : ""}
 ${movement.isTeachingDemo ? `<div><b>Teaching demo</b> dimensions are illustrative and not a production caliber (ASM-0009).</div>` : ""}
 </div>
 
@@ -165,7 +165,7 @@ ${table(["Driving", "Driven", "z1", "z2", "Module", "Speed ratio −z1/z2", "Ide
 <h4>Arbors</h4>
 ${table(["Arbor", "Hand", "Speed (rev/min)", "Direction seen from the dial"], arborRows)}
 ${components.filter((c) => c.kind === "Escapement").map((c) => `<h4>${esc(c.name)}: SIMPLIFIED ESCAPEMENT MODEL</h4>
-<p>Two beats per escape tooth (ASM-0021, source pending). The balance frequency shown is the one the train's speed requires; the balance's own dynamics are not modeled (ASM-0022).</p>
+<p>Two beats per escape tooth (ASM-0021, source pending). Balance frequencies from inertia and hairspring stiffness use a linear, undamped, isochronous oscillator (simplified dynamic, L3, ASM-0024); amplitude, escapement, position and temperature effects are not modeled, so the daily rate is a model prediction, not a rate-accuracy claim.</p>
 ${table(["Quantity", "Value", "Equation", "Basis"], c.derived.map((d) => [d.label, d.text, d.equation ?? "", d.references.join(", ")]))}`).join("\n")}
 ${components.filter((c) => c.kind === "Keyless works").map((c) => `<h4>${esc(c.name)}: crown</h4>
 <p>Winding and setting are kinematic only: no winding torque, spring state or setting friction is modeled (ASM-0007, ASM-0015). Right-angle stem meshes are rolling pitch circles (ASM-0019).</p>

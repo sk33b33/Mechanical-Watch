@@ -3,6 +3,7 @@ import type { EntityId } from "@/domain/ids";
 import type { Shaft } from "@/domain/shaft";
 import { isValidModule, isValidToothCount, pitchDiameter } from "@/math/gearMath";
 import { mmText, optionalMmText } from "./componentReport";
+import { toMicronewtonMillimetresPerRadian, toMilligramSquareCentimetres } from "@/units/rotational";
 
 /**
  * Bill of materials generated from the design model. Each row is one
@@ -162,8 +163,13 @@ export function buildBom(movement: Movement): BomRow[] {
       ["Escape wheel", "Escape wheel", `z = ${Number.isFinite(w.toothCount) ? String(w.toothCount) : "?"}, tip Ø ${mmText(w.tipDiameter)}, thickness ${mmText(w.thickness, 3)}`, `on ${shaftName(esc.escapeArborShaftId)}, mid-plane ${mmText(w.zCentre, 3)}`, "tooth form not modeled (drawn visually)"],
       ["Pallet fork", "Lever", "shape not modeled", `on ${shaftName(esc.palletArborShaftId)}`, "only its swing between bankings is modeled (ASM-0023)"],
       ["Pallet stones", "Jewel", "not modeled", "", "impulse and locking faces not modeled"],
-      ["Balance", "Balance", `Ø ${mmText(b.diameter, 3)}, thickness ${mmText(b.thickness, 3)}`, `on ${shaftName(esc.balanceShaftId)}, mid-plane ${mmText(b.zCentre, 3)}`, "inertia not modeled (ASM-0022)"],
-      ["Hairspring", "Spring", "not modeled", "", "no restoring torque modeled (ASM-0022)"],
+      ["Balance", "Balance",
+        `Ø ${mmText(b.diameter, 3)}, thickness ${mmText(b.thickness, 3)}${b.inertia === null ? "" : `, inertia ${toMilligramSquareCentimetres(b.inertia).toFixed(2)} mg·cm² (entered)`}`,
+        `on ${shaftName(esc.balanceShaftId)}, mid-plane ${mmText(b.zCentre, 3)}`,
+        b.inertia === null ? "inertia not modeled (ASM-0022)" : "material and mass distribution not modeled (ASM-0024)"],
+      ["Hairspring", "Spring",
+        b.hairspringStiffness === null ? "not modeled" : `stiffness ${toMicronewtonMillimetresPerRadian(b.hairspringStiffness).toFixed(2)} µN·mm/rad (entered)`,
+        "", b.hairspringStiffness === null ? "no restoring torque modeled (ASM-0022)" : "geometry and material not modeled; linear stiffness only (ASM-0024)"],
       ["Roller and impulse pin", "Roller", "not modeled", "", ""],
     ];
     parts.forEach(([name, type, specification, location, notes], i) => {

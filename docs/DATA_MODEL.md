@@ -13,9 +13,10 @@ Movement
 - keylessWorks (by ID; one expected, KEY-001)
 - dials (by ID; one expected, DIAL-001)
 - escapements (by ID; one expected, ESC-101)
-- drive: null | PRESCRIBED {shaftId, angularVelocity} | NOMINAL_TIME
-  (kinematic inputs only, ASM-0007; nominal time turns the minutes-hand
-  shaft once per hour)
+- drive: null | PRESCRIBED {shaftId, angularVelocity} | NOMINAL_TIME | BALANCE
+  (no energy modeled, ASM-0007; nominal time turns the minutes-hand shaft
+  once per hour; BALANCE lets the balance's free frequency set the escape
+  arbor's speed, ASM-0024)
 
 Frame (mainplate or bridge; flat slab, ASM-0010)
 - id, kind (MAINPLATE | BRIDGE), name
@@ -64,7 +65,9 @@ Escapement (SIMPLIFIED ESCAPEMENT MODEL, ESC-001; ASM-0021…0023)
 - escapeArborShaftId; escapeWheel {toothCount, tipDiameter, thickness, zCentre}
 - palletArborShaftId; leverAngle (total swing between bankings)
 - balanceShaftId; balance {diameter, thickness, zCentre, amplitude
-  (declared, not predicted), liftAngle}
+  (declared, not predicted), liftAngle, inertia: kg·m² | null,
+  hairspringStiffness: N·m/rad | null} (the last two for the simplified
+  dynamic model, L3, ASM-0024; null = unknown)
 - The pallet arbor and balance staff are ordinary shafts that oscillate;
   they must not be gear-driven (ESC-102).
 
@@ -94,7 +97,7 @@ drawings, STL).
 
 ```
 { "format": "mechanical-watchmaker-3d.design",
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "savedAt": "<ISO time>",
   "movement": { …Movement as above… } }
 ```
@@ -112,7 +115,8 @@ drawings, STL).
   version to `MIGRATIONS`. v1 → v2 turns the flat drive fields into the
   drive union, makes every shaft PIVOTED with no hand, and adds empty
   couplings. v2 → v3 adds empty tolerances. v3 → v4 adds empty keyless
-  works and dials. v4 → v5 adds empty escapements.
+  works and dials. v4 → v5 adds empty escapements. v5 → v6 adds unknown
+  (null) balance inertia and hairspring stiffness.
 - Autosave keeps the current design in browser storage under
   `mw3d.autosave`. An unreadable autosave is moved to
   `mw3d.autosave.unreadable` rather than overwritten.

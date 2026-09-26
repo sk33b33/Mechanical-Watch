@@ -11,6 +11,7 @@ import {
   addGearMesh,
   clearDrive,
   minutesHandShaftId,
+  setBalanceDrive,
   setNominalTimeDrive,
   updateFrame,
   updateGear,
@@ -83,13 +84,21 @@ export function movementSection(store: AppStore): Section {
         title: minutesHandShaftId(m) === null ? "Needs exactly one arbor carrying the minutes hand." : "",
       },
       {
+        value: "BALANCE",
+        label: "Governed by the balance (L3 simplified)",
+        disabled: Object.keys(m.escapements).length === 0,
+        title: Object.keys(m.escapements).length === 0
+          ? "Needs an escapement with the balance inertia and hairspring stiffness entered."
+          : "The balance's free frequency sets the rate (linear undamped oscillator, ASM-0024).",
+      },
+      {
         value: "PRESCRIBED",
         label: "Prescribed speed on an arbor",
         disabled: m.drive?.kind !== "PRESCRIBED",
         title: "Choose an arbor and use “Make this the drive” in its inspector.",
       },
     ], (value) => {
-      store.edit(value === "NOMINAL_TIME" ? setNominalTimeDrive : clearDrive);
+      store.edit(value === "NOMINAL_TIME" ? setNominalTimeDrive : value === "BALANCE" ? setBalanceDrive : clearDrive);
     }, "What sets the train in motion. Kinematic input only; no energy is modeled (ASM-0007)."),
     sectionHeader("Contents"),
     readonlyRow("Frames", count(m.frames)),

@@ -42,6 +42,10 @@ the ratchet teeth and the click are edges and seeds in the same graph
 (`keylessGeometry.ts`, ASM-0019). Modes: running, direct hand setting
 (no keyless works), winding and crown setting. `keylessSummary.ts`
 derives the winding direction and crown ratios for the UI and outputs.
+`balance.ts` holds the simplified dynamic balance (L3, ASM-0024), and
+`balanceSummary.ts` compares its free frequency with what nominal time
+needs. Under the BALANCE drive, the solver seeds the escape arbor from
+the balance's frequency.
 
 ### Assembly (`src/assembly`)
 Axial geometry: frame and gear height ranges, bearing support, side

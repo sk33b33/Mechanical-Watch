@@ -2,6 +2,38 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Balance dynamics: simplified dynamic model (L3)
+
+- **Inputs.** The balance takes an optional moment of inertia (mg·cm²)
+  and hairspring stiffness (µN·mm/rad), stored in SI. Empty means
+  unknown, and the model stays kinematic. They are entered directly;
+  nothing is derived from material or hairspring geometry.
+- **Model.** A linear, undamped torsional oscillator: f = √(k/I)/2π
+  (ASM-0024). It is isochronous by construction. Amplitude, escapement
+  disturbance, position, temperature and damping are not modeled, so it
+  is not a complete regulator model.
+- **The balance governs.** A new drive, "Governed by the balance", sets
+  the escape arbor to one tooth per balance period (ASM-0021), turning
+  the way that runs the hands forward. The train follows, so the hands
+  run fast or slow by however much the balance differs from what nominal
+  time needs.
+- **Derived.** Free frequency, the frequency nominal time needs, the
+  hairspring stiffness that would give it for the entered inertia, and
+  the predicted daily rate (s/day). BAL-002 reports them at L3, with the
+  limits stated. BAL-001 checks the inputs and that a balance-governed
+  drive can run.
+- **Teaching movement.** Now governed by its balance: 10 mg·cm² and
+  246.7 µN·mm/rad (illustrative, ASM-0009) give 2.4998 Hz against the
+  2.5 Hz nominal needs, so the model predicts about −7 s/day. The
+  stiffness is deliberately a rounded entered value, not solved from the
+  train. Tests of exact nominal speeds use an explicit nominal-time
+  variant.
+- The movement's declared level stays capped at L2. Only the balance
+  model is L3; the train still has no torque or energy model.
+- Design files move to schema 6.
+
+272 unit tests and 16 browser tests pass.
+
 ## Phase 5 — Escapement: simplified kinematic model
 
 A Swiss lever escapement labelled SIMPLIFIED ESCAPEMENT MODEL (ESC-001),
@@ -323,6 +355,8 @@ dimensions round-trip, and picking and issue selection work.
 - **Two beats per escape tooth (ASM-0021).** Accepted as a declared
   assumption for the simplified model; a source should be recorded under
   `reference/sources/03-escapements/` (e.g. SRC-0004, not yet read).
+- **Oscillator equation (ASM-0024).** Standard linear-oscillator physics,
+  marked DERIVED with the citation pending, like the gear equations.
 - **Acceptable bearing clearances.** Side shake and endshake are
   computed but not judged. Judging them needs sourced ranges.
 
@@ -369,5 +403,5 @@ dimensions round-trip, and picking and issue selection work.
   tolerances shown on drawings, tolerances on gear and placement
   dimensions for centre-distance variation.
 - Escapement beyond the simplified model: locking, draw and banking
-  geometry; balance dynamics (inertia, hairspring) at L3 with declared
-  assumptions; a source for ASM-0021.
+  geometry; amplitude from an energy balance (needs mainspring torque);
+  sources for ASM-0021 and ASM-0024.

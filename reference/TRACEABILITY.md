@@ -53,6 +53,10 @@ geometry standard) is open work.
 | Balance angle (rad) | θ_b = A sin(2π f_balance t), A declared | `escapementMotion` | REF-ENG §10 (kinematic model: angle and frequency) | ASM-0022 | APPROXIMATION (sinusoid; no dynamics) | L2 | › the fork rests on alternate bankings… |
 | Impulse window (1) | (2/π) asin(λ / 2A) of each beat, needs A > λ/2 | `impulseFraction` | derived from the sinusoid | ASM-0022, ASM-0023 | DERIVED | L2 | › is the share of each swing… |
 | Ticking train (s) | shown at t_eff = T (k − ½ + s), s = window progress; locked between windows, within T/2 of t | `escapementMotion`, `escapementDisplay` | REF-ENG §9 (release, impulse phases) | ASM-0023 | APPROXIMATION (no locking, draw, drop or impact) | L2 | › keeps real time on average…; › never runs backward… |
+| Balance free frequency (Hz) | f = √(k / I) / 2π | `naturalFrequency` in `src/kinematics/balance.ts` | REF-ENG §10 (simplified dynamic model: inertia, restoring torque); linear undamped oscillator (I θ'' = −k θ) | ASM-0024 | DERIVED from the oscillator equation; external citation pending | L3 | `balance.test.ts` › f = √(k/I) / 2π |
+| Hairspring for a frequency (N·m/rad) | k = I (2π f)² | `stiffnessForFrequency` | inverse of the above | ASM-0024 | DERIVED | L3 | › property: the stiffness for a frequency gives that frequency back |
+| Escape speed when the balance governs (rad/s) | abs(ω) = 2π f / z (one tooth per balance period); sign from the train so the hands run forward | `escapeSpeedFromBalance`, `driveSeed` (BALANCE) | REF-ENG §9, §10 | ASM-0021, ASM-0024 | DERIVED | L3 | › the escape wheel advances one tooth per balance period; › runs the hands clockwise… |
+| Daily rate (s/day) | (f / f_nominal − 1) × 86 400; f_nominal from the escape arbor at nominal time | `dailyRateSeconds`, `summarizeBalance` | definition (train speed ∝ balance frequency) | ASM-0024 | DERIVED; not a rate-accuracy claim | L3 | › predicts about 7 s a day slow… |
 | Toleranced limits (m) | lower = nominal + lower deviation; upper = nominal + upper deviation | `Tolerance` in `src/domain/tolerance.ts` | REF-ENG §14 | none (declared intent) | user input; not validated | L1 | `toleranceAnalysis.test.ts` |
 | Worst-case stack (m) | R = Σ sᵢ xᵢ; R_min = Σ (sᵢ > 0 ? lowerᵢ : −upperᵢ); R_max likewise; untoleranced inputs at nominal | `evaluateStack` in `src/assembly/toleranceAnalysis.ts` | REF-ENG §14 | ASM-0017 | DERIVED | L1 | › property: min ≤ nominal ≤ max… |
 | Side shake over tolerances (m) | bore − pivot, worst case | `sideShakeStack` | REF-ENG §12, §14 | ASM-0013, ASM-0017 | DERIVED; acceptability UNKNOWN | L1 | › side shake: min takes… |
@@ -90,6 +94,9 @@ rev/min exist only at the UI boundary (`src/units/`).
 | Schema-2 file | Migrated to schema 3 on open (no tolerances). |
 | Schema-3 file | Migrated to schema 4 on open (no keyless works, no dial). |
 | Schema-4 file | Migrated to schema 5 on open (no escapement). |
+| Schema-5 file | Migrated to schema 6 on open (balance inertia and stiffness unknown). |
+| Balance inertia or stiffness empty | Stored as null (unknown); the model stays kinematic; a balance-governed drive reports BAL-001 and drives nothing. |
+| Balance inertia or stiffness ≤ 0 | BAL-001 error; no free frequency. |
 | New escapement (all empty, no arbors chosen) | Kept empty; ESC-101 lists what is missing; nothing ticks or swings. |
 | Amplitude not above half the lift angle | ESC-101 error; no impulse window, so the display shows nothing ticking. |
 | Pallet arbor or balance staff gear-driven | ESC-102 error. |
@@ -153,6 +160,8 @@ rev/min exist only at the UI boundary (`src/units/`).
 | ESC-101 | error | L1 / L2 | one escapement, three distinct existing arbors, valid inputs, amplitude above half the lift angle (project addition) |
 | ESC-102 | error | L2 | pallet arbor and balance staff are not gear-driven (project addition) |
 | ESC-103 | error | L1 | escape wheel clears the pallet arbor, the balance and other gears at its height; the balance clears the pallet arbor (project addition) |
+| BAL-001 | error | L2 / L3 | entered inertia and stiffness positive; a balance-governed drive needs an escapement, escape wheel and both inputs (project addition) |
+| BAL-002 | info | L3 | free frequency, frequency needed for nominal time, stiffness for nominal, predicted daily rate, with limits (project addition) |
 | TOL-001 | error / warning | L1 | tolerance definition: target exists, one per dimension, finite limits, lower ≤ upper, positive size limit (project addition) |
 | TOL-002 | warning | L1 | a nominally positive side shake or endshake that can close within declared tolerances (project addition) |
 | MFG-001 | info | L1 | summary whenever tolerances exist: declared intent, untoleranced dimensions are nominal. Also stated in every output. |

@@ -13,6 +13,8 @@ import type { Dial } from "@/domain/dial";
 import type { Escapement } from "@/domain/escapement";
 import { toBeatsPerHour } from "@/units/frequency";
 import { balanceFrequency, beatFrequency, beatsPerEscapeRevolution, impulseFraction } from "@/kinematics/escapement";
+import { summarizeBalance } from "@/kinematics/balanceSummary";
+import { toMicronewtonMillimetresPerRadian, toMilligramSquareCentimetres } from "@/units/rotational";
 import {
   clockPositionFromDial,
   crownSenseText,
@@ -446,6 +448,7 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
   const teethValid = isValidToothCount(w.toothCount);
   const beats = omega !== undefined && omega !== 0 && teethValid ? beatFrequency(omega, w.toothCount) : null;
   const fraction = impulseFraction(b.amplitude, b.liftAngle);
+  const dyn = summarizeBalance(movement, esc);
   const angleText = (a: Angle): string => (Number.isFinite(a) ? `${toDegrees(a).toFixed(1)}°` : "not set");
   return {
     id: esc.id,
@@ -466,12 +469,18 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
       lengthParam("Balance mid-plane", b.zCentre),
       entered("Balance amplitude (declared)", angleText(b.amplitude), b.amplitude),
       entered("Lift angle", angleText(b.liftAngle), b.liftAngle),
+      entered("Balance inertia", b.inertia === null ? "unknown" : `${toMilligramSquareCentimetres(b.inertia).toFixed(3)} mg·cm²`, b.inertia),
+      entered("Hairspring stiffness", b.hairspringStiffness === null ? "unknown" : `${toMicronewtonMillimetresPerRadian(b.hairspringStiffness).toFixed(3)} µN·mm/rad`, b.hairspringStiffness),
     ],
     derived: [
       { label: "Beats per escape revolution", text: teethValid ? String(beatsPerEscapeRevolution(w.toothCount)) : "—", si: teethValid ? beatsPerEscapeRevolution(w.toothCount) : null, equation: "2 z", level: "L2_KINEMATIC", references: ["ASM-0021"] },
       { label: "Beat rate", text: beats === null ? "not derived (escape arbor not driven)" : `${toBeatsPerHour(beats).toFixed(0)} beats/h`, si: beats, equation: "|ω| / 2π × 2 z", level: "L2_KINEMATIC", references: ["ASM-0021", "REF-ENG §9"] },
       { label: "Required balance frequency", text: beats === null ? "—" : `${balanceFrequency(beats).toFixed(4)} Hz`, si: beats === null ? null : balanceFrequency(beats), equation: "beat rate / 2", level: "L2_KINEMATIC", references: ["ASM-0021", "ASM-0022"] },
       { label: "Impulse window", text: fraction === null ? "—" : `${(fraction * 100).toFixed(2)} % of each beat`, si: fraction, equation: "(2/π) asin(lift / 2 amplitude)", level: "L2_KINEMATIC", references: ["ASM-0022", "ASM-0023"] },
+      { label: "Free balance frequency", text: dyn.freeFrequency === null ? "needs inertia and stiffness" : `${dyn.freeFrequency.toFixed(4)} Hz`, si: dyn.freeFrequency, equation: "f = √(k / I) / 2π", level: "L3_SIMPLIFIED_DYNAMIC", references: ["ASM-0024", "REF-ENG §10"] },
+      { label: "Balance frequency for nominal time", text: dyn.nominalFrequency === null ? "—" : `${dyn.nominalFrequency.toFixed(4)} Hz`, si: dyn.nominalFrequency, equation: "from the escape arbor's speed at nominal time", level: "L2_KINEMATIC", references: ["ASM-0021"] },
+      { label: "Hairspring stiffness for nominal time", text: dyn.stiffnessForNominal === null ? "—" : `${toMicronewtonMillimetresPerRadian(dyn.stiffnessForNominal).toFixed(3)} µN·mm/rad`, si: dyn.stiffnessForNominal, equation: "k = I (2π f)²", level: "L3_SIMPLIFIED_DYNAMIC", references: ["ASM-0024"] },
+      { label: movement.drive?.kind === "BALANCE" ? "Predicted daily rate (balance governs)" : "Daily rate if the balance governed", text: dyn.dailyRate === null ? "—" : `${dyn.dailyRate >= 0 ? "+" : ""}${dyn.dailyRate.toFixed(2)} s/day`, si: dyn.dailyRate, equation: "(f / f_nominal − 1) × 86 400", level: "L3_SIMPLIFIED_DYNAMIC", references: ["ASM-0024"] },
       { label: "Rate accuracy", text: "not modeled; requires physical validation", si: null, level: "L2_KINEMATIC", references: ["REF-ENG §9", "REF-ENG §10"] },
     ],
     tolerances: [],
