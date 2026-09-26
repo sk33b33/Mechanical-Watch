@@ -68,7 +68,16 @@ never calculates engineering relationships.
 
 Movement coordinates, in metres. X and Y lie in the mainplate plane;
 Z is the shaft axis direction (ASM-0006), increasing from the mainplate
-toward the bridges. z = 0 is set by the design (the demo puts it at the
+toward the bridges. z = 0 is set by the design (the demos put it at the
 mainplate underside). Angles are measured from +X, counter-clockwise,
 looking down from +Z (the bridge side). Positive angular velocity is
 counter-clockwise from the same view.
+
+The dial is on the −Z side of the mainplate (ASM-0014), so a positive
+angular velocity is clockwise seen from the dial, which is how hands
+turn. A hand at shaft angle 0 points along +Y, which is 12 o'clock.
+
+Kinematic modes: validation always uses the running solve (clutches
+engaged). The simulation integrates either the running solve or, while
+setting the hands, a solve where clutches slip and the minutes-hand side
+is driven by the setting input (REF-ENG §8, ASM-0015).

@@ -2,6 +2,46 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 3 — Kinematic movement: complete
+
+- **Time display as the requirement.** Arbors can carry the hours,
+  minutes or seconds hand. TIME-002 checks the train's ratios against a
+  12-hour dial (1 : 12 : 720, all clockwise from the dial) and reports
+  the period a wrong hand would actually have. These rates are
+  definitions of reading a dial (ASM-0014), not watch specifications.
+- **Nominal-time drive.** Besides a prescribed arbor speed, the train
+  can run "at nominal time": the minutes hand is prescribed at 1 rev/h
+  and every other arbor's rotation (barrel, escape arbor…) is derived
+  and shown in its inspector. A prescribed drive reports how far from
+  nominal the hands run (TIME-004).
+- **Motion works as a separate subsystem (REF-ENG §8).** Coaxial
+  placement, parts carried on another arbor or on a stud, and friction
+  clutches. Running: the clutch turns with its arbor. Setting the hands:
+  the clutch slips, the hands move at 1 h per second, and the going
+  train keeps its running speed (ASM-0015). SET-001 warns when the hands
+  can't be set without turning the train, and CPL-001 requires a
+  clutch's two parts to be coaxial.
+- **Teaching movement (new default).** Barrel 72 → centre pinion 12;
+  centre wheel 80 → third 10; third 75 → fourth 10; fourth 80 → escape
+  pinion 8. Motion works: cannon pinion 10 → minute wheel 30, minute
+  pinion 8 → hour wheel 32 (10 + 30 = 8 + 32, so the coaxial cannon
+  pinion and hour wheel share one centre distance). At nominal time the
+  barrel turns once per 6 h, the fourth arbor once per minute and the
+  escape arbor once per 6 s. It validates with no errors or warnings.
+  All values are illustrative (ASM-0009). The escape wheel itself is
+  not modeled (not a gear; Phase 5).
+- **UI.** Mode switch (running / set hands forward / backward), dial
+  reading from the simulated hand angles, hands drawn on the dial side
+  (visual only, ASM-0016), bridge-side and dial-side views, inspector
+  controls for hand, support, coaxial placement, clutches and drive.
+- **Save format v2**, with a migration that opens v1 files unchanged in
+  meaning.
+
+145 tests pass. Checked in a browser: 60× playback, hand setting
+forward and backward (hands advance hours while the seconds hand keeps
+time), removing the clutch (SET-001, setting refused), undo, the dial
+view, and opening a schema-1 file saved in an earlier session.
+
 ## Working tool: save/load, simulation controls, building from scratch — complete
 
 - **Save / Open / autosave.** Versioned JSON (schema 1). Invalid
@@ -82,6 +122,10 @@ dimensions round-trip, and picking and issue selection work.
 
 ## Open decisions
 
+- **Sources for the teaching movement's tooth counts.** They satisfy the
+  dial ratios by construction, but aren't taken from any caliber. For a
+  movement meant to match a real one, the counts need a source recorded
+  under `reference/sources/09-movement-specific/`.
 - **External citations for gear equations.** REF-ENG §5 cites no primary
   source for d = m z etc. They are marked DERIVED with the citation
   pending.
@@ -96,12 +140,15 @@ dimensions round-trip, and picking and issue selection work.
   arbor as its axis line, a lower bound.
 - The selected-arbor highlight is hard to see behind large wheels.
 - Long dropdown labels are truncated in the narrow inspector.
-- The camera is framed once per loaded design. A design built up from
-  empty keeps the default view until you orbit.
+- The camera is framed once per loaded design or view change. A design
+  built up from empty keeps the default view until you orbit or switch
+  view.
+- No dial or keyless works are modeled. Hand setting is applied
+  directly to the minutes-hand arbor.
 
 ## Next (see `docs/ROADMAP.md`)
 
-- Phase 3, kinematic movement: barrel, centre/third/fourth/escape wheels,
-  and motion works as a separate subsystem with a slipping cannon pinion
-  (REF-ENG §8).
 - Phase 4 workspace: exploded view, section view, measurement tools.
+- Phase 5 escapement: escape wheel, pallet fork and balance as a
+  separately declared, simplified model (ESC-001/002). It needs a source
+  for the escape-wheel/beat relationship before any beat rate is shown.

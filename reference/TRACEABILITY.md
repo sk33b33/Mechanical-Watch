@@ -28,6 +28,13 @@ geometry standard) is open work.
 | Endshake (m) | space between bearings − shoulder span | `endshake` | REF-ENG §12 | ASM-0011 | DERIVED from user inputs; acceptability UNKNOWN | L1 | › computes endshake… |
 | Axial overlap (bool) | lo_a < hi_b and lo_b < hi_a (touching faces don't overlap) | `zOverlaps`, `gearZRange`, `frameZRange` | none; geometric definition | ASM-0010 | DERIVED | L1 | `assemblyRules.test.ts` › GEAR-101, ASSY-002 |
 | Wheel/arbor crossing (bool) | axis distance < pitch radius, with axial overlap; arbor taken as its bare axis (lower bound) | `interferenceRules` | REF-ENG §5.6 | arbor diameter not modeled | DERIVED | L1 | › a wheel may not cross another shaft's arbor |
+| Coaxial axis (m) | p = p_ref | `solvePlacement` (COAXIAL) | geometric definition | ASM-0006 | DERIVED | L1 | `movementKinematics.test.ts` › places the coaxial cannon pinion… |
+| Clutch while running (1) | ω_a = ω_b (engaged friction clutch) | `solveGearTrain` (RUNNING) | REF-ENG §8 | ASM-0015 | APPROXIMATION (no slip torque) | L2 | › derives the rest of the going train… |
+| Hand setting | clutches slip; hand side = gear-connected group of the minutes hand, driven by the setting input; other shafts keep their running speed | `solveGearTrain` (HAND_SETTING), `handSettingState` | REF-ENG §8 | ASM-0015 | APPROXIMATION | L2 | › hand setting through the friction clutch |
+| Nominal hand rate (rad/s) | ω = 2π / T with T = 12 h, 1 h, 1 min; positive = clockwise from the dial | `nominalHandAngularVelocity` in `src/kinematics/timeDisplay.ts` | definition of a 12-hour dial | ASM-0014 | definition | L2 | › time display definitions |
+| Hand ratio check (1) | ω_h/ω_ref = T_ref/T_h, same sign | `timeRules` (TIME-002) | definition + REF-ENG §5.3 | ASM-0014 | DERIVED | L2 | › TIME-002 … |
+| Rotation period (s) | T = 2π / abs(ω) | `periodSeconds`, `formatPeriod` | definition | none | DERIVED | L2 | › reads hand angles… |
+| Dial reading | hand angle / 2π × (12 or 60), each hand read on its own | `readHand` | definition | ASM-0014 | DERIVED | L2 | › reads hand angles… |
 | Tooth outline (visual) | trapezoid with addendum 1.0 × module and dedendum 1.25 × module | `generateGearOutline` | none; visualization only | ASM-0005, ASM-0004 | APPROXIMATION | L0 | `gearOutline.test.ts` |
 
 Units: SI internally (SRC-0001, SRC-0002 via REF-ENG §4). mm, degrees and
@@ -53,6 +60,9 @@ rev/min exist only at the UI boundary (`src/units/`).
 | Drive with no speed | SIM-001 error; the solver propagates nothing. |
 | No drive at all | KIN-001 info. |
 | Saved file with invalid values | Loaded unchanged (NaN preserved) and reported by validation. |
+| Schema-1 file | Migrated to schema 2 on open (drive union; shafts PIVOTED with no hand; no couplings). |
+| Nominal-time drive without exactly one minutes hand | TIME-003 / TIME-001; nothing is driven. |
+| Hand setting where no clutch isolates the hands | SET-001 warning; the setting mode reports it and the hands are not moved. |
 
 ## Rules implemented
 
@@ -72,7 +82,7 @@ rev/min exist only at the UI boundary (`src/units/`).
 | ASSY-001 | error | L1/L2 | dangling references; unresolved placement constraints; meshing gears on one shaft; over-constrained train |
 | ASSY-002 | error (pitch overlap) / warning (visual tip overlap only) | L1 / L0 | unmeshed gears at the same height; two gears on one arbor at the same height; gear inside a frame slab; wheel crossing another arbor |
 | FRAME-001 | error | L1 | frame thickness, height and outline (project addition) |
-| BRG-001 | error | L1 | one lower and one upper bearing, in different frames, correctly ordered (project addition; only in movements with frames) |
+| BRG-001 | error | L1 | one lower and one upper bearing, in different frames, correctly ordered (project addition; only for pivoted shafts in movements with frames) |
 | BRG-002 | error | L1 | bearing inside its frame outline (project addition) |
 | BRG-003 | error | L1 | side shake must be positive when known; inputs must be positive (project addition) |
 | BRG-004 | error | L1 | endshake must be positive when known; inputs must be positive (project addition) |
@@ -81,6 +91,14 @@ rev/min exist only at the UI boundary (`src/units/`).
 | SIM-002 | none | none | Fixed-timestep integrator; tested for chunking independence |
 | SIM-003 | info | L2 | always states the drive is prescribed |
 | KIN-001 | warning / info | L2 | unpowered shafts (warning); no drive set (info) (project addition) |
+| CPL-001 | error | L1 | a friction clutch joins two different coaxial shafts (project addition) |
+| SUP-001 | error | L1 | a carried part is placed coaxially (project addition) |
+| SUP-002 | error | L1 | a stud lies within its frame (project addition) |
+| TIME-001 | error | L2 | one shaft per hand (project addition) |
+| TIME-002 | error | L2 | 12-hour-dial hand ratios and direction (project addition) |
+| TIME-003 | error | L2 | nominal time needs a minutes hand (project addition) |
+| TIME-004 | info | L2 | hand rate relative to nominal under a prescribed drive (project addition) |
+| SET-001 | warning | L2 | hands settable without turning the train (project addition) |
 | VAL-001 | blocker | L1 | validation engine failure (project addition) |
 
 Not yet applicable: UNIT-001/002 (enforced by branded unit types, not a
