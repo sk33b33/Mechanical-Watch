@@ -98,8 +98,12 @@ export function meshSpeedRatio(drivingTeeth: number, drivenTeeth: number): numbe
  * |ω_driven| z_driven = |ω_driving| z_driving. Unlike a parallel mesh,
  * the direction is not fixed by the tooth counts: `sense` (±1) comes
  * from the layout (see src/kinematics/keylessGeometry.ts).
- * Citation pending: candidate sources SRC-0007 (ISO 23509) and SRC-0008
- * are recorded but not yet read.
+ * SRC-0009 (Wikipedia, read) confirms the general tooth-count speed
+ * ratio for meshing gears, but only for spur/parallel-axis gears; its
+ * extension to this crossed-axis case remains this codebase's own
+ * derivation above. Citation for that extension is still pending:
+ * candidate sources SRC-0007 (ISO 23509) and SRC-0008 (SDP/SI) are
+ * recorded but not yet read.
  */
 export function crossedMeshSpeedRatio(drivingTeeth: number, drivenTeeth: number, sense: 1 | -1): number {
   assertValidToothCount(drivingTeeth);

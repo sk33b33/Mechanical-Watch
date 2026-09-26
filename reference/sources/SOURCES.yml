@@ -118,5 +118,41 @@
   retrieved: false
   accessed: null
   notes: >
-    Manufacturer engineering reference (generic machine gears). Page not
-    fetched: sdp-si.com is blocked by this environment's network policy.
+    Manufacturer engineering reference (generic machine gears). Still not
+    fetched as of 2026-09-26: sdp-si.com remains blocked by this
+    environment's network policy (only wikipedia.org was added; retried
+    and confirmed still blocked). Re-check after any further network
+    policy change.
+
+# Wikipedia was added to this environment's allowed network hosts on
+# 2026-09-26. Read to see whether it could close the ASM-0019 citation
+# above. It only partly does; see notes.
+
+- id: SRC-0009
+  title: "Gear train"
+  author: Wikipedia contributors
+  year: null
+  type: encyclopedia
+  url: https://en.wikipedia.org/wiki/Gear_train
+  topics: [gear-geometry, gear-ratio]
+  claims_supported:
+    - for two meshing gears, the angular speed ratio equals the inverse ratio of pitch-circle radii, equivalently the inverse ratio of tooth counts (|omega_A|/|omega_B| = r_B/r_A = N_B/N_A)
+  claims_to_check: []
+  retrieved: true
+  accessed: '2026-09-26'
+  notes: >
+    Read 2026-09-26. States the general tooth-count speed-ratio relation
+    for two meshing gears, from the ratio of pitch-circle radii. Its own
+    derivation and examples are for spur/parallel-axis gears; the article
+    does not itself state that this extends to bevel or other
+    crossed/intersecting-axis meshes (checked; not present in this
+    article or in Wikipedia's Bevel gear article, which has no
+    quantitative ratio formula at all). The Bevel gear article was also
+    read and found to give no formula. So SRC-0009 supports the general
+    kinematic principle behind `crossedMeshSpeedRatio` (equal
+    pitch-circle/contact-point velocity implies a tooth-count ratio) but
+    does not, on its own, close the citation for applying that principle
+    to a crossed-axis mesh. SRC-0007/SRC-0008 remain the candidate
+    citations for that specific extension, both still unread (SRC-0008
+    still blocked by this environment's network policy; SRC-0007 is
+    paid).

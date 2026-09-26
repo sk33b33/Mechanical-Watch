@@ -2,6 +2,33 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Wikipedia added as a source: partial citation for the stem mesh ratio
+
+- This environment's network policy was updated to allow wikipedia.org
+  (previously all three candidate-citation sites for ASM-0019 were
+  blocked or paid). Re-checked sdp-si.com: still blocked. ISO 23509 is
+  still paid, so it wasn't fetched either way.
+- Read Wikipedia's Gear train and Bevel gear articles for the pending
+  right-angle (stem) mesh citation (`crossedMeshSpeedRatio` in
+  `src/math/gearMath.ts`, ASM-0019). Gear train gives the general
+  tooth-count speed ratio for meshing gears (from the ratio of
+  pitch-circle radii) but scopes its derivation to spur/parallel-axis
+  gears; Bevel gear is descriptive and has no quantitative ratio formula
+  at all. Neither states the relation extends to a crossed-axis mesh.
+- Recorded Wikipedia's Gear train article as SRC-0009 (read), supporting
+  the general kinematic principle behind `crossedMeshSpeedRatio` — equal
+  contact-point velocity implies a tooth-count ratio — without closing
+  the citation for applying it to a crossed-axis mesh specifically. Per
+  CLAUDE_REFERENCE_INSTRUCTIONS.md rule 12, both the supported claim and
+  its scope limit are recorded rather than treating this as a full
+  citation. SRC-0007 (ISO 23509) and SRC-0008 (SDP/SI) remain the
+  candidate citations for the crossed-axis extension, both still unread.
+  TRACEABILITY.md, SOURCES.yml, SOURCE_INDEX.md and the code comment on
+  `crossedMeshSpeedRatio` are updated accordingly. No equation, test, or
+  validation rule changed.
+
+342 unit tests and 27 browser tests pass (unchanged).
+
 ## Elevation drawing, and tolerances on gear/placement dimensions
 
 - **Elevation drawing (`src/outputs/drawing/elevationDrawing.ts`).** A
@@ -480,11 +507,16 @@ dimensions round-trip, and picking and issue selection work.
 - **Side-shake convention (ASM-0013).** Reported as diametral clearance
   until a source confirms the horological convention.
 - **Right-angle (stem) mesh relationship.** Derived here from rolling
-  pitch circles and tested. Two candidate citations are recorded,
-  SRC-0007 (ISO 23509:2016) and SRC-0008 (SDP/SI), but neither has been
-  read: this environment's network policy blocks the sites, and ISO
-  23509 is paid. Both cover generic machine bevel gears, so a
-  horological source for contrate or winding gearing would be better.
+  pitch circles and tested. Wikipedia's Gear train article (SRC-0009, now
+  read) confirms the general tooth-count speed ratio for meshing gears,
+  but only for spur/parallel-axis gears — it does not itself extend the
+  relation to bevel/crossed-axis meshes, so it only partly closes this
+  citation. Two candidate citations for that extension are still
+  recorded, SRC-0007 (ISO 23509:2016) and SRC-0008 (SDP/SI), but neither
+  has been read: sdp-si.com remains blocked by this environment's network
+  policy (only wikipedia.org was added), and ISO 23509 is paid. Both
+  cover generic machine bevel gears, so a horological source for contrate
+  or winding gearing would be better.
 - **Two beats per escape tooth (ASM-0021).** Accepted as a declared
   assumption for the simplified model; a source should be recorded under
   `reference/sources/03-escapements/` (e.g. SRC-0004, not yet read).
