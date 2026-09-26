@@ -19,12 +19,18 @@ Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 - The simulation readouts (time, dial reading, spring wind and reserve)
   moved from the toolbar onto the viewport, so the toolbar no longer
   overflows at 1400 px and the readouts stay visible in focus view.
+- Docked panels resize by dragging their inner edge (the one facing the
+  movement). The handle also takes the arrow keys (Shift for bigger
+  steps, Home/End for the limits); double-click restores the default
+  size. Each panel has a minimum size, and the movement view never
+  shrinks below 320 × 200 px. When the browser window gets smaller the
+  panels give way, and they return to the chosen sizes when it grows.
 - The layout is remembered per browser. A separate window reopens in the
   page after a reload, since browsers only open windows on a click.
 - SIM-003's wording no longer says no power reserve is modeled; it now
   points to the separate simplified energy model.
 
-313 unit tests and 24 browser tests pass.
+319 unit tests and 25 browser tests pass.
 
 ## Pallet geometry (L1) and the energy chain (L3)
 
@@ -443,8 +449,6 @@ dimensions round-trip, and picking and issue selection work.
 - Long dropdown labels are truncated in the narrow inspector.
 - Resizing the viewport (docking, floating or closing panels, focus
   view) keeps the camera where it is; it does not re-fit the movement.
-- Docked panels have fixed widths; they can't be resized by dragging
-  their edge (float them to resize).
 - The camera is framed once per loaded design or view change. A design
   built up from empty keeps the default view until you orbit or switch
   view.

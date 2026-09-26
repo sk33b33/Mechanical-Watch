@@ -33,6 +33,8 @@ export interface PanelState {
   lastVisible: VisibleMode;
   /** Floating position; null until the panel has floated (a default is then used). */
   rect: Rect | null;
+  /** Docked width (side columns) or height (validation row) the user has dragged it to, in CSS px. */
+  dockedSize: number;
 }
 
 export interface LayoutState {
@@ -41,7 +43,15 @@ export interface LayoutState {
 }
 
 /** Docked track sizes (CSS px). UI choices, not engineering values. */
-export const DOCKED_SIZE: Record<PanelId, number> = { tree: 260, inspector: 320, console: 200 };
+export const DEFAULT_DOCKED_SIZE: Record<PanelId, number> = { tree: 260, inspector: 320, console: 200 };
+/** Smallest a docked panel can be dragged to while staying usable. */
+export const MIN_DOCKED_SIZE: Record<PanelId, number> = { tree: 160, inspector: 220, console: 80 };
+/** Resizing a docked panel never shrinks the movement view below this. */
+export const MIN_VIEWPORT = { w: 320, h: 200 };
+/** Header and toolbar rows above the viewport (must match the grid rows in style.css). */
+export const WORKSPACE_CHROME_HEIGHT = 40 + 36;
+/** Arrow keys on a resize handle move it this far (Shift: ×4). */
+export const KEYBOARD_RESIZE_STEP = 16;
 
 /** Floating windows keep at least this much of their title bar on screen, so they can always be dragged back. */
 export const MIN_VISIBLE_TITLE = 80;
@@ -51,8 +61,8 @@ export const MIN_FLOATING_SIZE = { w: 200, h: 120 };
 export const PANEL_TITLES: Record<PanelId, string> = { tree: "Components", inspector: "Inspector", console: "Validation" };
 
 export function defaultLayout(): LayoutState {
-  const docked = (): PanelState => ({ mode: "DOCKED", lastVisible: "DOCKED", rect: null });
-  return { panels: { tree: docked(), inspector: docked(), console: docked() }, focus: false };
+  const docked = (id: PanelId): PanelState => ({ mode: "DOCKED", lastVisible: "DOCKED", rect: null, dockedSize: DEFAULT_DOCKED_SIZE[id] });
+  return { panels: { tree: docked("tree"), inspector: docked("inspector"), console: docked("console") }, focus: false };
 }
 
 /** The mode the panel is actually shown in: focus view hides docked panels. */
@@ -93,10 +103,54 @@ export function withRect(state: LayoutState, id: PanelId, rect: Rect): LayoutSta
   return { ...state, panels: { ...state.panels, [id]: { ...state.panels[id], rect } } };
 }
 
-/** Grid track sizes for the docked panels that are shown. */
-export function dockedTracks(state: LayoutState): Record<PanelId, number> {
-  const size = (id: PanelId): number => (effectiveMode(state, id) === "DOCKED" ? DOCKED_SIZE[id] : 0);
-  return { tree: size("tree"), inspector: size("inspector"), console: size("console") };
+interface Bounds {
+  w: number;
+  h: number;
+}
+
+/**
+ * Grid track sizes for the docked panels that are shown. Given the window
+ * size, panels give way (in proportion, down to their minimum) so the
+ * movement view keeps at least MIN_VIEWPORT; the sizes the user chose are
+ * kept and come back when the window grows again.
+ */
+export function dockedTracks(state: LayoutState, bounds?: Bounds): Record<PanelId, number> {
+  const size = (id: PanelId): number => (effectiveMode(state, id) === "DOCKED" ? state.panels[id].dockedSize : 0);
+  let tree = size("tree");
+  let inspector = size("inspector");
+  let console = size("console");
+  if (bounds !== undefined) {
+    // Each side column gives up space in proportion to how far it is above its minimum.
+    const excess = tree + inspector - (bounds.w - MIN_VIEWPORT.w);
+    if (excess > 0) {
+      const spareTree = tree === 0 ? 0 : Math.max(0, tree - MIN_DOCKED_SIZE.tree);
+      const spareInspector = inspector === 0 ? 0 : Math.max(0, inspector - MIN_DOCKED_SIZE.inspector);
+      const spare = spareTree + spareInspector;
+      // If even the minimums don't fit, the panels stay at their minimum (the window is too small).
+      const give = spare === 0 ? 0 : Math.min(1, excess / spare);
+      tree = tree === 0 ? 0 : Math.floor(tree - spareTree * give);
+      inspector = inspector === 0 ? 0 : Math.floor(inspector - spareInspector * give);
+    }
+    const rows = bounds.h - WORKSPACE_CHROME_HEIGHT - MIN_VIEWPORT.h;
+    if (console > rows) console = Math.max(MIN_DOCKED_SIZE.console, Math.floor(rows));
+  }
+  return { tree, inspector, console };
+}
+
+/** The largest a docked panel may be dragged to, leaving the movement view MIN_VIEWPORT beside the other docked panels. */
+export function maxDockedSize(state: LayoutState, id: PanelId, bounds: Bounds): number {
+  const tracks = dockedTracks(state, bounds);
+  const limit = id === "console"
+    ? bounds.h - WORKSPACE_CHROME_HEIGHT - MIN_VIEWPORT.h
+    : bounds.w - MIN_VIEWPORT.w - (id === "tree" ? tracks.inspector : tracks.tree);
+  return Math.max(MIN_DOCKED_SIZE[id], Math.floor(limit));
+}
+
+/** Sets a docked panel's size, kept between its minimum and what leaves the movement view room. */
+export function withDockedSize(state: LayoutState, id: PanelId, size: number, bounds: Bounds): LayoutState {
+  const wanted = Number.isFinite(size) ? size : DEFAULT_DOCKED_SIZE[id];
+  const dockedSize = Math.round(Math.min(maxDockedSize(state, id, bounds), Math.max(MIN_DOCKED_SIZE[id], wanted)));
+  return { ...state, panels: { ...state.panels, [id]: { ...state.panels[id], dockedSize } } };
 }
 
 /** Where a panel floats the first time: beside the movement rather than over its centre. */
@@ -158,10 +212,12 @@ export function parseLayout(text: string | null): LayoutState {
   for (const id of PANEL_IDS) {
     const p = panels[id];
     if (typeof p !== "object" || p === null) continue;
-    const { mode, lastVisible, rect } = p as Record<string, unknown>;
+    const { mode, lastVisible, rect, dockedSize } = p as Record<string, unknown>;
     const visible: VisibleMode = lastVisible === "FLOATING" ? "FLOATING" : "DOCKED";
     const restored: PanelMode = mode === "FLOATING" || mode === "HIDDEN" || mode === "DOCKED" ? mode : visible;
-    layout.panels[id] = { mode: restored, lastVisible: visible, rect: parseRect(rect) };
+    // Clamped to the window when applied; here only nonsense is rejected.
+    const size = finite(dockedSize) && dockedSize >= MIN_DOCKED_SIZE[id] ? dockedSize : DEFAULT_DOCKED_SIZE[id];
+    layout.panels[id] = { mode: restored, lastVisible: visible, rect: parseRect(rect), dockedSize: size };
   }
   layout.focus = saved.focus === true;
   return layout;

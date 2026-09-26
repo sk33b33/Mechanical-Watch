@@ -142,6 +142,68 @@ body {
   display: none;
 }
 
+.panel-frame[data-mode="DOCKED"] {
+  position: relative;
+}
+
+/* Drag handle on a docked panel's edge facing the movement. */
+.panel-resizer {
+  position: absolute;
+  z-index: 5;
+  touch-action: none;
+  transition: background-color 120ms;
+}
+
+.panel-resizer[data-edge="right"],
+.panel-resizer[data-edge="left"] {
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+}
+
+.panel-resizer[data-edge="right"] {
+  right: 0;
+}
+
+.panel-resizer[data-edge="left"] {
+  left: 0;
+}
+
+.panel-resizer[data-edge="top"] {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: row-resize;
+}
+
+.panel-resizer:hover,
+.panel-resizer:focus-visible,
+.panel-resizer:active {
+  background: rgba(79, 163, 255, 0.55);
+  outline: none;
+}
+
+.panel-frame:not([data-mode="DOCKED"]) .panel-resizer {
+  display: none;
+}
+
+/* While dragging, keep the resize cursor and stop text selection wherever the pointer goes. */
+.workspace.resizing {
+  user-select: none;
+}
+
+.workspace.resizing-columns,
+.workspace.resizing-columns * {
+  cursor: col-resize !important;
+}
+
+.workspace.resizing-rows,
+.workspace.resizing-rows * {
+  cursor: row-resize !important;
+}
+
 .panel-frame-tree {
   grid-area: tree;
 }

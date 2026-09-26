@@ -102,8 +102,11 @@ never calculates engineering relationships.
 The side panels (components, inspector, validation) live in panel
 windows (`src/app/layout/`). Each can dock in the workspace grid, float
 over the viewport (drag by its title bar, resize from the corner), open
-in its own browser window, or hide. Focus view hides the docked panels
-so the movement fills the window. `layoutState.ts` is the pure, tested
+in its own browser window, or hide. Docked panels resize from the edge
+facing the viewport (drag, arrow keys, double-click to reset); the
+layout model keeps them above their minimums and the viewport above
+320 × 200 px. Focus view hides the docked panels so the movement fills
+the window. `layoutState.ts` is the pure, tested
 layout model; `panelWindows.ts` applies it to the DOM. A panel keeps
 rendering into its body wherever that body is, so a panel in a separate
 window stays live, and edits made there go through the same store.

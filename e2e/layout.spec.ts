@@ -77,3 +77,41 @@ test("hiding a panel and reopening it from the header; the layout is remembered"
   await expect(frame(app, "console")).toHaveAttribute("data-mode", "DOCKED");
   await expect(app.locator(".console")).toContainText("No errors against the declared level");
 });
+
+test("docked panels resize by dragging their inner edge, by keyboard, and reset on double-click", async ({ app }) => {
+  const handle = frame(app, "inspector").locator(".panel-resizer");
+  await expect(handle).toHaveAttribute("aria-valuenow", "320");
+  const docked = await canvasWidth(app);
+  const box = await handle.boundingBox();
+  if (box === null) throw new Error("no resize handle");
+  await app.mouse.move(box.x + box.width / 2, box.y + 200);
+  await app.mouse.down();
+  await app.mouse.move(box.x + box.width / 2 - 120, box.y + 200, { steps: 6 });
+  await app.mouse.up();
+  await expect(handle).toHaveAttribute("aria-valuenow", "440");
+  await expect.poll(() => canvasWidth(app)).toBeCloseTo(docked - 120, -1);
+
+  // Keyboard: the tree's handle moves its edge the way the arrow points.
+  const treeHandle = frame(app, "tree").locator(".panel-resizer");
+  await treeHandle.focus();
+  await app.keyboard.press("ArrowRight");
+  await expect(treeHandle).toHaveAttribute("aria-valuenow", "276");
+  await app.keyboard.press("Home");
+  await expect(treeHandle).toHaveAttribute("aria-valuenow", "160");
+
+  // The movement view keeps its minimum however far a panel is dragged.
+  const consoleHandle = frame(app, "console").locator(".panel-resizer");
+  const c = await consoleHandle.boundingBox();
+  if (c === null) throw new Error("no console handle");
+  await app.mouse.move(c.x + 200, c.y + c.height / 2);
+  await app.mouse.down();
+  await app.mouse.move(c.x + 200, 0, { steps: 6 });
+  await app.mouse.up();
+  await expect.poll(async () => (await app.locator(".viewport").boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(199);
+
+  await app.waitForTimeout(400); // the layout is saved shortly after a change
+  await app.reload();
+  await expect(frame(app, "inspector").locator(".panel-resizer")).toHaveAttribute("aria-valuenow", "440");
+  await frame(app, "inspector").locator(".panel-resizer").dblclick();
+  await expect(frame(app, "inspector").locator(".panel-resizer")).toHaveAttribute("aria-valuenow", "320");
+});

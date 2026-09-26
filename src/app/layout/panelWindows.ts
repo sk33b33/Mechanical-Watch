@@ -1,16 +1,21 @@
 import type { KeyValueStore } from "@/persistence/autosave";
 import {
   clampRect,
+  DEFAULT_DOCKED_SIZE,
   defaultRect,
   dockedTracks,
   effectiveMode,
+  KEYBOARD_RESIZE_STEP,
   LAYOUT_STORAGE_KEY,
+  maxDockedSize,
+  MIN_DOCKED_SIZE,
   PANEL_IDS,
   PANEL_TITLES,
   parseLayout,
   serializeLayout,
   toggleFocus,
   togglePanel,
+  withDockedSize,
   withMode,
   withRect,
   type LayoutState,
@@ -29,6 +34,9 @@ export interface PanelWindow {
 }
 
 type Notify = (message: string, kind: "info" | "error") => void;
+
+/** Which edge of a docked panel faces the movement view, and so carries its resize handle. */
+const RESIZE_EDGE: Record<PanelId, "right" | "left" | "top"> = { tree: "right", inspector: "left", console: "top" };
 
 const CONTROL_LABELS: Record<"dock" | "float" | "window" | "hide", { glyph: string; title: string; name: (panel: string) => string }> = {
   dock: { glyph: "⇲", title: "Dock back into the workspace", name: (p) => `Dock the ${p} panel` },
@@ -56,6 +64,7 @@ export class PanelLayout {
   private state: LayoutState;
   private readonly windows = new Map<PanelId, PanelWindow>();
   private readonly popups = new Map<PanelId, Window>();
+  private readonly resizers = new Map<PanelId, HTMLElement>();
   private readonly listeners = new Set<() => void>();
   private zTop = 30;
   private saveTimer: number | null = null;
@@ -115,7 +124,7 @@ export class PanelLayout {
 
     const body = document.createElement("div");
     body.className = bodyClass;
-    frame.append(bar, body);
+    frame.append(bar, body, this.createResizer(id));
     this.workspace.appendChild(frame);
 
     // Record a floating window's size after the user resizes it from the corner.
@@ -163,12 +172,9 @@ export class PanelLayout {
 
   /** Makes the DOM match the state: grid tracks, frame placement, popups. */
   private apply(): void {
-    const tracks = dockedTracks(this.state);
-    this.workspace.style.setProperty("--tree-width", `${String(tracks.tree)}px`);
-    this.workspace.style.setProperty("--inspector-width", `${String(tracks.inspector)}px`);
-    this.workspace.style.setProperty("--console-height", `${String(tracks.console)}px`);
+    const bounds = this.bounds();
+    this.applyTracks();
     this.workspace.classList.toggle("focus-view", this.state.focus);
-    const bounds = { w: window.innerWidth, h: window.innerHeight };
     for (const id of PANEL_IDS) {
       const win = this.windows.get(id);
       if (win === undefined) continue;
@@ -189,6 +195,94 @@ export class PanelLayout {
         frame.style.removeProperty("z-index");
       }
     }
+  }
+
+  private bounds(): { w: number; h: number } {
+    return { w: window.innerWidth, h: window.innerHeight };
+  }
+
+  /** Docked track sizes, fitted to the window so the movement view keeps its minimum. */
+  private applyTracks(): void {
+    const bounds = this.bounds();
+    const tracks = dockedTracks(this.state, bounds);
+    this.workspace.style.setProperty("--tree-width", `${String(tracks.tree)}px`);
+    this.workspace.style.setProperty("--inspector-width", `${String(tracks.inspector)}px`);
+    this.workspace.style.setProperty("--console-height", `${String(tracks.console)}px`);
+    for (const [id, handle] of this.resizers) {
+      handle.setAttribute("aria-valuenow", String(tracks[id]));
+      handle.setAttribute("aria-valuemin", String(MIN_DOCKED_SIZE[id]));
+      handle.setAttribute("aria-valuemax", String(maxDockedSize(this.state, id, bounds)));
+    }
+  }
+
+  /**
+   * The handle on a docked panel's inner edge: drag it to resize, use the
+   * arrow keys when it has focus (Shift for bigger steps, Home/End for the
+   * limits), or double-click to go back to the default size.
+   */
+  private createResizer(id: PanelId): HTMLElement {
+    const edge = RESIZE_EDGE[id];
+    const handle = document.createElement("div");
+    handle.className = "panel-resizer";
+    handle.dataset.edge = edge;
+    handle.tabIndex = 0;
+    handle.setAttribute("role", "separator");
+    // A separator between columns is a vertical line; the one above the validation row is horizontal.
+    handle.setAttribute("aria-orientation", edge === "top" ? "horizontal" : "vertical");
+    handle.setAttribute("aria-label", `Resize the ${PANEL_TITLES[id]} panel`);
+    handle.title = "Drag to resize. Double-click for the default size.";
+    this.resizers.set(id, handle);
+
+    const resizeTo = (size: number): void => {
+      this.state = withDockedSize(this.state, id, size, this.bounds());
+      this.applyTracks();
+    };
+    // Size from the pointer: distance from the workspace edge this panel is docked against.
+    const sizeAt = (e: PointerEvent): number => {
+      const area = this.workspace.getBoundingClientRect();
+      return edge === "right" ? e.clientX - area.left : edge === "left" ? area.right - e.clientX : area.bottom - e.clientY;
+    };
+
+    handle.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0 || effectiveMode(this.state, id) !== "DOCKED") return;
+      event.preventDefault();
+      handle.setPointerCapture(event.pointerId);
+      // Where on the handle it was grabbed, so the edge doesn't jump to the pointer.
+      const offset = sizeAt(event) - dockedTracks(this.state, this.bounds())[id];
+      this.workspace.classList.add("resizing", `resizing-${edge === "top" ? "rows" : "columns"}`);
+      const move = (e: PointerEvent): void => { resizeTo(sizeAt(e) - offset); };
+      const end = (): void => {
+        handle.removeEventListener("pointermove", move);
+        handle.removeEventListener("pointerup", end);
+        handle.removeEventListener("pointercancel", end);
+        this.workspace.classList.remove("resizing", "resizing-rows", "resizing-columns");
+        this.save();
+      };
+      handle.addEventListener("pointermove", move);
+      handle.addEventListener("pointerup", end);
+      handle.addEventListener("pointercancel", end);
+    });
+    handle.addEventListener("dblclick", () => {
+      resizeTo(DEFAULT_DOCKED_SIZE[id]);
+      this.save();
+    });
+    handle.addEventListener("keydown", (event) => {
+      const current = dockedTracks(this.state, this.bounds())[id];
+      const step = KEYBOARD_RESIZE_STEP * (event.shiftKey ? 4 : 1);
+      // Keys move the edge the way the arrow points.
+      const grow = edge === "right" ? "ArrowRight" : edge === "left" ? "ArrowLeft" : "ArrowUp";
+      const shrink = edge === "right" ? "ArrowLeft" : edge === "left" ? "ArrowRight" : "ArrowDown";
+      let next: number | null = null;
+      if (event.key === grow) next = current + step;
+      else if (event.key === shrink) next = current - step;
+      else if (event.key === "Home") next = MIN_DOCKED_SIZE[id];
+      else if (event.key === "End") next = maxDockedSize(this.state, id, this.bounds());
+      if (next === null) return;
+      event.preventDefault();
+      resizeTo(next);
+      this.save();
+    });
+    return handle;
   }
 
   private place(frame: HTMLElement, rect: Rect): void {
