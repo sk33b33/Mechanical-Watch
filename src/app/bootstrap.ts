@@ -1,7 +1,9 @@
 import { AppStore } from "./store";
 import { createDemoMovement } from "./demoMovement";
 import { Viewport } from "@/viewport/viewport";
+import { browserStore, loadAutosave, writeAutosave } from "@/persistence/autosave";
 import { mountHeader } from "./panels/header";
+import { mountToolbar } from "./panels/toolbar";
 import { mountComponentTree } from "./panels/componentTree";
 import { mountInspector } from "./panels/inspector/index";
 import { mountValidationConsole } from "./panels/validationConsole";
@@ -17,16 +19,31 @@ export function bootstrapApp(root: HTMLElement): void {
   root.innerHTML = "";
   const workspace = panel(root, "workspace");
   const header = panel(workspace, "header");
+  const toolbarEl = panel(workspace, "toolbar");
   const tree = panel(workspace, "panel tree");
   const viewportEl = panel(workspace, "viewport");
   const inspector = panel(workspace, "panel inspector");
   const consoleEl = panel(workspace, "panel console");
 
-  const store = new AppStore(createDemoMovement());
+  const storage = browserStore();
+  const saved = loadAutosave(storage);
+  const store = new AppStore(saved.status === "LOADED" ? saved.movement : createDemoMovement());
 
   mountHeader(header, store);
+  const toolbar = mountToolbar(toolbarEl, store);
   mountComponentTree(tree, store);
   mountInspector(inspector, store);
   mountValidationConsole(consoleEl, store);
   new Viewport(viewportEl, store);
+
+  if (saved.status === "UNREADABLE") {
+    toolbar.notify(
+      `Your autosaved design could not be read and was set aside, not deleted. Showing the demo instead. (${saved.reason})`,
+      "error",
+    );
+  }
+  toolbar.setAutosaveStatus(storage === null ? "Autosave unavailable" : "Autosave on");
+  store.onDesignChange((movement) => {
+    toolbar.setAutosaveStatus(writeAutosave(storage, movement) ? "Autosaved" : "Autosave failed");
+  });
 }

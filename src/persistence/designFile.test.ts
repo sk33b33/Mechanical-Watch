@@ -1,0 +1,131 @@
+import { describe, expect, it } from "vitest";
+import { millimetres } from "@/units/length";
+import { updateGear, updateShaft, type Movement } from "@/domain/movement";
+import { createDemoMovement } from "@/app/demoMovement";
+import { analyzeMovement } from "@/analysis/analyzeMovement";
+import { decodeDesign, DESIGN_FORMAT, DESIGN_SCHEMA_VERSION, DesignFileError, encodeDesign } from "./designFile";
+import { AUTOSAVE_KEY, loadAutosave, RECOVERY_KEY, writeAutosave, type KeyValueStore } from "./autosave";
+
+const demo = createDemoMovement();
+const firstGear = (m: Movement): Movement["gears"][keyof Movement["gears"]] => {
+  const g = Object.values(m.gears)[0];
+  if (g === undefined) throw new Error("no gear");
+  return g;
+};
+
+function memoryStore(initial: Record<string, string> = {}): KeyValueStore & { data: Record<string, string> } {
+  const data = { ...initial };
+  return {
+    data,
+    getItem: (k) => data[k] ?? null,
+    setItem: (k, v) => { data[k] = v; },
+    removeItem: (k) => { Reflect.deleteProperty(data, k); },
+  };
+}
+
+function rawDoc(movement: Movement = demo): Record<string, unknown> {
+  return JSON.parse(encodeDesign(movement)) as Record<string, unknown>;
+}
+
+describe("design file", () => {
+  it("round-trips the demo exactly", () => {
+    expect(decodeDesign(encodeDesign(demo))).toEqual(demo);
+  });
+
+  it("round-trips a loaded design to identical analysis", () => {
+    const loaded = decodeDesign(encodeDesign(demo));
+    expect(analyzeMovement(loaded).issues).toEqual(analyzeMovement(demo).issues);
+  });
+
+  it("preserves invalid and unknown user values instead of repairing them", () => {
+    let m = updateGear(demo, firstGear(demo).id, { toothCount: Number.NaN, module: millimetres(Number.POSITIVE_INFINITY) });
+    const shaft = Object.values(m.shafts)[1];
+    if (shaft === undefined) throw new Error("no shaft");
+    m = updateShaft(m, shaft.id, { pivotDiameter: { LOWER: millimetres(0.1), UPPER: null } });
+    const loaded = decodeDesign(encodeDesign(m));
+    expect(firstGear(loaded).toothCount).toBeNaN();
+    expect(firstGear(loaded).module).toBe(Number.POSITIVE_INFINITY);
+    expect(loaded.shafts[shaft.id]?.pivotDiameter).toEqual({ LOWER: millimetres(0.1), UPPER: null });
+  });
+
+  it("records format and schema version", () => {
+    const doc = rawDoc();
+    expect(doc.format).toBe(DESIGN_FORMAT);
+    expect(doc.schemaVersion).toBe(DESIGN_SCHEMA_VERSION);
+  });
+
+  it("rejects non-JSON, foreign JSON and newer schema versions with a clear message", () => {
+    expect(() => decodeDesign("not json")).toThrow("Not a valid JSON file.");
+    expect(() => decodeDesign(JSON.stringify({ hello: 1 }))).toThrow("Not a Mechanical Watchmaker 3D design file.");
+    expect(() => decodeDesign(JSON.stringify({ ...rawDoc(), schemaVersion: DESIGN_SCHEMA_VERSION + 1 }))).toThrow(
+      /saved by a newer version/,
+    );
+  });
+
+  it("rejects a structurally broken file and names the path", () => {
+    const doc = rawDoc();
+    const movement = doc.movement as Record<string, Record<string, Record<string, unknown>>>;
+    const gearId = firstGear(demo).id;
+    const gears = movement.gears;
+    if (gears === undefined) throw new Error("no gears");
+    gears[gearId] = { ...gears[gearId], toothCount: "sixty" };
+    expect(() => decodeDesign(JSON.stringify(doc))).toThrow(
+      new DesignFileError(`Invalid design file at file.movement.gears.${gearId}.toothCount: expected a number`),
+    );
+  });
+
+  it("rejects an entity stored under a key that isn't its id", () => {
+    const doc = rawDoc();
+    const movement = doc.movement as Record<string, Record<string, unknown>>;
+    const gears = movement.gears;
+    if (gears === undefined) throw new Error("no gears");
+    const [key, value] = Object.entries(gears)[0] ?? [];
+    if (key === undefined) throw new Error("no gear");
+    Reflect.deleteProperty(gears, key);
+    gears.gear_other = value;
+    expect(() => decodeDesign(JSON.stringify(doc))).toThrow(/does not match its key/);
+  });
+
+  it("loads dangling references as saved, leaving them to validation (ASSY-001)", () => {
+    const doc = rawDoc();
+    const movement = doc.movement as Record<string, Record<string, Record<string, unknown>>>;
+    const gearId = firstGear(demo).id;
+    const gears = movement.gears;
+    if (gears === undefined) throw new Error("no gears");
+    gears[gearId] = { ...gears[gearId], shaftId: "shaft_missing" };
+    const loaded = decodeDesign(JSON.stringify(doc));
+    expect(analyzeMovement(loaded).issues.some((i) => i.rule === "ASSY-001")).toBe(true);
+  });
+});
+
+describe("autosave", () => {
+  it("writes and reloads a design", () => {
+    const store = memoryStore();
+    expect(writeAutosave(store, demo)).toBe(true);
+    const result = loadAutosave(store);
+    expect(result.status === "LOADED" ? result.movement : null).toEqual(demo);
+  });
+
+  it("reports nothing saved as NONE, and handles missing storage", () => {
+    expect(loadAutosave(memoryStore()).status).toBe("NONE");
+    expect(loadAutosave(null).status).toBe("NONE");
+    expect(writeAutosave(null, demo)).toBe(false);
+  });
+
+  it("moves an unreadable autosave aside instead of overwriting it", () => {
+    const store = memoryStore({ [AUTOSAVE_KEY]: "{broken" });
+    const result = loadAutosave(store);
+    expect(result.status).toBe("UNREADABLE");
+    expect(store.data[RECOVERY_KEY]).toBe("{broken");
+    expect(store.data[AUTOSAVE_KEY]).toBeUndefined();
+  });
+
+  it("returns false when storage refuses the write", () => {
+    const full: KeyValueStore = {
+      getItem: () => null,
+      setItem: () => { throw new Error("QuotaExceededError"); },
+      removeItem: () => undefined,
+    };
+    expect(writeAutosave(full, demo)).toBe(false);
+  });
+});

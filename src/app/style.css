@@ -38,9 +38,10 @@ body {
 .workspace {
   display: grid;
   grid-template-columns: 260px 1fr 320px;
-  grid-template-rows: 40px 1fr 200px;
+  grid-template-rows: 40px 36px 1fr 200px;
   grid-template-areas:
     "header header header"
+    "toolbar toolbar toolbar"
     "tree viewport inspector"
     "tree console inspector";
   height: 100vh;
@@ -266,4 +267,86 @@ body {
 .issue-ok {
   color: var(--ok);
   padding: 6px 10px;
+}
+
+.toolbar {
+  grid-area: toolbar;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 10px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border);
+  min-width: 0;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.toolbar-status {
+  color: var(--text-1);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.toolbar-notice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px 4px 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.toolbar-notice span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notice-error {
+  background: #3a1f1f;
+  color: var(--error);
+}
+
+.notice-info {
+  background: var(--bg-2);
+  color: var(--text-0);
+}
+
+button,
+select {
+  background: var(--bg-2);
+  color: var(--text-0);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 3px 9px;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled),
+select:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+button:disabled,
+select:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+button.notice-dismiss {
+  background: transparent;
+  border: none;
+  color: inherit;
+  padding: 0 4px;
 }

@@ -61,6 +61,7 @@ export class Viewport {
   private lastTimestampMs: number | null = null;
   private pointerDown: { x: number; y: number } | null = null;
   private unsubscribe: (() => void) | null = null;
+  private framedGeneration: number;
   private resizeObserver: ResizeObserver | null = null;
 
   constructor(container: HTMLElement, store: AppStore) {
@@ -96,8 +97,13 @@ export class Viewport {
 
     this.rebuild();
     this.frameCamera();
+    this.framedGeneration = store.designGeneration;
     this.unsubscribe = store.subscribe(() => {
       this.rebuild();
+      if (store.designGeneration !== this.framedGeneration) {
+        this.framedGeneration = store.designGeneration;
+        this.frameCamera();
+      }
     });
 
     this.animationHandle = requestAnimationFrame(this.animate);

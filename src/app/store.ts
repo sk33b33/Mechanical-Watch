@@ -27,8 +27,11 @@ export class AppStore {
   /** Set when the simulation hit a non-finite state; it stays stopped until the design changes. */
   simulationHalted = false;
   selectedId: EntityId | null = null;
+  /** Increments whenever a different design is loaded, so views can refit. */
+  designGeneration = 0;
 
   private readonly listeners = new Set<() => void>();
+  private readonly designListeners = new Set<(movement: Movement) => void>();
   private simulationIssue: ValidationIssue | null = null;
 
   constructor(movement: Movement) {
@@ -41,6 +44,14 @@ export class AppStore {
     this.listeners.add(listener);
     return () => {
       this.listeners.delete(listener);
+    };
+  }
+
+  /** Called whenever the design itself changes (edit or load), not on selection. */
+  onDesignChange(listener: (movement: Movement) => void): () => void {
+    this.designListeners.add(listener);
+    return () => {
+      this.designListeners.delete(listener);
     };
   }
 
@@ -79,10 +90,23 @@ export class AppStore {
 
   /** Applies a pure domain update, then re-derives everything. */
   edit(update: (movement: Movement) => Movement): void {
-    this.movement = update(this.movement);
+    this.replaceDesign(update(this.movement));
+  }
+
+  /** Replaces the whole design (open file, new movement). The simulation restarts from rest. */
+  load(movement: Movement): void {
+    this.simulation = createSimulationState(movement);
+    this.selectedId = null;
+    this.designGeneration += 1;
+    this.replaceDesign(movement);
+  }
+
+  private replaceDesign(movement: Movement): void {
+    this.movement = movement;
     this.simulationHalted = false;
     this.simulationIssue = null;
     this.recompute();
+    for (const listener of this.designListeners) listener(movement);
     this.notify();
   }
 
