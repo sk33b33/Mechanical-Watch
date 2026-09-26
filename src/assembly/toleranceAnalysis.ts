@@ -55,7 +55,7 @@ export type StackResult =
   | { status: "INVALID_INPUT"; reason: string };
 
 export function termLabel(term: StackTerm): string {
-  return `${term.entityName} ${TOLERANCED_DIMENSION_LABELS[term.dimension].toLowerCase()}`;
+  return `${term.entityName}: ${TOLERANCED_DIMENSION_LABELS[term.dimension]}`;
 }
 
 /** Evaluates Σ sign × dimension at nominal and at its worst-case limits. */

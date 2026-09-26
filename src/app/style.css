@@ -564,6 +564,20 @@ button.active {
   margin-left: 4px;
 }
 
+.outputs-dialog {
+  max-width: min(760px, 92vw);
+}
+
+.outputs-description {
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.outputs-table td:nth-child(2) {
+  white-space: nowrap;
+  padding: 6px 10px;
+}
+
 /* Keep the toolbar within the window: the notice truncates first. */
 .toolbar {
   overflow: hidden;

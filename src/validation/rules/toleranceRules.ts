@@ -24,7 +24,7 @@ export const toleranceRules: Rule = ({ movement }) => {
 
   for (const tolerance of tolerances) {
     const target = findEntity(movement, tolerance.entityId);
-    const label = `${target?.name ?? "missing part"} ${TOLERANCED_DIMENSION_LABELS[tolerance.dimension].toLowerCase()}`;
+    const label = `${target?.name ?? "missing part"}: ${TOLERANCED_DIMENSION_LABELS[tolerance.dimension]}`;
     if (target === undefined || !tolerancedDimensionsOf(movement, tolerance.entityId).includes(tolerance.dimension)) {
       issues.push(
         issue("TOL-001", "target", "error", "L1_GEOMETRIC", [tolerance.id, tolerance.entityId],
