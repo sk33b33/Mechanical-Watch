@@ -2,6 +2,36 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Stem mesh ratio citation closed (SRC-0010)
+
+- The user supplied two candidate papers directly and widened this
+  environment's network policy further so they could be fetched.
+  `rjwave.org/ijedr/papers/IJEDR1802006.pdf` (Hadani & Machhar 2018,
+  IJEDR) was read and rejected: an FEM/AGMA tooth-bending-stress
+  analysis, unrelated to the velocity-ratio claim and a weak source
+  generally — its only relevant line asserts a "constant velocity ratio"
+  between intersecting shafts without a formula.
+- `jstage.jst.go.jp/.../jamdsm/20/2/20_2026jamdsm0019` (Nie, Jiang, Han &
+  Geng 2026, Bulletin of the JSME / JAMDSM, peer-reviewed, DOI
+  10.1299/jamdsm.2026jamdsm0019) was read and does close the citation:
+  §4 states, for a pinion/gear pair in line-conjugate (bevel) mesh, i₁₂ =
+  ψ2/ψ1 = z1/z2 — the transmission ratio is the inverse tooth-count
+  ratio, the same relation as for spur gears, but stated here for an
+  intersecting-axis pair. Recorded as SRC-0010.
+- This closes the ASM-0019 citation that SRC-0007 (ISO 23509) and
+  SRC-0008 (SDP/SI) were recorded for; both are superseded and remain
+  unread. SRC-0009 (Wikipedia's Gear train, read previously) still only
+  supports the general spur-gear case, now superseded for this purpose
+  too. Updated TRACEABILITY.md, SOURCES.yml, SOURCE_INDEX.md and the
+  code comment on `crossedMeshSpeedRatio` (`src/math/gearMath.ts`)
+  accordingly. Per CLAUDE_REFERENCE_INSTRUCTIONS.md rule 10, SRC-0010 is
+  still a generic-machine-gear source, not a horological one — the
+  keyless-works winding/contrate tooth forms in this codebase remain
+  unvalidated against any horological reference, unchanged from before.
+  No equation, test, or validation rule changed.
+
+342 unit tests and 27 browser tests pass (unchanged).
+
 ## Wikipedia added as a source: partial citation for the stem mesh ratio
 
 - This environment's network policy was updated to allow wikipedia.org
@@ -506,17 +536,16 @@ dimensions round-trip, and picking and issue selection work.
   pending.
 - **Side-shake convention (ASM-0013).** Reported as diametral clearance
   until a source confirms the horological convention.
-- **Right-angle (stem) mesh relationship.** Derived here from rolling
-  pitch circles and tested. Wikipedia's Gear train article (SRC-0009, now
-  read) confirms the general tooth-count speed ratio for meshing gears,
-  but only for spur/parallel-axis gears — it does not itself extend the
-  relation to bevel/crossed-axis meshes, so it only partly closes this
-  citation. Two candidate citations for that extension are still
-  recorded, SRC-0007 (ISO 23509:2016) and SRC-0008 (SDP/SI), but neither
-  has been read: sdp-si.com remains blocked by this environment's network
-  policy (only wikipedia.org was added), and ISO 23509 is paid. Both
-  cover generic machine bevel gears, so a horological source for contrate
-  or winding gearing would be better.
+- **Right-angle (stem) mesh relationship — citation closed, scope
+  caveat remains.** Derived here from rolling pitch circles and tested;
+  now also cited to SRC-0010 (Nie et al. 2026, JSME, peer-reviewed),
+  which states the same tooth-count ratio for a bevel gear pair, plus
+  SRC-0009 (Wikipedia) for the general spur-gear principle. SRC-0007
+  (ISO 23509:2016) and SRC-0008 (SDP/SI) are superseded and remain
+  unread. What's still open: SRC-0010, like SRC-0007/SRC-0008, covers
+  generic machine bevel gears, not horological contrate or winding
+  gearing, so a horological source for this specific mechanism would
+  still be better.
 - **Two beats per escape tooth (ASM-0021).** Accepted as a declared
   assumption for the simplified model; a source should be recorded under
   `reference/sources/03-escapements/` (e.g. SRC-0004, not yet read).

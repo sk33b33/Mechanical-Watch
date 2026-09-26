@@ -84,7 +84,8 @@
 # Found by web search on 2026-09-26. Neither has been read: fetching them
 # was blocked by this environment's network policy, and ISO 23509 is a
 # paid standard. They are recorded so the citation can be completed, not
-# as evidence.
+# as evidence. As of 2026-09-26 the citation is closed by SRC-0010
+# instead (see below); both stay recorded, unread, for the trail.
 
 - id: SRC-0007
   title: ISO 23509:2016 Bevel and hypoid gear geometry
@@ -103,7 +104,11 @@
     Tier 1 standard for generic machine bevel gears. Second edition,
     replaces ISO 23509:2006. Would support the rolling-pitch-cone ratio
     used by crossedMeshSpeedRatio, not horological contrate or winding
-    tooth forms (CLAUDE_REFERENCE_INSTRUCTIONS.md rule 10).
+    tooth forms (CLAUDE_REFERENCE_INSTRUCTIONS.md rule 10). Superseded
+    for the ASM-0019 citation by SRC-0010, which states the same relation
+    directly and was actually read; left here unread rather than removed,
+    per the rule to never hide an assumption or its evidence trail. Still
+    paid, still not accessed.
 
 - id: SRC-0008
   title: Elements of Metric Gear Technology — Helical Gear Calculations, Crossed Helical Gear Meshes, and Bevel Gearing
@@ -120,9 +125,10 @@
   notes: >
     Manufacturer engineering reference (generic machine gears). Still not
     fetched as of 2026-09-26: sdp-si.com remains blocked by this
-    environment's network policy (only wikipedia.org was added; retried
-    and confirmed still blocked). Re-check after any further network
-    policy change.
+    environment's network policy. Superseded for the ASM-0019 citation by
+    SRC-0010, which states the same relation directly and was actually
+    read; left here unread rather than removed, per the rule to never
+    hide an assumption or its evidence trail.
 
 # Wikipedia was added to this environment's allowed network hosts on
 # 2026-09-26. Read to see whether it could close the ASM-0019 citation
@@ -152,7 +158,45 @@
     kinematic principle behind `crossedMeshSpeedRatio` (equal
     pitch-circle/contact-point velocity implies a tooth-count ratio) but
     does not, on its own, close the citation for applying that principle
-    to a crossed-axis mesh. SRC-0007/SRC-0008 remain the candidate
-    citations for that specific extension, both still unread (SRC-0008
-    still blocked by this environment's network policy; SRC-0007 is
-    paid).
+    to a crossed-axis mesh. See SRC-0010 for that extension.
+
+# The user also supplied two candidate papers directly. IJEDR1802006 was
+# read and rejected: an FEM bending-stress/AGMA strength analysis of a
+# bevel gear tooth, unrelated to the velocity-ratio claim, and a weak
+# source generally. JAMDSM 2026jamdsm0019 was read and is the closing
+# citation for ASM-0019's crossed-axis extension; see SRC-0010.
+
+- id: SRC-0010
+  title: "Machining calculation and tooth surface modification method of circular arc equal-height spiral bevel gear based on line conjugation"
+  author: Shaowu Nie, Chuang Jiang, Zhengyang Han, Longlong Geng
+  year: 2026
+  type: peer_reviewed
+  url: https://doi.org/10.1299/jamdsm.2026jamdsm0019
+  topics: [gear-geometry, bevel-gears, gear-ratio]
+  claims_supported:
+    - "for a pinion/gear (bevel) pair in line-conjugate mesh, the rotation angles satisfy i12 = psi2/psi1 = z1/z2, where z1, z2 are the pinion and gear tooth counts — i.e. the transmission ratio of an intersecting-axis gear pair is the inverse tooth-count ratio, the same relation as for parallel (spur) gears"
+  claims_to_check: []
+  retrieved: true
+  accessed: '2026-09-26'
+  notes: >
+    Read 2026-09-26 (Bulletin of the JSME, Journal of Advanced Mechanical
+    Design, Systems, and Manufacturing, Vol.20 No.2 (2026), Paper
+    No.26-00183, DOI 10.1299/jamdsm.2026jamdsm0019, Henan University of
+    Science and Technology; peer-reviewed, open access). Section 4
+    ("Calculation of principal directions and principal curvatures of
+    pinion tooth surface with line conjugation"), introducing Fig. 5's
+    tooth meshing model, states as a premise of the line-conjugate mesh:
+    "the pinion angle and the gear angle meet i12 = psi2/psi1 = z1/z2.
+    Here, z1 and z2 are the number of teeth of the pinion and gear
+    respectively." (nomenclature also defines i12 as "the transmission
+    ratio between the pinion and gear"). This is stated for the paper's
+    circular-arc equal-height spiral bevel gear, an intersecting-axis
+    (bevel-type) pair, and directly closes the ASM-0019 claim SRC-0007/
+    SRC-0008 were recorded for: that the tooth-count ratio gives the
+    rotation/speed ratio of a crossed-axis mesh, not just a parallel one.
+    Like SRC-0007/SRC-0008, this is a generic machine-gear (spiral bevel)
+    source, not horological (CLAUDE_REFERENCE_INSTRUCTIONS.md rule 10);
+    the winding/keyless-works tooth forms in this codebase remain
+    unvalidated against any horological source. The paper's own subject
+    (tooth-surface machining/modification) is unrelated and not used
+    here — only the transmission-ratio premise in §4 is cited.
