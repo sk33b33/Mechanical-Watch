@@ -62,7 +62,13 @@ frame slabs, placeholder arbors and jewels (ASM-0012). Validation never
 reads these.
 
 ### Simulation (`src/simulation`)
-Deterministic fixed-step integration of shaft angles (SIM-002).
+Deterministic fixed-step integration of shaft angles (SIM-002). The
+simulation state holds the train's average motion. `escapementDisplay.ts`
+derives, from simulated time, the balance and fork angles and how far
+each escapement-governed arbor is held back between beats, so the
+viewport shows the train ticking without changing the simulation state
+(ASM-0023). The beat rate and impulse window come from
+`src/kinematics/escapement.ts`.
 
 ### Validation (`src/validation`)
 Rule families in `rules/`, each `(context) => ValidationIssue[]`, sharing

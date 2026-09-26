@@ -12,6 +12,7 @@ Movement
 - tolerances (by ID; see Tolerance)
 - keylessWorks (by ID; one expected, KEY-001)
 - dials (by ID; one expected, DIAL-001)
+- escapements (by ID; one expected, ESC-101)
 - drive: null | PRESCRIBED {shaftId, angularVelocity} | NOMINAL_TIME
   (kinematic inputs only, ASM-0007; nominal time turns the minutes-hand
   shaft once per hour)
@@ -58,6 +59,15 @@ KeylessWorks (ASM-0019)
   stem position (in: winding, out: setting) is UI/simulation state, not
   part of the design.
 
+Escapement (SIMPLIFIED ESCAPEMENT MODEL, ESC-001; ASM-0021…0023)
+- id, name, kind (SWISS_LEVER), modelLevel (SIMPLIFIED_KINEMATIC)
+- escapeArborShaftId; escapeWheel {toothCount, tipDiameter, thickness, zCentre}
+- palletArborShaftId; leverAngle (total swing between bankings)
+- balanceShaftId; balance {diameter, thickness, zCentre, amplitude
+  (declared, not predicted), liftAngle}
+- The pallet arbor and balance staff are ordinary shafts that oscillate;
+  they must not be gear-driven (ESC-102).
+
 Dial (ASM-0020)
 - id, name, centreShaftId, diameter, thickness, faceHeight (the −Z face)
 
@@ -84,7 +94,7 @@ drawings, STL).
 
 ```
 { "format": "mechanical-watchmaker-3d.design",
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "savedAt": "<ISO time>",
   "movement": { …Movement as above… } }
 ```
@@ -102,7 +112,7 @@ drawings, STL).
   version to `MIGRATIONS`. v1 → v2 turns the flat drive fields into the
   drive union, makes every shaft PIVOTED with no hand, and adds empty
   couplings. v2 → v3 adds empty tolerances. v3 → v4 adds empty keyless
-  works and dials.
+  works and dials. v4 → v5 adds empty escapements.
 - Autosave keeps the current design in browser storage under
   `mw3d.autosave`. An unreadable autosave is moved to
   `mw3d.autosave.unreadable` rather than overwritten.
@@ -119,6 +129,6 @@ drawings, STL).
 - Deleting removes the parts an entity owns: a frame's bearings; a
   shaft's gears, bearings, clutches and mainspring links (and the drive,
   if it was the drive); a gear's meshes; any entity's tolerances. The
-  keyless works and dial own nothing. References that aren't ownership, such as another
+  keyless works, dial and escapement own nothing. References that aren't ownership, such as another
   shaft's placement constraint, stay and are reported as ASSY-001.
 - Every edit, load and new design is undoable (store history, 200 steps).

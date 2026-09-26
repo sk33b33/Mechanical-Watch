@@ -1,7 +1,7 @@
 import { dimensionGeometry, DRAWING_LAYERS, type DrawingLayer, type PlanDrawing, type Point } from "./planDrawing";
 
 /** AutoCAD colour index per layer. Presentation only. */
-const LAYER_COLOUR: Record<DrawingLayer, number> = { FRAME: 7, PITCH: 5, AXIS: 1, DIMENSION: 3, TEXT: 7, DIAL: 8, KEYLESS: 6 };
+const LAYER_COLOUR: Record<DrawingLayer, number> = { FRAME: 7, PITCH: 5, AXIS: 1, DIMENSION: 3, TEXT: 7, DIAL: 8, KEYLESS: 6, ESCAPEMENT: 30 };
 
 const LAYER_NAME = (layer: DrawingLayer): string => `MW_${layer}`;
 

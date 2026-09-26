@@ -2,6 +2,43 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 5 — Escapement: simplified kinematic model
+
+A Swiss lever escapement labelled SIMPLIFIED ESCAPEMENT MODEL (ESC-001),
+at the kinematic level (L2):
+- **Rate.** Two beats per escape tooth (ASM-0021, a declared assumption
+  with the source pending, accepted). The beat rate and the balance
+  frequency the train requires come from the escape arbor's speed. The
+  teaching movement gives 18 000 beats/h and 2.5 Hz (escape arbor at
+  10 rev/min, 15 teeth).
+- **Balance.** A sinusoidal swing at a declared amplitude (ASM-0022). No
+  inertia, hairspring or damping is modeled, so the amplitude is an
+  input, and the balance does not set the rate: the drive does.
+- **Ticking.** The going train is shown locked between beats and released
+  in an impulse window. The window is the share of each swing spent
+  within half the lift angle of the dead point, so it follows from lift
+  angle and amplitude. The pallet fork crosses between its bankings in
+  the window (ASM-0023). The simulation keeps the average motion; the
+  ticking is a derived display, so hand readings and measurements are
+  unaffected. While the crown sets the hands, they move freely and the
+  going train keeps ticking.
+- **Validation.** ESC-001/002 state the model level and what it does not
+  claim. ESC-101 checks references and inputs (amplitude above half the
+  lift angle). ESC-102 flags a gear-driven pallet arbor or balance.
+  ESC-103 checks clearances. The oscillating arbors are no longer
+  reported as unpowered.
+- **UI and outputs.** An inspector section with the derived beat rate,
+  balance frequency and impulse window, "+ Escapement", and a viewport
+  label. The escape wheel, fork and balance are drawn with visual
+  shapes. The report, BOM and plan drawing include the escapement; the
+  hairspring, roller and stones are listed as not modeled.
+- **Teaching movement.** Adds a balance cock, pallet arbor and balance
+  staff with jewels, and a 15-tooth escape wheel (tip Ø 4.6 mm). The
+  amplitude (270°), lift (50°) and lever angle (10°) are illustrative
+  inputs (ASM-0009), not sourced values.
+
+258 unit tests and 15 browser tests pass.
+
 ## Browser test suite: added
 
 `npm run test:e2e` runs 12 Playwright tests against the production build
@@ -283,6 +320,9 @@ dimensions round-trip, and picking and issue selection work.
   read: this environment's network policy blocks the sites, and ISO
   23509 is paid. Both cover generic machine bevel gears, so a
   horological source for contrate or winding gearing would be better.
+- **Two beats per escape tooth (ASM-0021).** Accepted as a declared
+  assumption for the simplified model; a source should be recorded under
+  `reference/sources/03-escapements/` (e.g. SRC-0004, not yet read).
 - **Acceptable bearing clearances.** Side shake and endshake are
   computed but not judged. Judging them needs sourced ranges.
 
@@ -306,6 +346,11 @@ dimensions round-trip, and picking and issue selection work.
   There is no stop-seconds (hacking) and no third crown position (date).
   Winding is kinematic only: there is no spring state, torque or power
   reserve.
+- Escapement: no locking, draw, drop, banking, impact or sliding
+  contact; the balance is a sinusoid at a declared amplitude; the escape
+  wheel's tooth form, the fork and the balance's arms are visual. The STL
+  omits the escapement parts. The toolbar's dial reading follows the
+  average motion, not the ticks.
 - The dial has no feet or holes. The hand pipes that pass through it are
   not checked.
 - Tolerances cover entered bearing and frame dimensions only. Gear
@@ -323,7 +368,6 @@ dimensions round-trip, and picking and issue selection work.
 - Phase 6 follow-ups, if useful: an elevation (axial stack) drawing,
   tolerances shown on drawings, tolerances on gear and placement
   dimensions for centre-distance variation.
-
-- Phase 5 escapement: escape wheel, pallet fork and balance as a
-  separately declared, simplified model (ESC-001/002). It needs a source
-  for the escape-wheel/beat relationship before any beat rate is shown.
+- Escapement beyond the simplified model: locking, draw and banking
+  geometry; balance dynamics (inertia, hairspring) at L3 with declared
+  assumptions; a source for ASM-0021.

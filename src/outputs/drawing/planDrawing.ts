@@ -24,9 +24,9 @@ export interface Point {
   y: number;
 }
 
-export type DrawingLayer = "FRAME" | "PITCH" | "AXIS" | "DIMENSION" | "TEXT" | "DIAL" | "KEYLESS";
+export type DrawingLayer = "FRAME" | "PITCH" | "AXIS" | "DIMENSION" | "TEXT" | "DIAL" | "KEYLESS" | "ESCAPEMENT";
 
-export const DRAWING_LAYERS: readonly DrawingLayer[] = ["FRAME", "PITCH", "AXIS", "DIMENSION", "TEXT", "DIAL", "KEYLESS"];
+export const DRAWING_LAYERS: readonly DrawingLayer[] = ["FRAME", "PITCH", "AXIS", "DIMENSION", "TEXT", "DIAL", "KEYLESS", "ESCAPEMENT"];
 
 export type Primitive =
   | { kind: "circle"; layer: DrawingLayer; centre: Point; radius: number }
@@ -165,6 +165,26 @@ export function buildPlanDrawing(movement: Movement, analysis: MovementAnalysis)
     );
   }
 
+  // Escapement: escape wheel tip circle, balance outline, and the pallet arbor's centre lines to both.
+  for (const esc of Object.values(movement.escapements)) {
+    const at = (id: typeof esc.escapeArborShaftId): Point | undefined => axes.get(id);
+    const e = at(esc.escapeArborShaftId);
+    const p = at(esc.palletArborShaftId);
+    const b = at(esc.balanceShaftId);
+    if (e !== undefined && esc.escapeWheel.tipDiameter > 0) {
+      const r = mm(esc.escapeWheel.tipDiameter) / 2;
+      geometry.push({ kind: "circle", layer: "ESCAPEMENT", centre: e, radius: r });
+      extent.push(pt(e.x - r, e.y - r), pt(e.x + r, e.y + r));
+    }
+    if (b !== undefined && esc.balance.diameter > 0) {
+      const r = mm(esc.balance.diameter) / 2;
+      geometry.push({ kind: "circle", layer: "ESCAPEMENT", centre: b, radius: r });
+      extent.push(pt(b.x - r, b.y - r), pt(b.x + r, b.y + r));
+    }
+    if (p !== undefined && e !== undefined) geometry.push({ kind: "line", layer: "ESCAPEMENT", a: p, b: e });
+    if (p !== undefined && b !== undefined) geometry.push({ kind: "line", layer: "ESCAPEMENT", a: p, b });
+  }
+
   const bounds = boundsOf(extent);
   const width = bounds === null ? 0 : Math.max(bounds.max.x - bounds.min.x, bounds.max.y - bounds.min.y);
   const scale = DRAWING_STYLE.scales.find((s) => width * s <= DRAWING_STYLE.maxPlanWidthPaperMm) ?? 1;
@@ -222,6 +242,9 @@ export function buildPlanDrawing(movement: Movement, analysis: MovementAnalysis)
       "Plan viewed from the bridge side (+Z toward the viewer). Dimensions in mm.",
       "Nominal geometry from the design model; tolerances are not shown on this plan (MFG-001).",
       "Circles on gears are pitch circles (d = m z, REF-ENG §5.1). Tooth profiles are not defined (REF-ENG §6).",
+      ...(Object.keys(movement.escapements).length > 0
+        ? ["Escapement (simplified model): escape wheel tip circle, balance outline, and centre lines from the pallet arbor; tooth and fork shapes are not defined (ASM-0023)."]
+        : []),
       ...(Object.keys(movement.dials).length > 0 ? ["The dial is below the movement and shown as a hidden (dashed) outline."] : []),
       ...(Object.keys(movement.keylessWorks).length > 0
         ? ["Stem pinions are drawn edge-on as their pitch diameter across the stem centre line (ASM-0019).", ...stemNotes]

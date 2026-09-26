@@ -147,6 +147,30 @@ export function buildBom(movement: Movement): BomRow[] {
     });
   }
 
+  for (const esc of Object.values(movement.escapements).sort(byName)) {
+    item += 1;
+    const parent = String(item);
+    row({
+      item: parent, depth: 0, entityId: esc.id, name: esc.name, type: "Escapement (simplified model)",
+      specification: "Swiss lever, kinematic only (ESC-001)", location: "", tolerances: "nominal only",
+      notes: "assembly of the parts below; contact, locking and balance dynamics not modeled (ESC-002)",
+    });
+    const w = esc.escapeWheel;
+    const b = esc.balance;
+    const shaftName = (id: typeof esc.escapeArborShaftId): string => movement.shafts[id]?.name ?? "no arbor";
+    const parts: [string, string, string, string, string][] = [
+      ["Escape wheel", "Escape wheel", `z = ${Number.isFinite(w.toothCount) ? String(w.toothCount) : "?"}, tip Ø ${mmText(w.tipDiameter)}, thickness ${mmText(w.thickness, 3)}`, `on ${shaftName(esc.escapeArborShaftId)}, mid-plane ${mmText(w.zCentre, 3)}`, "tooth form not modeled (drawn visually)"],
+      ["Pallet fork", "Lever", "shape not modeled", `on ${shaftName(esc.palletArborShaftId)}`, "only its swing between bankings is modeled (ASM-0023)"],
+      ["Pallet stones", "Jewel", "not modeled", "", "impulse and locking faces not modeled"],
+      ["Balance", "Balance", `Ø ${mmText(b.diameter, 3)}, thickness ${mmText(b.thickness, 3)}`, `on ${shaftName(esc.balanceShaftId)}, mid-plane ${mmText(b.zCentre, 3)}`, "inertia not modeled (ASM-0022)"],
+      ["Hairspring", "Spring", "not modeled", "", "no restoring torque modeled (ASM-0022)"],
+      ["Roller and impulse pin", "Roller", "not modeled", "", ""],
+    ];
+    parts.forEach(([name, type, specification, location, notes], i) => {
+      row({ item: `${parent}.${String(i + 1)}`, depth: 1, entityId: esc.id, name, type, specification, location, tolerances: "nominal only", notes });
+    });
+  }
+
   for (const dial of Object.values(movement.dials).sort(byName)) {
     item += 1;
     row({

@@ -1,5 +1,5 @@
 import { toMillimetres, type Length } from "@/units/length";
-import { toDegrees } from "@/units/angle";
+import { toDegrees, type Angle } from "@/units/angle";
 import { toRpm, type AngularVelocity } from "@/units/angularVelocity";
 import type { Movement } from "@/domain/movement";
 import type { EntityId } from "@/domain/ids";
@@ -10,6 +10,9 @@ import type { Frame } from "@/domain/frame";
 import type { GearMesh } from "@/domain/gearMesh";
 import type { KeylessWorks, StemPinion } from "@/domain/keyless";
 import type { Dial } from "@/domain/dial";
+import type { Escapement } from "@/domain/escapement";
+import { toBeatsPerHour } from "@/units/frequency";
+import { balanceFrequency, beatFrequency, beatsPerEscapeRevolution, impulseFraction } from "@/kinematics/escapement";
 import {
   clockPositionFromDial,
   crownSenseText,
@@ -52,7 +55,7 @@ export interface ToleranceRow {
   scope: string;
 }
 
-export type ComponentKind = "Frame" | "Arbor" | "Gear" | "Bearing" | "Keyless works" | "Dial";
+export type ComponentKind = "Frame" | "Arbor" | "Gear" | "Bearing" | "Keyless works" | "Dial" | "Escapement";
 
 export interface ComponentReport {
   id: EntityId;
@@ -435,6 +438,47 @@ function dialReport(movement: Movement, analysis: MovementAnalysis, dial: Dial):
   };
 }
 
+function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: Escapement): ComponentReport {
+  const w = esc.escapeWheel;
+  const b = esc.balance;
+  const shaftName = (id: Escapement["escapeArborShaftId"]): string => movement.shafts[id]?.name ?? "not chosen";
+  const omega = analysis.train.shaftAngularVelocity.get(esc.escapeArborShaftId);
+  const teethValid = isValidToothCount(w.toothCount);
+  const beats = omega !== undefined && omega !== 0 && teethValid ? beatFrequency(omega, w.toothCount) : null;
+  const fraction = impulseFraction(b.amplitude, b.liftAngle);
+  const angleText = (a: Angle): string => (Number.isFinite(a) ? `${toDegrees(a).toFixed(1)}°` : "not set");
+  return {
+    id: esc.id,
+    name: esc.name,
+    kind: "Escapement",
+    description: "SIMPLIFIED ESCAPEMENT MODEL (Swiss lever, kinematic)",
+    parameters: [
+      entered("Escape arbor", shaftName(esc.escapeArborShaftId)),
+      entered("Escape wheel teeth", Number.isFinite(w.toothCount) ? String(w.toothCount) : "not set", w.toothCount),
+      lengthParam("Escape wheel tip Ø", w.tipDiameter),
+      lengthParam("Escape wheel thickness", w.thickness),
+      lengthParam("Escape wheel mid-plane", w.zCentre),
+      entered("Pallet arbor", shaftName(esc.palletArborShaftId)),
+      entered("Lever angle", angleText(esc.leverAngle), esc.leverAngle),
+      entered("Balance staff", shaftName(esc.balanceShaftId)),
+      lengthParam("Balance Ø", b.diameter),
+      lengthParam("Balance thickness", b.thickness),
+      lengthParam("Balance mid-plane", b.zCentre),
+      entered("Balance amplitude (declared)", angleText(b.amplitude), b.amplitude),
+      entered("Lift angle", angleText(b.liftAngle), b.liftAngle),
+    ],
+    derived: [
+      { label: "Beats per escape revolution", text: teethValid ? String(beatsPerEscapeRevolution(w.toothCount)) : "—", si: teethValid ? beatsPerEscapeRevolution(w.toothCount) : null, equation: "2 z", level: "L2_KINEMATIC", references: ["ASM-0021"] },
+      { label: "Beat rate", text: beats === null ? "not derived (escape arbor not driven)" : `${toBeatsPerHour(beats).toFixed(0)} beats/h`, si: beats, equation: "|ω| / 2π × 2 z", level: "L2_KINEMATIC", references: ["ASM-0021", "REF-ENG §9"] },
+      { label: "Required balance frequency", text: beats === null ? "—" : `${balanceFrequency(beats).toFixed(4)} Hz`, si: beats === null ? null : balanceFrequency(beats), equation: "beat rate / 2", level: "L2_KINEMATIC", references: ["ASM-0021", "ASM-0022"] },
+      { label: "Impulse window", text: fraction === null ? "—" : `${(fraction * 100).toFixed(2)} % of each beat`, si: fraction, equation: "(2/π) asin(lift / 2 amplitude)", level: "L2_KINEMATIC", references: ["ASM-0022", "ASM-0023"] },
+      { label: "Rate accuracy", text: "not modeled; requires physical validation", si: null, level: "L2_KINEMATIC", references: ["REF-ENG §9", "REF-ENG §10"] },
+    ],
+    tolerances: [],
+    issues: issuesFor(analysis, esc.id),
+  };
+}
+
 const byName = <T extends { name: string }>(a: T, b: T): number => a.name.localeCompare(b.name);
 
 /** Reports for every part, grouped frames → arbors → gears → bearings → keyless works → dial, each sorted by name. */
@@ -446,6 +490,7 @@ export function componentReports(movement: Movement, analysis: MovementAnalysis)
     ...Object.values(movement.jewels).sort(byName).map((j) => jewelReport(movement, analysis, j)),
     ...Object.values(movement.keylessWorks).sort(byName).map((k) => keylessReport(movement, analysis, k)),
     ...Object.values(movement.dials).sort(byName).map((d) => dialReport(movement, analysis, d)),
+    ...Object.values(movement.escapements).sort(byName).map((e) => escapementReport(movement, analysis, e)),
   ];
 }
 

@@ -32,7 +32,12 @@ describe("bill of materials", () => {
   it("lists every frame, arbor, gear, bearing and dial exactly once, and the keyless works with its parts", () => {
     const count = (r: object): number => Object.keys(r).length;
     const keylessRows = bom.filter((r) => r.entityId in teaching.keylessWorks);
-    const others = bom.filter((r) => !(r.entityId in teaching.keylessWorks));
+    const escapementRows = bom.filter((r) => r.entityId in teaching.escapements);
+    const others = bom.filter((r) => !(r.entityId in teaching.keylessWorks) && !(r.entityId in teaching.escapements));
+    expect(escapementRows.map((r) => r.name)).toEqual(
+      ["Escapement", "Escape wheel", "Pallet fork", "Pallet stones", "Balance", "Hairspring", "Roller and impulse pin"],
+    );
+    expect(escapementRows.find((r) => r.name === "Hairspring")?.specification).toBe("not modeled");
     expect(others).toHaveLength(count(teaching.frames) + count(teaching.shafts) + count(teaching.gears) + count(teaching.jewels) + count(teaching.dials));
     expect(new Set(others.map((r) => r.entityId)).size).toBe(others.length);
     expect(new Set(bom.map((r) => r.item)).size).toBe(bom.length);
@@ -138,6 +143,12 @@ describe("plan drawing", () => {
     expect(drawing.notes.some((n) => n.includes("3 o'clock"))).toBe(true);
   });
 
+  it("draws the escape wheel tip circle, the balance and the pallet arbor's centre lines", () => {
+    const esc = drawing.primitives.filter((p) => p.layer === "ESCAPEMENT");
+    expect(esc.flatMap((p) => (p.kind === "circle" ? [p.radius] : [])).sort()).toEqual([2.3, 3]);
+    expect(esc.filter((p) => p.kind === "line")).toHaveLength(2);
+  });
+
   it("gives coaxial arbors one centre mark and one label", () => {
     const labels = drawing.primitives.flatMap((p) => (p.kind === "text" ? [p.text] : []));
     expect(labels).toContain("Cannon pinion / Centre arbor / Hour wheel");
@@ -235,6 +246,14 @@ describe("movement report", () => {
     expect(html).toMatch(/Manufacturing readiness<\/b> not validated/);
     expect(html).toMatch(/none declared: every dimension in this report is nominal only \(MFG-001\)/);
     expect(html).toContain("Teaching demo");
+  });
+
+  it("reports the escapement as a simplified model with its derived beat rate", () => {
+    expect(html).toContain("Escapement: SIMPLIFIED ESCAPEMENT MODEL");
+    expect(html).toContain("18000 beats/h");
+    expect(html).toContain("rate accuracy is not modeled");
+    const esc = componentReports(teaching, analysis).find((c) => c.kind === "Escapement");
+    expect(esc?.derived.find((d) => d.label === "Beat rate")?.si).toBeCloseTo(5, 12); // 18 000 / 3600 Hz
   });
 
   it("reports the crown: winding direction and ratios", () => {

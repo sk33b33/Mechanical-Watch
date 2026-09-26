@@ -13,6 +13,7 @@ const LAYER_STYLE: Record<DrawingLayer, string> = {
   TEXT: 'fill="#000"',
   DIAL: 'stroke="#555" stroke-width="0.2" fill="none" stroke-dasharray="2 1.2"',
   KEYLESS: 'stroke="#7a3fb0" stroke-width="0.3" fill="none"',
+  ESCAPEMENT: 'stroke="#a8741a" stroke-width="0.3" fill="none"',
 };
 
 const n = (v: number): string => (Math.round(v * 1000) / 1000).toString();

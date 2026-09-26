@@ -47,6 +47,12 @@ geometry standard) is open work.
 | Crown setting | stem out: sliding pinion ↔ setting wheel engaged, friction clutches slip, hand side re-driven from the crown; going train keeps running | `solveGearTrain` (CROWN_SETTING), `crownSettingState` | REF-ENG §8 | ASM-0015, ASM-0019 | APPROXIMATION | L2 | › pulled out, the crown sets the hands… |
 | Crown clock position (h) | atan2(−cos θ, sin θ) × 12 / 2π, mod 12 (dial side mirrors x; 12 o'clock is +Y) | `clockPositionFromDial` | definition | ASM-0014 | definition | L1 | › maps plan directions to the dial's clock |
 | Dial clearance | every gear or frame overlapping the dial in plan must be entirely above its back | `dialRules` (DIAL-002) | geometric definition | ASM-0010, ASM-0020 | DERIVED | L1 | `keylessRules.test.ts` › DIAL-002 |
+| Beats per escape revolution (1) | 2 z_escape | `beatsPerEscapeRevolution` in `src/kinematics/escapement.ts` | REF-ENG §9 (mechanism structure) | ASM-0021 (two beats per tooth; source pending, accepted) | ASSUMPTION | L2 | `escapement.test.ts` › two beats per escape tooth |
+| Beat rate (Hz) | f_beat = abs(ω_escape) / 2π × 2 z; shown in beats/h = 3600 f_beat | `beatFrequency` | REF-ENG §4 (beats per hour as a display unit) | ASM-0021 | DERIVED from ASM-0021 | L2 | › 18 000 beats an hour… |
+| Required balance frequency (Hz) | f_balance = f_beat / 2 | `balanceFrequency` | definition of a beat as half a balance period | ASM-0021, ASM-0022 | DERIVED; the balance's own frequency is not modeled | L2 | › …the balance runs at 2.5 Hz |
+| Balance angle (rad) | θ_b = A sin(2π f_balance t), A declared | `escapementMotion` | REF-ENG §10 (kinematic model: angle and frequency) | ASM-0022 | APPROXIMATION (sinusoid; no dynamics) | L2 | › the fork rests on alternate bankings… |
+| Impulse window (1) | (2/π) asin(λ / 2A) of each beat, needs A > λ/2 | `impulseFraction` | derived from the sinusoid | ASM-0022, ASM-0023 | DERIVED | L2 | › is the share of each swing… |
+| Ticking train (s) | shown at t_eff = T (k − ½ + s), s = window progress; locked between windows, within T/2 of t | `escapementMotion`, `escapementDisplay` | REF-ENG §9 (release, impulse phases) | ASM-0023 | APPROXIMATION (no locking, draw, drop or impact) | L2 | › keeps real time on average…; › never runs backward… |
 | Toleranced limits (m) | lower = nominal + lower deviation; upper = nominal + upper deviation | `Tolerance` in `src/domain/tolerance.ts` | REF-ENG §14 | none (declared intent) | user input; not validated | L1 | `toleranceAnalysis.test.ts` |
 | Worst-case stack (m) | R = Σ sᵢ xᵢ; R_min = Σ (sᵢ > 0 ? lowerᵢ : −upperᵢ); R_max likewise; untoleranced inputs at nominal | `evaluateStack` in `src/assembly/toleranceAnalysis.ts` | REF-ENG §14 | ASM-0017 | DERIVED | L1 | › property: min ≤ nominal ≤ max… |
 | Side shake over tolerances (m) | bore − pivot, worst case | `sideShakeStack` | REF-ENG §12, §14 | ASM-0013, ASM-0017 | DERIVED; acceptability UNKNOWN | L1 | › side shake: min takes… |
@@ -83,6 +89,11 @@ rev/min exist only at the UI boundary (`src/units/`).
 | Hand setting where no clutch isolates the hands | SET-001 warning; the setting mode reports it and the hands are not moved. |
 | Schema-2 file | Migrated to schema 3 on open (no tolerances). |
 | Schema-3 file | Migrated to schema 4 on open (no keyless works, no dial). |
+| Schema-4 file | Migrated to schema 5 on open (no escapement). |
+| New escapement (all empty, no arbors chosen) | Kept empty; ESC-101 lists what is missing; nothing ticks or swings. |
+| Amplitude not above half the lift angle | ESC-101 error; no impulse window, so the display shows nothing ticking. |
+| Pallet arbor or balance staff gear-driven | ESC-102 error. |
+| Escape arbor not driven | ESC-001 says no beat rate is derived; the balance rests. |
 | New keyless works or dial (all empty, no wheels or arbor chosen) | Kept empty; KEY-001 / DIAL-001 list what is missing. Nothing is drawn until defined. |
 | Stem level with a wheel's mid-plane | The right-angle mesh is impassable; KEY-002 level error. |
 | No mainspring on the ratchet's arbor | Winding direction unknown; crown turning while "winding" leaves the ratchet held; KEY-003 warning. |
@@ -137,13 +148,18 @@ rev/min exist only at the UI boundary (`src/units/`).
 | DIAL-001 | error | L1 | one dial, positive diameter and thickness, finite face, existing centre arbor (project addition) |
 | DIAL-002 | error | L1 | the dial is below everything it covers (project addition) |
 | DIAL-003 | error | L1 | every hand arbor is over the dial (project addition) |
+| ESC-001 | info | L2 | declares the SIMPLIFIED ESCAPEMENT MODEL and the derived beat rate |
+| ESC-002 | info | L2 | states what the simplified model does not claim (contact, locking, dynamics, rate accuracy) |
+| ESC-101 | error | L1 / L2 | one escapement, three distinct existing arbors, valid inputs, amplitude above half the lift angle (project addition) |
+| ESC-102 | error | L2 | pallet arbor and balance staff are not gear-driven (project addition) |
+| ESC-103 | error | L1 | escape wheel clears the pallet arbor, the balance and other gears at its height; the balance clears the pallet arbor (project addition) |
 | TOL-001 | error / warning | L1 | tolerance definition: target exists, one per dimension, finite limits, lower ≤ upper, positive size limit (project addition) |
 | TOL-002 | warning | L1 | a nominally positive side shake or endshake that can close within declared tolerances (project addition) |
 | MFG-001 | info | L1 | summary whenever tolerances exist: declared intent, untoleranced dimensions are nominal. Also stated in every output. |
 | MFG-002 | none | none | Stated in the report, drawings and outputs dialog: nothing is manufacturing-validated. No level above L2 can be declared. |
 
-Not yet applicable: UNIT-001/002 (enforced by branded unit types, not a
-runtime rule), ESC-*.
+Not a runtime rule: UNIT-001/002 are enforced by branded unit types
+(`Frequency` in Hz is separate from `AngularVelocity` in rad/s).
 
 ## Validation levels
 
