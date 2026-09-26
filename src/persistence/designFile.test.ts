@@ -151,6 +151,16 @@ describe("schema migration v2 → v3", () => {
     );
     expect(decodeDesign(encodeDesign(m))).toEqual(m);
   });
+
+  it("round-trips a gear module tolerance and a FIXED shaft's position tolerances (ASM-0027)", () => {
+    const gear = Object.values(demo.gears)[0];
+    const shaft = Object.values(demo.shafts).find((s) => s.placement.kind === "FIXED");
+    if (gear === undefined || shaft === undefined) throw new Error("no gear or FIXED shaft");
+    let m = setTolerance(demo, createTolerance({ entityId: gear.id, dimension: "GEAR_MODULE", lowerDeviation: millimetres(-0.005), upperDeviation: millimetres(0.005) }));
+    m = setTolerance(m, createTolerance({ entityId: shaft.id, dimension: "SHAFT_POSITION_X", lowerDeviation: millimetres(-0.02), upperDeviation: millimetres(0.02) }));
+    m = setTolerance(m, createTolerance({ entityId: shaft.id, dimension: "SHAFT_POSITION_Y", lowerDeviation: millimetres(-0.02), upperDeviation: millimetres(0.02) }));
+    expect(decodeDesign(encodeDesign(m))).toEqual(m);
+  });
 });
 
 describe("schema migration v1 → v2", () => {

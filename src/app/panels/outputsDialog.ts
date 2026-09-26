@@ -93,7 +93,7 @@ export function mountOutputsDialog(
 
       const actions = document.createElement("td");
       if (format.availability.status === "AVAILABLE") {
-        if (format.id === "report-html" || format.id === "plan-svg") {
+        if (format.id === "report-html" || format.id === "plan-svg" || format.id === "elevation-svg") {
           actions.appendChild(button("Open", "Open in a new tab (print from there)", () => {
             const file = produce(format);
             if (file !== null && !openInTab(file)) notify("The browser blocked the new tab. Use Download instead.", "error");

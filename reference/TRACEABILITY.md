@@ -72,7 +72,9 @@ geometry standard) is open work.
 | Worst-case stack (m) | R = Σ sᵢ xᵢ; R_min = Σ (sᵢ > 0 ? lowerᵢ : −upperᵢ); R_max likewise; untoleranced inputs at nominal | `evaluateStack` in `src/assembly/toleranceAnalysis.ts` | REF-ENG §14 | ASM-0017 | DERIVED | L1 | › property: min ≤ nominal ≤ max… |
 | Side shake over tolerances (m) | bore − pivot, worst case | `sideShakeStack` | REF-ENG §12, §14 | ASM-0013, ASM-0017 | DERIVED; acceptability UNKNOWN | L1 | › side shake: min takes… |
 | Endshake over tolerances (m) | upper underside − lower underside − lower thickness − shoulder span, worst case | `endshakeStack` | REF-ENG §12, §14 | ASM-0010, ASM-0011, ASM-0017 | DERIVED; acceptability UNKNOWN | L1 | › endshake stacks… |
-| Plan drawing (mm) | frame outlines, solved axes, pitch circles (d = m z), placed centre distances; ideal added when they differ by more than the ASM-0008 tolerance | `buildPlanDrawing` in `src/outputs/drawing/planDrawing.ts` | REF-ENG §5.1, §5.2, §6 | ASM-0006, ASM-0008 | DERIVED; nominal only (MFG-001) | L1 | `outputs.test.ts` › plan drawing |
+| Mesh centre distance over tolerances (m) | first-order (Taylor) expansion anchored at the placed distance d: min/max = d + Σ coefficientᵢ × worst-case(limitᵢ − nominalᵢ); module coefficient = (z1+z2)/2 (exact); a FIXED shaft's position coefficient = ± the mesh's direction cosine (linear approximation) | `meshCentreDistanceStack` in `src/assembly/toleranceAnalysis.ts` | REF-ENG §14 | ASM-0017, ASM-0027 | DERIVED; nominal always equals the placed distance | L1 | `toleranceAnalysis.test.ts` › gear mesh centre-distance stack, incl. a property test |
+| Plan drawing (mm) | frame outlines, solved axes, pitch circles (d = m z), placed centre distances; ideal added when they differ by more than the ASM-0008 tolerance; a mesh's worst-case centre distance added ("· tol min…max") only where toleranced | `buildPlanDrawing` in `src/outputs/drawing/planDrawing.ts` | REF-ENG §5.1, §5.2, §6, §14 | ASM-0006, ASM-0008, ASM-0027 | DERIVED; nominal only except that annotation (MFG-001) | L1 | `outputs.test.ts` › plan drawing |
+| Elevation drawing (mm) | orthographic X-Z projection along Y: frame bodies over their outline's X-extent, arbor centrelines over their occupied Z-span, gear/escapement bodies at pitch/tip diameter and thickness, bearing markers flush with the frame's inner face, overall height, and a toleranced arbor's endshake dimension | `buildElevationDrawing` in `src/outputs/drawing/elevationDrawing.ts` | REF-ENG §5.1, §6, §11, §14 | ASM-0006, ASM-0011, ASM-0017 | DERIVED; nominal only except the endshake annotation (MFG-001) | L1 | `outputs.test.ts` › elevation drawing |
 | Visual mesh export (mm) | viewport frame slabs and visual tooth outlines at assembled positions | `buildStl` in `src/outputs/stl.ts` | none; visualization only | ASM-0004, ASM-0005, ASM-0010 | APPROXIMATION | L0 | `outputs.test.ts` › STL |
 | Tooth outline (visual) | trapezoid with addendum 1.0 × module and dedendum 1.25 × module | `generateGearOutline` | none; visualization only | ASM-0005, ASM-0004 | APPROXIMATION | L0 | `gearOutline.test.ts` |
 
@@ -129,6 +131,8 @@ rev/min exist only at the UI boundary (`src/units/`).
 | New tolerance (limits empty) | Kept as NaN; TOL-001 error until both limits are entered. No default band is assumed. |
 | Tolerance with lower > upper, or a size whose lower limit is ≤ 0 | TOL-001 error; stacks that use it report invalid input. |
 | Tolerance on an unknown dimension | TOL-001 warning (no effect); the dimension stays unknown. |
+| A module or FIXED position tolerance on a shaft whose placement is later changed to MESH_POLAR/COAXIAL | TOL-001 target error: that shaft no longer has the dimension (`tolerancedDimensionsOf` excludes it). |
+| Both gears' shafts in a mesh coincide (same solved position) | `meshCentreDistanceStack` returns INVALID_INPUT rather than a division by zero. |
 | Two tolerances on one dimension | TOL-001 error (`setTolerance` replaces, so this arises only from files). |
 | Export of a design with errors | Produced anyway; the report states the declared level is not met. STL and drawings skip parts they can't place or size and the STL lists them. |
 
@@ -188,7 +192,7 @@ rev/min exist only at the UI boundary (`src/units/`).
 | SPR-002 | info | L3 | reserve, escape torque (lossless bound when so), predicted amplitude or what it needs (project addition, ASM-0026) |
 | SPR-003 | warning / error | L3 | the balance stops before let-down (warning) or cannot unlock even fully wound (error) (project addition, ASM-0026) |
 | TOL-001 | error / warning | L1 | tolerance definition: target exists, one per dimension, finite limits, lower ≤ upper, positive size limit (project addition) |
-| TOL-002 | warning | L1 | a nominally positive side shake or endshake that can close within declared tolerances (project addition) |
+| TOL-002 | warning | L1 | a nominally positive side shake, endshake or gear-mesh centre distance that can close within declared tolerances (project addition) |
 | MFG-001 | info | L1 | summary whenever tolerances exist: declared intent, untoleranced dimensions are nominal. Also stated in every output. |
 | MFG-002 | none | none | Stated in the report, drawings and outputs dialog: nothing is manufacturing-validated. No level above L2 can be declared. |
 

@@ -1,15 +1,17 @@
 import { dimensionGeometry, DRAWING_LAYERS, type DrawingLayer, type PlanDrawing, type Point } from "./planDrawing";
 
 /** AutoCAD colour index per layer. Presentation only. */
-const LAYER_COLOUR: Record<DrawingLayer, number> = { FRAME: 7, PITCH: 5, AXIS: 1, DIMENSION: 3, TEXT: 7, DIAL: 8, KEYLESS: 6, ESCAPEMENT: 30 };
+const LAYER_COLOUR: Record<DrawingLayer, number> = {
+  FRAME: 7, PITCH: 5, AXIS: 1, DIMENSION: 3, TEXT: 7, DIAL: 8, KEYLESS: 6, ESCAPEMENT: 30, GEAR: 7, JEWEL: 30,
+};
 
 const LAYER_NAME = (layer: DrawingLayer): string => `MW_${layer}`;
 
 /**
- * Renders a plan drawing as ASCII DXF (R12, AC1009) in model space at 1:1,
- * units millimetres. Only LINE, CIRCLE and TEXT entities are used, so any
- * DXF reader can open it; dimensions are exploded into lines and text.
- * Notes are written as text below the geometry.
+ * Renders a plan or elevation drawing as ASCII DXF (R12, AC1009) in model
+ * space at 1:1, units millimetres. Only LINE, CIRCLE and TEXT entities are
+ * used, so any DXF reader can open it; dimensions are exploded into lines
+ * and text. Notes are written as text below the geometry.
  */
 export function renderPlanDxf(drawing: PlanDrawing): string {
   const out: string[] = [];
@@ -103,7 +105,7 @@ export function renderPlanDxf(drawing: PlanDrawing): string {
   if (drawing.bounds !== null) {
     const height = 2.5 / drawing.scale;
     let y = drawing.bounds.min.y - height * 6;
-    for (const note of [`${drawing.title} - plan (nominal)`, ...drawing.notes]) {
+    for (const note of [`${drawing.title} - ${drawing.viewLabel} (nominal)`, ...drawing.notes]) {
       text("TEXT", { x: drawing.bounds.min.x, y }, height, note);
       y -= height * 1.6;
     }

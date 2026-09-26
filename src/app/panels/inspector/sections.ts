@@ -21,7 +21,7 @@ import {
 import { emptyOutline, newGearMesh } from "@/domain/editing";
 import { isValidModule, isValidToothCount, pitchLineVelocity } from "@/math/gearMath";
 import { frameZRange, sideShake } from "@/assembly/assemblyGeometry";
-import { sideShakeStack } from "@/assembly/toleranceAnalysis";
+import { meshCentreDistanceStack, sideShakeStack } from "@/assembly/toleranceAnalysis";
 import { VALIDATION_LEVELS, VALIDATION_LEVEL_LABELS, levelRank } from "@/reference/validationLevels";
 import {
   actionButton,
@@ -164,6 +164,11 @@ export function gearSection(store: AppStore, gear: Gear): Section {
       }, true),
       other === undefined ? undefined : () => { store.select(other.id); },
     ));
+    if (Object.keys(movement.tolerances).length > 0) {
+      const result = meshCentreDistanceStack(movement, mesh, store.analysis.placement);
+      out.push(readonlyRow(`Centre distance (tol., with ${other?.name ?? "missing gear"})`, stackText(result),
+        `${stackTitle(result)} A first-order (Taylor) approximation around the placed distance (ASM-0027).`));
+    }
   }
   const candidates = Object.values(movement.gears).filter(
     (g) => g.shaftId !== gear.shaftId && !meshedWith.has(g.id),
@@ -186,6 +191,7 @@ export function gearSection(store: AppStore, gear: Gear): Section {
     omega === undefined || pitch === null ? "—" : `${toMillimetresPerSecond(pitchLineVelocity(omega, pitch)).toFixed(4)} mm/s`,
     "v = ω r (REF-ENG §5.5)"));
 
+  out.push(...toleranceSection(store, gear.id));
   out.push(deleteRow(store, gear.id, "Delete gear", "Also removes its meshes."));
   return out;
 }

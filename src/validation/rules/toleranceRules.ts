@@ -1,5 +1,5 @@
 import { shaftSupport } from "@/assembly/assemblyGeometry";
-import { COVERAGE_LABELS, endshakeStack, sideShakeStack, type StackResult } from "@/assembly/toleranceAnalysis";
+import { COVERAGE_LABELS, endshakeStack, meshCentreDistanceStack, sideShakeStack, type StackResult } from "@/assembly/toleranceAnalysis";
 import type { EntityId } from "@/domain/ids";
 import { nominalOf, toleranceProblems, TOLERANCED_DIMENSION_LABELS, tolerancedDimensionsOf } from "@/domain/tolerance";
 import { findEntity } from "@/domain/lookup";
@@ -7,8 +7,8 @@ import type { ShaftEnd } from "@/domain/shaft";
 import type { ValidationIssue } from "../validationIssue";
 import { issue, mm, type Rule } from "./context";
 
-/** Dimensions that are sizes, so their lower limit must stay positive. An axial position may be any value. */
-const POSITIVE_DIMENSIONS = new Set(["SHAFT_PIVOT_LOWER", "SHAFT_PIVOT_UPPER", "SHAFT_SHOULDER_SPAN", "JEWEL_BORE", "FRAME_THICKNESS"]);
+/** Dimensions that are sizes, so their lower limit must stay positive. A position (axial or in-plane) may be any value. */
+const POSITIVE_DIMENSIONS = new Set(["SHAFT_PIVOT_LOWER", "SHAFT_PIVOT_UPPER", "SHAFT_SHOULDER_SPAN", "JEWEL_BORE", "FRAME_THICKNESS", "GEAR_MODULE"]);
 
 /**
  * TOL-001: each declared tolerance must be well formed and apply to a
@@ -17,7 +17,7 @@ const POSITIVE_DIMENSIONS = new Set(["SHAFT_PIVOT_LOWER", "SHAFT_PIVOT_UPPER", "
  * summary reminding that tolerances are declared intent, and anything
  * untoleranced is nominal only.
  */
-export const toleranceRules: Rule = ({ movement }) => {
+export const toleranceRules: Rule = ({ movement, placement }) => {
   const issues: ValidationIssue[] = [];
   const tolerances = Object.values(movement.tolerances);
   const seen = new Map<string, number>();
@@ -89,12 +89,19 @@ export const toleranceRules: Rule = ({ movement }) => {
     }
     checkStack(endshakeStack(movement, shaft, support), `${shaft.name} endshake`, [shaft.id], "endshake");
   }
+  for (const mesh of Object.values(movement.gearMeshes)) {
+    const driving = movement.gears[mesh.drivingGearId];
+    const driven = movement.gears[mesh.drivenGearId];
+    if (driving === undefined || driven === undefined) continue;
+    checkStack(meshCentreDistanceStack(movement, mesh, placement), `${driving.name}/${driven.name} centre distance`,
+      [mesh.id, driving.id, driven.id], "mesh-centre-distance");
+  }
 
   if (tolerances.length > 0) {
     const sourced = tolerances.filter((t) => t.source !== null && t.source.trim() !== "").length;
     issues.push(
       issue("MFG-001", "summary", "info", "L1_GEOMETRIC", [],
-        `${String(tolerances.length)} toleranced dimension${tolerances.length === 1 ? "" : "s"} (${String(sourced)} cite a source). Worst-case stacks cover side shake and endshake; untoleranced inputs are taken at nominal. Declared tolerances are design intent, not manufacturing validation (MFG-002).`,
+        `${String(tolerances.length)} toleranced dimension${tolerances.length === 1 ? "" : "s"} (${String(sourced)} cite a source). Worst-case stacks cover side shake, endshake and gear-mesh centre distance (ASM-0027); untoleranced inputs are taken at nominal. Declared tolerances are design intent, not manufacturing validation (MFG-002).`,
         ["REF-ENG §14", "ASM-0017"]),
     );
   }

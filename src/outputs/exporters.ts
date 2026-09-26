@@ -4,6 +4,7 @@ import type { ReferenceId, ValidationLevel } from "@/validation/validationIssue"
 import { bomCsv } from "./bom";
 import { renderMovementReport } from "./movementReport";
 import { buildPlanDrawing } from "./drawing/planDrawing";
+import { buildElevationDrawing } from "./drawing/elevationDrawing";
 import { renderPlanSvg } from "./drawing/svg";
 import { renderPlanDxf } from "./drawing/dxf";
 import { buildStl } from "./stl";
@@ -30,7 +31,7 @@ export interface ExportFile {
 export type ExportAvailability = { status: "AVAILABLE" } | { status: "NOT_AVAILABLE"; reason: string };
 
 export interface ExportFormat {
-  id: "report-html" | "bom-csv" | "plan-svg" | "plan-dxf" | "assembly-stl" | "step";
+  id: "report-html" | "bom-csv" | "plan-svg" | "plan-dxf" | "elevation-svg" | "elevation-dxf" | "assembly-stl" | "step";
   label: string;
   extension: string;
   /** The highest model level the content represents. */
@@ -102,6 +103,34 @@ export const EXPORT_FORMATS: readonly ExportFormat[] = [
       filename: `${fileStem(movement)}-plan.dxf`,
       mimeType: "application/dxf",
       content: renderPlanDxf(buildPlanDrawing(movement, analysis)),
+    }),
+  },
+  {
+    id: "elevation-svg",
+    label: "Elevation drawing",
+    extension: "svg",
+    level: "L1_GEOMETRIC",
+    description: "Axial (Z) stack projected onto the X-Z plane: frames, arbors, gear and escapement bodies at pitch/tip diameter, bearing markers, overall height. Nominal; keyless works and dial are not shown.",
+    caveats: ["REF-ENG §6", "REF-ENG §11", "ASM-0006", "ASM-0011"],
+    availability: { status: "AVAILABLE" },
+    produce: ({ movement, analysis, generatedAt }) => ({
+      filename: `${fileStem(movement)}-elevation.svg`,
+      mimeType: "image/svg+xml",
+      content: renderPlanSvg(buildElevationDrawing(movement, analysis), { generatedAt: generatedAt.toISOString() }),
+    }),
+  },
+  {
+    id: "elevation-dxf",
+    label: "Elevation drawing",
+    extension: "dxf",
+    level: "L1_GEOMETRIC",
+    description: "The same elevation as 2D CAD geometry at 1:1 in millimetres (DXF R12: lines, circles, text).",
+    caveats: ["REF-ENG §6", "REF-ENG §11", "ASM-0006", "ASM-0011"],
+    availability: { status: "AVAILABLE" },
+    produce: ({ movement, analysis }) => ({
+      filename: `${fileStem(movement)}-elevation.dxf`,
+      mimeType: "application/dxf",
+      content: renderPlanDxf(buildElevationDrawing(movement, analysis)),
     }),
   },
   {

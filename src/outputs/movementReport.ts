@@ -9,6 +9,7 @@ import { DESIGN_SCHEMA_VERSION } from "@/persistence/designFile";
 import { BOM_COLUMNS, buildBom } from "./bom";
 import { componentReports, meshReports, mmText, type ComponentReport, type ReportValue } from "./componentReport";
 import { buildPlanDrawing } from "./drawing/planDrawing";
+import { buildElevationDrawing } from "./drawing/elevationDrawing";
 import { escapeXml as esc, renderPlanSvg } from "./drawing/svg";
 
 /**
@@ -71,6 +72,8 @@ export function renderMovementReport(movement: Movement, analysis: MovementAnaly
   const bom = buildBom(movement);
   const drawing = buildPlanDrawing(movement, analysis);
   const svg = renderPlanSvg(drawing, { generatedAt: generated });
+  const elevation = buildElevationDrawing(movement, analysis);
+  const elevationSvg = renderPlanSvg(elevation, { generatedAt: generated });
 
   const arborRows = Object.values(movement.shafts)
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -138,6 +141,7 @@ ${movement.isTeachingDemo ? `<div><b>Teaching demo</b> dimensions are illustrati
 <li><a href="#validation">Validation</a></li>
 <li><a href="#train">Gear train and arbor speeds</a></li>
 <li><a href="#plan">Plan drawing</a></li>
+<li><a href="#elevation">Elevation drawing</a></li>
 <li><a href="#bom">Bill of materials</a></li>
 <li><a href="#tolerances">Tolerances</a></li>
 <li><a href="#components">Component reports</a></li>
@@ -156,11 +160,15 @@ ${table(["Severity", "Rule", "Level", "Message", "Parts", "Basis"], issueRows(mo
         ? "the balance: its free frequency (simplified dynamic model, L3, ASM-0024) sets the escape arbor's speed and the train follows"
         : `prescribed on ${esc(movement.shafts[movement.drive.shaftId]?.name ?? "a missing arbor")} (ASM-0007)`}. Speeds are kinematic: no friction is modeled, and torque and energy appear only in the simplified energy model reported with the escapement (L3, ASM-0026).</p>
 <h4>Meshes</h4>
-${table(["Driving", "Driven", "z1", "z2", "Module", "Speed ratio −z1/z2", "Ideal centre distance", "Placed centre distance"], meshes.map((m) => [
+${table([
+    "Driving", "Driven", "z1", "z2", "Module", "Speed ratio −z1/z2", "Ideal centre distance", "Placed centre distance",
+    ...(tolerances.length > 0 ? ["Worst case (tol., ASM-0027)"] : []),
+  ], meshes.map((m) => [
     m.driving, m.driven, String(m.z1), String(m.z2), m.module,
     m.ratio === null ? "—" : m.ratio.toFixed(6),
     m.idealCentreDistance === null ? "—" : mmText(m.idealCentreDistance),
     m.actualCentreDistance === null ? "unresolved" : mmText(m.actualCentreDistance),
+    ...(tolerances.length > 0 ? [m.centreDistanceTolerance ?? "nominal only"] : []),
   ]))}
 <h4>Arbors</h4>
 ${table(["Arbor", "Hand", "Speed (rev/min)", "Direction seen from the dial"], arborRows)}
@@ -174,11 +182,15 @@ ${table(["Quantity", "Value", "Basis"], c.derived.filter((d) => /direction|crown
 <h2 id="plan">3. Plan drawing</h2>
 <div class="drawing">${svg}</div>
 
-<h2 id="bom">4. Bill of materials</h2>
+<h2 id="elevation">4. Elevation drawing</h2>
+<p>Axial (Z) stack projected onto the X-Z plane (ASM-0006); frames, gear and escapement bodies (at pitch/tip diameter, REF-ENG §6) and bearing markers (flush with their frame's inner face, ASM-0011). The keyless works, stem and dial hand pipes are not shown (the stem has no single faithful elevation in this projection).</p>
+<div class="drawing">${elevationSvg}</div>
+
+<h2 id="bom">5. Bill of materials</h2>
 <p class="muted">One row per modeled part. Material, finish and supplier are not modeled.</p>
 ${table(BOM_COLUMNS.map((c) => c.label), bom.map((r) => BOM_COLUMNS.map((c) => String(r[c.key]))))}
 
-<h2 id="tolerances">5. Tolerances</h2>
+<h2 id="tolerances">6. Tolerances</h2>
 <p>Tolerances are declared design intent (REF-ENG §14), not measured or validated values. Limits are nominal plus the signed deviations. The worst-case analysis does not use distributions (ASM-0017).</p>
 ${table(["Part", "Dimension", "Nominal", "Lower limit", "Upper limit", "Distribution", "Source", "Checked against"], tolerances.map((t) => {
     const nominal = nominalOf(movement, t.entityId, t.dimension);
@@ -195,10 +207,10 @@ ${table(["Part", "Dimension", "Nominal", "Lower limit", "Upper limit", "Distribu
     ];
   }))}
 
-<h2 id="components">6. Component reports</h2>
+<h2 id="components">7. Component reports</h2>
 ${components.map((c) => componentHtml(movement, c)).join("\n")}
 
-<h2 id="assumptions">7. Assumptions</h2>
+<h2 id="assumptions">8. Assumptions</h2>
 <p>The full assumption register (reference/assumptions/ASSUMPTION_REGISTER.md). Entries cited in this report are marked.</p>
 ${table(["ID", "Cited here", "Assumption", "Scope", "Status"], listAssumptions().map((a) => [a.id, referenced.has(a.id) ? "yes" : "", a.summary, a.scope, a.status]))}
 

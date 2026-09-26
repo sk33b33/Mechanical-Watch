@@ -2,6 +2,62 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Elevation drawing, and tolerances on gear/placement dimensions
+
+- **Elevation drawing (`src/outputs/drawing/elevationDrawing.ts`).** A
+  second technical drawing alongside the plan: an orthographic
+  projection onto the X-Z plane (horizontal X, vertical Z, the shaft-axis
+  direction, ASM-0006), viewed along Y. It draws frame bodies across
+  their outline's X-extent at their Z-range, each arbor's centreline over
+  the axial span it actually occupies, gear and escapement bodies at
+  pitch/tip diameter and thickness (REF-ENG §6 defines no tooth profile),
+  bearing markers flush with their frame's inner face (ASM-0011), the
+  dial as a hidden band, and an overall-height dimension. Parts at
+  different Y overlap in this single-direction view, and the keyless
+  works, stem and dial hand pipes aren't shown (the stem has no single
+  faithful elevation here) — both stated limitations, not silent gaps.
+  Exported as SVG and DXF (`elevation-svg`, `elevation-dxf`), from the
+  Outputs dialog and in the engineering report (new §4, renumbering the
+  sections after it).
+- **The plan and elevation renderers are now generic** (`viewLabel` on
+  the shared drawing type, plus two new layers, `GEAR` and `JEWEL`, for
+  the elevation's gear/escapement bodies and bearing markers); the plan
+  builder is unchanged in what it draws.
+- **New toleranceable dimensions:** `GEAR_MODULE` (per gear) and, only
+  for a **FIXED**-placement shaft, `SHAFT_POSITION_X` / `SHAFT_POSITION_Y`
+  (a solved MESH_POLAR or COAXIAL position stays untoleranced — its
+  variation isn't chained through here, ASM-0027). Both appear in the
+  existing generic tolerance UI (gear and shaft inspectors) with no new
+  UI code.
+- **Mesh centre-distance stack (`meshCentreDistanceStack`,
+  `src/assembly/toleranceAnalysis.ts`).** A first-order (Taylor)
+  expansion around the placement solver's own distance: exact for the
+  module term (distance scales linearly with it; only the driving gear's
+  declared module tolerance is read, since GEAR-003 requires one shared
+  module) and a linear approximation for a FIXED shaft's position term (a
+  direction cosine along the mesh's centre line, matching the same
+  one-directional worst-case approach already used for side shake and
+  endshake). Registered as ASM-0027. `evaluateStack`'s `StackTerm` gained
+  an optional `scale` (a signed coefficient, not just ±1), used here and
+  left at its default (1) everywhere else.
+- **Where it shows up:** the gear inspector (a "Centre distance (tol.,
+  with …)" row per mesh); the movement report's Meshes table (a "Worst
+  case (tol., ASM-0027)" column, only once something is toleranced) and
+  each gear's component report; the plan drawing's centre-distance
+  dimension (appends "· tol min…max"); TOL-002 now also warns if a
+  mesh's worst-case centre distance could reach zero; MFG-001's summary
+  now mentions it.
+- **On the elevation drawing:** an arbor with a toleranced endshake gets
+  a dimension beside its centreline, from its lower bearing's face to its
+  upper's, reusing the existing `endshakeStack` (no new derivation).
+- The design file decoder's tolerance-dimension enum gained the three
+  new values (a real fix: without it, saving a design with one of these
+  tolerances and reloading it would fail to decode). No schema bump: the
+  `Tolerance` record's shape is unchanged, only which dimension strings
+  it accepts.
+
+342 unit tests and 27 browser tests pass.
+
 ## Workspace: panel windows and focus view
 
 - Each side panel (Components, Inspector, Validation) has a title bar
@@ -469,21 +525,26 @@ dimensions round-trip, and picking and issue selection work.
   average motion, not the ticks.
 - The dial has no feet or holes. The hand pipes that pass through it are
   not checked.
-- Tolerances cover entered bearing and frame dimensions only. Gear
-  dimensions and axis positions aren't toleranced, so centre-distance
-  variation isn't analysed. Only worst-case stacks exist; distributions
-  are recorded, not used.
-- The plan drawing is a single view. There is no elevation or section
-  drawing, no tolerance annotation on the drawing, and no detail drawing
-  per part. Dimensions can crowd where several axes are close.
+- Only worst-case stacks exist; distributions are recorded, not used. A
+  mesh's centre-distance stack is a first-order approximation for a
+  FIXED shaft's position term (exact for module, ASM-0027), and only a
+  FIXED shaft's own position can be toleranced — a solved (MESH_POLAR,
+  COAXIAL) position can't be, so its variation isn't chained through.
+- The plan drawing is a single view; the elevation is a single
+  projection direction (X-Z, along Y) with no hidden-line removal, so
+  parts at different Y overlap. Neither has a detail drawing per part,
+  and only the centre-distance (plan) and endshake (elevation)
+  dimensions carry a tolerance annotation. Dimensions can crowd where
+  several axes are close.
 - The STL leaves out arbors and jewels (placeholder sizes, ASM-0012), and
   frames are solid slabs without bearing holes.
 
 ## Next (see `docs/ROADMAP.md`)
 
-- Phase 6 follow-ups, if useful: an elevation (axial stack) drawing,
-  tolerances shown on drawings, tolerances on gear and placement
-  dimensions for centre-distance variation.
+- Elevation/plan follow-ups, if useful: a section (cut) drawing with
+  filled faces, tolerances on gear placement other than a FIXED shaft's
+  own coordinates (chaining through MESH_POLAR/COAXIAL), a chosen or
+  auto-fit elevation projection direction instead of the fixed X-Z one.
 - Escapement beyond the simplified models: sourced or measured values
   for Q and escapement efficiency; tooth and pallet faces (drop, impulse
   geometry); amplitude-dependent rate; sources for ASM-0021, ASM-0024,

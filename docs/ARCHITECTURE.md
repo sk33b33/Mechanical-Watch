@@ -50,7 +50,13 @@ the balance's frequency.
 ### Assembly (`src/assembly`)
 Axial geometry: frame and gear height ranges, bearing support, side
 shake, endshake, arbor spans. Measurements between parts. Worst-case
-tolerance stacks (`toleranceAnalysis.ts`, ASM-0017).
+tolerance stacks (`toleranceAnalysis.ts`, ASM-0017): `evaluateStack` sums
+signed, independently-toleranced lengths (side shake, endshake); a
+`StackTerm`'s optional `scale` generalizes the ±1 sign to any signed
+coefficient. `meshCentreDistanceStack` is not such a sum — it is a
+first-order (Taylor) expansion anchored at the placement solver's own
+distance, so its reported nominal is always the placed distance
+regardless of what the module/tooth inputs alone would give (ASM-0027).
 
 ### Outputs (`src/outputs`)
 Pure functions from `(movement, analysis)` to documents. Component
@@ -59,6 +65,15 @@ are renderings of that data. `exporters.ts` is the registry: each format
 declares the model level it represents and its caveats, and formats that
 can't be produced honestly (STEP) are listed with the reason. Outputs
 round only for display and never read the viewport.
+
+`drawing/` holds two builders sharing one drawing type and one SVG/DXF
+renderer pair, distinguished only by `viewLabel`: `planDrawing.ts` (the
+plan, viewed from the bridge side) and `elevationDrawing.ts` (an
+orthographic X-Z projection along Y, ASM-0006). Both add a tolerance
+annotation to a dimension only where `src/assembly/toleranceAnalysis.ts`
+reports something actually toleranced there — the plan's mesh
+centre-distance dimension, the elevation's per-arbor endshake dimension —
+so an untoleranced design's drawings are unchanged.
 
 ### Geometry (`src/geometry`)
 Mesh generation for the viewport: gear outlines (L0 visual, ASM-0005),

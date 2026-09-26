@@ -88,7 +88,12 @@ Dial (ASM-0020)
 - id, name, centreShaftId, diameter, thickness, faceHeight (the −Z face)
 
 Tolerance (declared design intent, REF-ENG §14; never manufacturing validation)
-- id, entityId, dimension (SHAFT_PIVOT_LOWER | SHAFT_PIVOT_UPPER | SHAFT_SHOULDER_SPAN | JEWEL_BORE | FRAME_Z_BOTTOM | FRAME_THICKNESS)
+- id, entityId, dimension (SHAFT_PIVOT_LOWER | SHAFT_PIVOT_UPPER |
+  SHAFT_SHOULDER_SPAN | JEWEL_BORE | FRAME_Z_BOTTOM | FRAME_THICKNESS |
+  GEAR_MODULE | SHAFT_POSITION_X | SHAFT_POSITION_Y)
+- SHAFT_POSITION_X/Y apply only to a shaft with FIXED placement: its
+  coordinates are entered directly, unlike a solved MESH_POLAR or
+  COAXIAL position (`tolerancedDimensionsOf` excludes those)
 - lowerDeviation, upperDeviation: signed Lengths from the entity's own
   nominal (so the nominal is stored once, on the entity)
 - distribution: NOT_STATED | UNIFORM | NORMAL (recorded; the worst-case

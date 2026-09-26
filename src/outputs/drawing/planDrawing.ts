@@ -1,6 +1,8 @@
 import { toMillimetres, type Length } from "@/units/length";
 import type { Movement } from "@/domain/movement";
+import type { ShaftId } from "@/domain/shaft";
 import { isCompleteFrame } from "@/assembly/assemblyGeometry";
+import { meshCentreDistanceStack } from "@/assembly/toleranceAnalysis";
 import { isValidModule, isValidToothCount, meshCentreDistance, pitchDiameter } from "@/math/gearMath";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import type { MovementAnalysis } from "@/analysis/analyzeMovement";
@@ -24,9 +26,23 @@ export interface Point {
   y: number;
 }
 
-export type DrawingLayer = "FRAME" | "PITCH" | "AXIS" | "DIMENSION" | "TEXT" | "DIAL" | "KEYLESS" | "ESCAPEMENT";
+export type DrawingLayer =
+  | "FRAME"
+  | "PITCH"
+  | "AXIS"
+  | "DIMENSION"
+  | "TEXT"
+  | "DIAL"
+  | "KEYLESS"
+  | "ESCAPEMENT"
+  /** Gear body in an elevation (nominal, at pitch diameter — REF-ENG §6 defines no tooth profile). */
+  | "GEAR"
+  /** Bearing (jewel) marker in an elevation. */
+  | "JEWEL";
 
-export const DRAWING_LAYERS: readonly DrawingLayer[] = ["FRAME", "PITCH", "AXIS", "DIMENSION", "TEXT", "DIAL", "KEYLESS", "ESCAPEMENT"];
+export const DRAWING_LAYERS: readonly DrawingLayer[] = [
+  "FRAME", "PITCH", "AXIS", "DIMENSION", "TEXT", "DIAL", "KEYLESS", "ESCAPEMENT", "GEAR", "JEWEL",
+];
 
 export type Primitive =
   | { kind: "circle"; layer: DrawingLayer; centre: Point; radius: number }
@@ -40,12 +56,19 @@ export interface DrawingTableRow {
   cells: string[];
 }
 
+/**
+ * A dimensioned 2D technical drawing built from the design model: a plan
+ * (`buildPlanDrawing`) or an elevation (`buildElevationDrawing`). The
+ * renderers (svg.ts, dxf.ts) are generic over this shape; `viewLabel`
+ * names the view for their titles ("plan", "elevation (X-Z)", …).
+ */
 export interface PlanDrawing {
   title: string;
-  /** Paper scale, e.g. 5 means 5:1. Chosen so the plan fits a page; the model is unaffected. */
+  viewLabel: string;
+  /** Paper scale, e.g. 5 means 5:1. Chosen so the drawing fits a page; the model is unaffected. */
   scale: number;
   primitives: Primitive[];
-  /** Bounds of the plan geometry in mm, or null if there is nothing to draw. */
+  /** Bounds of the drawing geometry in mm, or null if there is nothing to draw. */
   bounds: { min: Point; max: Point } | null;
   notes: string[];
   gearTable: { header: string[]; rows: DrawingTableRow[] };
@@ -60,10 +83,10 @@ export const DRAWING_STYLE = {
   scales: [20, 10, 5, 2, 1] as const,
 };
 
-const mm = (v: Length | number): number => toMillimetres(v as Length);
-const fmt = (v: number, digits = 4): string => v.toFixed(digits);
+export const mm = (v: Length | number): number => toMillimetres(v as Length);
+export const fmt = (v: number, digits = 4): string => v.toFixed(digits);
 
-function boundsOf(points: Point[]): { min: Point; max: Point } | null {
+export function boundsOf(points: Point[]): { min: Point; max: Point } | null {
   if (points.length === 0) return null;
   const xs = points.map((p) => p.x);
   const ys = points.map((p) => p.y);
@@ -73,7 +96,22 @@ function boundsOf(points: Point[]): { min: Point; max: Point } | null {
   };
 }
 
-const pt = (x: number, y: number): Point => ({ x, y });
+export const pt = (x: number, y: number): Point => ({ x, y });
+
+/** Solved shaft axis positions in drawing millimetres (x, y), shared by the plan and elevation builders. */
+export function axisPositionsMm(analysis: MovementAnalysis): Map<ShaftId, Point> {
+  const axes = new Map<ShaftId, Point>();
+  for (const [id, p] of analysis.placement.shaftPositions) {
+    axes.set(id, pt(mm(p.x), mm(p.y)));
+  }
+  return axes;
+}
+
+/** The scale (from DRAWING_STYLE.scales) that fits a drawing of this width/height onto the page. */
+export function fitScale(bounds: { min: Point; max: Point } | null): number {
+  const width = bounds === null ? 0 : Math.max(bounds.max.x - bounds.min.x, bounds.max.y - bounds.min.y);
+  return DRAWING_STYLE.scales.find((s) => width * s <= DRAWING_STYLE.maxPlanWidthPaperMm) ?? 1;
+}
 
 export function buildPlanDrawing(movement: Movement, analysis: MovementAnalysis): PlanDrawing {
   const geometry: Primitive[] = [];
@@ -94,12 +132,8 @@ export function buildPlanDrawing(movement: Movement, analysis: MovementAnalysis)
     }
   }
 
-  const axes = new Map<string, Point>();
-  for (const [id, p] of analysis.placement.shaftPositions) {
-    const q = pt(mm(p.x), mm(p.y));
-    axes.set(id, q);
-    extent.push(q);
-  }
+  const axes = axisPositionsMm(analysis);
+  for (const q of axes.values()) extent.push(q);
 
   const gearRows: DrawingTableRow[] = [];
   const pitchCircles: { centre: Point; radius: number }[] = [];
@@ -186,8 +220,7 @@ export function buildPlanDrawing(movement: Movement, analysis: MovementAnalysis)
   }
 
   const bounds = boundsOf(extent);
-  const width = bounds === null ? 0 : Math.max(bounds.max.x - bounds.min.x, bounds.max.y - bounds.min.y);
-  const scale = DRAWING_STYLE.scales.find((s) => width * s <= DRAWING_STYLE.maxPlanWidthPaperMm) ?? 1;
+  const scale = fitScale(bounds);
   const textHeight = DRAWING_STYLE.textHeightPaperMm / scale;
   const mark = DRAWING_STYLE.centreMarkPaperMm / scale;
 
@@ -201,7 +234,7 @@ export function buildPlanDrawing(movement: Movement, analysis: MovementAnalysis)
   for (const [id, a] of axes) {
     const key = `${a.x.toFixed(9)},${a.y.toFixed(9)}`;
     const entry = byPosition.get(key) ?? { at: a, names: [] };
-    entry.names.push(movement.shafts[id as keyof Movement["shafts"]]?.name ?? "");
+    entry.names.push(movement.shafts[id]?.name ?? "");
     byPosition.set(key, entry);
   }
   for (const { at: a, names } of byPosition.values()) {
@@ -230,17 +263,23 @@ export function buildPlanDrawing(movement: Movement, analysis: MovementAnalysis)
       const ideal = mm(meshCentreDistance(g1.module, g1.toothCount, g2.toothCount));
       if (Math.abs(actual - ideal) > NUMERICAL_PARAMETERS.centreDistanceToleranceMetres * 1000) text += ` (ideal ${fmt(ideal)})`;
     }
+    // Worst case over declared module/position tolerances (ASM-0027), shown only where one is actually declared.
+    const stack = meshCentreDistanceStack(movement, mesh, analysis.placement);
+    if (stack.status === "KNOWN" && stack.stack.coverage !== "NONE") {
+      text += ` · tol ${fmt(mm(stack.stack.min))}…${fmt(mm(stack.stack.max))}`;
+    }
     geometry.push({ kind: "dimension", layer: "DIMENSION", a, b, offset: DRAWING_STYLE.dimensionOffsetPaperMm / scale, text, height: textHeight });
   }
 
   return {
     title: movement.name,
+    viewLabel: "plan",
     scale,
     primitives: geometry,
     bounds,
     notes: [
       "Plan viewed from the bridge side (+Z toward the viewer). Dimensions in mm.",
-      "Nominal geometry from the design model; tolerances are not shown on this plan (MFG-001).",
+      "Nominal geometry from the design model (MFG-001). A centre-distance dimension adds its worst case (\"· tol min…max\") only where a mesh's module or a FIXED shaft's position is toleranced (ASM-0027); every other dimension shown is nominal only.",
       "Circles on gears are pitch circles (d = m z, REF-ENG §5.1). Tooth profiles are not defined (REF-ENG §6).",
       ...(Object.keys(movement.escapements).length > 0
         ? ["Escapement (simplified model): escape wheel tip circle, balance outline, and centre lines from the pallet arbor; tooth and fork shapes are not defined (ASM-0023)."]

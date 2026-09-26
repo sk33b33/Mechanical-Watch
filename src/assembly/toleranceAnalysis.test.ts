@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { millimetres as mm, toMillimetres } from "@/units/length";
-import { setTolerance, updateJewel, updateShaft, type Movement } from "@/domain/movement";
+import { setTolerance, updateGear, updateJewel, updateShaft, type Movement } from "@/domain/movement";
 import { createTolerance, type TolerancedDimension } from "@/domain/tolerance";
 import type { EntityId } from "@/domain/ids";
 import { removeEntity } from "@/domain/editing";
 import { createDemoMovement } from "@/app/demoMovement";
 import { validateMovement } from "@/validation/validateMovement";
+import { solvePlacement } from "@/kinematics/solvePlacement";
 import { endshake, shaftSupport, sideShake } from "./assemblyGeometry";
-import { endshakeStack, evaluateStack, sideShakeStack, type StackResult } from "./toleranceAnalysis";
+import { endshakeStack, evaluateStack, meshCentreDistanceStack, sideShakeStack, type StackResult } from "./toleranceAnalysis";
 
 const demo = createDemoMovement();
 const byName = <T extends { name: string }>(items: Record<string, T>, name: string): T => {
@@ -135,6 +136,21 @@ describe("tolerance validation (TOL-001, TOL-002, MFG-001)", () => {
     expect(warning?.references).toContain("ASM-0017");
   });
 
+  it("warns the same way when a mesh's worst-case centre distance could reach zero", () => {
+    const wheelA = byName(m0.gears, "Wheel A");
+    const pinionB = byName(m0.gears, "Pinion B");
+    const arborA = byName(m0.shafts, "Arbor A");
+    const mesh = Object.values(m0.gearMeshes).find((g) => g.drivingGearId === wheelA.id);
+    if (mesh === undefined) throw new Error("mesh AB");
+    // Arbor A is FIXED; an absurdly wide position tolerance overwhelms the ~5.25 mm nominal distance
+    // without also tripping a module positivity check (position has no such lower bound).
+    const m = tol(m0, arborA.id, "SHAFT_POSITION_X", -100, 100);
+    expect(rules(m)).toEqual(["TOL-002:warning:mesh-centre-distance", "MFG-001:info:summary"]);
+    const warning = validateMovement(m).find((i) => i.rule === "TOL-002");
+    expect(warning?.message).toContain(`${wheelA.name}/${pinionB.name} centre distance`);
+    expect(warning?.entityIds).toEqual(expect.arrayContaining([mesh.id, wheelA.id, pinionB.id]));
+  });
+
   it("stays quiet when the worst case keeps the clearance", () => {
     const m = tol(m0, lowerJewel.id, "JEWEL_BORE", -0.002, 0.002);
     expect(rules(m)).toEqual(["MFG-001:info:summary"]);
@@ -166,5 +182,119 @@ describe("tolerance validation (TOL-001, TOL-002, MFG-001)", () => {
     const { movement, removedIds } = removeEntity(m, a.id);
     expect(Object.keys(movement.tolerances)).toEqual([]);
     expect(removedIds.length).toBeGreaterThan(2);
+  });
+});
+
+describe("gear mesh centre-distance stack (ASM-0027, GEAR_MODULE, SHAFT_POSITION_X/Y)", () => {
+  const demo = createDemoMovement();
+  const wheelA = byName(demo.gears, "Wheel A");
+  const pinionB = byName(demo.gears, "Pinion B");
+  const wheelB = byName(demo.gears, "Wheel B");
+  const meshAB = Object.values(demo.gearMeshes).find((g) => g.drivingGearId === wheelA.id) ?? (() => { throw new Error("mesh AB"); })();
+  const meshBC = Object.values(demo.gearMeshes).find((g) => g.drivingGearId === wheelB.id) ?? (() => { throw new Error("mesh BC"); })();
+  const arborA = byName(demo.shafts, "Arbor A");
+  const arborB = byName(demo.shafts, "Arbor B");
+
+  /** The exact solved distance and unit direction from the driving to the driven arbor, computed independently of the code under test. */
+  const solvedGeometry = (m: Movement, mesh: typeof meshAB): { d: number; ux: number; uy: number } => {
+    const placement = solvePlacement(m);
+    const g1 = m.gears[mesh.drivingGearId];
+    const g2 = m.gears[mesh.drivenGearId];
+    if (g1 === undefined || g2 === undefined) throw new Error("gears missing");
+    const p1 = placement.shaftPositions.get(g1.shaftId);
+    const p2 = placement.shaftPositions.get(g2.shaftId);
+    if (p1 === undefined || p2 === undefined) throw new Error("unplaced");
+    const dx = toMillimetres(p2.x) - toMillimetres(p1.x);
+    const dy = toMillimetres(p2.y) - toMillimetres(p1.y);
+    const d = Math.hypot(dx, dy);
+    return { d, ux: dx / d, uy: dy / d };
+  };
+
+  it("without tolerances, the stack is the placed distance, min = max = nominal, coverage NONE", () => {
+    const { d } = solvedGeometry(demo, meshAB);
+    const r = known(meshCentreDistanceStack(demo, meshAB, solvePlacement(demo)));
+    expect(r.nominal).toBeCloseTo(d, 9);
+    expect(r.nominal).toBeCloseTo(0.15 * (60 + 10) / 2, 6); // module 0.15 mm, teeth 60 & 10: matches the ideal centre distance
+    expect(r.min).toBeCloseTo(d, 9);
+    expect(r.max).toBeCloseTo(d, 9);
+    expect(r.coverage).toBe("NONE");
+  });
+
+  it("a module tolerance on the driving gear moves the distance by (z1+z2)/2 × the deviation", () => {
+    const m = tol(demo, wheelA.id, "GEAR_MODULE", -0.01, 0.02);
+    const { d } = solvedGeometry(m, meshAB);
+    const r = known(meshCentreDistanceStack(m, meshAB, solvePlacement(m)));
+    const teethSum = (60 + 10) / 2;
+    expect(r.min).toBeCloseTo(d - teethSum * 0.01, 9);
+    expect(r.max).toBeCloseTo(d + teethSum * 0.02, 9);
+    // Arbor A is FIXED, so it still contributes untoleranced position terms alongside the toleranced module.
+    expect(r.coverage).toBe("PARTIAL");
+  });
+
+  it("a module tolerance declared on the driven gear instead has no effect (only the driving gear's is read)", () => {
+    const m = tol(demo, pinionB.id, "GEAR_MODULE", -0.01, 0.02);
+    const r = known(meshCentreDistanceStack(m, meshAB, solvePlacement(m)));
+    const { d } = solvedGeometry(m, meshAB);
+    expect(r.min).toBeCloseTo(d, 9);
+    expect(r.max).toBeCloseTo(d, 9);
+  });
+
+  it("a FIXED shaft's position tolerance projects onto the mesh's centre-line direction", () => {
+    const m = tol(demo, arborA.id, "SHAFT_POSITION_X", -0.02, 0.03);
+    const { d, ux } = solvedGeometry(demo, meshAB);
+    const r = known(meshCentreDistanceStack(m, meshAB, solvePlacement(m)));
+    // Arbor A is the driving side, so its coefficient is −ux; the two limits give the min/max in either order.
+    const atLower = d + -ux * (-0.02 - 0);
+    const atUpper = d + -ux * (0.03 - 0);
+    expect(r.min).toBeCloseTo(Math.min(atLower, atUpper), 9);
+    expect(r.max).toBeCloseTo(Math.max(atLower, atUpper), 9);
+    expect(r.coverage).toBe("PARTIAL");
+  });
+
+  it("a position tolerance on a MESH_POLAR shaft has no effect: it is not a toleranceable dimension there", () => {
+    // Arbor B is placed by its mesh, not FIXED, so this tolerance targets a dimension the shaft doesn't have (TOL-001).
+    const m = tol(demo, arborB.id, "SHAFT_POSITION_X", -0.05, 0.05);
+    const r = known(meshCentreDistanceStack(m, meshAB, solvePlacement(m)));
+    const { d } = solvedGeometry(m, meshAB);
+    expect(r.min).toBeCloseTo(d, 9);
+    expect(r.max).toBeCloseTo(d, 9);
+    expect(validateMovement(m).some((i) => i.rule === "TOL-001" && i.id.includes("target"))).toBe(true);
+  });
+
+  it("mesh BC has neither arbor FIXED, so only the module term ever varies it", () => {
+    const withPosition = tol(demo, arborB.id, "SHAFT_POSITION_X", -0.05, 0.05); // arbor B drives mesh BC too, but is not FIXED
+    const r0 = known(meshCentreDistanceStack(withPosition, meshBC, solvePlacement(withPosition)));
+    expect(r0.coverage).toBe("NONE");
+    const m = tol(demo, wheelB.id, "GEAR_MODULE", -0.02, 0.02);
+    const r = known(meshCentreDistanceStack(m, meshBC, solvePlacement(m)));
+    const { d } = solvedGeometry(m, meshBC);
+    const teethSum = (48 + 8) / 2;
+    expect(r.min).toBeCloseTo(d - teethSum * 0.02, 9);
+    expect(r.max).toBeCloseTo(d + teethSum * 0.02, 9);
+  });
+
+  it("passes through missing or invalid inputs instead of guessing", () => {
+    expect(meshCentreDistanceStack(demo, meshAB, { shaftPositions: new Map(), failures: [] }).status).toBe("UNKNOWN");
+    const noTeeth = updateGear(demo, wheelA.id, { toothCount: Number.NaN });
+    expect(meshCentreDistanceStack(noTeeth, meshAB, solvePlacement(noTeeth)).status).toBe("UNKNOWN");
+    const mismatched = updateGear(demo, wheelA.id, { module: mm(0.2) });
+    expect(meshCentreDistanceStack(mismatched, meshAB, solvePlacement(mismatched)).status).toBe("UNKNOWN");
+  });
+
+  it("property: min ≤ nominal ≤ max under randomized module and position tolerances", () => {
+    let seed = 777;
+    const next = (): number => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed / 2147483648;
+    };
+    for (let i = 0; i < 200; i += 1) {
+      let m = demo;
+      m = tol(m, wheelA.id, "GEAR_MODULE", -next() * 0.02, next() * 0.02);
+      m = tol(m, arborA.id, "SHAFT_POSITION_X", -next() * 0.05, next() * 0.05);
+      m = tol(m, arborA.id, "SHAFT_POSITION_Y", -next() * 0.05, next() * 0.05);
+      const r = known(meshCentreDistanceStack(m, meshAB, solvePlacement(m)));
+      expect(r.min).toBeLessThanOrEqual(r.nominal + 1e-9);
+      expect(r.max).toBeGreaterThanOrEqual(r.nominal - 1e-9);
+    }
   });
 });

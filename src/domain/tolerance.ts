@@ -8,7 +8,10 @@ export type ToleranceId = EntityId<"tolerance">;
 /**
  * Dimensions that can carry a tolerance. Each is a length the user enters
  * directly. Derived values (pitch diameters, solved axis positions) are not
- * toleranced here: their variation would come from their inputs.
+ * toleranced here: their variation would come from their inputs. A FIXED
+ * shaft's own placement coordinates are an exception that proves the rule:
+ * unlike MESH_POLAR or COAXIAL placement, they are not solved from
+ * anything else, so they are entered dimensions like any other.
  */
 export type TolerancedDimension =
   | "SHAFT_PIVOT_LOWER"
@@ -16,7 +19,10 @@ export type TolerancedDimension =
   | "SHAFT_SHOULDER_SPAN"
   | "JEWEL_BORE"
   | "FRAME_Z_BOTTOM"
-  | "FRAME_THICKNESS";
+  | "FRAME_THICKNESS"
+  | "GEAR_MODULE"
+  | "SHAFT_POSITION_X"
+  | "SHAFT_POSITION_Y";
 
 export const TOLERANCED_DIMENSION_LABELS: Record<TolerancedDimension, string> = {
   SHAFT_PIVOT_LOWER: "Lower pivot Ø",
@@ -25,6 +31,9 @@ export const TOLERANCED_DIMENSION_LABELS: Record<TolerancedDimension, string> = 
   JEWEL_BORE: "Bore Ø",
   FRAME_Z_BOTTOM: "Axial position (underside)",
   FRAME_THICKNESS: "Thickness",
+  GEAR_MODULE: "Module",
+  SHAFT_POSITION_X: "Fixed position X",
+  SHAFT_POSITION_Y: "Fixed position Y",
 };
 
 /**
@@ -84,11 +93,17 @@ export function createTolerance(params: CreateToleranceParams): Tolerance {
 export function tolerancedDimensionsOf(movement: Movement, entityId: EntityId): TolerancedDimension[] {
   if (entityId in movement.shafts) {
     const shaft = movement.shafts[entityId as keyof Movement["shafts"]];
-    // Studs and carried parts have no pivots or shoulders of their own (see couplingRules).
-    return shaft?.support.kind === "PIVOTED" ? ["SHAFT_PIVOT_LOWER", "SHAFT_PIVOT_UPPER", "SHAFT_SHOULDER_SPAN"] : [];
+    if (shaft === undefined) return [];
+    return [
+      // Studs and carried parts have no pivots or shoulders of their own (see couplingRules).
+      ...(shaft.support.kind === "PIVOTED" ? (["SHAFT_PIVOT_LOWER", "SHAFT_PIVOT_UPPER", "SHAFT_SHOULDER_SPAN"] as const) : []),
+      // Only a FIXED placement is an entered coordinate; MESH_POLAR and COAXIAL are solved from it.
+      ...(shaft.placement.kind === "FIXED" ? (["SHAFT_POSITION_X", "SHAFT_POSITION_Y"] as const) : []),
+    ];
   }
   if (entityId in movement.jewels) return ["JEWEL_BORE"];
   if (entityId in movement.frames) return ["FRAME_Z_BOTTOM", "FRAME_THICKNESS"];
+  if (entityId in movement.gears) return ["GEAR_MODULE"];
   return [];
 }
 
@@ -114,6 +129,16 @@ export function nominalOf(movement: Movement, entityId: EntityId, dimension: Tol
       const frame = movement.frames[entityId as keyof Movement["frames"]];
       if (frame === undefined) return undefined;
       return dimension === "FRAME_Z_BOTTOM" ? frame.zBottom : frame.thickness;
+    }
+    case "GEAR_MODULE":
+      return movement.gears[entityId as keyof Movement["gears"]]?.module;
+    case "SHAFT_POSITION_X":
+    case "SHAFT_POSITION_Y": {
+      const shaft = movement.shafts[entityId as keyof Movement["shafts"]];
+      if (shaft === undefined) return undefined;
+      // Only a FIXED shaft has this dimension at all; a solved placement has nothing to tolerance here.
+      if (shaft.placement.kind !== "FIXED") return undefined;
+      return dimension === "SHAFT_POSITION_X" ? shaft.placement.position.x : shaft.placement.position.y;
     }
   }
 }

@@ -29,7 +29,7 @@ import {
 import { nominalOf, TOLERANCED_DIMENSION_LABELS, type Tolerance } from "@/domain/tolerance";
 import { isValidModule, isValidToothCount, meshCentreDistance, meshSpeedRatio, pitchDiameter } from "@/math/gearMath";
 import { frameZRange, gearZRange, isCompleteFrame, shaftSupport, type DerivedLength } from "@/assembly/assemblyGeometry";
-import { COVERAGE_LABELS, endshakeStack, sideShakeStack, type StackResult } from "@/assembly/toleranceAnalysis";
+import { COVERAGE_LABELS, endshakeStack, meshCentreDistanceStack, sideShakeStack, type StackResult } from "@/assembly/toleranceAnalysis";
 import { formatPeriod } from "@/kinematics/timeDisplay";
 import type { MovementAnalysis } from "@/analysis/analyzeMovement";
 import type { ReferenceId, ValidationIssue, ValidationLevel } from "@/validation/validationIssue";
@@ -310,7 +310,7 @@ function gearReport(movement: Movement, analysis: MovementAnalysis, gear: Gear):
       },
       ...angularVelocityValues(analysis.train.shaftAngularVelocity.get(gear.shaftId)),
     ],
-    tolerances: [],
+    tolerances: toleranceRows(movement, gear.id),
     issues: issuesFor(analysis, gear.id),
   };
 }
@@ -565,6 +565,8 @@ export interface MeshReport {
   ratio: number | null;
   idealCentreDistance: number | null;
   actualCentreDistance: number | null;
+  /** Worst case over declared tolerances (module, a FIXED shaft's own position, ASM-0027); null when nothing is toleranced. */
+  centreDistanceTolerance: string | null;
 }
 
 export function meshReports(movement: Movement, analysis: MovementAnalysis): MeshReport[] {
@@ -577,6 +579,7 @@ export function meshReports(movement: Movement, analysis: MovementAnalysis): Mes
       isValidModule(a.module) && a.module === b.module;
     const pa = a === undefined ? undefined : analysis.placement.shaftPositions.get(a.shaftId);
     const pb = b === undefined ? undefined : analysis.placement.shaftPositions.get(b.shaftId);
+    const stack = meshCentreDistanceStack(movement, mesh, analysis.placement);
     return {
       id: mesh.id,
       driving: a?.name ?? "missing gear",
@@ -587,6 +590,9 @@ export function meshReports(movement: Movement, analysis: MovementAnalysis): Mes
       ratio: defined ? meshSpeedRatio(a.toothCount, b.toothCount) : null,
       idealCentreDistance: defined ? meshCentreDistance(a.module, a.toothCount, b.toothCount) : null,
       actualCentreDistance: pa === undefined || pb === undefined ? null : Math.hypot(pa.x - pb.x, pa.y - pb.y),
+      centreDistanceTolerance: stack.status === "KNOWN" && stack.stack.coverage !== "NONE"
+        ? `${mmText(stack.stack.min)} … ${mmText(stack.stack.max)} (${COVERAGE_LABELS[stack.stack.coverage]})`
+        : null,
     };
   });
 }

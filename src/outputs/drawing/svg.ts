@@ -14,13 +14,16 @@ const LAYER_STYLE: Record<DrawingLayer, string> = {
   DIAL: 'stroke="#555" stroke-width="0.2" fill="none" stroke-dasharray="2 1.2"',
   KEYLESS: 'stroke="#7a3fb0" stroke-width="0.3" fill="none"',
   ESCAPEMENT: 'stroke="#a8741a" stroke-width="0.3" fill="none"',
+  GEAR: 'stroke="#000" stroke-width="0.2" fill="none"',
+  JEWEL: 'stroke="#a8741a" stroke-width="0.25" fill="#fff4de"',
 };
 
 const n = (v: number): string => (Math.round(v * 1000) / 1000).toString();
 
 /**
- * Renders a plan drawing as a standalone SVG sized in paper millimetres,
- * so it prints at its stated scale. Layout: title, plan, notes, gear table.
+ * Renders a plan or elevation drawing as a standalone SVG sized in paper
+ * millimetres, so it prints at its stated scale. Layout: title, view,
+ * notes, table.
  */
 export function renderPlanSvg(drawing: PlanDrawing, options: { generatedAt: string }): string {
   const font = DRAWING_STYLE.textHeightPaperMm;
@@ -52,11 +55,11 @@ export function renderPlanSvg(drawing: PlanDrawing, options: { generatedAt: stri
   const out: string[] = [];
   out.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${n(pageW)}mm" height="${n(pageH)}mm" viewBox="0 0 ${n(pageW)} ${n(pageH)}" font-family="Helvetica, Arial, sans-serif">`);
   out.push(`<rect x="0" y="0" width="${n(pageW)}" height="${n(pageH)}" fill="#fff"/>`);
-  out.push(`<text x="${n(margin)}" y="${n(margin + font * 1.6)}" font-size="${n(font * 1.6)}" font-weight="bold">${escapeXml(drawing.title)} — plan (nominal)</text>`);
+  out.push(`<text x="${n(margin)}" y="${n(margin + font * 1.6)}" font-size="${n(font * 1.6)}" font-weight="bold">${escapeXml(drawing.title)} — ${escapeXml(drawing.viewLabel)} (nominal)</text>`);
   out.push(`<text x="${n(margin)}" y="${n(margin + font * 3.4)}" font-size="${n(font)}">Scale ${String(s)}:1 · mm · generated ${escapeXml(options.generatedAt)} · not a manufacturing drawing (MFG-002)</text>`);
 
   if (b === null) {
-    out.push(`<text x="${n(ox)}" y="${n(oy + font * 2)}" font-size="${n(font)}">Nothing to draw: no complete frames and no placed arbors.</text>`);
+    out.push(`<text x="${n(ox)}" y="${n(oy + font * 2)}" font-size="${n(font)}">Nothing to draw for this view: no complete frames and no placed arbors.</text>`);
   }
 
   for (const p of drawing.primitives) {

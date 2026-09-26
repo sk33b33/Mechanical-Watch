@@ -10,6 +10,7 @@ import { analyzeMovement } from "@/analysis/analyzeMovement";
 import { buildBom, bomCsv, toCsv } from "./bom";
 import { componentReports, meshReports, type ReportValue } from "./componentReport";
 import { buildPlanDrawing } from "./drawing/planDrawing";
+import { buildElevationDrawing } from "./drawing/elevationDrawing";
 import { renderPlanSvg } from "./drawing/svg";
 import { renderPlanDxf } from "./drawing/dxf";
 import { buildStl } from "./stl";
@@ -120,6 +121,17 @@ describe("component reports", () => {
     expect(mesh?.ratio).toBeCloseTo(-80 / 10, 12);
     expect(inMm(mesh?.idealCentreDistance)).toBeCloseTo(5.4, 12);
     expect(inMm(mesh?.actualCentreDistance)).toBeCloseTo(5.4, 9);
+    expect(mesh?.centreDistanceTolerance).toBeNull(); // nothing toleranced yet
+  });
+
+  it("mesh reports: a module tolerance gives a worst-case centre distance (ASM-0027)", () => {
+    const wheel = byName(teaching.gears, "Centre wheel");
+    const m = setTolerance(teaching, createTolerance({ entityId: wheel.id, dimension: "GEAR_MODULE", lowerDeviation: mm(-0.005), upperDeviation: mm(0.005) }));
+    const mesh = meshReports(m, analyzeMovement(m)).find((r) => r.driving === "Centre wheel");
+    expect(mesh?.centreDistanceTolerance).toMatch(/^5\.17\d* mm … 5\.62\d* mm \(/); // ±0.005 mm × (80+10)/2 = ±0.225 mm about 5.4
+    const report = componentReports(m, analyzeMovement(m)).find((r) => r.id === wheel.id);
+    expect(report?.tolerances).toHaveLength(1);
+    expect(report?.tolerances[0]?.dimension).toBe("Module");
   });
 });
 
@@ -175,6 +187,16 @@ describe("plan drawing", () => {
     expect(texts.some((t) => t.includes("(ideal 5.4000)"))).toBe(true);
   });
 
+  it("adds the worst case only for a mesh with a declared module or position tolerance (ASM-0027)", () => {
+    const before = buildPlanDrawing(teaching, analysis).primitives.flatMap((p) => (p.kind === "dimension" ? [p.text] : []));
+    expect(before.some((t) => t.includes("· tol"))).toBe(false);
+    const wheel = byName(teaching.gears, "Centre wheel");
+    const m = setTolerance(teaching, createTolerance({ entityId: wheel.id, dimension: "GEAR_MODULE", lowerDeviation: mm(-0.005), upperDeviation: mm(0.005) }));
+    const after = buildPlanDrawing(m, analyzeMovement(m)).primitives.flatMap((p) => (p.kind === "dimension" ? [p.text] : []));
+    expect(after.some((t) => /· tol 5\.17\d*…5\.62\d*/.test(t))).toBe(true);
+    expect(after.filter((t) => t.includes("· tol"))).toHaveLength(1); // only the toleranced mesh gets the annotation
+  });
+
   it("prints no NaN when meshed modules differ", () => {
     const third = byName(teaching.gears, "Third pinion");
     const m = updateGear(teaching, third.id, { module: mm(0.1) });
@@ -215,6 +237,122 @@ describe("plan drawing", () => {
     expect(lines.length % 2).toBe(1); // group-code/value pairs plus the trailing empty line
     expect(/[^\x20-\x7e\r\n]/.test(dxf)).toBe(false);
     expect(lines.filter((l) => l === "CIRCLE").length).toBeGreaterThanOrEqual(Object.keys(teaching.gears).length);
+  });
+});
+
+describe("elevation drawing", () => {
+  const elevation = buildElevationDrawing(teaching, analysis);
+  const polys = (layer: string): { x: number; y: number }[][] =>
+    elevation.primitives.flatMap((p) => (p.kind === "polygon" && p.layer === layer ? [p.points] : []));
+  const xExtent = (points: { x: number }[]): [number, number] => [Math.min(...points.map((p) => p.x)), Math.max(...points.map((p) => p.x))];
+  const yExtent = (points: { y: number }[]): [number, number] => [Math.min(...points.map((p) => p.y)), Math.max(...points.map((p) => p.y))];
+
+  it("lists every complete frame's axial position in the table, sorted bottom to top", () => {
+    expect(elevation.gearTable.rows).toHaveLength(Object.keys(teaching.frames).length);
+    expect(elevation.gearTable.rows[0]?.cells).toEqual(["Mainplate", "0.000", "1.000", "1.000"]);
+    expect(elevation.gearTable.rows.slice(1).every((r) => r.cells[1] === "4.000" && r.cells[2] === "0.800" && r.cells[3] === "4.800")).toBe(true);
+  });
+
+  it("draws each frame as a body across its outline's X-extent at its Z-range", () => {
+    const bodies = polys("FRAME");
+    expect(bodies).toHaveLength(Object.keys(teaching.frames).length);
+    const mainplate = bodies.find((pts) => { const [lo, hi] = yExtent(pts); return Math.abs(lo) < 1e-9 && Math.abs(hi - 1) < 1e-9; });
+    if (mainplate === undefined) throw new Error("mainplate body not found");
+    // Mainplate: circle centred (2.5, 0), radius 15 mm.
+    expect(xExtent(mainplate)).toEqual([-12.5, 17.5]);
+    const bridge = bodies.find((pts) => { const [lo, hi] = yExtent(pts); return Math.abs(lo - 4) < 1e-9 && Math.abs(hi - 4.8) < 1e-9; });
+    if (bridge === undefined) throw new Error("a bridge-height body not found");
+    // Train bridge polygon spans x ∈ [-8, 13].
+    expect(xExtent(bridge)).toEqual([-8, 13]);
+  });
+
+  it("draws a body per gear at pitch diameter and thickness, and the escapement at tip/balance diameter", () => {
+    expect(polys("GEAR")).toHaveLength(Object.keys(teaching.gears).length);
+    const centreWheel = byName(teaching.gears, "Centre wheel");
+    const body = polys("GEAR").find((pts) => Math.abs((xExtent(pts)[1] - xExtent(pts)[0]) / 2 - 4.8) < 1e-9);
+    if (body === undefined) throw new Error("centre wheel body not found");
+    expect(yExtent(body)).toEqual([toMillimetres(centreWheel.zCentre) - 0.1, toMillimetres(centreWheel.zCentre) + 0.1]);
+
+    const esc = polys("ESCAPEMENT").map((pts) => (xExtent(pts)[1] - xExtent(pts)[0]) / 2).sort((a, b) => a - b);
+    expect(esc[0]).toBeCloseTo(2.3, 9); // escape wheel tip radius
+    expect(esc[1]).toBeCloseTo(3, 9); // balance radius — as on the plan
+  });
+
+  it("marks each bearing flush with its frame's inner face", () => {
+    const lines = elevation.primitives.filter((p) => p.kind === "line" && p.layer === "JEWEL");
+    expect(lines).toHaveLength(Object.keys(teaching.jewels).length);
+    const axisX = (shaftName: string): number => {
+      const shaft = byName(teaching.shafts, shaftName);
+      const p = analysis.placement.shaftPositions.get(shaft.id);
+      if (p === undefined) throw new Error(`${shaftName}: unplaced`);
+      return toMillimetres(p.x);
+    };
+    const jewelZs = (shaftName: string): number[] => {
+      const x = axisX(shaftName);
+      return elevation.primitives
+        .filter((p): p is Extract<typeof p, { kind: "line" }> => p.kind === "line" && p.layer === "JEWEL" && Math.abs((p.a.x + p.b.x) / 2 - x) < 1e-6)
+        .map((p) => p.a.y)
+        .sort((a, b) => a - b);
+    };
+    // Lower jewel at the mainplate's top face (1.0 mm), upper jewel at the train bridge's underside (4.0 mm).
+    expect(jewelZs("Centre arbor")).toEqual([1, 4]);
+  });
+
+  it("dimensions the overall height, from the lowest frame face to the highest", () => {
+    const dim = elevation.primitives.find((p) => p.kind === "dimension");
+    expect(dim?.kind === "dimension" ? dim.text : "").toBe("4.800 overall");
+  });
+
+  it("adds an endshake dimension beside an arbor's centreline only where its endshake is toleranced (ASM-0017)", () => {
+    expect(elevation.primitives.some((p) => p.kind === "dimension" && p.text.startsWith("endshake"))).toBe(false);
+    // The teaching movement leaves shoulder span unknown, so use the demo movement, which has it entered.
+    const demoM = createDemoMovement();
+    const arborA = byName(demoM.shafts, "Arbor A");
+    const bridge = byName(demoM.frames, "Train bridge");
+    let m: Movement = updateShaft(demoM, arborA.id, { shoulderSpan: mm(1.97) });
+    m = setTolerance(m, createTolerance({ entityId: bridge.id, dimension: "FRAME_Z_BOTTOM", lowerDeviation: mm(-0.01), upperDeviation: mm(0.01) }));
+    const withTol = buildElevationDrawing(m, analyzeMovement(m));
+    const axis = analyzeMovement(m).placement.shaftPositions.get(arborA.id);
+    if (axis === undefined) throw new Error("arbor A unplaced");
+    const x = toMillimetres(axis.x);
+    const dim = withTol.primitives.find((p) => p.kind === "dimension" && p.text.startsWith("endshake") && Math.abs(p.a.x - x) < 1e-6);
+    if (dim?.kind !== "dimension") throw new Error("no endshake dimension for arbor A");
+    // Mainplate top face (1.0 mm) to train bridge underside (3.0 mm); nominal endshake (2 − 1.97) mm ± 0.01 mm.
+    expect(dim.a.y).toBeCloseTo(1, 9);
+    expect(dim.b.y).toBeCloseTo(3, 9);
+    expect(dim.text).toBe("endshake 0.020…0.040");
+  });
+
+  it("draws the dial as a hidden band and omits the keyless works and stem", () => {
+    const dial = polys("DIAL")[0];
+    if (dial === undefined) throw new Error("no dial body");
+    expect((xExtent(dial)[1] - xExtent(dial)[0]) / 2).toBeCloseTo(14, 9);
+    expect(yExtent(dial)).toEqual([-1.8, -1.4]);
+    expect(elevation.primitives.some((p) => p.layer === "KEYLESS")).toBe(false);
+    expect(elevation.notes.join(" ")).toMatch(/keyless works, stem/);
+  });
+
+  it("states that it is nominal and not a manufacturing drawing", () => {
+    expect(elevation.notes.join(" ")).toMatch(/MFG-001/);
+    expect(elevation.notes.join(" ")).toMatch(/MFG-002/);
+    expect(elevation.notes.join(" ")).toMatch(/ASM-0009/);
+    expect(elevation.viewLabel).toBe("elevation (X-Z)");
+  });
+
+  it("renders as well-formed SVG and DXF with no NaN", () => {
+    const svg = renderPlanSvg(elevation, { generatedAt: at.toISOString() });
+    expect(svg.startsWith("<svg")).toBe(true);
+    expect(svg).not.toContain("NaN");
+    expect(svg).toContain("elevation (X-Z)");
+    const dxf = renderPlanDxf(elevation);
+    expect(dxf).not.toContain("NaN");
+  });
+
+  it("handles an empty movement", () => {
+    const empty = createEmptyMovement();
+    const d = buildElevationDrawing(empty, analyzeMovement(empty));
+    expect(d.bounds).toBeNull();
+    expect(renderPlanSvg(d, { generatedAt: "x" })).toContain("Nothing to draw");
   });
 });
 
@@ -292,11 +430,22 @@ describe("movement report", () => {
     expect(html).toContain("2.000000 rev");
   });
 
-  it("contains the plan drawing, BOM, component reports and assumption register", () => {
+  it("contains the plan drawing, elevation drawing, BOM, component reports and assumption register", () => {
     expect(html).toContain("<svg");
+    expect(html).toContain("Elevation drawing");
     expect(html).toContain("Bill of materials");
     expect(html).toContain("Centre wheel");
     expect(html).toContain("ASM-0017");
+  });
+
+  it("adds a mesh centre-distance tolerance column only once something is toleranced", () => {
+    expect(html).not.toContain("Worst case (tol., ASM-0027)");
+    const wheel = byName(teaching.gears, "Centre wheel");
+    const m = setTolerance(teaching, createTolerance({ entityId: wheel.id, dimension: "GEAR_MODULE", lowerDeviation: mm(-0.005), upperDeviation: mm(0.005) }));
+    const withTol = renderMovementReport(m, analyzeMovement(m), { generatedAt: at });
+    expect(withTol).toContain("Worst case (tol., ASM-0027)");
+    expect(withTol).toMatch(/5\.17\d* mm … 5\.62\d* mm/);
+    expect(withTol).toContain("nominal only"); // the other mesh has no tolerance declared
   });
 
   it("avoids claims the model cannot support", () => {
