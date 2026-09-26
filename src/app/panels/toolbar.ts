@@ -1,6 +1,8 @@
 import { PLAYBACK_RATES, type AppStore, type PlaybackRate } from "@/app/store";
 import type { Movement } from "@/domain/movement";
 import { decodeDesign, DesignFileError, encodeDesign } from "@/persistence/designFile";
+import { createEmptyMovement } from "@/domain/editing";
+import { createDemoMovement } from "@/app/demoMovement";
 
 export interface Toolbar {
   element: HTMLElement;
@@ -51,7 +53,30 @@ export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
       });
   });
 
+  const newSelect = document.createElement("select");
+  newSelect.title = "Start a new design. The current one can be brought back with Undo.";
+  for (const [value, label] of [["", "New…"], ["empty", "Empty movement"], ["demo", "Demo template"]] as const) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    newSelect.appendChild(option);
+  }
+  newSelect.addEventListener("change", () => {
+    const choice = newSelect.value;
+    newSelect.value = "";
+    if (choice === "") return;
+    store.load(choice === "empty" ? createEmptyMovement() : createDemoMovement());
+    toolbar.notify(
+      `Started ${choice === "empty" ? "an empty movement" : "from the demo template"}. Undo (Ctrl+Z) brings back the previous design.`,
+      "info",
+    );
+  });
+
+  const undoButton = button("Undo", "Undo (Ctrl+Z)", () => { store.undo(); });
+  const redoButton = button("Redo", "Redo (Ctrl+Shift+Z or Ctrl+Y)", () => { store.redo(); });
+
   fileGroup.append(
+    newSelect,
     button("Open…", "Open a saved design (.mw3d.json)", () => {
       picker.click();
     }),
@@ -115,9 +140,30 @@ export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
     clock,
   );
 
-  container.append(fileGroup, autosave, notice, spacer, simGroup);
+  const editGroup = document.createElement("div");
+  editGroup.className = "toolbar-group";
+  editGroup.append(undoButton, redoButton);
+
+  container.append(fileGroup, editGroup, autosave, notice, spacer, simGroup);
+
+  // Undo/redo shortcuts, except while typing, where the field's own text undo applies.
+  window.addEventListener("keydown", (event) => {
+    const target = event.target as HTMLElement | null;
+    if (target !== null && ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName)) return;
+    if (!(event.ctrlKey || event.metaKey)) return;
+    const key = event.key.toLowerCase();
+    if (key === "z" && !event.shiftKey) {
+      event.preventDefault();
+      store.undo();
+    } else if ((key === "z" && event.shiftKey) || key === "y") {
+      event.preventDefault();
+      store.redo();
+    }
+  });
 
   const refreshControls = (): void => {
+    undoButton.disabled = !store.canUndo;
+    redoButton.disabled = !store.canRedo;
     playButton.textContent = store.playing ? "Pause" : "Play";
     rateSelect.value = String(store.playbackRate);
   };

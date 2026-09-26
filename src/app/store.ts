@@ -1,5 +1,7 @@
 import type { Movement } from "@/domain/movement";
 import type { EntityId } from "@/domain/ids";
+import { removeEntity } from "@/domain/editing";
+import { findEntity } from "@/domain/lookup";
 import { analyzeMovement, EMPTY_ANALYSIS, type MovementAnalysis } from "@/analysis/analyzeMovement";
 import type { ValidationIssue } from "@/validation/validationIssue";
 import {
@@ -8,6 +10,8 @@ import {
   stepSimulation,
   type SimulationState,
 } from "@/simulation/simulationState";
+
+const HISTORY_LIMIT = 200;
 
 /** Playback speeds offered in the UI. Above 60× a 60 fps display would hit the per-frame step cap. */
 export const PLAYBACK_RATES = [0.1, 1, 10, 60] as const;
@@ -36,6 +40,9 @@ export class AppStore {
   designGeneration = 0;
 
   private readonly listeners = new Set<() => void>();
+  /** Undo history. Designs are immutable, so each entry is a whole design, sharing unchanged parts. */
+  private past: Movement[] = [];
+  private future: Movement[] = [];
   private readonly designListeners = new Set<(movement: Movement) => void>();
   private simulationIssue: ValidationIssue | null = null;
 
@@ -93,23 +100,65 @@ export class AppStore {
       this.simulationIssue === null ? this.analysis.issues : [...this.analysis.issues, this.simulationIssue];
   }
 
-  /** Applies a pure domain update, then re-derives everything. */
+  /** Applies a pure domain update, then re-derives everything. Undoable. */
   edit(update: (movement: Movement) => Movement): void {
-    this.replaceDesign(update(this.movement));
+    const next = update(this.movement);
+    if (next === this.movement) return;
+    this.record();
+    this.replaceDesign(next);
   }
 
-  /** Replaces the whole design (open file, new movement). The simulation restarts from rest. */
+  /** Removes a part and the parts it owns (see removeEntity). Undoable. */
+  remove(id: EntityId): void {
+    this.edit((m) => removeEntity(m, id).movement);
+  }
+
+  /**
+   * Replaces the whole design (open file, new movement). The simulation
+   * restarts from rest. Undoable, so replacing a design never loses work.
+   */
   load(movement: Movement): void {
+    this.record();
     this.simulation = createSimulationState(movement);
-    this.selectedId = null;
     this.designGeneration += 1;
     this.replaceDesign(movement);
+  }
+
+  get canUndo(): boolean {
+    return this.past.length > 0;
+  }
+
+  get canRedo(): boolean {
+    return this.future.length > 0;
+  }
+
+  undo(): void {
+    const previous = this.past.pop();
+    if (previous === undefined) return;
+    this.future.push(this.movement);
+    this.replaceDesign(previous);
+  }
+
+  redo(): void {
+    const next = this.future.pop();
+    if (next === undefined) return;
+    this.past.push(this.movement);
+    this.replaceDesign(next);
+  }
+
+  private record(): void {
+    this.past.push(this.movement);
+    if (this.past.length > HISTORY_LIMIT) this.past.shift();
+    this.future = [];
   }
 
   private replaceDesign(movement: Movement): void {
     this.movement = movement;
     this.simulationHalted = false;
     this.simulationIssue = null;
+    if (this.selectedId !== null && findEntity(movement, this.selectedId) === undefined) {
+      this.selectedId = null;
+    }
     this.recompute();
     for (const listener of this.designListeners) listener(movement);
     this.notify();

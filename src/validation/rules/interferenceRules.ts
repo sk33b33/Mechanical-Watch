@@ -7,6 +7,7 @@ import {
   arborZRange,
   frameZRange,
   gearZRange,
+  isCompleteFrame,
   outlineOverlapsCircle,
   zOverlaps,
 } from "@/assembly/assemblyGeometry";
@@ -88,7 +89,7 @@ export const interferenceRules: Rule = ({ movement, placement }) => {
     const zRange = gearZRange(gear);
 
     for (const frame of Object.values(movement.frames)) {
-      if (!zOverlaps(zRange, frameZRange(frame))) continue;
+      if (!isCompleteFrame(frame) || !zOverlaps(zRange, frameZRange(frame))) continue;
       if (outlineOverlapsCircle(frame.outline, axis, pitchRadius(gear))) {
         issues.push(
           issue("ASSY-002", "gear-frame", "error", "L1_GEOMETRIC", [gear.id, frame.id],

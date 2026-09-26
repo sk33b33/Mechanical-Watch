@@ -26,6 +26,29 @@ export function zOverlaps(a: ZRange, b: ZRange): boolean {
   return a.lo < b.hi && b.lo < a.hi;
 }
 
+export function outlineProblems(outline: Outline): string[] {
+  if (outline.kind === "CIRCLE") {
+    return [
+      ...(Number.isFinite(outline.centre.x) && Number.isFinite(outline.centre.y) ? [] : ["outline centre must be finite"]),
+      ...(Number.isFinite(outline.radius) && outline.radius > 0 ? [] : ["outline diameter must be a positive length"]),
+    ];
+  }
+  return [
+    ...(outline.points.length >= 3 ? [] : ["outline polygon needs at least three points"]),
+    ...(outline.points.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y)) ? [] : ["every outline point must be finite"]),
+  ];
+}
+
+/** A frame whose geometry is fully defined: usable by geometric checks and drawing. */
+export function isCompleteFrame(frame: Frame): boolean {
+  return (
+    outlineProblems(frame.outline).length === 0 &&
+    Number.isFinite(frame.zBottom) &&
+    Number.isFinite(frame.thickness) &&
+    frame.thickness > 0
+  );
+}
+
 export function outlineContains(outline: Outline, p: Vec2): boolean {
   return outline.kind === "CIRCLE"
     ? distance(outline.centre, p) < outline.radius
@@ -95,6 +118,9 @@ export function bearingInnerSpan(movement: Movement, support: ShaftSupport): Der
   if (lowerFrame === undefined || upperFrame === undefined) {
     return { status: "UNKNOWN", missing: ["lower and upper bearings in existing frames"] };
   }
+  if (!isCompleteFrame(lowerFrame) || !isCompleteFrame(upperFrame)) {
+    return { status: "UNKNOWN", missing: ["complete frame dimensions"] };
+  }
   return { status: "KNOWN", value: metres(upperFrame.zBottom - frameZRange(lowerFrame).hi) };
 }
 
@@ -117,10 +143,12 @@ export function arborZRange(movement: Movement, shaftId: ShaftId): ZRange | null
   const ranges: ZRange[] = [];
   for (const jewel of Object.values(movement.jewels)) {
     const frame = movement.frames[jewel.frameId];
-    if (jewel.shaftId === shaftId && frame !== undefined) ranges.push(frameZRange(frame));
+    if (jewel.shaftId === shaftId && frame !== undefined && isCompleteFrame(frame)) ranges.push(frameZRange(frame));
   }
   for (const gear of Object.values(movement.gears)) {
-    if (gear.shaftId === shaftId) ranges.push(gearZRange(gear));
+    if (gear.shaftId === shaftId && Number.isFinite(gear.zCentre) && Number.isFinite(gear.thickness)) {
+      ranges.push(gearZRange(gear));
+    }
   }
   if (ranges.length === 0) return null;
   return { lo: Math.min(...ranges.map((r) => r.lo)), hi: Math.max(...ranges.map((r) => r.hi)) };

@@ -4,7 +4,7 @@ import type { EntityId } from "@/domain/ids";
 import { declaredLevelStatus } from "@/validation/validationIssue";
 import { VALIDATION_LEVEL_LABELS } from "@/reference/validationLevels";
 import { readonlyRow, sectionHeader } from "./fields";
-import { frameSection, gearSection, jewelSection, shaftSection } from "./sections";
+import { frameSection, gearSection, jewelSection, movementSection, shaftSection } from "./sections";
 
 const TYPE_LABEL: Record<SelectableEntity["type"], string> = {
   Gear: "Gear",
@@ -38,10 +38,8 @@ export function mountInspector(container: HTMLElement, store: AppStore): () => v
 
     const entity = store.selectedId === null ? undefined : findEntity(store.movement, store.selectedId);
     if (entity === undefined) {
-      const empty = document.createElement("div");
-      empty.className = "field muted";
-      empty.textContent = "Select a part in the viewport or the component list.";
-      container.appendChild(empty);
+      container.append(...movementSection(store));
+      restoreFocus(focused);
       return;
     }
 
@@ -73,9 +71,12 @@ export function mountInspector(container: HTMLElement, store: AppStore): () => v
       readonlyRow("Manufacturing", "not validated (ASM-0004)"),
     );
 
-    if (focused !== undefined) {
-      container.querySelector<HTMLInputElement>(`input[data-field="${CSS.escape(focused)}"]`)?.focus();
-    }
+    restoreFocus(focused);
+  }
+
+  function restoreFocus(field: string | undefined): void {
+    if (field === undefined) return;
+    container.querySelector<HTMLElement>(`[data-field="${CSS.escape(field)}"]`)?.focus();
   }
 
   render();

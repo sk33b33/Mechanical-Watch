@@ -2,6 +2,38 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Working tool: save/load, simulation controls, building from scratch — complete
+
+- **Save / Open / autosave.** Versioned JSON (schema 1). Invalid
+  entries survive a round trip unchanged. Foreign files, newer versions
+  and malformed files are rejected with the exact path of the problem.
+  Every change autosaves to the browser, and an unreadable autosave is
+  set aside, not overwritten.
+- **Simulation controls.** Play/pause, single step, reset, playback
+  speed 0.1× to 60×, and a simulated-time readout. The simulation still
+  advances in fixed steps.
+- **Drive editing.** Make any arbor the drive, set its speed in rev/min,
+  or remove it (SIM-001 when the speed is missing; KIN-001 info when
+  there is no drive).
+- **Build from scratch.** New → Empty movement or Demo template. Add a
+  mainplate, bridge or arbor from the component list, and add gears,
+  meshes and bearings from the inspector. New parts start empty and
+  validation lists what is missing.
+- **Editing.** Rename anything. Edit frame outlines (circle or polygon
+  points), kind, height and thickness. Switch an arbor between fixed
+  coordinates and mesh-centre-distance placement, and choose its mesh.
+  Change bearing type. Set the movement's name and declared level (L0–L2;
+  higher levels are disabled because no model supports them).
+- **Delete and undo.** Deleting removes owned parts; other shafts'
+  constraints are left and reported, never re-placed silently. Undo/redo
+  (toolbar, Ctrl+Z / Ctrl+Shift+Z) covers every edit, delete, New and
+  Open.
+
+121 tests pass, including one that builds a valid two-arbor movement from
+an empty one. Checked in a browser by building a complete movement from
+scratch through the UI to zero errors, then deleting, undoing and
+redoing.
+
 ## Phase 2 — Movement assembly: complete
 
 - **Placement constraints.** A shaft is either FIXED or placed at a
@@ -62,14 +94,13 @@ dimensions round-trip, and picking and issue selection work.
 
 - Arbor diameters aren't modeled. The wheel/arbor check treats the
   arbor as its axis line, a lower bound.
-- Frame outlines are read-only in the UI. Parts can't yet be
-  added or removed from the UI; the demo is the only movement.
 - The selected-arbor highlight is hard to see behind large wheels.
+- Long dropdown labels are truncated in the narrow inspector.
+- The camera is framed once per loaded design. A design built up from
+  empty keeps the default view until you orbit.
 
 ## Next (see `docs/ROADMAP.md`)
 
-- Persistence with a versioned schema (Phase 0 "design serialization"
-  is still outstanding).
 - Phase 3, kinematic movement: barrel, centre/third/fourth/escape wheels,
   and motion works as a separate subsystem with a slipping cannon pinion
   (REF-ENG §8).

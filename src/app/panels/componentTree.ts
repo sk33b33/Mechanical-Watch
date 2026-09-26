@@ -1,5 +1,7 @@
 import type { AppStore } from "@/app/store";
 import type { EntityId } from "@/domain/ids";
+import { addFrame, addShaft, type Movement } from "@/domain/movement";
+import { newFrame, newShaft } from "@/domain/editing";
 import { listAssumptions } from "@/reference/assumptions";
 
 export function mountComponentTree(container: HTMLElement, store: AppStore): () => void {
@@ -27,23 +29,61 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
     return el;
   }
 
+  function addButton(label: string, title: string, create: (m: Movement) => { movement: Movement; id: EntityId }): HTMLButtonElement {
+    const el = document.createElement("button");
+    el.type = "button";
+    el.textContent = label;
+    el.title = title;
+    el.addEventListener("click", () => {
+      const { movement, id } = create(store.movement);
+      store.edit(() => movement);
+      store.select(id);
+    });
+    return el;
+  }
+
+  function empty(text: string): HTMLDivElement {
+    const el = document.createElement("div");
+    el.className = "tree-empty muted";
+    el.textContent = text;
+    return el;
+  }
+
   function render(): void {
     container.innerHTML = "";
     const { movement } = store;
 
-    if (Object.keys(movement.frames).length > 0) {
-      container.appendChild(header("Frames"));
-      for (const frame of Object.values(movement.frames)) {
-        container.appendChild(item(frame.name, frame.id, 0));
-      }
+    const actions = document.createElement("div");
+    actions.className = "tree-actions";
+    actions.append(
+      addButton("+ Mainplate", "Add a mainplate with every dimension empty", (m) => {
+        const frame = newFrame(m, "MAINPLATE");
+        return { movement: addFrame(m, frame), id: frame.id };
+      }),
+      addButton("+ Bridge", "Add a bridge with every dimension empty", (m) => {
+        const frame = newFrame(m, "BRIDGE");
+        return { movement: addFrame(m, frame), id: frame.id };
+      }),
+      addButton("+ Arbor", "Add an arbor with an empty position", (m) => {
+        const shaft = newShaft(m);
+        return { movement: addShaft(m, shaft), id: shaft.id };
+      }),
+    );
+    container.appendChild(actions);
+
+    container.appendChild(header("Frames"));
+    if (Object.keys(movement.frames).length === 0) container.appendChild(empty("No frames yet."));
+    for (const frame of Object.values(movement.frames)) {
+      container.appendChild(item(frame.name, frame.id, 0));
     }
 
     container.appendChild(header("Arbors"));
+    if (Object.keys(movement.shafts).length === 0) container.appendChild(empty("No arbors yet."));
     for (const shaft of Object.values(movement.shafts)) {
       const driving = shaft.id === movement.drivingShaftId ? "(drive)" : undefined;
       container.appendChild(item(shaft.name, shaft.id, 0, driving));
       for (const gear of Object.values(movement.gears).filter((g) => g.shaftId === shaft.id)) {
-        container.appendChild(item(gear.name, gear.id, 1, `${String(gear.toothCount)} teeth`));
+        container.appendChild(item(gear.name, gear.id, 1, Number.isNaN(gear.toothCount) ? "no tooth count" : `${String(gear.toothCount)} teeth`));
       }
       for (const jewel of Object.values(movement.jewels).filter((j) => j.shaftId === shaft.id)) {
         container.appendChild(item(jewel.name.replace(`${shaft.name} `, ""), jewel.id, 1));

@@ -1,8 +1,10 @@
 import {
   endshake,
   frameZRange,
+  isCompleteFrame,
   isPositiveLength,
   outlineContains,
+  outlineProblems,
   shaftSupport,
   sideShake,
   type DerivedLength,
@@ -19,12 +21,7 @@ export const frameRules: Rule = ({ movement }) => {
     const problems: string[] = [];
     if (!isPositiveLength(frame.thickness)) problems.push("thickness must be a positive length");
     if (!Number.isFinite(frame.zBottom)) problems.push("axial position must be finite");
-    if (frame.outline.kind === "CIRCLE" && !isPositiveLength(frame.outline.radius)) {
-      problems.push("outline radius must be a positive length");
-    }
-    if (frame.outline.kind === "POLYGON" && frame.outline.points.length < 3) {
-      problems.push("outline polygon needs at least three points");
-    }
+    problems.push(...outlineProblems(frame.outline));
     for (const problem of problems) {
       issues.push(
         issue("FRAME-001", problem, "error", "L1_GEOMETRIC", [frame.id], `${frame.name}: ${problem}.`, ["ASM-0010"]),
@@ -57,7 +54,7 @@ export const bearingRules: Rule = ({ movement, placement }) => {
       continue;
     }
     const axis = placement.shaftPositions.get(shaft.id);
-    if (axis !== undefined && !outlineContains(frame.outline, axis)) {
+    if (axis !== undefined && isCompleteFrame(frame) && !outlineContains(frame.outline, axis)) {
       issues.push(
         issue("BRG-002", "outside-frame", "error", "L1_GEOMETRIC", [jewel.id, frame.id, shaft.id],
           `${jewel.name}: ${shaft.name}'s axis lies outside ${frame.name}, so the bearing has no material to sit in.`,
@@ -101,7 +98,7 @@ export const bearingRules: Rule = ({ movement, placement }) => {
             issue("BRG-001", "same-frame", "error", "L1_GEOMETRIC", [shaft.id, lowerFrame.id],
               `${shaft.name}: both bearings are in ${lowerFrame.name}.`, ["REF-ENG §12"]),
           );
-        } else if (upperFrame.zBottom <= frameZRange(lowerFrame).hi) {
+        } else if (isCompleteFrame(lowerFrame) && isCompleteFrame(upperFrame) && upperFrame.zBottom <= frameZRange(lowerFrame).hi) {
           issues.push(
             issue("BRG-001", "frame-order", "error", "L1_GEOMETRIC", [shaft.id, lowerFrame.id, upperFrame.id],
               `${shaft.name}: upper bearing frame (${describe(upperFrame)}) does not sit above lower bearing frame (${describe(lowerFrame)}).`,
@@ -144,6 +141,7 @@ export const bearingRules: Rule = ({ movement, placement }) => {
     }
   }
 
+  if (known + unknown === 0) return issues;
   issues.push(
     issue("BRG-005", "not-judged", "info", "L1_GEOMETRIC", [],
       `Bearing clearances: ${String(known)} computed, ${String(unknown)} unknown (missing pivot, bore or shoulder dimensions). Computed values are not judged because acceptable ranges have no source yet.`,

@@ -60,3 +60,63 @@ describe("AppStore simulation playback", () => {
     expect(store.selectedId).toBeNull();
   });
 });
+
+describe("AppStore undo/redo", () => {
+  const wheelOf = (store: AppStore): number | undefined =>
+    Object.values(store.movement.gears).find((g) => g.name === "Wheel C")?.toothCount;
+  const editWheel = (store: AppStore, toothCount: number): void => {
+    store.edit((m) => ({
+      ...m,
+      gears: Object.fromEntries(
+        Object.entries(m.gears).map(([id, g]) => [id, g.name === "Wheel C" ? { ...g, toothCount } : g]),
+      ),
+    }));
+  };
+
+  it("undoes and redoes edits in order", () => {
+    const store = new AppStore(createDemoMovement());
+    editWheel(store, 30);
+    editWheel(store, 20);
+    store.undo();
+    expect(wheelOf(store)).toBe(30);
+    store.undo();
+    expect(wheelOf(store)).toBe(40);
+    expect(store.canUndo).toBe(false);
+    store.redo();
+    expect(wheelOf(store)).toBe(30);
+  });
+
+  it("a new edit clears the redo history", () => {
+    const store = new AppStore(createDemoMovement());
+    editWheel(store, 30);
+    store.undo();
+    editWheel(store, 25);
+    expect(store.canRedo).toBe(false);
+  });
+
+  it("an edit that returns the same design records nothing", () => {
+    const store = new AppStore(createDemoMovement());
+    store.edit((m) => m);
+    expect(store.canUndo).toBe(false);
+  });
+
+  it("loading a new design can be undone", () => {
+    const demo = createDemoMovement();
+    const store = new AppStore(demo);
+    store.load({ ...demo, name: "Other" });
+    store.undo();
+    expect(store.movement).toBe(demo);
+  });
+
+  it("removing the selected part clears the selection; undo restores the part", () => {
+    const store = new AppStore(createDemoMovement());
+    const arbor = Object.values(store.movement.shafts)[0];
+    if (arbor === undefined) throw new Error("no shaft");
+    store.select(arbor.id);
+    store.remove(arbor.id);
+    expect(store.selectedId).toBeNull();
+    expect(store.movement.shafts[arbor.id]).toBeUndefined();
+    store.undo();
+    expect(store.movement.shafts[arbor.id]).toBeDefined();
+  });
+});

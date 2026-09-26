@@ -42,5 +42,36 @@ ValidationIssue
 Derived, never stored: shaft axis positions, centre distances, angular
 velocities, bearing positions, side shake, endshake, shaft angles.
 
-Not yet versioned or serialized: persistence (with a schema version for
-migration) is still to do.
+## Saved files (`src/persistence/designFile.ts`)
+
+```
+{ "format": "mechanical-watchmaker-3d.design",
+  "schemaVersion": 1,
+  "savedAt": "<ISO time>",
+  "movement": { …Movement as above… } }
+```
+
+- Non-finite numbers (a user's empty or invalid entry, held as NaN) are
+  written as `{"$nonFinite": "NaN" | "Infinity" | "-Infinity"}` so they
+  load back unchanged instead of becoming null or 0.
+- Loading checks structure strictly (types, enums, record keys matching
+  entity ids) and rejects foreign files and newer schema versions with
+  the exact path of the problem. It never repairs engineering problems:
+  dangling references or bad dimensions load as saved and validation
+  reports them.
+- Changing the saved shape of Movement means bumping
+  `DESIGN_SCHEMA_VERSION` and adding a migration from the previous
+  version to `MIGRATIONS`.
+- Autosave keeps the current design in browser storage under
+  `mw3d.autosave`. An unreadable autosave is moved to
+  `mw3d.autosave.unreadable` rather than overwritten.
+
+## Creating and deleting (`src/domain/editing.ts`)
+
+- New parts start with every dimension and position empty (NaN or
+  null). Validation lists what is missing; nothing is guessed.
+- Deleting removes the parts an entity owns: a frame's bearings; a
+  shaft's gears and bearings (and the drive, if it was the drive); a
+  gear's meshes. References that aren't ownership, such as another
+  shaft's placement constraint, stay and are reported as ASSY-001.
+- Every edit, load and new design is undoable (store history, 200 steps).

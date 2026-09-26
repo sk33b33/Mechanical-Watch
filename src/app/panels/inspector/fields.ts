@@ -52,16 +52,88 @@ export function inputRow(options: InputOptions): HTMLDivElement {
   return field;
 }
 
-export function actionRow(label: string, title: string, onClick: () => void, danger = false): HTMLDivElement {
+export function textRow(label: string, value: string, onCommit: (value: string) => void): HTMLDivElement {
   const field = document.createElement("div");
-  field.className = "field field-action";
+  field.className = "field";
+  const labelEl = document.createElement("label");
+  labelEl.textContent = label;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "text-input";
+  input.value = value;
+  input.dataset.field = label;
+  input.addEventListener("change", () => {
+    onCommit(input.value);
+  });
+  field.append(labelEl, input);
+  return field;
+}
+
+export interface SelectOption {
+  value: string;
+  label: string;
+  disabled?: boolean;
+  title?: string;
+}
+
+export function selectRow(
+  label: string,
+  value: string,
+  options: SelectOption[],
+  onChange: (value: string) => void,
+  title?: string,
+): HTMLDivElement {
+  const field = document.createElement("div");
+  field.className = "field";
+  if (title !== undefined) field.title = title;
+  const labelEl = document.createElement("label");
+  labelEl.textContent = label;
+  const select = document.createElement("select");
+  select.dataset.field = label;
+  for (const option of options) {
+    const el = document.createElement("option");
+    el.value = option.value;
+    el.textContent = option.label;
+    el.disabled = option.disabled ?? false;
+    if (option.title !== undefined) el.title = option.title;
+    select.appendChild(el);
+  }
+  select.value = value;
+  select.addEventListener("change", () => {
+    onChange(select.value);
+  });
+  field.append(labelEl, select);
+  return field;
+}
+
+export function actionButton(label: string, title: string, onClick: () => void, danger = false): HTMLButtonElement {
   const buttonEl = document.createElement("button");
   buttonEl.type = "button";
   buttonEl.textContent = label;
   buttonEl.title = title;
   if (danger) buttonEl.classList.add("danger");
   buttonEl.addEventListener("click", onClick);
-  field.appendChild(buttonEl);
+  return buttonEl;
+}
+
+export function actionRow(label: string, title: string, onClick: () => void, danger = false): HTMLDivElement {
+  const field = document.createElement("div");
+  field.className = "field field-action";
+  field.appendChild(actionButton(label, title, onClick, danger));
+  return field;
+}
+
+/** A label and a value with a small action button on the right (e.g. a list entry with "Remove"). */
+export function listRow(text: string, action: HTMLButtonElement, onSelect?: () => void): HTMLDivElement {
+  const field = document.createElement("div");
+  field.className = "field list-row";
+  const label = document.createElement("span");
+  label.textContent = text;
+  if (onSelect !== undefined) {
+    label.className = "link";
+    label.addEventListener("click", onSelect);
+  }
+  field.append(label, action);
   return field;
 }
 

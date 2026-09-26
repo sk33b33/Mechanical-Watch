@@ -9,7 +9,7 @@ import {
   createFrameGeometry,
   createZCylinder,
 } from "@/geometry/assemblyGeometry3d";
-import { arborZRange, frameZRange } from "@/assembly/assemblyGeometry";
+import { arborZRange, frameZRange, isCompleteFrame } from "@/assembly/assemblyGeometry";
 
 type PickKind = "gear" | "jewel" | "arbor" | "frame";
 
@@ -157,8 +157,8 @@ export class Viewport {
     const positions = analysis.placement.shaftPositions;
 
     for (const frame of Object.values(movement.frames)) {
+      if (!isCompleteFrame(frame)) continue;
       const range = frameZRange(frame);
-      if (!(range.hi > range.lo) || !Number.isFinite(range.lo)) continue;
       const geometry = createFrameGeometry(frame.outline, range.hi - range.lo);
       const mesh = new THREE.Mesh(
         geometry,
@@ -211,9 +211,8 @@ export class Viewport {
     for (const jewel of Object.values(movement.jewels)) {
       const axis = positions.get(jewel.shaftId);
       const frame = movement.frames[jewel.frameId];
-      if (axis === undefined || frame === undefined) continue;
+      if (axis === undefined || frame === undefined || !isCompleteFrame(frame)) continue;
       const range = frameZRange(frame);
-      if (!(range.hi > range.lo)) continue;
       const color = jewel.kind === "HOLE_JEWEL" ? COLORS.jewel : COLORS.plainHole;
       // Drawn slightly proud of the slab so it reads through the translucent frame.
       const proud = (range.hi - range.lo) * 0.05;

@@ -49,6 +49,10 @@ rev/min exist only at the UI boundary (`src/units/`).
 | Pivot, bore or shoulder span ≤ 0 or non-numeric | BRG-003 / BRG-004 input error. |
 | Frame thickness ≤ 0, degenerate outline | FRAME-001; frame not drawn. |
 | Gear thickness ≤ 0, non-finite axial position | GEAR-102; gear excluded from axial checks. |
+| Newly created part (every dimension empty) | Kept empty (NaN/null); each missing value is reported by its rule (GEAR-001/002/102, SHAFT-001, FRAME-001). Incomplete frames are not drawn and are skipped by the geometric checks that need them. |
+| Drive with no speed | SIM-001 error; the solver propagates nothing. |
+| No drive at all | KIN-001 info. |
+| Saved file with invalid values | Loaded unchanged (NaN preserved) and reported by validation. |
 
 ## Rules implemented
 
@@ -76,7 +80,7 @@ rev/min exist only at the UI boundary (`src/units/`).
 | SIM-001 | error / blocker | L2 | drive and integrated state |
 | SIM-002 | none | none | Fixed-timestep integrator; tested for chunking independence |
 | SIM-003 | info | L2 | always states the drive is prescribed |
-| KIN-001 | warning | L2 | unpowered shafts (project addition) |
+| KIN-001 | warning / info | L2 | unpowered shafts (warning); no drive set (info) (project addition) |
 | VAL-001 | blocker | L1 | validation engine failure (project addition) |
 
 Not yet applicable: UNIT-001/002 (enforced by branded unit types, not a

@@ -10,9 +10,11 @@ Domain model (authoritative)
 → geometry generation → Three.js rendering
 
 `src/analysis/analyzeMovement.ts` runs the solves and validation once
-per edit. The store owns the movement and the derived analysis; the UI
-and viewport only read them and submit pure domain updates via
-`store.edit(fn)`.
+per edit. The store owns the movement, the derived analysis, undo
+history, selection and simulation playback. The UI and viewport only
+read them and submit pure domain updates via `store.edit(fn)`,
+`store.remove(id)` or `store.load(movement)`, all of which are undoable.
+Playback (play/pause, speed) is UI state and never part of the design.
 
 ## Layers
 
@@ -49,6 +51,10 @@ Deterministic fixed-step integration of shaft angles (SIM-002).
 ### Validation (`src/validation`)
 Rule families in `rules/`, each `(context) => ValidationIssue[]`, sharing
 one solved context. Rule IDs come from `reference/validation/RULE_IDS.md`.
+
+### Persistence (`src/persistence`)
+Versioned design file format, a strict structural decoder for untrusted
+input, and browser autosave. See `docs/DATA_MODEL.md`.
 
 ### Reference (`src/reference`)
 Code mirrors of the assumption register, rule IDs, validation levels and
