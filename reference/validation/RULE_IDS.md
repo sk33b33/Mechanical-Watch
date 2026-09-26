@@ -68,10 +68,16 @@ DIAL-003 Every hand arbor must lie within the dial.
 
 ESC-101 At most one escapement; its arbors must exist and be distinct, the escape arbor must be driven by the train, and its escape wheel, lever and balance inputs must be valid (amplitude above half the lift angle).
 ESC-102 The pallet arbor and balance staff oscillate under the escapement and must not be gear-driven.
+ESC-104 Pallet geometry: the locking points must be a whole number of pitches plus a half apart, under 180°, and the pallet arbor at the tangential-locking distance from the escape axis.
+ESC-105 Lever angles: lock positive, run not negative, impulse (lever − lock − run) positive, and draw positive.
 ESC-103 The escape wheel must clear the pallet arbor and balance staff, and the balance must clear the pallet arbor.
 
 BAL-001 A balance-governed drive needs an escapement with a valid escape wheel and a positive balance inertia and hairspring stiffness; entered inertia and stiffness must be positive.
 BAL-002 The simplified dynamic balance model reports its free frequency, the frequency nominal time needs, and the predicted daily rate, with its assumptions.
+
+SPR-001 Mainspring data must be valid: positive usable turns and torques, fully-wound torque not below let-down torque, efficiencies in (0, 1], a positive balance quality factor.
+SPR-002 The simplified energy model reports power reserve, escape-wheel torque, energy per beat and predicted amplitude, with its assumptions.
+SPR-003 The predicted amplitude must exceed half the lift angle while the spring is wound, or the balance cannot unlock the escapement.
 
 TOL-001 A declared tolerance must apply to an existing dimension once, with finite limits, lower ≤ upper, and a positive lower limit for a size.
 TOL-002 A clearance that is positive at nominal should stay positive at its worst-case declared tolerance limits.

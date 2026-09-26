@@ -6,7 +6,7 @@ import type { Shaft, ShaftId } from "./shaft";
 import type { GearMesh, GearMeshId } from "./gearMesh";
 import type { Frame, FrameId } from "./frame";
 import type { Jewel, JewelId } from "./jewel";
-import type { Coupling, CouplingId } from "./coupling";
+import type { Coupling, CouplingId, MainspringSpec } from "./coupling";
 import type { Tolerance, ToleranceId } from "./tolerance";
 import type { KeylessWorks, KeylessWorksId } from "./keyless";
 import type { Dial, DialId } from "./dial";
@@ -143,6 +143,15 @@ export function updateEscapement(
     throw new Error(`Unknown escapement id: ${id}`);
   }
   return { ...movement, escapements: { ...movement.escapements, [id]: { ...existing, ...patch } } };
+}
+
+/** Sets or clears a mainspring link's spring data (REF-ENG §11). */
+export function updateCouplingSpring(movement: Movement, id: CouplingId, spring: MainspringSpec | null): Movement {
+  const existing = movement.couplings[id];
+  if (existing?.kind !== "MAINSPRING") {
+    throw new Error(`Not a mainspring link: ${id}`);
+  }
+  return { ...movement, couplings: { ...movement.couplings, [id]: { ...existing, spring } } };
 }
 
 export function addDial(movement: Movement, dial: Dial): Movement {

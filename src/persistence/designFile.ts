@@ -8,7 +8,9 @@ import type { Jewel } from "@/domain/jewel";
 import type { Tolerance } from "@/domain/tolerance";
 import type { KeylessWorks, StemPinion } from "@/domain/keyless";
 import type { Dial } from "@/domain/dial";
-import type { Escapement } from "@/domain/escapement";
+import type { Escapement, PalletGeometry } from "@/domain/escapement";
+import type { MainspringSpec } from "@/domain/coupling";
+import type { Torque } from "@/units/torque";
 import type { MomentOfInertia, TorsionalStiffness } from "@/units/rotational";
 import type { Vec2 } from "@/math/vec2";
 import type { Length } from "@/units/length";
@@ -36,7 +38,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 6;
+export const DESIGN_SCHEMA_VERSION = 7;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -100,6 +102,29 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
       ]),
     );
     return { ...doc, schemaVersion: 6, movement: { ...movement, escapements } };
+  },
+  /**
+   * v6 → v7: escapements gain unknown pallet geometry, escapement efficiency
+   * and balance quality factor; mainspring links gain unknown spring data.
+   */
+  6: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement)) return doc;
+    const escapements = isRecord(movement.escapements)
+      ? Object.fromEntries(Object.entries(movement.escapements).map(([id, e]) => [
+          id,
+          isRecord(e) && isRecord(e.balance)
+            ? { ...e, pallets: null, escapementEfficiency: null, balance: { ...e.balance, qualityFactor: null } }
+            : e,
+        ]))
+      : movement.escapements;
+    const couplings = isRecord(movement.couplings)
+      ? Object.fromEntries(Object.entries(movement.couplings).map(([id, c]) => [
+          id,
+          isRecord(c) && c.kind === "MAINSPRING" ? { ...c, spring: null } : c,
+        ]))
+      : movement.couplings;
+    return { ...doc, schemaVersion: 7, movement: { ...movement, escapements, couplings } };
   },
 };
 
@@ -199,16 +224,29 @@ const support: Decoder<ShaftSupport> = (value, path) => {
   return kind === "STUD" ? { kind, frameId: field(o, "frameId", id<Frame["id"]>(), path) } : { kind };
 };
 
-const coupling: Decoder<Coupling> = (value, path) => {
+const mainspringSpec: Decoder<MainspringSpec> = (value, path) => {
   const o = object(value, path);
   return {
+    usableTurns: field(o, "usableTurns", number, path),
+    fullyWoundTorque: field(o, "fullyWoundTorque", number as Decoder<Torque>, path),
+    letDownTorque: field(o, "letDownTorque", number as Decoder<Torque>, path),
+    trainEfficiency: field(o, "trainEfficiency", nullable(number), path),
+  };
+};
+
+const coupling: Decoder<Coupling> = (value, path) => {
+  const o = object(value, path);
+  const base = {
     id: field(o, "id", id<Coupling["id"]>(), path),
     type: field(o, "type", literal("Coupling"), path),
-    kind: field(o, "kind", oneOf(["FRICTION_CLUTCH", "MAINSPRING"]), path),
     name: field(o, "name", string, path),
     shaftAId: field(o, "shaftAId", id<Shaft["id"]>(), path),
     shaftBId: field(o, "shaftBId", id<Shaft["id"]>(), path),
   };
+  const kind = field(o, "kind", oneOf(["FRICTION_CLUTCH", "MAINSPRING"]), path);
+  return kind === "MAINSPRING"
+    ? { ...base, kind, spring: field(o, "spring", nullable(mainspringSpec), path) }
+    : { ...base, kind };
 };
 
 const drive: Decoder<Drive> = (value, path) => {
@@ -347,6 +385,16 @@ const dial: Decoder<Dial> = (value, path) => {
   };
 };
 
+const pallets: Decoder<PalletGeometry> = (value, path) => {
+  const o = object(value, path);
+  return {
+    spanTeeth: field(o, "spanTeeth", number, path),
+    lockAngle: field(o, "lockAngle", angle, path),
+    drawAngle: field(o, "drawAngle", angle, path),
+    runAngle: field(o, "runAngle", angle, path),
+  };
+};
+
 const escapement: Decoder<Escapement> = (value, path) => {
   const o = object(value, path);
   const wheel = object(field(o, "escapeWheel", (v) => v, path), `${path}.escapeWheel`);
@@ -377,7 +425,10 @@ const escapement: Decoder<Escapement> = (value, path) => {
       liftAngle: field(balance, "liftAngle", angle, bp),
       inertia: field(balance, "inertia", nullable(number as Decoder<MomentOfInertia>), bp),
       hairspringStiffness: field(balance, "hairspringStiffness", nullable(number as Decoder<TorsionalStiffness>), bp),
+      qualityFactor: field(balance, "qualityFactor", nullable(number), bp),
     },
+    pallets: field(o, "pallets", nullable(pallets), path),
+    escapementEfficiency: field(o, "escapementEfficiency", nullable(number), path),
   };
 };
 

@@ -14,6 +14,7 @@ import { toleranceRules } from "./rules/toleranceRules";
 import { dialRules, keylessRules } from "./rules/keylessRules";
 import { escapementRules } from "./rules/escapementRules";
 import { balanceRules } from "./rules/balanceRules";
+import { springRules } from "./rules/springRules";
 
 /** Rule families, in the order their issues are reported. */
 const RULES: readonly Rule[] = [
@@ -32,6 +33,7 @@ const RULES: readonly Rule[] = [
   dialRules,
   escapementRules,
   balanceRules,
+  springRules,
 ];
 
 /**

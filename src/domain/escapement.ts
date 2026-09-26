@@ -50,6 +50,29 @@ export interface Balance {
    */
   inertia: MomentOfInertia | null;
   hairspringStiffness: TorsionalStiffness | null;
+  /**
+   * Quality factor of the balance oscillation (energy loss per period =
+   * 2π E / Q), for the energy model (ASM-0026). A loss property that can
+   * only come from measurement or a source; null when unknown.
+   */
+  qualityFactor: number | null;
+}
+
+/**
+ * Simplified pallet geometry (ASM-0025), optional. The pallets lock on the
+ * escape wheel's tip circle at two points `spanTeeth` pitches apart,
+ * placed for tangential locking. The lever's total swing between bankings
+ * is lock + impulse + run.
+ */
+export interface PalletGeometry {
+  /** Pitches between the entry and exit locking points; k + ½ for two beats per tooth (ASM-0021). */
+  spanTeeth: number;
+  /** Lever rotation needed to unlock. */
+  lockAngle: Angle;
+  /** Angle of the locking face that pulls the lever onto its banking; must be positive. */
+  drawAngle: Angle;
+  /** Lever rotation from full lock to the banking. */
+  runAngle: Angle;
 }
 
 export interface Escapement {
@@ -66,6 +89,14 @@ export interface Escapement {
   leverAngle: Angle;
   balanceShaftId: ShaftId;
   balance: Balance;
+  /** Null when the pallet geometry is not given: the escapement stays a timing model only. */
+  pallets: PalletGeometry | null;
+  /**
+   * Share of the escape wheel's energy that reaches the balance (ASM-0026).
+   * A loss property that can only come from measurement or a source;
+   * null when unknown.
+   */
+  escapementEfficiency: number | null;
 }
 
 export interface CreateEscapementParams {
@@ -76,6 +107,8 @@ export interface CreateEscapementParams {
   leverAngle: Angle;
   balanceShaftId: ShaftId;
   balance: Balance;
+  pallets: PalletGeometry | null;
+  escapementEfficiency: number | null;
 }
 
 export function createEscapement(params: CreateEscapementParams): Escapement {

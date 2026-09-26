@@ -22,6 +22,8 @@ import { createKeylessWorks } from "@/domain/keyless";
 import { createDial } from "@/domain/dial";
 import { addDial, addEscapement, addKeylessWorks, setBalanceDrive } from "@/domain/movement";
 import { micronewtonMillimetresPerRadian, milligramSquareCentimetres } from "@/units/rotational";
+import { newtonMillimetres } from "@/units/torque";
+import { spanAngle, tangentialCentreDistance } from "@/kinematics/palletGeometry";
 import { createEscapement } from "@/domain/escapement";
 import { meshCentreDistance } from "@/math/gearMath";
 
@@ -68,8 +70,12 @@ const mm = millimetres;
  * (18 000 beats per hour, a 2.5 Hz balance). The movement is governed by
  * the balance (ASM-0024): 10 mg·cm² and 246.7 µN·mm/rad give 2.4999 Hz, so
  * the model predicts it runs about 7 s a day slow.
- * Amplitude, lift angle and lever angle are illustrative inputs, not
- * measured or sourced values (ASM-0009).
+ * Amplitude, lift, lever and pallet angles are illustrative inputs, not
+ * measured or sourced values (ASM-0009). The pallets span 3½ teeth with
+ * tangential locking (ASM-0025). The mainspring (6.5 turns, 10 → 6 N·mm)
+ * gives the power reserve and escape-wheel torque; the balance's Q and the
+ * escapement efficiency are loss properties left unknown, so the energy
+ * model does not predict an amplitude here (ASM-0026).
  */
 export function createTeachingMovement(): Movement {
   const trainModule = mm(0.12);
@@ -182,7 +188,14 @@ export function createTeachingMovement(): Movement {
     m = addJewel(m, createJewel({ name: `${s.name} upper jewel`, kind: "HOLE_JEWEL", frameId: bridge.id, shaftId: s.id, end: "UPPER" }));
   }
   m = addCoupling(m, createFrictionClutch("Cannon pinion clutch", cannon.id, centre.id));
-  m = addCoupling(m, createMainspring("Mainspring", barrelArbor.id, barrel.id));
+  // Mainspring data: illustrative design inputs (ASM-0009). No train efficiency is configured,
+  // so torques downstream are the lossless upper bound (ASM-0002).
+  m = addCoupling(m, createMainspring("Mainspring", barrelArbor.id, barrel.id, {
+    usableTurns: 6.5,
+    fullyWoundTorque: newtonMillimetres(10),
+    letDownTorque: newtonMillimetres(6),
+    trainEfficiency: null,
+  }));
 
   const polar = (s: Shaft, from: Shaft, via: GearMesh, angle: number): void => {
     m = updateShaft(m, s.id, {
@@ -238,7 +251,12 @@ export function createTeachingMovement(): Movement {
     y: cd(80, 10) * Math.sin(rad(330)) + cd(80, 8),
   };
   const layoutDirection = rad(120);
-  const escapeToPallet = mm(3.2);
+  // Pallets span 3½ escape teeth with tangential locking (ASM-0025), which fixes the
+  // escape-to-pallet distance at R / cos(φ/2).
+  const escapeTeeth = 15;
+  const escapeTipRadius = mm(2.3);
+  const palletGeometry = { spanTeeth: 3.5, lockAngle: degrees(2), drawAngle: degrees(12), runAngle: degrees(0.5) };
+  const escapeToPallet = tangentialCentreDistance(escapeTipRadius, spanAngle(escapeTeeth, palletGeometry.spanTeeth)) ?? mm(Number.NaN);
   const palletToBalance = mm(3.5);
   const palletAt = { x: escapeAt.x + escapeToPallet * Math.cos(layoutDirection), y: escapeAt.y + escapeToPallet * Math.sin(layoutDirection) };
   const balanceAt = { x: palletAt.x + palletToBalance * Math.cos(layoutDirection), y: palletAt.y + palletToBalance * Math.sin(layoutDirection) };
@@ -248,7 +266,7 @@ export function createTeachingMovement(): Movement {
     name: "Escapement",
     escapeArborShaftId: escape.id,
     // Below the escape pinion (2.95–3.45 mm) and clear of the fourth pinion in plan.
-    escapeWheel: { toothCount: 15, tipDiameter: mm(4.6), thickness: mm(0.15), zCentre: mm(2.4) },
+    escapeWheel: { toothCount: escapeTeeth, tipDiameter: mm(escapeTipRadius * 2000), thickness: mm(0.15), zCentre: mm(2.4) },
     palletArborShaftId: palletArbor.id,
     leverAngle: degrees(10),
     balanceShaftId: balanceStaff.id,
@@ -259,7 +277,12 @@ export function createTeachingMovement(): Movement {
       diameter: mm(6), thickness: mm(0.3), zCentre: mm(3.0), amplitude: degrees(270), liftAngle: degrees(50),
       inertia: milligramSquareCentimetres(10),
       hairspringStiffness: micronewtonMillimetresPerRadian(246.7),
+      // A loss property: only measurement or a source can supply it, so it is left unknown.
+      qualityFactor: null,
     },
+    pallets: palletGeometry,
+    // Also a loss property, left unknown for the same reason; the amplitude stays the declared one.
+    escapementEfficiency: null,
   }));
 
   // The balance governs the rate (simplified dynamic model, ASM-0024).

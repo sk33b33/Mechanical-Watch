@@ -6,6 +6,9 @@ import { toBeatsPerHour } from "@/units/frequency";
 import type { EntityId } from "@/domain/ids";
 import { gearZRange, zOverlaps } from "@/assembly/assemblyGeometry";
 import { balanceFrequency, beatFrequency, impulseFraction } from "@/kinematics/escapement";
+import { impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance } from "@/kinematics/palletGeometry";
+import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
+import type { Length } from "@/units/length";
 import type { ValidationIssue } from "../validationIssue";
 import { issue, mm, type Rule } from "./context";
 
@@ -127,6 +130,55 @@ export const escapementRules: Rule = ({ movement, placement, train }) => {
           `${esc.name}: the balance rim would cross the pallet arbor (${mm(distance(at.balance, at.pallet))} apart, balance radius ${mm(balanceR)}).`,
           ["REF-ENG §9"]),
       );
+    }
+
+    // ESC-104 / ESC-105: simplified pallet geometry (ASM-0025), when given.
+    const pg = esc.pallets;
+    if (pg !== null) {
+      const tipRadius = w.tipDiameter / 2;
+      if (!isHalfToothSpan(pg.spanTeeth)) {
+        issues.push(
+          issue("ESC-104", "span", "error", "L1_GEOMETRIC", [esc.id],
+            `${esc.name}: the pallets span ${String(pg.spanTeeth)} teeth; two beats per tooth needs a whole number of pitches plus a half (e.g. 2½, 3½).`,
+            ["ASM-0021", "ASM-0025"]),
+        );
+      } else if (isValidToothCount(w.toothCount) && positive(tipRadius)) {
+        const span = spanAngle(w.toothCount, pg.spanTeeth);
+        const needed = tangentialCentreDistance(tipRadius as Length, span);
+        if (needed === null) {
+          issues.push(
+            issue("ESC-104", "span-too-wide", "error", "L1_GEOMETRIC", [esc.id],
+              `${esc.name}: the pallets' span (${toDegrees(span).toFixed(1)}°) must be under 180° for tangential locking.`, ["ASM-0025"]),
+          );
+        } else if (at.escape !== undefined && at.pallet !== undefined) {
+          const actual = distance(at.escape, at.pallet);
+          if (Math.abs(actual - needed) > NUMERICAL_PARAMETERS.centreDistanceToleranceMetres) {
+            issues.push(
+              issue("ESC-104", "centre-distance", "error", "L1_GEOMETRIC", [esc.id, esc.palletArborShaftId],
+                `${esc.name}: the pallet arbor is ${mm(actual)} from the escape axis; tangential locking over ${String(pg.spanTeeth)} teeth needs ${mm(needed)}, so the pallets do not meet the locking points.`,
+                ["ASM-0025"]),
+            );
+          }
+        }
+      }
+      const impulse = impulseAngle(esc.leverAngle, pg.lockAngle, pg.runAngle);
+      const angleProblems = [
+        ...(positive(pg.lockAngle) ? [] : ["the lock angle must be positive"]),
+        ...(Number.isFinite(pg.runAngle) && pg.runAngle >= 0 ? [] : ["the run angle must not be negative"]),
+        ...(positive(esc.leverAngle) && positive(pg.lockAngle) && Number.isFinite(pg.runAngle) && !(impulse > 0)
+          ? [`lock and run (${toDegrees(pg.lockAngle).toFixed(2)}° + ${toDegrees(pg.runAngle).toFixed(2)}°) leave no impulse within the lever angle (${toDegrees(esc.leverAngle).toFixed(2)}°)`]
+          : []),
+      ];
+      for (const problem of angleProblems) {
+        issues.push(issue("ESC-105", problem, "error", "L1_GEOMETRIC", [esc.id], `${esc.name}: ${problem}.`, ["ASM-0025"]));
+      }
+      if (!positive(pg.drawAngle)) {
+        issues.push(
+          issue("ESC-105", "no-draw", "warning", "L1_GEOMETRIC", [esc.id],
+            `${esc.name}: without a positive draw angle nothing pulls the lever onto its banking. Whether a given draw overcomes friction is not checked.`,
+            ["ASM-0025"]),
+        );
+      }
     }
 
     // ESC-001 / ESC-002: the declared model and what it does not claim.

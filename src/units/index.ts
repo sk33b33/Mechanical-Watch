@@ -6,3 +6,4 @@ export * from "./torque";
 export * from "./linearVelocity";
 export * from "./frequency";
 export * from "./rotational";
+export * from "./energy";

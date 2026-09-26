@@ -17,7 +17,7 @@ export const ASSUMPTIONS = {
   "ASM-0002": {
     summary: "Constant efficiency may be used only when explicitly configured",
     scope: "Torque model",
-    status: "Pending",
+    status: "Active",
   },
   "ASM-0003": {
     summary: "Escapement begins as a simplified kinematic model",
@@ -145,6 +145,18 @@ export const ASSUMPTIONS = {
     summary:
       "The balance and hairspring are a linear, undamped torsional oscillator (I θ'' = −k θ, f = √(k/I)/2π) with inertia and stiffness entered directly; it is isochronous by construction, and escapement disturbance, amplitude, damping, position, temperature and hairspring geometry/material are not modeled",
     scope: "Balance (simplified dynamic, L3)",
+    status: "Active",
+  },
+  "ASM-0025": {
+    summary:
+      "Pallet geometry is simplified: the pallets lock on the escape wheel's tip circle at two points a whole number of pitches plus a half apart, placed for tangential locking (pallet arbor where the tangents meet); total lever swing = lock + impulse + run; draw is an input whose adequacy against friction is not checked; tooth and pallet faces, drop and recoil are not modeled",
+    scope: "Escapement geometry",
+    status: "Active",
+  },
+  "ASM-0026": {
+    summary:
+      "Simplified energy model: mainspring torque varies linearly with wind between entered end values; torque reaches the escape wheel by power balance with an optional overall train efficiency (lossless upper bound otherwise); each beat delivers torque × half a pitch × escapement efficiency; the balance loses 2πE/Q per period; steady state only, and amplitude does not affect rate (ASM-0024)",
+    scope: "Energy / amplitude (L3)",
     status: "Active",
   },
 } as const satisfies Record<string, Omit<Assumption, "id">>;

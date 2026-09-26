@@ -8,7 +8,7 @@ Machine-readable equivalent: `src/reference/assumptions.ts`. A test
 | ID | Assumption | Scope | Status |
 |---|---|---|---|
 | ASM-0001 | Ideal rigid gears for initial kinematics | Gear sandbox | Active |
-| ASM-0002 | Constant efficiency may be used only when explicitly configured | Torque model | Pending |
+| ASM-0002 | Constant efficiency may be used only when explicitly configured | Torque model | Active |
 | ASM-0003 | Escapement begins as a simplified kinematic model | Escapement | Planned |
 | ASM-0004 | Visual mesh does not establish manufacturing validity | Entire app | Permanent |
 | ASM-0005 | Tooth visualization uses generic basic-rack proportions (addendum 1.0 × module, dedendum 1.25 × module, trapezoidal flanks); visual (L0) only, not an involute or horological profile | Geometry / viewport | Active |
@@ -31,6 +31,8 @@ Machine-readable equivalent: `src/reference/assumptions.ts`. A test
 | ASM-0022 | The balance is a sinusoidal kinematic approximation at a declared amplitude, at the frequency the train's speed requires; no inertia, hairspring torque, damping or amplitude dependence is modeled, so it does not govern the rate | Balance | Active |
 | ASM-0023 | The train is locked between beats and advances only in an impulse window, while the balance is within half the lift angle of its dead point; the pallet fork crosses between bankings in that window; locking, draw, drop, impact, sliding and banking geometry are not modeled | Escapement | Active |
 | ASM-0024 | The balance and hairspring are a linear, undamped torsional oscillator (I θ'' = −k θ, f = √(k/I)/2π) with inertia and stiffness entered directly; it is isochronous by construction, and escapement disturbance, amplitude, damping, position, temperature and hairspring geometry/material are not modeled | Balance (simplified dynamic, L3) | Active |
+| ASM-0025 | Pallet geometry is simplified: the pallets lock on the escape wheel's tip circle at two points a whole number of pitches plus a half apart, placed for tangential locking (pallet arbor where the tangents meet); total lever swing = lock + impulse + run; draw is an input whose adequacy against friction is not checked; tooth and pallet faces, drop and recoil are not modeled | Escapement geometry | Active |
+| ASM-0026 | Simplified energy model: mainspring torque varies linearly with wind between entered end values; torque reaches the escape wheel by power balance with an optional overall train efficiency (lossless upper bound otherwise); each beat delivers torque × half a pitch × escapement efficiency; the balance loses 2πE/Q per period; steady state only, and amplitude does not affect rate (ASM-0024) | Energy / amplitude (L3) | Active |
 
 Rules:
 1. Never hide an assumption.
