@@ -36,6 +36,15 @@ Useful for understanding why friction/contact modelling is substantially more co
 
 Use for research context; do not copy numerical parameters into generic movements without checking applicability.
 
+## Gear geometry (candidates, not yet consulted)
+
+### ISO 23509:2016 — Bevel and hypoid gear geometry (SRC-0007)
+### SDP/SI — Elements of Metric Gear Technology, bevel gearing (SRC-0008)
+
+Candidate citations for the right-angle stem mesh ratio (ASM-0019). Both
+cover generic machine bevel gears, not horological contrate or winding
+tooth forms. Not yet read; see SOURCES.yml.
+
 ## Movement-specific sources
 
 Movement-specific measurements must live under:

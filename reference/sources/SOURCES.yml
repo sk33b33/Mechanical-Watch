@@ -79,3 +79,44 @@
   retrieved: false
   accessed: null
   notes: Metadata incomplete in SOURCE_INDEX.md. Not yet used.
+
+# Candidate sources for the right-angle (stem) mesh relationship, ASM-0019.
+# Found by web search on 2026-09-26. Neither has been read: fetching them
+# was blocked by this environment's network policy, and ISO 23509 is a
+# paid standard. They are recorded so the citation can be completed, not
+# as evidence.
+
+- id: SRC-0007
+  title: ISO 23509:2016 Bevel and hypoid gear geometry
+  author: ISO
+  year: 2016
+  type: standard
+  url: https://www.iso.org/standard/63832.html
+  topics: [gear-geometry, bevel-gears]
+  claims_supported: []
+  claims_to_check:
+    - speed ratio of intersecting-axis (bevel/crown) gears equals the inverse tooth-count ratio
+    - relation between pitch angles, shaft angle and tooth counts
+  retrieved: false
+  accessed: null
+  notes: >
+    Tier 1 standard for generic machine bevel gears. Second edition,
+    replaces ISO 23509:2006. Would support the rolling-pitch-cone ratio
+    used by crossedMeshSpeedRatio, not horological contrate or winding
+    tooth forms (CLAUDE_REFERENCE_INSTRUCTIONS.md rule 10).
+
+- id: SRC-0008
+  title: Elements of Metric Gear Technology — Helical Gear Calculations, Crossed Helical Gear Meshes, and Bevel Gearing
+  author: Stock Drive Products / Sterling Instrument (SDP/SI)
+  year: null
+  type: manufacturer_reference
+  url: https://sdp-si.com/resources/elements-of-metric-gear-technology/page4.php
+  topics: [gear-geometry, bevel-gears]
+  claims_supported: []
+  claims_to_check:
+    - bevel gear velocity ratio in terms of tooth counts and pitch angles
+  retrieved: false
+  accessed: null
+  notes: >
+    Manufacturer engineering reference (generic machine gears). Page not
+    fetched: sdp-si.com is blocked by this environment's network policy.

@@ -39,7 +39,7 @@ describe("bill of materials", () => {
     expect(keylessRows.map((r) => r.name)).toEqual(
       ["Keyless works", "Stem", "Crown", "Winding pinion", "Sliding pinion", "Setting lever and yoke", "Click and click spring"],
     );
-    expect(keylessRows.find((r) => r.name === "Winding pinion")?.specification).toContain("z = 12");
+    expect(keylessRows.find((r) => r.name === "Winding pinion")?.specification).toContain("z = 14");
   });
 
   it("nests gears under their arbor and states the nominal specification", () => {
@@ -133,7 +133,7 @@ describe("plan drawing", () => {
     const keylessLines = drawing.primitives.filter((p) => p.kind === "line" && p.layer === "KEYLESS");
     expect(keylessLines).toHaveLength(3); // two pinions and the stem centre line
     const pinionLengths = keylessLines.map((p) => (p.kind === "line" ? Math.hypot(p.b.x - p.a.x, p.b.y - p.a.y) : 0)).sort((a, b) => a - b);
-    expect(pinionLengths[0]).toBeCloseTo(1.2, 9); // winding pinion pitch Ø 0.1 × 12
+    expect(pinionLengths[0]).toBeCloseTo(1.4, 9); // winding pinion pitch Ø 0.1 × 14
     expect(pinionLengths[1]).toBeCloseTo(2.0, 9); // sliding pinion pitch Ø 0.1 × 20
     expect(drawing.notes.some((n) => n.includes("3 o'clock"))).toBe(true);
   });
@@ -240,7 +240,8 @@ describe("movement report", () => {
   it("reports the crown: winding direction and ratios", () => {
     expect(html).toContain("Keyless works: crown");
     expect(html).toContain("Ratchet per crown revolution (winding)");
-    expect(html).toContain("0.300000 rev");
+    expect(html).toContain("0.350000 rev");
+    expect(html).toContain("<td>Winding direction</td><td>clockwise seen from the crown; the other way the ratchet teeth slip");
     expect(html).toContain("2.000000 rev");
   });
 

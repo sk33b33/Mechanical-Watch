@@ -87,28 +87,29 @@ describe("teaching movement keyless works", () => {
     expect(solution.stemPosition).toBe("WINDING");
   });
 
-  it("winds in the derived direction: the arbor turns the way the drum runs (ASM-0018)", () => {
-    const sense = windingCrownSense(movement);
-    expect(sense).toBe(1);
-    const solution = solveGearTrain(movement, wind(2 * Math.PI));
+  it("winds clockwise seen from the crown: the arbor turns the way the drum runs (ASM-0018)", () => {
+    // The crown wheel is above the stem (s = −1), so a clockwise crown (negative about the outward stem direction) winds.
+    expect(windingCrownSense(movement)).toBe(-1);
+    const options = wind(-2 * Math.PI);
+    const solution = solveGearTrain(movement, options);
     expect(solution.winding.status).toBe("WINDING");
-    const arbor = shaftOmega(movement, "Barrel arbor", wind(2 * Math.PI)) ?? Number.NaN;
+    const arbor = shaftOmega(movement, "Barrel arbor", options) ?? Number.NaN;
     const drum = shaftOmega(movement, "Barrel") ?? Number.NaN;
-    // winding pinion 12 → crown wheel 20 → ratchet 40: 12/40 of the crown's speed.
-    expect(Math.abs(arbor)).toBeCloseTo(2 * Math.PI * (12 / 40), 12);
+    // winding pinion 14 → crown wheel 20 → ratchet 40: 14/40 of the crown's speed.
+    expect(Math.abs(arbor)).toBeCloseTo(2 * Math.PI * (14 / 40), 12);
     expect(Math.sign(arbor)).toBe(Math.sign(drum));
     // Winding changes nothing else: the drum and the hands keep running (no spring model, ASM-0007).
-    expect(shaftOmega(movement, "Barrel", wind(2 * Math.PI))).toBe(drum);
-    expect(shaftOmega(movement, "Cannon pinion", wind(2 * Math.PI))).toBeCloseTo(nominalHandAngularVelocity("MINUTES"), 15);
+    expect(shaftOmega(movement, "Barrel", options)).toBe(drum);
+    expect(shaftOmega(movement, "Cannon pinion", options)).toBeCloseTo(nominalHandAngularVelocity("MINUTES"), 15);
     expect(solution.conflicts).toEqual([]);
   });
 
   it("turned the other way, the ratchet teeth slip and nothing is wound", () => {
-    const solution = solveGearTrain(movement, wind(-2 * Math.PI));
+    const solution = solveGearTrain(movement, wind(2 * Math.PI));
     expect(solution.winding.status).toBe("SLIPPING");
-    expect(solution.stemAngularVelocity.get(stemBodyId(keyless.id, "STEM"))).toBe(-2 * Math.PI);
+    expect(solution.stemAngularVelocity.get(stemBodyId(keyless.id, "STEM"))).toBe(2 * Math.PI);
     expect(solution.stemAngularVelocity.get(stemBodyId(keyless.id, "WINDING_PINION"))).toBe(0);
-    expect(shaftOmega(movement, "Barrel arbor", wind(-2 * Math.PI))).toBe(0);
+    expect(shaftOmega(movement, "Barrel arbor", wind(2 * Math.PI))).toBe(0);
   });
 
   it("pulled out, the crown sets the hands through the setting train while the going train keeps time", () => {
@@ -159,15 +160,16 @@ describe("teaching movement keyless works", () => {
   });
 
   it("a stem level with a wheel's mid-plane cannot engage it (no right-angle contact)", () => {
-    const m = updateKeylessWorks(movement, keyless.id, { stemHeight: mm(-0.2) });
+    const m = updateKeylessWorks(movement, keyless.id, { stemHeight: mm(1.1) }); // level with the crown wheel
     expect(solveGearTrain(m, wind(1)).winding).toEqual({ status: "UNAVAILABLE", reason: "RATCHET_NOT_CONNECTED" });
   });
 
   it("the simulation turns the stem while winding", () => {
-    const solution = solveGearTrain(movement, wind(1));
+    const solution = solveGearTrain(movement, wind(-1));
     const next = stepSimulation(createSimulationState(movement), solution, 0.5);
-    expect(next.stemAngle[stemBodyId(keyless.id, "STEM")]).toBeCloseTo(0.5, 12);
-    expect(next.stemAngle[stemBodyId(keyless.id, "WINDING_PINION")]).toBeCloseTo(0.5, 12);
+    // −0.5 rad, stored normalized to [0, 2π).
+    expect(next.stemAngle[stemBodyId(keyless.id, "STEM")]).toBeCloseTo(2 * Math.PI - 0.5, 12);
+    expect(next.stemAngle[stemBodyId(keyless.id, "WINDING_PINION")]).toBeCloseTo(2 * Math.PI - 0.5, 12);
   });
 });
 

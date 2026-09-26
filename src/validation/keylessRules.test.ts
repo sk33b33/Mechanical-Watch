@@ -51,7 +51,7 @@ describe("keyless works rules", () => {
     const issues = found(editKeyless({ stemHeight: mm(0.5) }), "KEY-002");
     expect(issues).toContain("KEY-002:error:height-winding pinion");
     expect(issues).toContain("KEY-002:error:height-sliding pinion");
-    expect(found(editKeyless({ stemHeight: mm(-0.2) }), "KEY-002")).toContain("KEY-002:error:level-winding pinion");
+    expect(found(editKeyless({ stemHeight: mm(1.1) }), "KEY-002")).toContain("KEY-002:error:level-winding pinion");
   });
 
   it("KEY-003: winding needs a mainspring, a connected ratchet, and a ratchet the train does not turn", () => {

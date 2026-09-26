@@ -43,12 +43,12 @@ Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
   pinions edge-on. The STL includes the dial.
 - **Teaching movement.** It gains a barrel arbor with a 40-tooth ratchet
   wheel and mainspring, a 20-tooth crown wheel, a 16-tooth setting wheel
-  meshing the minute wheel, a stem at 3 o'clock (winding pinion 12,
+  meshing the minute wheel, a stem at 3 o'clock (winding pinion 14,
   sliding pinion 20, module 0.1) and a 28 mm dial. All values are
-  illustrative (ASM-0009). In this layout the crown winds
-  counter-clockwise seen from the crown. That is derived from the layout
-  and is opposite to the usual convention; a different layout would
-  reverse it.
+  illustrative (ASM-0009). The ratchet and crown wheel sit just above the
+  mainplate, with the crown wheel above the stem, so the winding pinion
+  (14 teeth) engages it from below. The derived winding direction is
+  clockwise seen from the crown.
 
 233 tests pass. Checked in a browser:
 - setting through the crown (3 h of hand motion in 1.5 s);
@@ -270,11 +270,11 @@ dimensions round-trip, and picking and issue selection work.
 - **Side-shake convention (ASM-0013).** Reported as diametral clearance
   until a source confirms the horological convention.
 - **Right-angle (stem) mesh relationship.** Derived here from rolling
-  pitch circles and tested, but it has no external citation yet
-  (ASM-0019).
-- **Winding sense of the teaching layout.** It winds counter-clockwise
-  seen from the crown. A layout with the usual clockwise winding needs
-  the crown wheel on the other side of the stem, or an extra stage.
+  pitch circles and tested. Two candidate citations are recorded,
+  SRC-0007 (ISO 23509:2016) and SRC-0008 (SDP/SI), but neither has been
+  read: this environment's network policy blocks the sites, and ISO
+  23509 is paid. Both cover generic machine bevel gears, so a
+  horological source for contrate or winding gearing would be better.
 - **Acceptable bearing clearances.** Side shake and endshake are
   computed but not judged. Judging them needs sourced ranges.
 

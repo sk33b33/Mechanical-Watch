@@ -43,17 +43,22 @@ const mm = millimetres;
  * (escapement is Phase 5). Jewel bores, pivots and shoulder spans are
  * left unknown on purpose.
  *
- * Keyless works and dial (ASM-0019, ASM-0020), all on the dial side:
+ * Keyless works and dial (ASM-0019, ASM-0020):
+ * - the stem runs through the mainplate (z = 0.4 mm; the groove is not
+ *   modeled, ASM-0010) and points to 3 o'clock seen from the dial (−X);
  * - a barrel arbor, coaxial with the barrel drum and joined to it by a
- *   mainspring (no energy modeled, ASM-0018), carries the ratchet wheel;
- * - the crown wheel (on a stud) meshes the ratchet; the winding pinion on
- *   the stem engages it at a right angle;
- * - the setting wheel (on a stud) meshes the minute wheel; the sliding
- *   pinion engages it when the stem is pulled out;
- * - the stem points to 3 o'clock seen from the dial (−X). The crown wheel
- *   and setting wheel are placed on its line, and its height is one
- *   pinion pitch radius above each wheel, so both right-angle meshes
- *   engage (KEY-002);
+ *   mainspring (no energy modeled, ASM-0018), carries the ratchet wheel
+ *   on the bridge side, just above the mainplate;
+ * - the crown wheel (on a stud) meshes the ratchet at the same height. It
+ *   lies above the stem, so the winding pinion engages it from below;
+ * - the setting wheel (on a stud) meshes the minute wheel on the dial
+ *   side, below the stem; the sliding pinion engages it when the stem is
+ *   pulled out;
+ * - the crown wheel and setting wheel are placed on the stem's line, and
+ *   the stem is one pinion pitch radius from each wheel's mid-plane, so
+ *   both right-angle meshes engage (KEY-002);
+ * - with the crown wheel above the stem, the derived winding direction is
+ *   clockwise seen from the crown (ASM-0018, ASM-0019);
  * - a dial below everything, centred on the centre arbor.
  */
 export function createTeachingMovement(): Movement {
@@ -115,10 +120,10 @@ export function createTeachingMovement(): Movement {
   const minutePinion = gear("Minute pinion", minuteWheel, 8, motionModule, -1.0, 0.4);
   const hourWheelGear = gear("Hour wheel", hourWheel, 32, motionModule, -1.0, 0.2);
 
-  // Keyless works, dial side.
+  // Keyless works. Ratchet and crown wheel just above the mainplate (its top face is at 1.0 mm).
   const keylessModule = mm(0.1);
-  const ratchetWheel = gear("Ratchet wheel", barrelArbor, 40, keylessModule, -0.2, 0.2);
-  const crownWheel = gear("Crown wheel", crownWheelArbor, 20, keylessModule, -0.2, 0.2);
+  const ratchetWheel = gear("Ratchet wheel", barrelArbor, 40, keylessModule, 1.1, 0.2);
+  const crownWheel = gear("Crown wheel", crownWheelArbor, 20, keylessModule, 1.1, 0.2);
   const settingWheel = gear("Setting wheel", settingWheelArbor, 16, keylessModule, -0.6, 0.2);
 
   const mesh = (a: Gear, b: Gear): GearMesh => createGearMesh(a.id, b.id);
@@ -179,10 +184,10 @@ export function createTeachingMovement(): Movement {
   m = addKeylessWorks(m, createKeylessWorks({
     name: "Keyless works",
     stemDirection: degrees(180),
-    // One winding-pinion pitch radius (0.1 × 12 / 2) above the crown wheel's mid-plane,
-    // and one sliding-pinion pitch radius (0.1 × 20 / 2) above the setting wheel's.
+    // One winding-pinion pitch radius (0.1 × 14 / 2 = 0.7) below the crown wheel's mid-plane (1.1),
+    // and one sliding-pinion pitch radius (0.1 × 20 / 2 = 1.0) above the setting wheel's (−0.6).
     stemHeight: mm(0.4),
-    windingPinion: { toothCount: 12, module: keylessModule },
+    windingPinion: { toothCount: 14, module: keylessModule },
     slidingPinion: { toothCount: 20, module: keylessModule },
     crownWheelGearId: crownWheel.id,
     settingWheelGearId: settingWheel.id,

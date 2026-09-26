@@ -98,6 +98,8 @@ export function meshSpeedRatio(drivingTeeth: number, drivenTeeth: number): numbe
  * |ω_driven| z_driven = |ω_driving| z_driving. Unlike a parallel mesh,
  * the direction is not fixed by the tooth counts: `sense` (±1) comes
  * from the layout (see src/kinematics/keylessGeometry.ts).
+ * Citation pending: candidate sources SRC-0007 (ISO 23509) and SRC-0008
+ * are recorded but not yet read.
  */
 export function crossedMeshSpeedRatio(drivingTeeth: number, drivenTeeth: number, sense: 1 | -1): number {
   assertValidToothCount(drivingTeeth);
