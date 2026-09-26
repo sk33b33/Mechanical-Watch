@@ -595,3 +595,22 @@ button.active {
 .toolbar-clock {
   min-width: 0;
 }
+
+/* Required by REF-ENG §9 whenever the escapement is shown. */
+.viewport-model-label {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 3px 8px;
+  border: 1px solid #b08a2e;
+  border-radius: 4px;
+  color: #e0b85c;
+  background: rgba(20, 16, 6, 0.8);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  pointer-events: auto;
+}
+
+.viewport-model-label[hidden] {
+  display: none;
+}

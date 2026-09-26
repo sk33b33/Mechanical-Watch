@@ -1,4 +1,4 @@
-import { millimetres, type Length } from "@/units/length";
+import { metres, millimetres, type Length } from "@/units/length";
 import { degrees } from "@/units/angle";
 import { vec2 } from "@/math/vec2";
 import {
@@ -21,7 +21,8 @@ import { createJewel } from "@/domain/jewel";
 import { createFrictionClutch, createMainspring } from "@/domain/coupling";
 import { createKeylessWorks } from "@/domain/keyless";
 import { createDial } from "@/domain/dial";
-import { addDial, addKeylessWorks } from "@/domain/movement";
+import { addDial, addEscapement, addKeylessWorks } from "@/domain/movement";
+import { createEscapement } from "@/domain/escapement";
 import { meshCentreDistance } from "@/math/gearMath";
 
 const mm = millimetres;
@@ -60,6 +61,13 @@ const mm = millimetres;
  * - with the crown wheel above the stem, the derived winding direction is
  *   clockwise seen from the crown (ASM-0018, ASM-0019);
  * - a dial below everything, centred on the centre arbor.
+ *
+ * Escapement (SIMPLIFIED ESCAPEMENT MODEL, ASM-0021…0023): a 15-tooth
+ * escape wheel on the escape arbor, a pallet arbor and balance staff under
+ * a balance cock. At nominal time the escape arbor turns at 10 rev/min, so
+ * the model gives 18 000 beats per hour and requires a 2.5 Hz balance.
+ * Amplitude, lift angle and lever angle are illustrative inputs, not
+ * measured or sourced values (ASM-0009).
  */
 export function createTeachingMovement(): Movement {
   const trainModule = mm(0.12);
@@ -98,6 +106,8 @@ export function createTeachingMovement(): Movement {
   const minuteWheel = shaft("Minute wheel", null, { kind: "STUD", frameId: mainplate.id });
   const hourWheel = shaft("Hour wheel", "HOURS", { kind: "CARRIED" });
   const barrelArbor = shaft("Barrel arbor", null, { kind: "CARRIED" });
+  const palletArbor = shaft("Pallet arbor");
+  const balanceStaff = shaft("Balance staff");
   const crownWheelArbor = shaft("Crown wheel", null, { kind: "STUD", frameId: mainplate.id });
   const settingWheelArbor = shaft("Setting wheel", null, { kind: "STUD", frameId: mainplate.id });
 
@@ -139,6 +149,15 @@ export function createTeachingMovement(): Movement {
   let m = createMovement("Teaching movement: going train and motion works", true);
   m = addFrame(m, mainplate);
   m = addFrame(m, bridge);
+  // A separate bridge for the pallet arbor and balance, beyond the train bridge's upper edge.
+  const balanceCock = createFrame({
+    kind: "BRIDGE",
+    name: "Balance cock",
+    outline: { kind: "POLYGON", points: [vec2(mm(3), mm(5)), vec2(mm(12), mm(5)), vec2(mm(12), mm(11)), vec2(mm(3), mm(11))] },
+    zBottom: mm(4),
+    thickness: mm(0.8),
+  });
+  m = addFrame(m, balanceCock);
   for (const s of [barrel, centre, third, fourth, escape, cannon, minuteWheel, hourWheel, barrelArbor, crownWheelArbor, settingWheelArbor]) {
     m = addShaft(m, s);
   }
@@ -150,6 +169,11 @@ export function createTeachingMovement(): Movement {
     barrelToCentre, centreToThird, thirdToFourth, fourthToEscape, cannonToMinute, minuteToHour, crownToRatchet, settingToMinute,
   ]) {
     m = addGearMesh(m, g);
+  }
+  for (const s of [palletArbor, balanceStaff]) {
+    m = addShaft(m, s);
+    m = addJewel(m, createJewel({ name: `${s.name} lower jewel`, kind: "HOLE_JEWEL", frameId: mainplate.id, shaftId: s.id, end: "LOWER" }));
+    m = addJewel(m, createJewel({ name: `${s.name} upper jewel`, kind: "HOLE_JEWEL", frameId: balanceCock.id, shaftId: s.id, end: "UPPER" }));
   }
   for (const s of [barrel, centre, third, fourth, escape]) {
     m = addJewel(m, createJewel({ name: `${s.name} lower jewel`, kind: "HOLE_JEWEL", frameId: mainplate.id, shaftId: s.id, end: "LOWER" }));
@@ -200,6 +224,34 @@ export function createTeachingMovement(): Movement {
     thickness: mm(0.4),
     // Below the lowest motion-works part (−1.2 mm) with 0.2 mm clear.
     faceHeight: mm(-1.8),
+  }));
+
+  // Pallet arbor and balance staff: fixed positions along a line from the escape arbor
+  // (illustrative layout distances). The escape arbor's position follows the mesh chain
+  // centre → third (330°) → fourth (0°) → escape (90°).
+  const rad = (deg: number): number => (deg * Math.PI) / 180;
+  const cd = (z1: number, z2: number): number => meshCentreDistance(trainModule, z1, z2);
+  const escapeAt = {
+    x: cd(80, 10) * Math.cos(rad(330)) + cd(75, 10),
+    y: cd(80, 10) * Math.sin(rad(330)) + cd(80, 8),
+  };
+  const layoutDirection = rad(120);
+  const escapeToPallet = mm(3.2);
+  const palletToBalance = mm(3.5);
+  const palletAt = { x: escapeAt.x + escapeToPallet * Math.cos(layoutDirection), y: escapeAt.y + escapeToPallet * Math.sin(layoutDirection) };
+  const balanceAt = { x: palletAt.x + palletToBalance * Math.cos(layoutDirection), y: palletAt.y + palletToBalance * Math.sin(layoutDirection) };
+  m = updateShaft(m, palletArbor.id, { placement: fixedAt(metres(palletAt.x), metres(palletAt.y)) });
+  m = updateShaft(m, balanceStaff.id, { placement: fixedAt(metres(balanceAt.x), metres(balanceAt.y)) });
+  m = addEscapement(m, createEscapement({
+    name: "Escapement",
+    escapeArborShaftId: escape.id,
+    // Below the escape pinion (2.95–3.45 mm) and clear of the fourth pinion in plan.
+    escapeWheel: { toothCount: 15, tipDiameter: mm(4.6), thickness: mm(0.15), zCentre: mm(2.4) },
+    palletArborShaftId: palletArbor.id,
+    leverAngle: degrees(10),
+    balanceShaftId: balanceStaff.id,
+    // Balance radius (3 mm) inside the pallet-to-balance distance, so the rim clears the pallet arbor (ESC-103).
+    balance: { diameter: mm(6), thickness: mm(0.3), zCentre: mm(3.0), amplitude: degrees(270), liftAngle: degrees(50) },
   }));
 
   return setNominalTimeDrive(m);

@@ -15,8 +15,10 @@ import { arborZRange, frameZRange, isCompleteFrame } from "@/assembly/assemblyGe
 import { partReferencePoint } from "@/assembly/measure";
 import { stemBodyId, type KeylessWorksId } from "@/domain/keyless";
 import { buildDialMeshes, buildStemMeshes } from "./keylessMeshes";
+import { escapementDisplay, primaryEscapement } from "@/simulation/escapementDisplay";
+import { createBalanceGeometry, createEscapeWheelGeometry, createForkGeometry } from "@/geometry/assemblyGeometry3d";
 
-type PickKind = "gear" | "jewel" | "keyless" | "arbor" | "frame" | "dial";
+type PickKind = "gear" | "jewel" | "escapement" | "keyless" | "arbor" | "frame" | "dial";
 type ViewSide = "BRIDGE" | "DIAL";
 
 /**
@@ -33,7 +35,7 @@ export interface SectionState {
 const EXPLODE_STRETCH = 3;
 
 /** When several objects are under the pointer, the most specific wins. */
-const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, keyless: 2, arbor: 3, frame: 4, dial: 5 };
+const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, escapement: 2, keyless: 2, arbor: 3, frame: 4, dial: 5 };
 
 const COLORS = {
   selected: 0x4fa3ff,
@@ -50,6 +52,9 @@ const COLORS = {
   stem: 0x9aa4ae,
   crown: 0xa9b3bd,
   pinion: 0xb8c4d0,
+  escapeWheel: 0xd9c27a,
+  fork: 0x8fa3b8,
+  balance: 0xc9b37a,
 } as const;
 
 const FRAME_OPACITY = { normal: 0.22, selected: 0.4 } as const;
@@ -85,6 +90,7 @@ export class Viewport {
   private readonly shaftGroups = new Map<ShaftId, THREE.Group>();
   private readonly stemSpins = new Map<KeylessWorksId, { stem: THREE.Group; windingPinion: THREE.Group }>();
   private showDial = true;
+  private readonly escapementLabel: HTMLDivElement;
   private readonly pickables: THREE.Mesh[] = [];
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
@@ -119,6 +125,12 @@ export class Viewport {
     this.scene.add(this.content);
 
     container.appendChild(this.createViewButtons());
+    this.escapementLabel = document.createElement("div");
+    this.escapementLabel.className = "viewport-model-label";
+    this.escapementLabel.textContent = "SIMPLIFIED ESCAPEMENT MODEL";
+    this.escapementLabel.title = "Kinematic only: the balance swings at a declared amplitude and the train ticks once per beat. No contact, impact or balance dynamics are modeled (ESC-002).";
+    this.escapementLabel.hidden = true;
+    container.appendChild(this.escapementLabel);
     this.renderer.domElement.addEventListener("pointerdown", this.handlePointerDown);
     this.renderer.domElement.addEventListener("pointerup", this.handlePointerUp);
     this.resizeObserver = new ResizeObserver(() => {
@@ -315,6 +327,8 @@ export class Viewport {
       this.addPickable(this.content, mesh, { kind: "jewel", entityId: jewel.id, baseColor: color });
     }
 
+    this.addEscapementMeshes();
+
     if (this.showDial) {
       for (const dial of Object.values(movement.dials)) {
         const built = buildDialMeshes(dial, analysis.placement, (z) => this.displayZ(z), {
@@ -345,6 +359,52 @@ export class Viewport {
 
     this.addMeasurementLine();
     this.applySelection();
+  }
+
+  /** Escape wheel on its arbor, pallet fork on its arbor, balance on its staff (visual shapes, ASM-0012). */
+  private addEscapementMeshes(): void {
+    const { movement, analysis } = this.store;
+    const esc = primaryEscapement(movement);
+    this.escapementLabel.hidden = esc === null;
+    if (esc === null) return;
+    const positions = analysis.placement.shaftPositions;
+    const pick = (mesh: THREE.Mesh, color: number, parent: THREE.Object3D): void => {
+      this.addPickable(parent, mesh, { kind: "escapement", entityId: esc.id, baseColor: color });
+    };
+    const w = esc.escapeWheel;
+    const escapeGroup = this.shaftGroups.get(esc.escapeArborShaftId);
+    const tipR = w.tipDiameter / 2;
+    if (escapeGroup !== undefined && Number.isInteger(w.toothCount) && w.toothCount > 0 && tipR > 0 && w.thickness > 0 && Number.isFinite(w.zCentre)) {
+      const mesh = new THREE.Mesh(createEscapeWheelGeometry(w.toothCount, tipR, w.thickness), material(COLORS.escapeWheel, { metalness: 0.6, roughness: 0.35 }));
+      mesh.position.z = this.displayZ(w.zCentre);
+      pick(mesh, COLORS.escapeWheel, escapeGroup);
+    }
+    const b = esc.balance;
+    const balanceGroup = this.shaftGroups.get(esc.balanceShaftId);
+    if (balanceGroup !== undefined && b.diameter > 0 && b.thickness > 0 && Number.isFinite(b.zCentre)) {
+      for (const geometry of createBalanceGeometry(b.diameter / 2, b.thickness)) {
+        const mesh = new THREE.Mesh(geometry, material(COLORS.balance, { metalness: 0.6, roughness: 0.35 }));
+        mesh.position.z = this.displayZ(b.zCentre);
+        pick(mesh, COLORS.balance, balanceGroup);
+      }
+    }
+    const palletGroup = this.shaftGroups.get(esc.palletArborShaftId);
+    const pallet = positions.get(esc.palletArborShaftId);
+    const escape = positions.get(esc.escapeArborShaftId);
+    const balance = positions.get(esc.balanceShaftId);
+    if (palletGroup !== undefined && pallet !== undefined && escape !== undefined && balance !== undefined && Number.isFinite(w.zCentre)) {
+      const toEscape = Math.hypot(escape.x - pallet.x, escape.y - pallet.y);
+      const toBalance = Math.hypot(balance.x - pallet.x, balance.y - pallet.y);
+      const parts = createForkGeometry(
+        Math.atan2(balance.y - pallet.y, balance.x - pallet.x), toBalance * 0.85,
+        Math.atan2(escape.y - pallet.y, escape.x - pallet.x), Math.max(toEscape - tipR * 0.9, toEscape * 0.2),
+      );
+      for (const geometry of parts) {
+        const mesh = new THREE.Mesh(geometry, material(COLORS.fork));
+        mesh.position.z = this.displayZ(w.zCentre);
+        pick(mesh, COLORS.fork, palletGroup);
+      }
+    }
   }
 
   /** Shows or hides the dial (it hides the motion works from the dial side). Display only. */
@@ -416,6 +476,19 @@ export class Viewport {
   private applyKinematicRotation(): void {
     for (const [shaftId, group] of this.shaftGroups) {
       group.rotation.z = this.store.simulation.shaftAngle[shaftId] ?? 0;
+    }
+    // The escapement ticks the going train once per beat and swings the fork and balance (display of ASM-0023).
+    const { movement, analysis, simulationTrain, simulation } = this.store;
+    const display = escapementDisplay(movement, analysis.train, simulationTrain, simulation.time);
+    if (display !== null) {
+      for (const [shaftId, offset] of display.shaftAngleOffset) {
+        const group = this.shaftGroups.get(shaftId);
+        if (group !== undefined) group.rotation.z += offset;
+      }
+      const fork = this.shaftGroups.get(display.escapement.palletArborShaftId);
+      if (fork !== undefined) fork.rotation.z = display.forkAngle;
+      const balance = this.shaftGroups.get(display.escapement.balanceShaftId);
+      if (balance !== undefined) balance.rotation.z = display.balanceAngle;
     }
     // Stem bodies turn about the stem direction, the group's local +X.
     for (const [id, spins] of this.stemSpins) {

@@ -8,6 +8,7 @@ import type { Jewel } from "@/domain/jewel";
 import type { Tolerance } from "@/domain/tolerance";
 import type { KeylessWorks, StemPinion } from "@/domain/keyless";
 import type { Dial } from "@/domain/dial";
+import type { Escapement } from "@/domain/escapement";
 import type { Vec2 } from "@/math/vec2";
 import type { Length } from "@/units/length";
 import type { Angle } from "@/units/angle";
@@ -34,7 +35,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 4;
+export const DESIGN_SCHEMA_VERSION = 5;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -80,6 +81,12 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
     const movement = doc.movement;
     if (!isRecord(movement)) return doc;
     return { ...doc, schemaVersion: 4, movement: { ...movement, keylessWorks: {}, dials: {} } };
+  },
+  /** v4 → v5: movements gain empty `escapements`. */
+  4: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement)) return doc;
+    return { ...doc, schemaVersion: 5, movement: { ...movement, escapements: {} } };
   },
 };
 
@@ -327,6 +334,38 @@ const dial: Decoder<Dial> = (value, path) => {
   };
 };
 
+const escapement: Decoder<Escapement> = (value, path) => {
+  const o = object(value, path);
+  const wheel = object(field(o, "escapeWheel", (v) => v, path), `${path}.escapeWheel`);
+  const balance = object(field(o, "balance", (v) => v, path), `${path}.balance`);
+  const wp = `${path}.escapeWheel`;
+  const bp = `${path}.balance`;
+  return {
+    id: field(o, "id", id<Escapement["id"]>(), path),
+    type: field(o, "type", literal("Escapement"), path),
+    name: field(o, "name", string, path),
+    kind: field(o, "kind", literal("SWISS_LEVER"), path),
+    modelLevel: field(o, "modelLevel", literal("SIMPLIFIED_KINEMATIC"), path),
+    escapeArborShaftId: field(o, "escapeArborShaftId", id<Shaft["id"]>(), path),
+    escapeWheel: {
+      toothCount: field(wheel, "toothCount", number, wp),
+      tipDiameter: field(wheel, "tipDiameter", length, wp),
+      thickness: field(wheel, "thickness", length, wp),
+      zCentre: field(wheel, "zCentre", length, wp),
+    },
+    palletArborShaftId: field(o, "palletArborShaftId", id<Shaft["id"]>(), path),
+    leverAngle: field(o, "leverAngle", angle, path),
+    balanceShaftId: field(o, "balanceShaftId", id<Shaft["id"]>(), path),
+    balance: {
+      diameter: field(balance, "diameter", length, bp),
+      thickness: field(balance, "thickness", length, bp),
+      zCentre: field(balance, "zCentre", length, bp),
+      amplitude: field(balance, "amplitude", angle, bp),
+      liftAngle: field(balance, "liftAngle", angle, bp),
+    },
+  };
+};
+
 const movement: Decoder<Movement> = (value, path) => {
   const o = object(value, path);
   return {
@@ -343,6 +382,7 @@ const movement: Decoder<Movement> = (value, path) => {
     tolerances: field(o, "tolerances", entityRecord(tolerance), path),
     keylessWorks: field(o, "keylessWorks", entityRecord(keylessWorks), path),
     dials: field(o, "dials", entityRecord(dial), path),
+    escapements: field(o, "escapements", entityRecord(escapement), path),
     drive: field(o, "drive", nullable(drive), path),
   };
 };

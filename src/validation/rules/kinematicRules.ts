@@ -1,3 +1,4 @@
+import { oscillatingShaftIds } from "@/domain/escapement";
 import type { EntityId } from "@/domain/ids";
 import { drivenShaftId } from "@/domain/movement";
 import type { ValidationIssue } from "../validationIssue";
@@ -66,7 +67,10 @@ export const kinematicRules: Rule = ({ movement, train }) => {
   }
 
   if (shaftId !== null) {
+    // Pallet arbor and balance staff oscillate under the escapement; they are not meant to be gear-driven (ESC-102).
+    const oscillating = oscillatingShaftIds(movement.escapements);
     for (const id of train.unreachableShaftIds) {
+      if (oscillating.has(id)) continue;
       const shaft = movement.shafts[id];
       issues.push(
         issue("KIN-001", "unpowered", "warning", "L2_KINEMATIC", [id],

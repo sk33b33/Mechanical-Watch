@@ -9,6 +9,7 @@ import { createJewel, type BearingKind, type Jewel, type JewelId } from "./jewel
 import { createFrictionClutch, createMainspring, type Coupling, type CouplingId } from "./coupling";
 import { createKeylessWorks, type KeylessWorks } from "./keyless";
 import { createDial, type Dial } from "./dial";
+import { createEscapement, type Escapement } from "./escapement";
 import { radians } from "@/units/angle";
 import type { ToleranceId } from "./tolerance";
 
@@ -110,6 +111,21 @@ export function newDial(movement: Movement): Dial {
   });
 }
 
+/** An escapement with every dimension empty and no arbors chosen yet (ESC-101 lists what is missing). */
+export function newEscapement(movement: Movement): Escapement {
+  const none = "" as ShaftId;
+  const angle = radians(Number.NaN);
+  return createEscapement({
+    name: nextName(Object.values(movement.escapements), "Escapement"),
+    escapeArborShaftId: none,
+    escapeWheel: { toothCount: Number.NaN, tipDiameter: EMPTY, thickness: EMPTY, zCentre: EMPTY },
+    palletArborShaftId: none,
+    leverAngle: angle,
+    balanceShaftId: none,
+    balance: { diameter: EMPTY, thickness: EMPTY, zCentre: EMPTY, amplitude: angle, liftAngle: angle },
+  });
+}
+
 export function newJewel(movement: Movement, shaftId: ShaftId, end: ShaftEnd, frameId: FrameId, kind: BearingKind = "HOLE_JEWEL"): Jewel {
   const shaftName = movement.shafts[shaftId]?.name ?? "Arbor";
   return createJewel({ name: `${shaftName} ${end.toLowerCase()} jewel`, kind, frameId, shaftId, end });
@@ -131,7 +147,7 @@ export interface RemovalResult {
  * - a shaft owns its gears, bearings and clutches (and is no longer the drive);
  * - a gear owns the meshes it takes part in;
  * - every entity owns the tolerances declared on its dimensions.
- * The keyless works and the dial own nothing: removing a wheel they refer
+ * The keyless works, the dial and the escapement own nothing: removing a wheel they refer
  * to leaves the reference in place for validation to report.
  * References that are not ownership, such as another shaft's placement
  * constraint pointing at a removed shaft or mesh, are left in place and
@@ -173,7 +189,7 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
   }
 
   const others = new Set<string>();
-  if (id in movement.keylessWorks || id in movement.dials) others.add(id);
+  if (id in movement.keylessWorks || id in movement.dials || id in movement.escapements) others.add(id);
 
   const removed = new Set<string>([...frames, ...shafts, ...gears, ...meshes, ...jewels, ...couplings, ...tolerances, ...others]);
   const drive = movement.drive;
@@ -189,6 +205,7 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
       tolerances: without(movement.tolerances, removed),
       keylessWorks: without(movement.keylessWorks, removed),
       dials: without(movement.dials, removed),
+      escapements: without(movement.escapements, removed),
       drive: drive?.kind === "PRESCRIBED" && removed.has(drive.shaftId) ? null : drive,
     },
     removedIds: [...removed] as EntityId[],

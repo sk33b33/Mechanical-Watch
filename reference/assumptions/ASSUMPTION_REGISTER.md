@@ -27,6 +27,9 @@ Machine-readable equivalent: `src/reference/assumptions.ts`. A test
 | ASM-0018 | A mainspring's inner end is on the barrel arbor and its outer end on the drum, so the arbor is wound in the direction the drum turns when running; spring torque and energy are not modeled | Barrel / winding | Active |
 | ASM-0019 | Keyless works: the stem lies in a plane parallel to the mainplate; each stem pinion engages its wheel at a right angle as rolling pitch circles (|ω1 z1| = |ω2 z2|), on the crown side of the wheel's axis; the setting lever, yoke, springs and ratchet (Breguet) teeth are represented only by two stem positions and a one-way coupling | Keyless works | Active |
 | ASM-0020 | The dial is a flat disc of uniform thickness; feet, holes and printing are not modeled, and the hour markers drawn on it are visual | Dial | Active |
+| ASM-0021 | A Swiss lever escape wheel gives two beats per tooth (one at each pallet), and a beat is one swing of the balance (half its period); source pending, accepted for the simplified model | Escapement | Active |
+| ASM-0022 | The balance is a sinusoidal kinematic approximation at a declared amplitude, at the frequency the train's speed requires; no inertia, hairspring torque, damping or amplitude dependence is modeled, so it does not govern the rate | Balance | Active |
+| ASM-0023 | The train is locked between beats and advances only in an impulse window, while the balance is within half the lift angle of its dead point; the pallet fork crosses between bankings in that window; locking, draw, drop, impact, sliding and banking geometry are not modeled | Escapement | Active |
 
 Rules:
 1. Never hide an assumption.

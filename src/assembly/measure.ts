@@ -36,6 +36,8 @@ function axisOf(placement: PlacementSolution, entity: SelectableEntity): Vec2 | 
       return placement.shaftPositions.get(entity.shaftId) ?? null;
     case "Dial":
       return placement.shaftPositions.get(entity.centreShaftId) ?? null;
+    case "Escapement":
+      return placement.shaftPositions.get(entity.escapeArborShaftId) ?? null;
     case "Frame":
     case "KeylessWorks":
       return "none";
@@ -61,6 +63,12 @@ function zRangeOf(movement: Movement, entity: SelectableEntity): ZRange | null {
       return Number.isFinite(entity.faceHeight) && Number.isFinite(entity.thickness) && entity.thickness > 0
         ? { lo: entity.faceHeight, hi: entity.faceHeight + entity.thickness }
         : null;
+    case "Escapement": {
+      const w = entity.escapeWheel;
+      return Number.isFinite(w.zCentre) && Number.isFinite(w.thickness) && w.thickness > 0
+        ? { lo: w.zCentre - w.thickness / 2, hi: w.zCentre + w.thickness / 2 }
+        : null;
+    }
     case "KeylessWorks":
       // The stem axis height: a line, so the range has no thickness.
       return Number.isFinite(entity.stemHeight) ? { lo: entity.stemHeight, hi: entity.stemHeight } : null;

@@ -66,6 +66,10 @@ DIAL-001 At most one dial, with a positive diameter and thickness, a finite face
 DIAL-002 The dial must be clear of the movement: nothing may share its height where it overlaps the dial in plan.
 DIAL-003 Every hand arbor must lie within the dial.
 
+ESC-101 At most one escapement; its arbors must exist and be distinct, the escape arbor must be driven by the train, and its escape wheel, lever and balance inputs must be valid (amplitude above half the lift angle).
+ESC-102 The pallet arbor and balance staff oscillate under the escapement and must not be gear-driven.
+ESC-103 The escape wheel must clear the pallet arbor and balance staff, and the balance must clear the pallet arbor.
+
 TOL-001 A declared tolerance must apply to an existing dimension once, with finite limits, lower ≤ upper, and a positive lower limit for a size.
 TOL-002 A clearance that is positive at nominal should stay positive at its worst-case declared tolerance limits.
 

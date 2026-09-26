@@ -10,6 +10,7 @@ import type { Coupling, CouplingId } from "./coupling";
 import type { Tolerance, ToleranceId } from "./tolerance";
 import type { KeylessWorks, KeylessWorksId } from "./keyless";
 import type { Dial, DialId } from "./dial";
+import type { Escapement, EscapementId } from "./escapement";
 import type { ValidationLevel } from "@/reference/validationLevels";
 
 export type MovementId = EntityId<"movement">;
@@ -49,6 +50,8 @@ export interface Movement {
   keylessWorks: Record<KeylessWorksId, KeylessWorks>;
   /** At most one (DIAL-001). */
   dials: Record<DialId, Dial>;
+  /** At most one (ESC-101). */
+  escapements: Record<EscapementId, Escapement>;
   drive: Drive | null;
   /**
    * The level this design's model targets (REFERENCE_ENGINEERING.md §15).
@@ -76,6 +79,7 @@ export function createMovement(
     tolerances: {},
     keylessWorks: {},
     dials: {},
+    escapements: {},
     drive: null,
   };
 }
@@ -118,6 +122,22 @@ export function updateKeylessWorks(
     throw new Error(`Unknown keyless works id: ${id}`);
   }
   return { ...movement, keylessWorks: { ...movement.keylessWorks, [id]: { ...existing, ...patch } } };
+}
+
+export function addEscapement(movement: Movement, escapement: Escapement): Movement {
+  return { ...movement, escapements: { ...movement.escapements, [escapement.id]: escapement } };
+}
+
+export function updateEscapement(
+  movement: Movement,
+  id: EscapementId,
+  patch: Partial<Omit<Escapement, "id" | "type" | "kind" | "modelLevel">>,
+): Movement {
+  const existing = movement.escapements[id];
+  if (existing === undefined) {
+    throw new Error(`Unknown escapement id: ${id}`);
+  }
+  return { ...movement, escapements: { ...movement.escapements, [id]: { ...existing, ...patch } } };
 }
 
 export function addDial(movement: Movement, dial: Dial): Movement {

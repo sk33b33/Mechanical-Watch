@@ -123,6 +123,24 @@ export const ASSUMPTIONS = {
     scope: "Dial",
     status: "Active",
   },
+  "ASM-0021": {
+    summary:
+      "A Swiss lever escape wheel gives two beats per tooth (one at each pallet), and a beat is one swing of the balance (half its period); source pending, accepted for the simplified model",
+    scope: "Escapement",
+    status: "Active",
+  },
+  "ASM-0022": {
+    summary:
+      "The balance is a sinusoidal kinematic approximation at a declared amplitude, at the frequency the train's speed requires; no inertia, hairspring torque, damping or amplitude dependence is modeled, so it does not govern the rate",
+    scope: "Balance",
+    status: "Active",
+  },
+  "ASM-0023": {
+    summary:
+      "The train is locked between beats and advances only in an impulse window, while the balance is within half the lift angle of its dead point; the pallet fork crosses between bankings in that window; locking, draw, drop, impact, sliding and banking geometry are not modeled",
+    scope: "Escapement",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

@@ -12,6 +12,7 @@ import { timeRules } from "./rules/timeRules";
 import { couplingRules } from "./rules/couplingRules";
 import { toleranceRules } from "./rules/toleranceRules";
 import { dialRules, keylessRules } from "./rules/keylessRules";
+import { escapementRules } from "./rules/escapementRules";
 
 /** Rule families, in the order their issues are reported. */
 const RULES: readonly Rule[] = [
@@ -28,6 +29,7 @@ const RULES: readonly Rule[] = [
   timeRules,
   keylessRules,
   dialRules,
+  escapementRules,
 ];
 
 /**

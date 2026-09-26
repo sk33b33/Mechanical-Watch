@@ -1,7 +1,7 @@
 import type { AppStore } from "@/app/store";
 import type { EntityId } from "@/domain/ids";
-import { addDial, addFrame, addKeylessWorks, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
-import { newDial, newFrame, newKeylessWorks, newShaft } from "@/domain/editing";
+import { addDial, addEscapement, addFrame, addKeylessWorks, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
+import { newDial, newEscapement, newFrame, newKeylessWorks, newShaft } from "@/domain/editing";
 import { listAssumptions } from "@/reference/assumptions";
 
 export function mountComponentTree(container: HTMLElement, store: AppStore): () => void {
@@ -76,6 +76,10 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
         const dial = newDial(m);
         return { movement: addDial(m, dial), id: dial.id };
       }),
+      addButton("+ Escapement", "Add a simplified Swiss lever escapement with every value empty; then choose its arbors", (m) => {
+        const escapement = newEscapement(m);
+        return { movement: addEscapement(m, escapement), id: escapement.id };
+      }),
     );
     container.appendChild(actions);
 
@@ -100,6 +104,13 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
       }
       for (const jewel of Object.values(movement.jewels).filter((j) => j.shaftId === shaft.id)) {
         container.appendChild(item(jewel.name.replace(`${shaft.name} `, ""), jewel.id, 1));
+      }
+    }
+
+    if (Object.keys(movement.escapements).length > 0) {
+      container.appendChild(header("Escapement"));
+      for (const escapement of Object.values(movement.escapements)) {
+        container.appendChild(item(escapement.name, escapement.id, 0, "(simplified model)"));
       }
     }
 
