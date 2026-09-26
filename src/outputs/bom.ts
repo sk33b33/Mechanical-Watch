@@ -120,6 +120,43 @@ export function buildBom(movement: Movement): BomRow[] {
       notes: jewel.kind === "PLAIN_HOLE" ? "a hole in the frame, not a separate part" : "",
     });
   }
+  for (const keyless of Object.values(movement.keylessWorks).sort(byName)) {
+    item += 1;
+    const parent = String(item);
+    row({
+      item: parent, depth: 0, entityId: keyless.id, name: keyless.name, type: "Keyless works",
+      specification: `stem at ${Number.isFinite(keyless.stemHeight) ? mmText(keyless.stemHeight, 3) : "?"} height`,
+      location: "",
+      tolerances: "nominal only",
+      notes: "assembly of the parts below (ASM-0019)",
+    });
+    const pinion = (p: typeof keyless.windingPinion): string => {
+      const defined = isValidToothCount(p.toothCount) && isValidModule(p.module);
+      return `z = ${Number.isFinite(p.toothCount) ? String(p.toothCount) : "?"}, m = ${mmText(p.module)}, pitch Ø ${defined ? mmText(pitchDiameter(p.module, p.toothCount)) : "?"}`;
+    };
+    const parts: [string, string, string, string][] = [
+      ["Stem", "Stem", "diameter and length not modeled (ASM-0012)", "two positions: in (winding), out (setting)"],
+      ["Crown", "Crown", "not modeled (ASM-0012)", ""],
+      ["Winding pinion", "Stem pinion", pinion(keyless.windingPinion), "turns freely on the stem; ratchet teeth to the sliding pinion (form not modeled)"],
+      ["Sliding pinion", "Stem pinion", pinion(keyless.slidingPinion), "turns with the stem; setting teeth listed"],
+      ["Setting lever and yoke", "Lever", "not modeled", "represented by the stem position only (ASM-0019)"],
+      ["Click and click spring", "Click", "not modeled", "holds the ratchet wheel; modeled as a one-way hold only"],
+    ];
+    parts.forEach(([name, type, specification, notes], i) => {
+      row({ item: `${parent}.${String(i + 1)}`, depth: 1, entityId: keyless.id, name, type, specification, location: "", tolerances: "nominal only", notes });
+    });
+  }
+
+  for (const dial of Object.values(movement.dials).sort(byName)) {
+    item += 1;
+    row({
+      item: String(item), depth: 0, entityId: dial.id, name: dial.name, type: "Dial",
+      specification: `Ø ${mmText(dial.diameter, 3)}, thickness ${mmText(dial.thickness, 3)}`,
+      location: `face at ${mmText(dial.faceHeight, 3)}, centred on ${movement.shafts[dial.centreShaftId]?.name ?? "no arbor"}`,
+      tolerances: "nominal only",
+      notes: "flat disc; feet, holes and printing not modeled (ASM-0020)",
+    });
+  }
   return rows;
 }
 

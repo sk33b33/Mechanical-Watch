@@ -2,6 +2,60 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Dial and keyless works: complete
+
+- **Model.** Keyless works (stem direction and height, winding pinion,
+  sliding pinion, crown wheel, setting wheel, ratchet wheel), a dial (a
+  disc on the dial side, centred on an arbor), and a mainspring link from
+  the barrel arbor to its drum. The mainspring carries no energy; it
+  fixes which way winding turns the arbor (ASM-0018). Schema 4.
+- **Right-angle meshes (ASM-0019).** The stem lies flat. Its pinions
+  engage their wheels at right angles, modeled as rolling pitch circles:
+  the ratio comes from tooth counts, the direction from the layout (stem
+  above or below the wheel). Derived and checked against an independent
+  3D velocity test. KEY-002 checks each engagement geometrically: the
+  wheel's axis on the stem line, and the stem one pitch radius from the
+  wheel.
+- **Setting through the crown.** Crown out: the sliding pinion drives
+  the setting wheel → minute wheel → cannon pinion, the friction clutch
+  slips, and the going train keeps time. The hands' speed follows from
+  the ratios (teaching movement: 2 minute-hand turns per crown turn).
+- **Winding.** Crown in: turned the winding way, the ratchet teeth drive
+  the winding pinion → crown wheel → ratchet wheel → barrel arbor. The
+  winding way is derived: the one that turns the arbor the way the drum
+  runs. Turned the other way, the teeth slip and nothing is wound. The
+  click holds the ratchet otherwise, and a running train that turns the
+  ratchet is reported (KEY-003).
+- **UI.** The toolbar modes are Running, crown out (set forward or
+  backward), and crown in (wind, or turn backward). The crown turns at
+  1 rev/s. The inspector shows the stem, pinions, wheel choices,
+  engagement errors, winding direction and crown ratios, and there is a
+  mainspring editor on arbors. The viewport draws the dial with hour
+  markers (it can be hidden), hands below the dial face, and the stem,
+  crown and pinions turning; the crown moves out when pulled. Without
+  keyless works, setting still turns the minutes hand directly.
+- **Validation.** KEY-001…004 and DIAL-001…003 (dial dimensions, clear
+  of everything it covers, every hand over it).
+- **Outputs.** The report has a crown section and component reports for
+  the keyless works and dial. The BOM lists the stem, crown, pinions,
+  lever/yoke and click (unmodeled parts marked so) and the dial. The plan
+  drawing shows the dial as a hidden outline and the stem with its
+  pinions edge-on. The STL includes the dial.
+- **Teaching movement.** It gains a barrel arbor with a 40-tooth ratchet
+  wheel and mainspring, a 20-tooth crown wheel, a 16-tooth setting wheel
+  meshing the minute wheel, a stem at 3 o'clock (winding pinion 12,
+  sliding pinion 20, module 0.1) and a 28 mm dial. All values are
+  illustrative (ASM-0009). In this layout the crown winds
+  counter-clockwise seen from the crown. That is derived from the layout
+  and is opposite to the usual convention; a different layout would
+  reverse it.
+
+233 tests pass. Checked in a browser:
+- setting through the crown (3 h of hand motion in 1.5 s);
+- winding, and the slipping notice when turned backward;
+- the dial view with the crown at 3 o'clock, and the dial hidden;
+- the stem, crown and pinions turning.
+
 ## Phase 6 — Engineering outputs: complete (Phase 5 not started)
 
 Phase 6 was done before Phase 5 because it needs no new engineering
@@ -215,6 +269,12 @@ dimensions round-trip, and picking and issue selection work.
   pending.
 - **Side-shake convention (ASM-0013).** Reported as diametral clearance
   until a source confirms the horological convention.
+- **Right-angle (stem) mesh relationship.** Derived here from rolling
+  pitch circles and tested, but it has no external citation yet
+  (ASM-0019).
+- **Winding sense of the teaching layout.** It winds counter-clockwise
+  seen from the crown. A layout with the usual clockwise winding needs
+  the crown wheel on the other side of the stem, or an extra stage.
 - **Acceptable bearing clearances.** Side shake and endshake are
   computed but not judged. Judging them needs sourced ranges.
 
@@ -231,8 +291,15 @@ dimensions round-trip, and picking and issue selection work.
 - The camera is framed once per loaded design or view change. A design
   built up from empty keeps the default view until you orbit or switch
   view.
-- No dial or keyless works are modeled. Hand setting is applied
-  directly to the minutes-hand arbor.
+- Keyless works: the setting lever, yoke, springs, click geometry and
+  the ratchet teeth' form are not modeled. The stem's two positions stand
+  for them. The stem passes through the mainplate slab (grooves are not
+  modeled, ASM-0010), and stem parts aren't checked for interference.
+  There is no stop-seconds (hacking) and no third crown position (date).
+  Winding is kinematic only: there is no spring state, torque or power
+  reserve.
+- The dial has no feet or holes. The hand pipes that pass through it are
+  not checked.
 - Tolerances cover entered bearing and frame dimensions only. Gear
   dimensions and axis positions aren't toleranced, so centre-distance
   variation isn't analysed. Only worst-case stacks exist; distributions
@@ -249,8 +316,6 @@ dimensions round-trip, and picking and issue selection work.
   tolerances shown on drawings, tolerances on gear and placement
   dimensions for centre-distance variation.
 
-- A dial and keyless works (winding and setting), if you want hand
-  setting driven through a real setting train.
 - Phase 5 escapement: escape wheel, pallet fork and balance as a
   separately declared, simplified model (ESC-001/002). It needs a source
   for the escape-wheel/beat relationship before any beat rate is shown.

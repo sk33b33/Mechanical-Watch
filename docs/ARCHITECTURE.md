@@ -35,7 +35,13 @@ Gear equations (REF-ENG §5) and 2D geometry (`vec2`).
 
 ### Kinematics (`src/kinematics`)
 Placement constraints (`solvePlacement`), mesh geometry and the
-gear-train solver.
+gear-train solver. The solver's bodies are shafts (turning about +Z) and
+the stem's two bodies (stem with crown and sliding pinion; winding
+pinion), which turn about the stem direction. Right-angle stem meshes,
+the ratchet teeth and the click are edges and seeds in the same graph
+(`keylessGeometry.ts`, ASM-0019). Modes: running, direct hand setting
+(no keyless works), winding and crown setting. `keylessSummary.ts`
+derives the winding direction and crown ratios for the UI and outputs.
 
 ### Assembly (`src/assembly`)
 Axial geometry: frame and gear height ranges, bearing support, side

@@ -4,6 +4,8 @@ import { isCompleteFrame } from "@/assembly/assemblyGeometry";
 import { isValidModule, isValidToothCount, meshCentreDistance, pitchDiameter } from "@/math/gearMath";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import type { MovementAnalysis } from "@/analysis/analyzeMovement";
+import { mainplateEdgeAlongStem, stemEngagement, stemLine } from "@/kinematics/keylessGeometry";
+import { clockPositionFromDial } from "@/kinematics/keylessSummary";
 
 /**
  * A 2D plan drawing of the movement built from the design model: frame
@@ -22,9 +24,9 @@ export interface Point {
   y: number;
 }
 
-export type DrawingLayer = "FRAME" | "PITCH" | "AXIS" | "DIMENSION" | "TEXT";
+export type DrawingLayer = "FRAME" | "PITCH" | "AXIS" | "DIMENSION" | "TEXT" | "DIAL" | "KEYLESS";
 
-export const DRAWING_LAYERS: readonly DrawingLayer[] = ["FRAME", "PITCH", "AXIS", "DIMENSION", "TEXT"];
+export const DRAWING_LAYERS: readonly DrawingLayer[] = ["FRAME", "PITCH", "AXIS", "DIMENSION", "TEXT", "DIAL", "KEYLESS"];
 
 export type Primitive =
   | { kind: "circle"; layer: DrawingLayer; centre: Point; radius: number }
@@ -121,6 +123,48 @@ export function buildPlanDrawing(movement: Movement, analysis: MovementAnalysis)
     extent.push(pt(axis.x - d / 2, axis.y - d / 2), pt(axis.x + d / 2, axis.y + d / 2));
   }
 
+  // The dial lies below the movement: from the bridge side it is a hidden outline.
+  for (const dial of Object.values(movement.dials)) {
+    const centre = analysis.placement.shaftPositions.get(dial.centreShaftId);
+    if (centre === undefined || !(dial.diameter > 0)) continue;
+    const c = pt(mm(centre.x), mm(centre.y));
+    const r = mm(dial.diameter) / 2;
+    geometry.push({ kind: "circle", layer: "DIAL", centre: c, radius: r });
+    extent.push(pt(c.x - r, c.y - r), pt(c.x + r, c.y + r));
+  }
+
+  // Keyless works: the stem's centre line, and each stem pinion's pitch circle seen edge-on
+  // (a line across the stem, one pitch diameter long, ASM-0019).
+  const stemLabels: { at: Point; text: string }[] = [];
+  const stemNotes: string[] = [];
+  for (const keyless of Object.values(movement.keylessWorks)) {
+    const line = stemLine(movement, keyless, analysis.placement);
+    if (line === null || !Number.isFinite(keyless.stemHeight)) continue;
+    const at = (t: number, across = 0): Point =>
+      pt(mm(line.origin.x + t * line.u.x - across * line.u.y), mm(line.origin.y + t * line.u.y + across * line.u.x));
+    const stations: number[] = [0];
+    const engagements = [
+      [keyless.windingPinion, movement.gears[keyless.crownWheelGearId]],
+      [keyless.slidingPinion, movement.gears[keyless.settingWheelGearId]],
+    ] as const;
+    for (const [pinion, wheel] of engagements) {
+      if (wheel === undefined) continue;
+      const e = stemEngagement(line, keyless.stemHeight, pinion, wheel, analysis.placement);
+      if (e === null) continue;
+      const r = pitchDiameter(pinion.module, pinion.toothCount) / 2;
+      geometry.push({ kind: "line", layer: "KEYLESS", a: at(e.pinionAlongStem, -r), b: at(e.pinionAlongStem, r) });
+      stations.push(e.pinionAlongStem);
+    }
+    const outer = mainplateEdgeAlongStem(movement, line) ?? Math.max(...stations);
+    const inner = Math.min(...stations);
+    geometry.push({ kind: "line", layer: "KEYLESS", a: at(inner), b: at(outer) });
+    extent.push(at(inner), at(outer));
+    stemLabels.push({ at: at(outer), text: "Stem" });
+    stemNotes.push(
+      `${keyless.name}: the stem runs to the crown at ${Number.isFinite(keyless.stemDirection) ? clockPositionFromDial(keyless.stemDirection).toFixed(0) : "?"} o'clock seen from the dial, axis at height ${fmt(mm(keyless.stemHeight), 3)} mm.`,
+    );
+  }
+
   const bounds = boundsOf(extent);
   const width = bounds === null ? 0 : Math.max(bounds.max.x - bounds.min.x, bounds.max.y - bounds.min.y);
   const scale = DRAWING_STYLE.scales.find((s) => width * s <= DRAWING_STYLE.maxPlanWidthPaperMm) ?? 1;
@@ -128,6 +172,9 @@ export function buildPlanDrawing(movement: Movement, analysis: MovementAnalysis)
   const mark = DRAWING_STYLE.centreMarkPaperMm / scale;
 
   for (const c of pitchCircles) geometry.push({ kind: "circle", layer: "PITCH", centre: c.centre, radius: c.radius });
+  for (const label of stemLabels) {
+    geometry.push({ kind: "text", layer: "TEXT", at: pt(label.at.x, label.at.y - textHeight * 1.2), text: label.text, height: textHeight * 0.8, align: "left" });
+  }
 
   // Coaxial arbors share one centre mark and one label.
   const byPosition = new Map<string, { at: Point; names: string[] }>();
@@ -175,6 +222,10 @@ export function buildPlanDrawing(movement: Movement, analysis: MovementAnalysis)
       "Plan viewed from the bridge side (+Z toward the viewer). Dimensions in mm.",
       "Nominal geometry from the design model; tolerances are not shown on this plan (MFG-001).",
       "Circles on gears are pitch circles (d = m z, REF-ENG §5.1). Tooth profiles are not defined (REF-ENG §6).",
+      ...(Object.keys(movement.dials).length > 0 ? ["The dial is below the movement and shown as a hidden (dashed) outline."] : []),
+      ...(Object.keys(movement.keylessWorks).length > 0
+        ? ["Stem pinions are drawn edge-on as their pitch diameter across the stem centre line (ASM-0019).", ...stemNotes]
+        : []),
       "Not a manufacturing drawing: manufacturing readiness requires validation evidence (MFG-002).",
       ...(movement.isTeachingDemo ? ["Teaching demo: dimensions are illustrative, not a production caliber (ASM-0009)."] : []),
     ],

@@ -5,9 +5,8 @@ import type { Dial } from "@/domain/dial";
 import type { ShaftId } from "@/domain/shaft";
 import { createGear } from "@/domain/gear";
 import { metres } from "@/units/length";
-import { isCompleteFrame } from "@/assembly/assemblyGeometry";
 import type { PlacementSolution } from "@/kinematics/solvePlacement";
-import { isDefinedPinion, stemEngagement, stemLine, type StemLine } from "@/kinematics/keylessGeometry";
+import { isDefinedPinion, mainplateEdgeAlongStem, stemEngagement, stemLine } from "@/kinematics/keylessGeometry";
 import { createGearGeometry } from "@/geometry/gearGeometry";
 import { DIAL_VISUALIZATION, KEYLESS_VISUALIZATION, createZCylinder } from "@/geometry/assemblyGeometry3d";
 
@@ -42,30 +41,6 @@ function pinionMesh(pinion: StemPinion, x: number, material: THREE.Material): TH
   const mesh = new THREE.Mesh(geometry, material);
   mesh.position.x = x;
   return mesh;
-}
-
-/** Along-stem distance from the line origin to the outside of the mainplate, for placing the crown. */
-function mainplateEdgeAlongStem(movement: Movement, line: StemLine): number | null {
-  let best: number | null = null;
-  for (const frame of Object.values(movement.frames)) {
-    if (frame.kind !== "MAINPLATE" || !isCompleteFrame(frame)) continue;
-    const o = frame.outline;
-    let t: number;
-    if (o.kind === "CIRCLE") {
-      // Ray origin + t u meets |p − c| = r.
-      const dx = line.origin.x - o.centre.x;
-      const dy = line.origin.y - o.centre.y;
-      const b = dx * line.u.x + dy * line.u.y;
-      const c = dx * dx + dy * dy - o.radius * o.radius;
-      const disc = b * b - c;
-      if (disc < 0) continue;
-      t = -b + Math.sqrt(disc);
-    } else {
-      t = Math.max(...o.points.map((p) => (p.x - line.origin.x) * line.u.x + (p.y - line.origin.y) * line.u.y));
-    }
-    best = best === null ? t : Math.max(best, t);
-  }
-  return best;
 }
 
 export function buildStemMeshes(

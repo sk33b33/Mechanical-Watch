@@ -29,10 +29,17 @@ const inMm = (si: number | null | undefined): number => toMillimetres(metres(si 
 describe("bill of materials", () => {
   const bom = buildBom(teaching);
 
-  it("lists every frame, arbor, gear and bearing exactly once", () => {
+  it("lists every frame, arbor, gear, bearing and dial exactly once, and the keyless works with its parts", () => {
     const count = (r: object): number => Object.keys(r).length;
-    expect(bom).toHaveLength(count(teaching.frames) + count(teaching.shafts) + count(teaching.gears) + count(teaching.jewels));
-    expect(new Set(bom.map((r) => r.entityId)).size).toBe(bom.length);
+    const keylessRows = bom.filter((r) => r.entityId in teaching.keylessWorks);
+    const others = bom.filter((r) => !(r.entityId in teaching.keylessWorks));
+    expect(others).toHaveLength(count(teaching.frames) + count(teaching.shafts) + count(teaching.gears) + count(teaching.jewels) + count(teaching.dials));
+    expect(new Set(others.map((r) => r.entityId)).size).toBe(others.length);
+    expect(new Set(bom.map((r) => r.item)).size).toBe(bom.length);
+    expect(keylessRows.map((r) => r.name)).toEqual(
+      ["Keyless works", "Stem", "Crown", "Winding pinion", "Sliding pinion", "Setting lever and yoke", "Click and click spring"],
+    );
+    expect(keylessRows.find((r) => r.name === "Winding pinion")?.specification).toContain("z = 12");
   });
 
   it("nests gears under their arbor and states the nominal specification", () => {
@@ -120,6 +127,17 @@ describe("plan drawing", () => {
       && Math.abs(p.centre.x - toMillimetres(axis?.x ?? mm(Number.NaN))) < 1e-9)).toBe(true);
   });
 
+  it("draws the dial as a hidden outline and the stem with its pinions edge-on", () => {
+    const dialCircle = drawing.primitives.find((p) => p.kind === "circle" && p.layer === "DIAL");
+    expect(dialCircle?.kind === "circle" ? dialCircle.radius : Number.NaN).toBeCloseTo(14, 9);
+    const keylessLines = drawing.primitives.filter((p) => p.kind === "line" && p.layer === "KEYLESS");
+    expect(keylessLines).toHaveLength(3); // two pinions and the stem centre line
+    const pinionLengths = keylessLines.map((p) => (p.kind === "line" ? Math.hypot(p.b.x - p.a.x, p.b.y - p.a.y) : 0)).sort((a, b) => a - b);
+    expect(pinionLengths[0]).toBeCloseTo(1.2, 9); // winding pinion pitch Ø 0.1 × 12
+    expect(pinionLengths[1]).toBeCloseTo(2.0, 9); // sliding pinion pitch Ø 0.1 × 20
+    expect(drawing.notes.some((n) => n.includes("3 o'clock"))).toBe(true);
+  });
+
   it("gives coaxial arbors one centre mark and one label", () => {
     const labels = drawing.primitives.flatMap((p) => (p.kind === "text" ? [p.text] : []));
     expect(labels).toContain("Cannon pinion / Centre arbor / Hour wheel");
@@ -189,7 +207,7 @@ describe("plan drawing", () => {
 describe("STL (visual, L0)", () => {
   it("writes one solid per complete frame and valid gear, in millimetres", () => {
     const stl = buildStl(teaching, analysis);
-    expect(stl.solids).toBe(Object.keys(teaching.frames).length + Object.keys(teaching.gears).length);
+    expect(stl.solids).toBe(Object.keys(teaching.frames).length + Object.keys(teaching.gears).length + Object.keys(teaching.dials).length);
     expect(stl.skipped).toEqual([]);
     expect(stl.triangles).toBeGreaterThan(100);
     expect(stl.text.match(/^solid /gm)).toHaveLength(stl.solids);
@@ -217,6 +235,13 @@ describe("movement report", () => {
     expect(html).toMatch(/Manufacturing readiness<\/b> not validated/);
     expect(html).toMatch(/none declared: every dimension in this report is nominal only \(MFG-001\)/);
     expect(html).toContain("Teaching demo");
+  });
+
+  it("reports the crown: winding direction and ratios", () => {
+    expect(html).toContain("Keyless works: crown");
+    expect(html).toContain("Ratchet per crown revolution (winding)");
+    expect(html).toContain("0.300000 rev");
+    expect(html).toContain("2.000000 rev");
   });
 
   it("contains the plan drawing, BOM, component reports and assumption register", () => {

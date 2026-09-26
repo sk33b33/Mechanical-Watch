@@ -5,6 +5,7 @@ import type { Movement } from "@/domain/movement";
 import type { Gear } from "@/domain/gear";
 import type { KeylessWorks, StemPinion } from "@/domain/keyless";
 import type { PlacementSolution } from "./solvePlacement";
+import { isCompleteFrame } from "@/assembly/assemblyGeometry";
 
 /**
  * Right-angle engagement of a stem pinion with an ordinary wheel
@@ -101,3 +102,28 @@ export function stemEngagement(
 export function stemPinionPitchRadius(pinion: StemPinion): Length {
   return metres(pitchDiameter(pinion.module, pinion.toothCount) / 2);
 }
+
+/** Along-stem distance from the line origin to the outside of the mainplate, for placing the crown. */
+export function mainplateEdgeAlongStem(movement: Movement, line: StemLine): number | null {
+  let best: number | null = null;
+  for (const frame of Object.values(movement.frames)) {
+    if (frame.kind !== "MAINPLATE" || !isCompleteFrame(frame)) continue;
+    const o = frame.outline;
+    let t: number;
+    if (o.kind === "CIRCLE") {
+      // Ray origin + t u meets |p − c| = r.
+      const dx = line.origin.x - o.centre.x;
+      const dy = line.origin.y - o.centre.y;
+      const b = dx * line.u.x + dy * line.u.y;
+      const c = dx * dx + dy * dy - o.radius * o.radius;
+      const disc = b * b - c;
+      if (disc < 0) continue;
+      t = -b + Math.sqrt(disc);
+    } else {
+      t = Math.max(...o.points.map((p) => (p.x - line.origin.x) * line.u.x + (p.y - line.origin.y) * line.u.y));
+    }
+    best = best === null ? t : Math.max(best, t);
+  }
+  return best;
+}
+

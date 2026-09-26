@@ -8,8 +8,10 @@ Movement
 - id, name, isTeachingDemo
 - declaredValidationLevel (L0–L5; set by the author, never raised automatically)
 - frames, shafts, gears, gearMeshes, jewels (records by ID)
-- couplings (friction clutches, by ID)
+- couplings (friction clutches and mainsprings, by ID)
 - tolerances (by ID; see Tolerance)
+- keylessWorks (by ID; one expected, KEY-001)
+- dials (by ID; one expected, DIAL-001)
 - drive: null | PRESCRIBED {shaftId, angularVelocity} | NOMINAL_TIME
   (kinematic inputs only, ASM-0007; nominal time turns the minutes-hand
   shaft once per hour)
@@ -41,8 +43,23 @@ Jewel (bearing; sits on its shaft's axis, so it has no position)
 - frameId, shaftId, end (LOWER | UPPER)
 - boreDiameter: Length | null
 
-Coupling (friction clutch; engaged while running, slipping while setting, ASM-0015)
-- id, kind (FRICTION_CLUTCH), name, shaftAId, shaftBId
+Coupling
+- id, kind, name, shaftAId, shaftBId
+- FRICTION_CLUTCH: engaged while running, slipping while setting (ASM-0015)
+- MAINSPRING: shaftA = barrel arbor, shaftB = drum; no kinematic constraint
+  (no energy modeled); fixes the winding direction (ASM-0018)
+
+KeylessWorks (ASM-0019)
+- id, name
+- stemDirection (plan angle toward the crown), stemHeight
+- windingPinion, slidingPinion: {toothCount, module} (pitch models)
+- crownWheelGearId, settingWheelGearId, ratchetGearId (ordinary gears)
+- The stem's plan line passes through the crown wheel's solved axis. The
+  stem position (in: winding, out: setting) is UI/simulation state, not
+  part of the design.
+
+Dial (ASM-0020)
+- id, name, centreShaftId, diameter, thickness, faceHeight (the −Z face)
 
 Tolerance (declared design intent, REF-ENG §14; never manufacturing validation)
 - id, entityId, dimension (SHAFT_PIVOT_LOWER | SHAFT_PIVOT_UPPER | SHAFT_SHOULDER_SPAN | JEWEL_BORE | FRAME_Z_BOTTOM | FRAME_THICKNESS)
@@ -58,15 +75,16 @@ ValidationIssue
 - entityIds, message, validationLevel, references (REF-ENG sections, ASM, SRC)
 
 Derived, never stored: shaft axis positions, centre distances, angular
-velocities, bearing positions, side shake, endshake, tolerance limits
-and worst-case stacks, shaft angles, and every output (report, BOM,
+velocities (including the stem's), bearing positions, side shake,
+endshake, tolerance limits and worst-case stacks, stem engagement
+geometry, winding direction, shaft and stem angles, and every output (report, BOM,
 drawings, STL).
 
 ## Saved files (`src/persistence/designFile.ts`)
 
 ```
 { "format": "mechanical-watchmaker-3d.design",
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "savedAt": "<ISO time>",
   "movement": { …Movement as above… } }
 ```
@@ -83,7 +101,8 @@ drawings, STL).
   `DESIGN_SCHEMA_VERSION` and adding a migration from the previous
   version to `MIGRATIONS`. v1 → v2 turns the flat drive fields into the
   drive union, makes every shaft PIVOTED with no hand, and adds empty
-  couplings. v2 → v3 adds empty tolerances.
+  couplings. v2 → v3 adds empty tolerances. v3 → v4 adds empty keyless
+  works and dials.
 - Autosave keeps the current design in browser storage under
   `mw3d.autosave`. An unreadable autosave is moved to
   `mw3d.autosave.unreadable` rather than overwritten.
@@ -98,7 +117,8 @@ drawings, STL).
 - New parts start with every dimension and position empty (NaN or
   null). Validation lists what is missing; nothing is guessed.
 - Deleting removes the parts an entity owns: a frame's bearings; a
-  shaft's gears, bearings and clutches (and the drive, if it was the
-  drive); a gear's meshes. References that aren't ownership, such as another
+  shaft's gears, bearings, clutches and mainspring links (and the drive,
+  if it was the drive); a gear's meshes; any entity's tolerances. The
+  keyless works and dial own nothing. References that aren't ownership, such as another
   shaft's placement constraint, stay and are reported as ASSY-001.
 - Every edit, load and new design is undoable (store history, 200 steps).

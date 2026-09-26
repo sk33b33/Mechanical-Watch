@@ -8,6 +8,15 @@ import type { Gear } from "@/domain/gear";
 import type { Jewel } from "@/domain/jewel";
 import type { Frame } from "@/domain/frame";
 import type { GearMesh } from "@/domain/gearMesh";
+import type { KeylessWorks, StemPinion } from "@/domain/keyless";
+import type { Dial } from "@/domain/dial";
+import {
+  clockPositionFromDial,
+  crownSenseText,
+  SETTING_UNAVAILABLE_TEXT,
+  summarizeKeyless,
+  WINDING_UNAVAILABLE_TEXT,
+} from "@/kinematics/keylessSummary";
 import { nominalOf, TOLERANCED_DIMENSION_LABELS, type Tolerance } from "@/domain/tolerance";
 import { isValidModule, isValidToothCount, meshCentreDistance, meshSpeedRatio, pitchDiameter } from "@/math/gearMath";
 import { frameZRange, gearZRange, isCompleteFrame, shaftSupport, type DerivedLength } from "@/assembly/assemblyGeometry";
@@ -43,7 +52,7 @@ export interface ToleranceRow {
   scope: string;
 }
 
-export type ComponentKind = "Frame" | "Arbor" | "Gear" | "Bearing";
+export type ComponentKind = "Frame" | "Arbor" | "Gear" | "Bearing" | "Keyless works" | "Dial";
 
 export interface ComponentReport {
   id: EntityId;
@@ -323,15 +332,120 @@ function jewelReport(movement: Movement, analysis: MovementAnalysis, jewel: Jewe
   };
 }
 
+function pinionText(p: StemPinion): string {
+  const defined = isValidToothCount(p.toothCount) && isValidModule(p.module);
+  return `z = ${Number.isFinite(p.toothCount) ? String(p.toothCount) : "?"}, m = ${mmText(p.module)}, pitch Ø ${defined ? mmText(pitchDiameter(p.module, p.toothCount)) : "?"}`;
+}
+
+function keylessReport(movement: Movement, analysis: MovementAnalysis, keyless: KeylessWorks): ComponentReport {
+  const summary = summarizeKeyless(movement, keyless, analysis.placement);
+  const wheelName = (id: KeylessWorks["crownWheelGearId"]): string => movement.gears[id]?.name ?? "not chosen";
+  const engagementValues = (label: string, e: typeof summary.winding): ReportValue[] =>
+    e === null
+      ? [{ label: `${label}: engagement`, text: "needs defined teeth, modules, heights and placed wheels", si: null, level: "L1_GEOMETRIC", references: ["ASM-0019"] }]
+      : [
+          { label: `${label}: wheel axis off the stem line`, text: mmText(e.planOffset), si: e.planOffset, equation: "perpendicular plan distance from the stem line", level: "L1_GEOMETRIC", references: ["ASM-0019"] },
+          { label: `${label}: height error`, text: mmText(e.heightError), si: e.heightError, equation: "|stem height − wheel mid-plane| − pinion pitch radius", level: "L1_GEOMETRIC", references: ["ASM-0019"] },
+        ];
+  const derived: ReportValue[] = [
+    {
+      label: "Crown position",
+      text: Number.isFinite(keyless.stemDirection) ? `${clockPositionFromDial(keyless.stemDirection).toFixed(2)} o'clock seen from the dial` : "—",
+      si: null,
+      level: "L1_GEOMETRIC",
+      references: ["ASM-0014"],
+    },
+    ...engagementValues("Winding pinion", summary.winding),
+    ...engagementValues("Sliding pinion", summary.setting),
+    {
+      label: "Winding direction",
+      text: summary.windingSense === null
+        ? `not derivable: ${summary.windingUnavailable === null ? "unknown" : WINDING_UNAVAILABLE_TEXT[summary.windingUnavailable]}`
+        : `${crownSenseText(summary.windingSense)}; the other way the ratchet teeth slip`,
+      si: null,
+      equation: "the arbor must turn the way the drum runs",
+      level: "L2_KINEMATIC",
+      references: ["ASM-0018", "ASM-0019"],
+    },
+    {
+      label: "Ratchet per crown revolution (winding)",
+      text: summary.ratchetPerCrown === null ? "—" : `${summary.ratchetPerCrown.toFixed(6)} rev`,
+      si: summary.ratchetPerCrown,
+      equation: "right-angle stage z_pinion / z_crown wheel, then parallel stages",
+      level: "L2_KINEMATIC",
+      references: ["ASM-0019", "REF-ENG §5.3"],
+    },
+    {
+      label: "Hands forward when the crown turns",
+      text: summary.handsForwardSense === null
+        ? `unavailable: ${summary.settingState.status === "UNAVAILABLE" ? SETTING_UNAVAILABLE_TEXT[summary.settingState.reason] : "—"}`
+        : crownSenseText(summary.handsForwardSense),
+      si: null,
+      level: "L2_KINEMATIC",
+      references: ["ASM-0015", "ASM-0019"],
+    },
+    {
+      label: "Minutes hand per crown revolution (setting)",
+      text: summary.minutesPerCrown === null ? "—" : `${summary.minutesPerCrown.toFixed(6)} rev`,
+      si: summary.minutesPerCrown,
+      equation: "right-angle stage z_sliding pinion / z_setting wheel, then parallel stages",
+      level: "L2_KINEMATIC",
+      references: ["ASM-0019", "REF-ENG §5.3", "REF-ENG §8"],
+    },
+  ];
+  return {
+    id: keyless.id,
+    name: keyless.name,
+    kind: "Keyless works",
+    description: "crown, stem, winding and sliding pinions",
+    parameters: [
+      entered("Stem direction", Number.isFinite(keyless.stemDirection) ? `${toDegrees(keyless.stemDirection).toFixed(3)}° from +X` : "not set"),
+      lengthParam("Stem axis height", keyless.stemHeight),
+      entered("Winding pinion", pinionText(keyless.windingPinion)),
+      entered("Sliding pinion (setting teeth)", pinionText(keyless.slidingPinion)),
+      entered("Crown wheel", wheelName(keyless.crownWheelGearId)),
+      entered("Setting wheel", wheelName(keyless.settingWheelGearId)),
+      entered("Ratchet wheel (held by the click)", wheelName(keyless.ratchetGearId)),
+      entered("Setting lever and yoke", "represented by the two stem positions only (ASM-0019)"),
+    ],
+    derived,
+    tolerances: [],
+    issues: issuesFor(analysis, keyless.id),
+  };
+}
+
+function dialReport(movement: Movement, analysis: MovementAnalysis, dial: Dial): ComponentReport {
+  const back = dial.faceHeight + dial.thickness;
+  return {
+    id: dial.id,
+    name: dial.name,
+    kind: "Dial",
+    description: "flat disc on the dial side",
+    parameters: [
+      entered("Centred on", movement.shafts[dial.centreShaftId]?.name ?? "not chosen"),
+      lengthParam("Diameter", dial.diameter),
+      lengthParam("Thickness", dial.thickness),
+      lengthParam("Face height", dial.faceHeight),
+    ],
+    derived: [
+      { label: "Back height", text: Number.isFinite(back) ? mmText(back) : "—", si: Number.isFinite(back) ? back : null, equation: "face + thickness", level: "L1_GEOMETRIC", references: ["ASM-0020"] },
+    ],
+    tolerances: [],
+    issues: issuesFor(analysis, dial.id),
+  };
+}
+
 const byName = <T extends { name: string }>(a: T, b: T): number => a.name.localeCompare(b.name);
 
-/** Reports for every part, grouped frames → arbors → gears → bearings, each sorted by name. */
+/** Reports for every part, grouped frames → arbors → gears → bearings → keyless works → dial, each sorted by name. */
 export function componentReports(movement: Movement, analysis: MovementAnalysis): ComponentReport[] {
   return [
     ...Object.values(movement.frames).sort(byName).map((f) => frameReport(movement, analysis, f)),
     ...Object.values(movement.shafts).sort(byName).map((s) => shaftReport(movement, analysis, s)),
     ...Object.values(movement.gears).sort(byName).map((g) => gearReport(movement, analysis, g)),
     ...Object.values(movement.jewels).sort(byName).map((j) => jewelReport(movement, analysis, j)),
+    ...Object.values(movement.keylessWorks).sort(byName).map((k) => keylessReport(movement, analysis, k)),
+    ...Object.values(movement.dials).sort(byName).map((d) => dialReport(movement, analysis, d)),
   ];
 }
 

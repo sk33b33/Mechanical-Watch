@@ -40,6 +40,13 @@ geometry standard) is open work.
 | Measured pitch-circle clearance (m) | d − (d1 + d2)/2 | `measureBetween` | REF-ENG §5.2, §6 | pitch model only | DERIVED | L1 | `measure.test.ts` |
 | Measured drawn-tip clearance (m) | d − tip1 − tip2, unmeshed pairs only | `measureBetween` | none (visual) | ASM-0005 | APPROXIMATION | L0 | `measure.test.ts` › drawn tips… |
 | Measured centre-distance deviation (m) | abs(d − m(z1 + z2)/2) for a meshed pair | `measureBetween` | REF-ENG §5.2 | ASM-0008 | DERIVED | L1 | `measure.test.ts` › meshed gears |
+| Right-angle stem mesh (1) | ω_wheel = s (z_pinion / z_wheel) ω_pinion, s = +1 if the stem axis is above the wheel's mid-plane, −1 if below; pinion ω about the stem direction (toward the crown), wheel ω about +Z | `crossedMeshSpeedRatio` in `src/math/gearMath.ts`, `verticalSide`, `stemEngagement` in `src/kinematics/keylessGeometry.ts` | derived here from rolling pitch circles at the contact (teeth pass at the same rate; surface velocities equal); REF-ENG §5.3 only covers parallel meshes | ASM-0019, ASM-0001 | DERIVED; external citation pending | L2 | `keyless.test.ts` › property: surface velocities agree… (independent 3D check) |
+| Stem engagement geometry (m) | contact at C + R u (crown side); requires plan offset of the wheel axis from the stem line = 0 and abs(stem height − wheel mid-plane) = pinion pitch radius | `stemEngagement`, `keylessRules` (KEY-002) | geometric definition of intersecting-axis pitch circles | ASM-0019, ASM-0008 (tolerance) | DERIVED | L1 | `keyless.test.ts`, `keylessRules.test.ts` |
+| Winding direction | the crown winds when the ratchet (barrel arbor) then turns the way the drum runs; the other way the ratchet teeth slip | `windingResponse`, `windingCrownSense` in `solveGearTrain.ts` | REF-ENG §11 (winding state as data) | ASM-0018, ASM-0019 | APPROXIMATION (spring not modeled) | L2 | › winds in the derived direction…; › turned the other way… |
+| Click | ratchet ω = 0 unless being wound; a running train that turns it is a conflict | `holdRatchets` | REF-ENG §11 | ASM-0019 | APPROXIMATION (one-way hold, no geometry) | L2 | › a ratchet turned by the running train conflicts with the click |
+| Crown setting | stem out: sliding pinion ↔ setting wheel engaged, friction clutches slip, hand side re-driven from the crown; going train keeps running | `solveGearTrain` (CROWN_SETTING), `crownSettingState` | REF-ENG §8 | ASM-0015, ASM-0019 | APPROXIMATION | L2 | › pulled out, the crown sets the hands… |
+| Crown clock position (h) | atan2(−cos θ, sin θ) × 12 / 2π, mod 12 (dial side mirrors x; 12 o'clock is +Y) | `clockPositionFromDial` | definition | ASM-0014 | definition | L1 | › maps plan directions to the dial's clock |
+| Dial clearance | every gear or frame overlapping the dial in plan must be entirely above its back | `dialRules` (DIAL-002) | geometric definition | ASM-0010, ASM-0020 | DERIVED | L1 | `keylessRules.test.ts` › DIAL-002 |
 | Toleranced limits (m) | lower = nominal + lower deviation; upper = nominal + upper deviation | `Tolerance` in `src/domain/tolerance.ts` | REF-ENG §14 | none (declared intent) | user input; not validated | L1 | `toleranceAnalysis.test.ts` |
 | Worst-case stack (m) | R = Σ sᵢ xᵢ; R_min = Σ (sᵢ > 0 ? lowerᵢ : −upperᵢ); R_max likewise; untoleranced inputs at nominal | `evaluateStack` in `src/assembly/toleranceAnalysis.ts` | REF-ENG §14 | ASM-0017 | DERIVED | L1 | › property: min ≤ nominal ≤ max… |
 | Side shake over tolerances (m) | bore − pivot, worst case | `sideShakeStack` | REF-ENG §12, §14 | ASM-0013, ASM-0017 | DERIVED; acceptability UNKNOWN | L1 | › side shake: min takes… |
@@ -75,6 +82,12 @@ rev/min exist only at the UI boundary (`src/units/`).
 | Nominal-time drive without exactly one minutes hand | TIME-003 / TIME-001; nothing is driven. |
 | Hand setting where no clutch isolates the hands | SET-001 warning; the setting mode reports it and the hands are not moved. |
 | Schema-2 file | Migrated to schema 3 on open (no tolerances). |
+| Schema-3 file | Migrated to schema 4 on open (no keyless works, no dial). |
+| New keyless works or dial (all empty, no wheels or arbor chosen) | Kept empty; KEY-001 / DIAL-001 list what is missing. Nothing is drawn until defined. |
+| Stem level with a wheel's mid-plane | The right-angle mesh is impassable; KEY-002 level error. |
+| No mainspring on the ratchet's arbor | Winding direction unknown; crown turning while "winding" leaves the ratchet held; KEY-003 warning. |
+| Ratchet driven by the running train | Solver conflict via the click; KEY-003 error. |
+| Crown setting train not reaching the minutes hand | Setting unavailable; KEY-004 error. |
 | New tolerance (limits empty) | Kept as NaN; TOL-001 error until both limits are entered. No default band is assumed. |
 | Tolerance with lower > upper, or a size whose lower limit is ≤ 0 | TOL-001 error; stacks that use it report invalid input. |
 | Tolerance on an unknown dimension | TOL-001 warning (no effect); the dimension stays unknown. |
@@ -108,7 +121,7 @@ rev/min exist only at the UI boundary (`src/units/`).
 | SIM-002 | none | none | Fixed-timestep integrator; tested for chunking independence |
 | SIM-003 | info | L2 | always states the drive is prescribed |
 | KIN-001 | warning / info | L2 | unpowered shafts (warning); no drive set (info) (project addition) |
-| CPL-001 | error | L1 | a friction clutch joins two different coaxial shafts (project addition) |
+| CPL-001 | error | L1 | a friction clutch or mainspring joins two different coaxial shafts (project addition) |
 | SUP-001 | error | L1 | a carried part is placed coaxially (project addition) |
 | SUP-002 | error | L1 | a stud lies within its frame (project addition) |
 | TIME-001 | error | L2 | one shaft per hand (project addition) |
@@ -117,6 +130,13 @@ rev/min exist only at the UI boundary (`src/units/`).
 | TIME-004 | info | L2 | hand rate relative to nominal under a prescribed drive (project addition) |
 | SET-001 | warning | L2 | hands settable without turning the train (project addition) |
 | VAL-001 | blocker | L1 | validation engine failure (project addition) |
+| KEY-001 | error | L1 | keyless works references, one per movement, valid stem pinions and stem (project addition) |
+| KEY-002 | error | L1 | right-angle engagement: modules match, wheel axis on the stem line, stem one pitch radius from the wheel, not level (project addition) |
+| KEY-003 | error / warning | L2 | winding derivable (mainspring, drum running, ratchet reached); the running train must not turn the ratchet (project addition) |
+| KEY-004 | error | L2 | crown setting reaches the minutes hand (project addition) |
+| DIAL-001 | error | L1 | one dial, positive diameter and thickness, finite face, existing centre arbor (project addition) |
+| DIAL-002 | error | L1 | the dial is below everything it covers (project addition) |
+| DIAL-003 | error | L1 | every hand arbor is over the dial (project addition) |
 | TOL-001 | error / warning | L1 | tolerance definition: target exists, one per dimension, finite limits, lower ≤ upper, positive size limit (project addition) |
 | TOL-002 | warning | L1 | a nominally positive side shake or endshake that can close within declared tolerances (project addition) |
 | MFG-001 | info | L1 | summary whenever tolerances exist: declared intent, untoleranced dimensions are nominal. Also stated in every output. |

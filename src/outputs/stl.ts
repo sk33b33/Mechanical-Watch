@@ -1,16 +1,17 @@
 import * as THREE from "three";
 import type { Movement } from "@/domain/movement";
 import { frameZRange, isCompleteFrame } from "@/assembly/assemblyGeometry";
-import { createFrameGeometry } from "@/geometry/assemblyGeometry3d";
+import { createFrameGeometry, createZCylinder } from "@/geometry/assemblyGeometry3d";
 import { createGearGeometry } from "@/geometry/gearGeometry";
 import { isValidModule, isValidToothCount } from "@/math/gearMath";
 import type { MovementAnalysis } from "@/analysis/analyzeMovement";
 
 /**
  * ASCII STL of the visual assembly, in millimetres. It carries only what
- * the viewport draws for frames (flat slabs, ASM-0010) and gears (visual
- * tooth proportions, ASM-0005), at their assembled positions. Arbors and
- * jewels are drawn at placeholder sizes (ASM-0012), so they are left out.
+ * the viewport draws for frames (flat slabs, ASM-0010), gears (visual
+ * tooth proportions, ASM-0005) and the dial (a disc, ASM-0020), at their
+ * assembled positions. Arbors, jewels, the stem, the crown and the stem
+ * pinions are drawn at placeholder sizes (ASM-0012), so they are left out.
  * This is L0 visual geometry and must not be used for manufacture
  * (ASM-0004, MFG-002).
  */
@@ -83,6 +84,19 @@ export function buildStl(movement: Movement, analysis: MovementAnalysis): StlRes
       continue;
     }
     triangles += writeSolid(lines, gear.name, geometry, new THREE.Vector3(axis.x, axis.y, gear.zCentre));
+    geometry.dispose();
+    solids += 1;
+  }
+
+  for (const dial of Object.values(movement.dials)) {
+    const centre = analysis.placement.shaftPositions.get(dial.centreShaftId);
+    const valid = dial.diameter > 0 && dial.thickness > 0 && Number.isFinite(dial.faceHeight);
+    if (centre === undefined || !valid) {
+      skipped.push(`${dial.name}: incomplete dimensions or no centre arbor`);
+      continue;
+    }
+    const geometry = createZCylinder(dial.diameter / 2, dial.faceHeight, dial.faceHeight + dial.thickness, 96);
+    triangles += writeSolid(lines, dial.name, geometry, new THREE.Vector3(centre.x, centre.y, 0));
     geometry.dispose();
     solids += 1;
   }

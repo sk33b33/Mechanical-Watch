@@ -161,6 +161,9 @@ ${table(["Driving", "Driven", "z1", "z2", "Module", "Speed ratio −z1/z2", "Ide
   ]))}
 <h4>Arbors</h4>
 ${table(["Arbor", "Hand", "Speed (rev/min)", "Direction seen from the dial"], arborRows)}
+${components.filter((c) => c.kind === "Keyless works").map((c) => `<h4>${esc(c.name)}: crown</h4>
+<p>Winding and setting are kinematic only: no winding torque, spring state or setting friction is modeled (ASM-0007, ASM-0015). Right-angle stem meshes are rolling pitch circles (ASM-0019).</p>
+${table(["Quantity", "Value", "Basis"], c.derived.filter((d) => /direction|crown|forward/i.test(d.label)).map((d) => [d.label, d.text, d.references.join(", ")]))}`).join("\n")}
 
 <h2 id="plan">3. Plan drawing</h2>
 <div class="drawing">${svg}</div>
