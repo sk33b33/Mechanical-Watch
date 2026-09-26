@@ -61,6 +61,19 @@ Left here unread rather than removed, per the rule to never hide an
 assumption or its evidence trail: sdp-si.com remains blocked by this
 environment's network policy and ISO 23509 is paid. See SOURCES.yml.
 
+## Bearing clearances
+
+### NAWCC Forums — Watchmaking tolerances thread (SRC-0011, read)
+Forum testimony (Tier 6, like Watchmaking.com), not a published standard.
+Gives the .05mm (escapement) / .10mm (train) endshake figures used for
+the BRG-006 informational advisory (ASM-0028). Also gives a
+balance-staff-specific side-shake figure (~.01mm), too narrow (one
+component, one poster, a single value) to turn into a general side-shake
+advisory — side shake stays unjudged. See SOURCES.yml for the full
+notes and quoted claims. `watchrepairtutorials.com`'s directly relevant
+articles were found but not read (bot-challenge page, not a network
+block) — worth another attempt if a better side-shake source is needed.
+
 ## Movement-specific sources
 
 Movement-specific measurements must live under:

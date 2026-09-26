@@ -119,3 +119,14 @@ export function createEscapement(params: CreateEscapementParams): Escapement {
 export function oscillatingShaftIds(escapements: Record<EscapementId, Escapement>): Set<ShaftId> {
   return new Set(Object.values(escapements).flatMap((e) => [e.palletArborShaftId, e.balanceShaftId]));
 }
+
+/**
+ * All shafts belonging to the escapement (escape wheel, pallet arbor,
+ * balance staff), used to tell "escapement parts" from train wheels for
+ * the endshake advisory (BRG-006, ASM-0028). Unlike `oscillatingShaftIds`,
+ * this includes the escape arbor, which turns with the train but is
+ * still an "escapement part" in that sense.
+ */
+export function escapementShaftIds(escapements: Record<EscapementId, Escapement>): Set<ShaftId> {
+  return new Set(Object.values(escapements).flatMap((e) => [e.escapeArborShaftId, e.palletArborShaftId, e.balanceShaftId]));
+}

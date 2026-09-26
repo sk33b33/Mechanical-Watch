@@ -44,6 +44,7 @@ BRG-002 A bearing must lie within its frame's outline.
 BRG-003 A pivot must be smaller than its bearing bore (positive side shake).
 BRG-004 The shoulder span must fit between the bearing faces (positive endshake).
 BRG-005 Bearing clearances are computed but not judged until acceptable ranges have a source.
+BRG-006 Endshake compared to an informal, unconfirmed reference figure (info only, not a validated limit).
 
 CPL-001 A friction clutch or mainspring must join two different shafts on the same axis.
 

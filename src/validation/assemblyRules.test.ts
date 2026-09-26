@@ -13,6 +13,7 @@ import type { Shaft } from "@/domain/shaft";
 import type { Frame } from "@/domain/frame";
 import type { Jewel } from "@/domain/jewel";
 import { createDemoMovement } from "@/app/demoMovement";
+import { createTeachingMovement } from "@/app/teachingMovement";
 import { endshake, shaftSupport, sideShake } from "@/assembly/assemblyGeometry";
 import { validateMovement } from "./validateMovement";
 import type { ValidationIssue } from "./validationIssue";
@@ -104,6 +105,37 @@ describe("assembly rules", () => {
   it("BRG-004: a shoulder span longer than the inner span leaves no endshake", () => {
     const m = updateShaft(demo, shaft(demo, "Arbor A").id, { shoulderSpan: mm(2.5) });
     expect(variants(m)).toContain("BRG-004:no-endshake");
+  });
+
+  it("BRG-006: no advisory for a train shaft's endshake under the informal 0.10 mm figure", () => {
+    // Arbor A's inner span is 2.0 mm (see the endshake test above); 1.92 mm shoulder span -> 0.08 mm endshake.
+    const m = updateShaft(demo, shaft(demo, "Arbor A").id, { shoulderSpan: mm(1.92) });
+    expect(validateMovement(m).filter((i) => i.rule === "BRG-006")).toEqual([]);
+  });
+
+  it("BRG-006: an info advisory fires for a train shaft looser than the informal 0.10 mm figure", () => {
+    const a = shaft(demo, "Arbor A");
+    const m = updateShaft(demo, a.id, { shoulderSpan: mm(1.85) }); // 0.15 mm endshake
+    const advisory = validateMovement(m).find((i) => i.rule === "BRG-006");
+    expect(advisory?.severity).toBe("info");
+    expect(advisory?.entityIds).toContain(a.id);
+    expect(advisory?.message).toContain("train parts");
+    expect(advisory?.message).toContain("SRC-0011");
+    expect(advisory?.references).toContain("ASM-0028");
+  });
+
+  it("BRG-006: escapement shafts are compared to the tighter ~0.05 mm figure, not the train one", () => {
+    const teaching = createTeachingMovement();
+    const balanceStaff = shaft(teaching, "Balance staff");
+    // Mainplate top at 1.0 mm, balance cock underside at 4.0 mm: 3.0 mm inner span.
+    const looseForEscapement = updateShaft(teaching, balanceStaff.id, { shoulderSpan: mm(2.93) }); // 0.07 mm endshake
+    const advisory = validateMovement(looseForEscapement).find((i) => i.rule === "BRG-006");
+    expect(advisory?.entityIds).toContain(balanceStaff.id);
+    expect(advisory?.message).toContain("escapement parts");
+
+    const withinEscapementFigure = updateShaft(teaching, balanceStaff.id, { shoulderSpan: mm(2.96) }); // 0.04 mm endshake
+    expect(validateMovement(withinEscapementFigure).filter((i) => i.rule === "BRG-006" && i.entityIds.includes(balanceStaff.id)))
+      .toEqual([]);
   });
 
   it("FRAME-001: a frame needs a positive thickness", () => {

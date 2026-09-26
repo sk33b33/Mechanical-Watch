@@ -165,6 +165,12 @@ export const ASSUMPTIONS = {
     scope: "Tolerances / gear meshes",
     status: "Active",
   },
+  "ASM-0028": {
+    summary:
+      "Endshake advisory thresholds (~0.05 mm for escapement shafts — escape wheel, pallet arbor, balance staff; ~0.10 mm for other pivoted shafts) are informal figures from forum testimony (SRC-0011), not a published standard; used only as a BRG-006 informational advisory, never a pass/fail limit. Side shake still has no usable sourced range at all (ASM-0013)",
+    scope: "Bearings / endshake advisory",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

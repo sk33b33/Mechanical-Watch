@@ -9,10 +9,24 @@ import {
   sideShake,
   type DerivedLength,
 } from "@/assembly/assemblyGeometry";
+import { escapementShaftIds } from "@/domain/escapement";
 import type { Frame } from "@/domain/frame";
 import type { ShaftEnd } from "@/domain/shaft";
+import { toMillimetres } from "@/units/length";
 import type { ValidationIssue } from "../validationIssue";
 import { issue, mm, type Rule } from "./context";
+
+/**
+ * Informal endshake ceilings for the BRG-006 advisory: forum testimony
+ * (SRC-0011), not a published standard. Used only as a low-confidence,
+ * informational comparison — exceeding one is not itself wrong, and
+ * staying under one is not a guarantee (ASM-0028). Side shake still has
+ * no usable sourced range at all (ASM-0013).
+ */
+const ENDSHAKE_GUIDANCE_MM = {
+  ESCAPEMENT: 0.05,
+  TRAIN: 0.1,
+} as const;
 
 /** FRAME-001: frames must have a positive thickness, finite height and a real outline. */
 export const frameRules: Rule = ({ movement }) => {
@@ -67,6 +81,7 @@ export const bearingRules: Rule = ({ movement, placement }) => {
     return issues;
   }
 
+  const escapementShafts = escapementShaftIds(movement.escapements);
   let known = 0;
   let unknown = 0;
   const count = (value: DerivedLength): void => {
@@ -140,14 +155,28 @@ export const bearingRules: Rule = ({ movement, placement }) => {
           `${shaft.name}: shoulder span does not fit between the bearings (endshake ${mm(end.value)}).`,
           ["REF-ENG §12", "ASM-0011"]),
       );
+    } else if (end.status === "KNOWN") {
+      const isEscapement = escapementShafts.has(shaft.id);
+      const guidanceMm = isEscapement ? ENDSHAKE_GUIDANCE_MM.ESCAPEMENT : ENDSHAKE_GUIDANCE_MM.TRAIN;
+      if (toMillimetres(end.value) > guidanceMm) {
+        issues.push(
+          issue("BRG-006", `looser-${isEscapement ? "escapement" : "train"}`, "info", "L1_GEOMETRIC", [shaft.id],
+            `${shaft.name}: endshake ${mm(end.value)} is looser than the informal figure reported for ` +
+              `${isEscapement ? "escapement" : "train"} parts (~${String(guidanceMm)} mm, SRC-0011 — forum ` +
+              "testimony, not a published standard; informational only).",
+            ["ASM-0028"]),
+        );
+      }
     }
   }
 
   if (known + unknown === 0) return issues;
   issues.push(
     issue("BRG-005", "not-judged", "info", "L1_GEOMETRIC", [],
-      `Bearing clearances: ${String(known)} computed, ${String(unknown)} unknown (missing pivot, bore or shoulder dimensions). Computed values are not judged because acceptable ranges have no source yet.`,
-      ["REF-ENG §12", "ASM-0011", "ASM-0013"]),
+      `Bearing clearances: ${String(known)} computed, ${String(unknown)} unknown (missing pivot, bore or shoulder dimensions). ` +
+        "Side shake is not judged at all (no sourced range, ASM-0013). Endshake is only compared to an informal, " +
+        "unconfirmed reference figure (BRG-006, ASM-0028) — that is not a validated acceptable range.",
+      ["REF-ENG §12", "ASM-0011", "ASM-0013", "ASM-0028"]),
   );
   return issues;
 };

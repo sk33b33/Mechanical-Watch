@@ -200,3 +200,51 @@
     unvalidated against any horological source. The paper's own subject
     (tooth-surface machining/modification) is unrelated and not used
     here — only the transmission-ratio premise in §4 is cited.
+
+# Candidate source for acceptable bearing-clearance ranges (side shake,
+# endshake): computed but never judged (BRG-005) since the tolerance
+# model shipped. `watchrepairtutorials.com`'s two directly relevant
+# articles ("#1 way to Measure Jewel Holes", "End Shake and WHY it's
+# important") were found by web search but not read: the site returns a
+# bot-challenge redirect (/.well-known/sgcaptcha/...) to a plain `curl`,
+# not a network block, so this is an access limitation, not a policy one.
+
+- id: SRC-0011
+  title: "Watchmaking tolerances (NAWCC Forums thread)"
+  author: DeweyC (Dewey Clark), Dave Coatsworth, Al J, and other posters
+  year: 2023
+  type: forum_discussion
+  url: https://mb.nawcc.org/threads/watchmaking-tolerances.198231/
+  topics: [bearings, side-shake, endshake, tolerances]
+  claims_supported:
+    - "escapement parts are held to .05mm endshake. Train wheels can be .10mm."
+    - "Jewels are generally 1 size over the pivot diameter."
+    - "Train hole distances today? I would suspect they are held to 5 microns or so."
+    - "the convention is one hundredth of a millimeter difference [between a balance pivot and its jewel hole]. (e.g., a .12mm balance pivot would require a .13mm balance hole jewel.) Illinois and Hamilton, however, provided jewels in 'half sizes' [.005mm difference]."
+  claims_to_check: []
+  retrieved: true
+  accessed: '2026-09-26'
+  notes: >
+    Read 2026-09-26 (NAWCC = National Association of Watch and Clock
+    Collectors; a Watch Repair sub-forum thread, 21 posts, opened 22 May
+    2023). Tier 6, like
+    SRC-0003 (Watchmaking.com): forum testimony from named posters
+    recalling figures from memory and (per DeweyC) unnamed Hamilton
+    factory production-sheet access, not a published standard, textbook
+    or manufacturer datasheet. DeweyC gives the endshake figures used for
+    ASM-0028/BRG-006 (escapement parts .05mm, train wheels .10mm) and a
+    vaguer side-shake figure ("1 size over the pivot diameter", no mm
+    value given). Dave Coatsworth gives a more precise but
+    balance-staff-specific side-shake figure (.01mm nominal difference,
+    .005mm for Illinois/Hamilton "half sizes") — too narrow (one
+    component, one poster, a single point value rather than a range) to
+    turn into a codebase-wide side-shake advisory without inventing a
+    band around it, so side shake stays unjudged (ASM-0013). Poster Al J
+    explicitly cautions: "manufacturing tolerances are very different
+    from desired clearances like end shake for example - these often get
+    confused" — read as support for treating these as this project's own
+    ASM-0011/ASM-0013 clearances, not AGMA-style manufacturing
+    tolerances. Used only for the low-confidence BRG-006 informational
+    advisory (never a pass/fail limit), per an explicit decision to treat
+    forum-sourced figures this way rather than as validated evidence or
+    to hold out for a published source.

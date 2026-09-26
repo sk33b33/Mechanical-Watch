@@ -28,6 +28,7 @@ export const RULE_IDS = [
   "BRG-003",
   "BRG-004",
   "BRG-005",
+  "BRG-006",
   "CPL-001",
   "SUP-001",
   "SUP-002",

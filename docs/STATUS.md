@@ -2,6 +2,53 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Endshake advisory (BRG-006): a low-confidence source, used carefully
+
+- Bearing clearances (side shake, endshake) have been computed since the
+  tolerance model shipped but never judged (BRG-005): no sourced
+  acceptable range existed. Went looking for one.
+- Found a NAWCC (National Association of Watch and Clock Collectors)
+  forum thread, "Watchmaking tolerances," with concrete figures from two
+  posters: escapement parts held to ~0.05mm endshake, train wheels to
+  ~0.10mm (DeweyC, citing unnamed access to Hamilton factory production
+  sheets), and a balance-staff-specific side-shake figure of ~0.01mm
+  (Dave Coatsworth). `watchrepairtutorials.com`'s two directly relevant
+  articles were found but returned a bot-challenge page to `curl`, not
+  read.
+- This is forum testimony, not a published standard — same tier as the
+  existing Watchmaking.com source (SRC-0003). Decided explicitly (with
+  the user) to use it as a **low-confidence informational advisory**
+  rather than either inventing a harder rule from it or holding out for
+  a better source: registered as SRC-0011, with the caveat quoted
+  directly (one poster: *"manufacturing tolerances are very different
+  from desired clearances like end shake — these often get confused"*).
+- Implemented **only the endshake half**: the two component-linked
+  figures (escapement vs. train) are concrete enough to compare against.
+  The side-shake figure is a single point value from one poster for one
+  component (balance staff) — not a range, and not enough to turn into a
+  band without inventing one, so side shake still isn't judged (ASM-0013
+  unchanged).
+- New: `escapementShaftIds` (`src/domain/escapement.ts`) — like the
+  existing `oscillatingShaftIds` but also includes the escape arbor, to
+  tell "escapement parts" from train wheels for this purpose. New rule
+  **BRG-006** (info, `src/validation/rules/bearingRules.ts`): fires when
+  a shaft's computed endshake exceeds the informal figure for its kind
+  (~0.05mm escapement, ~0.10mm train), quoting SRC-0011 and labeled
+  "informational only" in the message itself, never blocking. BRG-005's
+  message now distinguishes "side shake is not judged at all" from
+  "endshake is only compared to an informal, unconfirmed reference
+  figure." New assumption ASM-0028 records the whole thing, including
+  that it's never a pass/fail limit. No UI changes needed: the
+  validation panel already renders any issue generically by severity.
+- Updated SOURCES.yml, SOURCE_INDEX.md, TRACEABILITY.md,
+  ASSUMPTION_REGISTER.md, RULE_IDS.md and their `src/reference/`
+  mirrors. Three new tests in `assemblyRules.test.ts` (no advisory
+  under the train figure; fires over it; escapement shafts use the
+  tighter figure via the teaching movement's balance staff).
+
+345 unit tests and 27 browser tests pass (342 unit tests previously; the
+new BRG-006 tests account for the difference — browser tests unaffected).
+
 ## Stem mesh ratio citation closed (SRC-0010)
 
 - The user supplied two candidate papers directly and widened this
@@ -551,8 +598,16 @@ dimensions round-trip, and picking and issue selection work.
   `reference/sources/03-escapements/` (e.g. SRC-0004, not yet read).
 - **Oscillator equation (ASM-0024).** Standard linear-oscillator physics,
   marked DERIVED with the citation pending, like the gear equations.
-- **Acceptable bearing clearances.** Side shake and endshake are
-  computed but not judged. Judging them needs sourced ranges.
+- **Acceptable bearing clearances — endshake gets a low-confidence
+  advisory, side shake still doesn't.** SRC-0011 (a NAWCC forum thread)
+  gave concrete escapement-vs-train endshake figures, now wired up as
+  an informational BRG-006 advisory (ASM-0028) — explicitly not a
+  validated limit, since forum testimony is a weak source. Side shake
+  is unchanged (ASM-0013): the only figure found was a single
+  balance-staff-specific value from one poster, too narrow to turn into
+  a range without inventing one. A published source (a book, NIHS/DIN/
+  AFNOR standard) would still let both become real pass/fail rules
+  instead of advisories.
 
 ## Known limitations
 
