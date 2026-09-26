@@ -1,13 +1,13 @@
 import type { AppStore } from "@/app/store";
 import { millimetres, toMillimetres } from "@/units/length";
 import { degrees, toDegrees } from "@/units/angle";
-import { toRpm } from "@/units/angularVelocity";
+import { rpmToRadPerSecond, toRpm } from "@/units/angularVelocity";
 import { toMillimetresPerSecond } from "@/units/linearVelocity";
 import { gearPitchDiameter, type Gear } from "@/domain/gear";
 import type { Shaft, ShaftEnd } from "@/domain/shaft";
 import type { Jewel } from "@/domain/jewel";
 import type { Frame } from "@/domain/frame";
-import { updateFrame, updateGear, updateJewel, updateShaft } from "@/domain/movement";
+import { clearDrive, setDrivingShaft, updateFrame, updateGear, updateJewel, updateShaft } from "@/domain/movement";
 import { isValidModule, isValidToothCount, pitchLineVelocity } from "@/math/gearMath";
 import {
   bearingInnerSpan,
@@ -17,6 +17,7 @@ import {
   sideShake,
 } from "@/assembly/assemblyGeometry";
 import {
+  actionRow,
   derivedText,
   formatMm,
   inputRow,
@@ -124,6 +125,27 @@ export function shaftSection(store: AppStore, shaft: Shaft): Section {
 
   const omega = store.analysis.train.shaftAngularVelocity.get(shaft.id);
   out.push(readonlyRow("Angular velocity", omega === undefined ? "unpowered" : `${toRpm(omega).toFixed(3)} rev/min`));
+
+  out.push(sectionHeader("Drive"));
+  if (movement.drivingShaftId === shaft.id) {
+    out.push(inputRow({
+      label: "Drive speed (rev/min)",
+      value: Number.isFinite(movement.drivingAngularVelocity) ? String(toRpm(movement.drivingAngularVelocity)) : "",
+      step: "0.1", invalid: !Number.isFinite(movement.drivingAngularVelocity),
+      title: "Prescribed angular velocity of this arbor (ASM-0007). Positive is counter-clockwise seen from the bridge side.",
+      onCommit: (raw) => { store.edit((m) => setDrivingShaft(m, shaft.id, rpmToRadPerSecond(parseRequired(raw)))); },
+    }));
+    out.push(actionRow("Remove drive", "The train will be unpowered", () => {
+      store.edit(clearDrive);
+    }));
+  } else {
+    out.push(readonlyRow("Driven by", movement.drivingShaftId === null ? "no drive set" : "the gear train"));
+    out.push(actionRow("Make this the drive",
+      "Moves the prescribed drive to this arbor, keeping the current drive speed (if any).", () => {
+        store.edit((m) => setDrivingShaft(m, shaft.id,
+          m.drivingShaftId === null ? rpmToRadPerSecond(Number.NaN) : m.drivingAngularVelocity));
+      }));
+  }
 
   out.push(sectionHeader("Pivots (empty = unknown)"));
   for (const end of ["LOWER", "UPPER"] as ShaftEnd[]) {

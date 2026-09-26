@@ -350,3 +350,23 @@ button.notice-dismiss {
   color: inherit;
   padding: 0 4px;
 }
+
+.toolbar-clock {
+  min-width: 128px;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+button.play-button {
+  min-width: 56px;
+}
+
+.field-action {
+  justify-content: flex-start;
+}
+
+button.danger:hover:not(:disabled) {
+  border-color: var(--error);
+  color: var(--error);
+}

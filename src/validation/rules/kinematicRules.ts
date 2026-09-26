@@ -5,11 +5,18 @@ import { issue, type Rule } from "./context";
 export const kinematicRules: Rule = ({ movement, train }) => {
   const issues: ValidationIssue[] = [];
 
+  if (movement.drivingShaftId === null && Object.keys(movement.shafts).length > 0) {
+    issues.push(
+      issue("KIN-001", "no-drive", "info", "L2_KINEMATIC", [],
+        "No drive is set, so nothing moves in the simulation. Select an arbor and make it the drive.", ["ASM-0007"]),
+    );
+  }
+
   if (movement.drivingShaftId !== null) {
     if (!Number.isFinite(movement.drivingAngularVelocity)) {
       issues.push(
         issue("SIM-001", "drive", "error", "L2_KINEMATIC", [movement.drivingShaftId],
-          "Driving angular velocity is not finite.", []),
+          "The drive speed has no valid value. Enter a finite speed in rev/min.", ["ASM-0007"]),
       );
     } else {
       issues.push(

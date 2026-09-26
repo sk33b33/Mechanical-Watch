@@ -52,6 +52,19 @@ export function inputRow(options: InputOptions): HTMLDivElement {
   return field;
 }
 
+export function actionRow(label: string, title: string, onClick: () => void, danger = false): HTMLDivElement {
+  const field = document.createElement("div");
+  field.className = "field field-action";
+  const buttonEl = document.createElement("button");
+  buttonEl.type = "button";
+  buttonEl.textContent = label;
+  buttonEl.title = title;
+  if (danger) buttonEl.classList.add("danger");
+  buttonEl.addEventListener("click", onClick);
+  field.appendChild(buttonEl);
+  return field;
+}
+
 /** Required number: empty text is "no value" (NaN), which validation reports. Never coerced. */
 export function parseRequired(raw: string): number {
   return raw.trim() === "" ? Number.NaN : Number(raw);

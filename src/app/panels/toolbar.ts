@@ -1,4 +1,4 @@
-import type { AppStore } from "@/app/store";
+import { PLAYBACK_RATES, type AppStore, type PlaybackRate } from "@/app/store";
 import type { Movement } from "@/domain/movement";
 import { decodeDesign, DesignFileError, encodeDesign } from "@/persistence/designFile";
 
@@ -83,7 +83,56 @@ export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
   const spacer = document.createElement("div");
   spacer.className = "toolbar-spacer";
 
-  container.append(fileGroup, autosave, notice, spacer);
+  const simGroup = document.createElement("div");
+  simGroup.className = "toolbar-group";
+  const playButton = button("", "Play or pause the kinematic simulation", () => {
+    store.setPlaying(!store.playing);
+  });
+  playButton.classList.add("play-button");
+  const rateSelect = document.createElement("select");
+  rateSelect.title = "Playback speed (simulated seconds per real second)";
+  for (const rate of PLAYBACK_RATES) {
+    const option = document.createElement("option");
+    option.value = String(rate);
+    option.textContent = `${String(rate)}×`;
+    rateSelect.appendChild(option);
+  }
+  rateSelect.addEventListener("change", () => {
+    store.setPlaybackRate(Number(rateSelect.value) as PlaybackRate);
+  });
+  const clock = document.createElement("span");
+  clock.className = "toolbar-clock";
+  clock.title = "Simulated time. Fixed-step kinematic simulation (SIM-002).";
+  simGroup.append(
+    playButton,
+    button("Step", "Advance one fixed simulation step", () => {
+      store.stepOnce();
+    }),
+    button("Reset", "Return every shaft to its starting angle at t = 0", () => {
+      store.resetSimulation();
+    }),
+    rateSelect,
+    clock,
+  );
+
+  container.append(fileGroup, autosave, notice, spacer, simGroup);
+
+  const refreshControls = (): void => {
+    playButton.textContent = store.playing ? "Pause" : "Play";
+    rateSelect.value = String(store.playbackRate);
+  };
+  const refreshClock = (): void => {
+    const state = store.simulationHalted ? "halted" : store.playing ? "" : "paused";
+    clock.textContent = `t = ${store.simulation.time.toFixed(3)} s${state === "" ? "" : ` (${state})`}`;
+  };
+  refreshControls();
+  refreshClock();
+  store.subscribe(() => {
+    refreshControls();
+    refreshClock();
+  });
+  // The simulation advances every frame without notifying; poll the clock at a readable rate.
+  window.setInterval(refreshClock, 100);
 
   const toolbar: Toolbar = {
     element: container,

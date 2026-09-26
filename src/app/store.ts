@@ -5,8 +5,13 @@ import type { ValidationIssue } from "@/validation/validationIssue";
 import {
   advanceSimulation,
   createSimulationState,
+  stepSimulation,
   type SimulationState,
 } from "@/simulation/simulationState";
+
+/** Playback speeds offered in the UI. Above 60× a 60 fps display would hit the per-frame step cap. */
+export const PLAYBACK_RATES = [0.1, 1, 10, 60] as const;
+export type PlaybackRate = (typeof PLAYBACK_RATES)[number];
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -116,17 +121,52 @@ export class AppStore {
     this.notify();
   }
 
+  /** Simulation playback (UI state, not part of the design). */
+  playing = true;
+  playbackRate: PlaybackRate = 1;
+
+  setPlaying(playing: boolean): void {
+    this.playing = playing;
+    this.notify();
+  }
+
+  setPlaybackRate(rate: PlaybackRate): void {
+    this.playbackRate = rate;
+    this.notify();
+  }
+
+  /** Advances exactly one fixed simulation step, whether playing or paused. */
+  stepOnce(): void {
+    this.runSimulation(() => stepSimulation(this.simulation, this.analysis.train));
+    this.notify();
+  }
+
+  /** Returns every shaft to angle 0 at t = 0. The design is unchanged. */
+  resetSimulation(): void {
+    this.simulation = createSimulationState(this.movement);
+    this.simulationHalted = false;
+    this.simulationIssue = null;
+    this.recompute();
+    this.notify();
+  }
+
   /**
-   * Feeds real elapsed time to the fixed-step simulation (SIM-002). Never
-   * mutates `movement`. Does not notify subscribers on normal frames, so
-   * DOM panels don't re-render at frame rate.
+   * Feeds real elapsed time, scaled by the playback rate, to the
+   * fixed-step simulation (SIM-002). Never mutates `movement`. Does not
+   * notify subscribers on normal frames, so DOM panels don't re-render at
+   * frame rate.
    */
   tick(elapsedRealSeconds: number): void {
-    if (this.simulationHalted) {
-      return;
-    }
+    if (!this.playing) return;
+    this.runSimulation(() =>
+      advanceSimulation(this.simulation, this.analysis.train, elapsedRealSeconds * this.playbackRate),
+    );
+  }
+
+  private runSimulation(advance: () => SimulationState): void {
+    if (this.simulationHalted) return;
     try {
-      this.simulation = advanceSimulation(this.simulation, this.analysis.train, elapsedRealSeconds);
+      this.simulation = advance();
     } catch (error) {
       this.simulationHalted = true;
       this.simulationIssue = {

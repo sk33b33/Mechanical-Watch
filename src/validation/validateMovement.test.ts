@@ -126,6 +126,12 @@ describe("validateMovement", () => {
     expect(issue?.severity).toBe("warning");
   });
 
+  it("KIN-001: says so when no drive is set", () => {
+    const movement = { ...twoGears(), drivingShaftId: null };
+    const info = validateMovement(movement).find((i) => i.id.startsWith("KIN-001:no-drive"));
+    expect(info?.severity).toBe("info");
+  });
+
   it("SIM-001: flags a non-finite drive", () => {
     const movement = twoGears();
     const broken = { ...movement, drivingAngularVelocity: radiansPerSecond(Number.NaN) };

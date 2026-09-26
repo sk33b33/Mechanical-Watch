@@ -134,3 +134,7 @@ export function setDrivingShaft(
 ): Movement {
   return { ...movement, drivingShaftId: shaftId, drivingAngularVelocity: angularVelocity };
 }
+
+export function clearDrive(movement: Movement): Movement {
+  return { ...movement, drivingShaftId: null };
+}
