@@ -17,6 +17,7 @@ import {
 } from "@/units/rotational";
 import { inputRow, mmText, parseRequired, readonlyRow, sectionHeader, selectRow, textRow } from "./fields";
 import { deleteRow, positive, type Section } from "./common";
+import { palletAndEnergyRows } from "./energySection";
 
 function angleText(value: Angle): string {
   return Number.isFinite(value) ? String(toDegrees(value)) : "";
@@ -57,7 +58,7 @@ export function escapementSection(store: AppStore, esc: Escapement): Section {
   return [
     textRow("Name", esc.name, (name) => { edit({ name }); }),
     readonlyRow("Model", "SIMPLIFIED ESCAPEMENT MODEL (Swiss lever, kinematic L2)",
-      "Locking, draw, drop, impact, sliding contact, banking geometry and balance dynamics are not modeled (ESC-002, ASM-0023)."),
+      "Drop, impact, sliding contact and tooth and pallet faces are not modeled (ESC-002, ASM-0023). Pallet locking geometry (ASM-0025), balance dynamics (ASM-0024) and the energy chain (ASM-0026) are simplified models, when their inputs are entered."),
     sectionHeader("Escape wheel"),
     arborSelect("Escape arbor", esc.escapeArborShaftId, "escapeArborShaftId", "The escape wheel turns with this arbor, driven by the train."),
     inputRow({
@@ -76,7 +77,7 @@ export function escapementSection(store: AppStore, esc: Escapement): Section {
     length("Thickness (mm)", b.thickness, (v) => { setBalance({ thickness: v }); }),
     length("Mid-plane height (mm)", b.zCentre, (v) => { setBalance({ zCentre: v }); }, false),
     angle("Amplitude (°)", b.amplitude, (v) => { setBalance({ amplitude: v }); },
-      "Declared peak swing either side of the dead point. An input, not predicted: no balance dynamics are modeled (ASM-0022)."),
+      "Declared peak swing either side of the dead point (ASM-0022). Used unless the energy model below can predict it from the mainspring, Q and escapement efficiency (ASM-0026)."),
     angle("Lift angle (°)", b.liftAngle, (v) => { setBalance({ liftAngle: v }); },
       "Balance angle over which the escapement acts; sets the impulse window (ASM-0023)."),
     sectionHeader("Balance dynamics (L3 simplified, optional)"),
@@ -94,6 +95,7 @@ export function escapementSection(store: AppStore, esc: Escapement): Section {
     readonlyRow(movement.drive?.kind === "BALANCE" ? "Predicted rate (governing)" : "Rate if it governed",
       balance.dailyRate === null ? "—" : `${balance.dailyRate >= 0 ? "+" : ""}${balance.dailyRate.toFixed(1)} s/day`,
       "Model prediction only: amplitude, escapement, position and temperature effects are not modeled. Requires physical validation."),
+    ...palletAndEnergyRows(store, esc),
     sectionHeader("Calculated (model predicts)"),
     readonlyRow("Beats per escape turn", isValidToothCount(w.toothCount) ? String(beatsPerEscapeRevolution(w.toothCount)) : "—",
       "2 per tooth (ASM-0021, source pending)."),

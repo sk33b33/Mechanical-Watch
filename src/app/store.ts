@@ -13,11 +13,17 @@ import {
   type GearTrainSolution,
 } from "@/kinematics/solveGearTrain";
 import { radiansPerSecond } from "@/units/angularVelocity";
+import { radians, type Angle } from "@/units/angle";
+import type { CouplingId } from "@/domain/coupling";
+import { amplitudeAtWind, summarizeEnergy, type EnergySummary } from "@/kinematics/energySummary";
 import {
   advanceSimulation,
   createSimulationState,
+  reconcileWind,
   stepSimulation,
+  windTracks,
   type SimulationState,
+  type WindTrack,
 } from "@/simulation/simulationState";
 
 const HISTORY_LIMIT = 200;
@@ -75,6 +81,17 @@ export class AppStore {
   private future: Movement[] = [];
   private readonly designListeners = new Set<(movement: Movement) => void>();
   private simulationIssue: ValidationIssue | null = null;
+  /** The mainspring → balance energy chain for the running train (ASM-0026), or null without a mainspring. */
+  energy: EnergySummary | null = null;
+  private windTracks: WindTrack[] = [];
+  /**
+   * When the balance-governed going train stops: the primary spring's wind
+   * at or below `turns` (where the balance can no longer unlock, or let
+   * down). Null when the drive is not the balance or the spring has no data.
+   */
+  private runDown: { id: CouplingId; turns: number } | null = null;
+  /** The simulated setting or winding with the going train stopped; null when it cannot stop. */
+  private stoppedTrain: GearTrainSolution | null = null;
 
   constructor(movement: Movement) {
     this.movement = movement;
@@ -126,6 +143,18 @@ export class AppStore {
         ],
       };
     }
+    try {
+      this.energy = summarizeEnergy(this.movement, this.analysis.train);
+    } catch {
+      // Energy is a derived readout; an analysis failure is already reported as VAL-001.
+      this.energy = null;
+    }
+    this.windTracks = windTracks(this.movement, this.analysis.train);
+    this.simulation = reconcileWind(this.simulation, this.movement);
+    const spring = this.energy?.spec == null ? null : this.energy.spring;
+    this.runDown = this.movement.drive?.kind === "BALANCE" && spring !== null && this.simulation.mainspringWind[spring.id] !== undefined
+      ? { id: spring.id, turns: this.energy?.stopWindTurns ?? 0 }
+      : null;
     this.updateSimulationTrain();
     this.issues =
       this.simulationIssue === null ? this.analysis.issues : [...this.analysis.issues, this.simulationIssue];
@@ -240,30 +269,95 @@ export class AppStore {
   }
 
   private updateSimulationTrain(): void {
+    this.simulationTrain = this.solveForAction(false);
+    this.stoppedTrain = this.runDown === null ? null : this.solveForAction(true);
+  }
+
+  /**
+   * The balance-governed going train has run down (ASM-0026): the balance no
+   * longer unlocks, or the spring is let down. Winding above the stop
+   * restarts it (the model assumes the balance self-starts).
+   */
+  get goingTrainStopped(): boolean {
+    return this.isRunDown(this.simulation);
+  }
+
+  private isRunDown(state: SimulationState): boolean {
+    const r = this.runDown;
+    if (r === null) return false;
+    const wind = state.mainspringWind[r.id];
+    return wind !== undefined && wind <= r.turns;
+  }
+
+  /** The solution in effect now: the stopped variant once the going train has run down. */
+  get effectiveTrain(): GearTrainSolution {
+    return this.trainFor(this.simulation);
+  }
+
+  private trainFor(state: SimulationState): GearTrainSolution {
+    return this.stoppedTrain !== null && this.isRunDown(state) ? this.stoppedTrain : this.simulationTrain;
+  }
+
+  /** State of wind of the primary mainspring in turns from let-down, or null without spring data. */
+  get mainspringWindTurns(): number | null {
+    const spring = this.energy?.spec == null ? null : this.energy.spring;
+    return spring === null ? null : this.simulation.mainspringWind[spring.id] ?? null;
+  }
+
+  /** Wind at which the going train stops (null when it cannot stop: not balance-governed, or no spring data). */
+  get runDownWindTurns(): number | null {
+    return this.runDown?.turns ?? null;
+  }
+
+  /**
+   * Running time left at the current wind (ASM-0026): until the balance
+   * stops when the movement is balance-governed, else until let down.
+   */
+  get reserveRemainingSeconds(): number | null {
+    const wind = this.mainspringWindTurns;
+    const spec = this.energy?.spec;
+    const reserve = this.energy?.reserveSeconds;
+    if (wind === null || spec == null || reserve == null) return null;
+    return (reserve * Math.max(0, wind - (this.runDown?.turns ?? 0))) / spec.usableTurns;
+  }
+
+  /**
+   * The balance amplitude to show: 0 once run down, the energy model's
+   * prediction at the current wind when it has its inputs (ASM-0026), else
+   * the declared amplitude (null here).
+   */
+  get displayAmplitude(): Angle | null {
+    if (this.goingTrainStopped) return radians(0);
+    const wind = this.mainspringWindTurns;
+    return this.energy === null || wind === null ? null : amplitudeAtWind(this.energy, wind);
+  }
+
+  private solveForAction(goingTrainStopped: boolean): GearTrainSolution {
     const action = this.crownAction;
     if (action === "RUNNING") {
-      this.simulationTrain = this.analysis.train;
-      return;
+      return goingTrainStopped ? solveGearTrain(this.movement, { mode: "RUNNING", goingTrainStopped }) : this.analysis.train;
     }
     const direction = action === "SET_FORWARD" || action === "WIND" ? 1 : -1;
     const hasKeyless = primaryKeyless(this.movement) !== null;
     if (action === "SET_FORWARD" || action === "SET_BACKWARD") {
-      this.simulationTrain = hasKeyless
+      return hasKeyless
         ? solveGearTrain(this.movement, {
             mode: "CROWN_SETTING",
             // Turn the crown whichever way moves the hands the requested way (derived from the setting train).
             crownAngularVelocity: radiansPerSecond(direction * (handsForwardCrownSense(this.movement) ?? 1) * CROWN_TURNING_ANGULAR_VELOCITY),
+            goingTrainStopped,
           })
         : solveGearTrain(this.movement, {
             mode: "HAND_SETTING",
             settingAngularVelocity: radiansPerSecond(direction * HAND_SETTING_ANGULAR_VELOCITY),
+            goingTrainStopped,
           });
-      return;
     }
-    this.simulationTrain = solveGearTrain(this.movement, {
+    return solveGearTrain(this.movement, {
       mode: "WINDING",
       // WIND turns the crown the winding way; WIND_REVERSE the other way, where the ratchet teeth slip.
       crownAngularVelocity: radiansPerSecond(direction * (windingCrownSense(this.movement) ?? 1) * CROWN_TURNING_ANGULAR_VELOCITY),
+      goingTrainStopped,
     });
   }
 
@@ -279,7 +373,7 @@ export class AppStore {
 
   /** Advances exactly one fixed simulation step, whether playing or paused. */
   stepOnce(): void {
-    this.runSimulation(() => stepSimulation(this.simulation, this.simulationTrain));
+    this.runSimulation(() => stepSimulation(this.simulation, this.trainFor(this.simulation), undefined, this.windTracks));
     this.notify();
   }
 
@@ -300,9 +394,12 @@ export class AppStore {
    */
   tick(elapsedRealSeconds: number): void {
     if (!this.playing) return;
+    const wasStopped = this.goingTrainStopped;
     this.runSimulation(() =>
-      advanceSimulation(this.simulation, this.simulationTrain, elapsedRealSeconds * this.playbackRate),
+      advanceSimulation(this.simulation, (state) => this.trainFor(state), elapsedRealSeconds * this.playbackRate, this.windTracks),
     );
+    // Running down or restarting changes what panels show; normal frames stay silent.
+    if (this.goingTrainStopped !== wasStopped) this.notify();
   }
 
   private runSimulation(advance: () => SimulationState): void {

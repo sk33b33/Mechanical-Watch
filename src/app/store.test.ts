@@ -2,8 +2,13 @@ import { describe, expect, it } from "vitest";
 import { radiansPerSecond } from "@/units/angularVelocity";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import { AppStore } from "./store";
-import { drivenShaftId } from "@/domain/movement";
+import { drivenShaftId, setNominalTimeDrive, updateCouplingSpring, updateEscapement, type Movement } from "@/domain/movement";
+import type { CouplingId } from "@/domain/coupling";
+import { degrees, toDegrees } from "@/units/angle";
+import { analyzeMovement } from "@/analysis/analyzeMovement";
+import { summarizeEnergy } from "@/kinematics/energySummary";
 import { createDemoMovement } from "./demoMovement";
+import { createTeachingMovement } from "./teachingMovement";
 
 const dt = NUMERICAL_PARAMETERS.simulationTimestepSeconds;
 
@@ -194,5 +199,97 @@ describe("AppStore measure mode", () => {
     store.select(gear.id);
     store.remove(gear.id);
     expect(store.measureIds).toEqual([null, null]);
+  });
+});
+
+describe("mainspring wind and run-down (ASM-0026)", () => {
+  // Choose Q so the amplitude fully wound is 30°, just above half the 50° lift angle: A ∝ √Q.
+  const withStop = (): Movement => {
+    const teaching = createTeachingMovement();
+    const esc = Object.values(teaching.escapements)[0];
+    if (esc === undefined) throw new Error("no escapement");
+    const withLosses = (q: number): Movement =>
+      updateEscapement(teaching, esc.id, { escapementEfficiency: 0.35, balance: { ...esc.balance, qualityFactor: q } });
+    const probe = withLosses(1);
+    const a1 = summarizeEnergy(probe, analyzeMovement(probe).train)?.amplitudeFull ?? Number.NaN;
+    return withLosses((degrees(30) / a1) ** 2);
+  };
+  const springId = (store: AppStore): CouplingId => {
+    const id = store.energy?.spring.id;
+    if (id === undefined) throw new Error("no mainspring");
+    return id;
+  };
+  // 60× playback in ticks of 1/15 s is 960 steps per tick, the per-advance cap, so no time is dropped.
+  const runFor = (store: AppStore, simulatedSeconds: number, ticksPerSecond = 15): void => {
+    store.setPlaybackRate(60);
+    const ticks = Math.round((simulatedSeconds / 60) * ticksPerSecond);
+    for (let i = 0; i < ticks; i += 1) store.tick(1 / ticksPerSecond);
+  };
+  const setWind = (store: AppStore, turns: number): void => {
+    store.simulation = { ...store.simulation, mainspringWind: { ...store.simulation.mainspringWind, [springId(store)]: turns } };
+  };
+
+  it("starts fully wound and unwinds at the drum's running speed", () => {
+    const store = new AppStore(createTeachingMovement());
+    expect(store.mainspringWindTurns).toBe(6.5);
+    // The balance-governed train runs 7.02 s/day slow, so the drum is a hair under 1/6 rev/h.
+    expect((store.reserveRemainingSeconds ?? 0) / 3600).toBeCloseTo(39 * (86400 / (86400 - 7.02)), 3);
+    runFor(store, 60);
+    expect(6.5 - (store.mainspringWindTurns ?? 0)).toBeCloseTo(60 / 21600, 6);
+    expect(store.goingTrainStopped).toBe(false);
+  });
+
+  it("stops the balance-governed going train where the balance can no longer unlock, at the same step however time is split", () => {
+    const run = (splits: number): AppStore => {
+      const store = new AppStore(withStop());
+      const stop = store.runDownWindTurns ?? Number.NaN;
+      setWind(store, stop + 60 / 21600 / 2); // about 30 s of running left
+      runFor(store, 60, splits);
+      return store;
+    };
+    const whole = run(15);
+    const split = run(60);
+    expect(whole.goingTrainStopped).toBe(true);
+    // Ids differ between the two designs; the states must match value for value.
+    expect(Object.values(whole.simulation.mainspringWind)).toEqual(Object.values(split.simulation.mainspringWind));
+    expect(Object.values(whole.simulation.shaftAngle)).toEqual(Object.values(split.simulation.shaftAngle));
+    expect([...whole.effectiveTrain.shaftAngularVelocity.values()].every((w) => w === 0)).toBe(true);
+    expect(whole.displayAmplitude).toBe(0);
+    expect(whole.reserveRemainingSeconds).toBe(0);
+    // Validation still judges the running train; stopping is simulation state, not a design change.
+    expect(whole.analysis.train.shaftAngularVelocity.size).toBeGreaterThan(0);
+  });
+
+  it("winding at the crown while stopped turns only the arbor, and restarts the train once above the stop", () => {
+    const store = new AppStore(withStop());
+    const stop = store.runDownWindTurns ?? Number.NaN;
+    setWind(store, stop);
+    expect(store.goingTrainStopped).toBe(true);
+    store.setCrownAction("WIND");
+    store.tick(0.25); // a quarter turn of the crown at 1×
+    expect(store.mainspringWindTurns ?? 0).toBeGreaterThan(stop);
+    expect(store.goingTrainStopped).toBe(false);
+    const amplitude = store.displayAmplitude ?? degrees(0);
+    expect(toDegrees(amplitude)).toBeGreaterThan(25);
+  });
+
+  it("a movement with an imposed drive keeps turning when let down, and its wind stays at zero", () => {
+    const store = new AppStore(setNominalTimeDrive(createTeachingMovement()));
+    expect(store.runDownWindTurns).toBeNull();
+    setWind(store, 0);
+    store.tick(0.1);
+    expect(store.goingTrainStopped).toBe(false);
+    expect(store.mainspringWindTurns).toBe(0);
+    expect(store.reserveRemainingSeconds).toBe(0);
+  });
+
+  it("giving a spring data during a session starts it fully wound; removing it drops the wind", () => {
+    const store = new AppStore(createTeachingMovement());
+    const id = springId(store);
+    store.edit((m) => updateCouplingSpring(m, id, null));
+    expect(store.mainspringWindTurns).toBeNull();
+    expect(store.simulation.mainspringWind[id]).toBeUndefined();
+    store.undo();
+    expect(store.mainspringWindTurns).toBe(6.5);
   });
 });

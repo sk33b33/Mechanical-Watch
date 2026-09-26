@@ -358,6 +358,10 @@ button.notice-dismiss {
   white-space: nowrap;
 }
 
+.toolbar-clock.run-down {
+  color: var(--warn);
+}
+
 button.play-button {
   min-width: 56px;
 }

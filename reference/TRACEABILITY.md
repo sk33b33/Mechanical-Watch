@@ -57,6 +57,17 @@ geometry standard) is open work.
 | Hairspring for a frequency (N·m/rad) | k = I (2π f)² | `stiffnessForFrequency` | inverse of the above | ASM-0024 | DERIVED | L3 | › property: the stiffness for a frequency gives that frequency back |
 | Escape speed when the balance governs (rad/s) | abs(ω) = 2π f / z (one tooth per balance period); sign from the train so the hands run forward | `escapeSpeedFromBalance`, `driveSeed` (BALANCE) | REF-ENG §9, §10 | ASM-0021, ASM-0024 | DERIVED | L3 | › the escape wheel advances one tooth per balance period; › runs the hands clockwise… |
 | Daily rate (s/day) | (f / f_nominal − 1) × 86 400; f_nominal from the escape arbor at nominal time | `dailyRateSeconds`, `summarizeBalance` | definition (train speed ∝ balance frequency) | ASM-0024 | DERIVED; not a rate-accuracy claim | L3 | › predicts about 7 s a day slow… |
+| Pallet span angle (rad) | φ = span × 2π / z | `spanAngle` in `src/kinematics/palletGeometry.ts` | REF-ENG §9 | ASM-0021, ASM-0025 | DERIVED | L1 | `palletGeometry.test.ts` |
+| Tangential locking distance (m) | escape-to-pallet axis = R_tip / cos(φ/2), for 0 < φ < π | `tangentialCentreDistance` | geometry of two tangents to a circle | ASM-0025 | DERIVED | L1 | `palletGeometry.test.ts` › property: tangents at the locking points meet at the pallet axis |
+| Lever impulse angle (rad) | lever − lock − run | `impulseAngle` | definition | ASM-0025 | DERIVED | L1 | `mainspringEnergy.test.ts` › pallet rules |
+| Fork ratio | lift angle / lever angle | `forkRatio` | definition | ASM-0025 | DERIVED | L1 | `palletGeometry.test.ts` |
+| Spring torque at a wind (N·m) | T_letdown + (T_full − T_letdown) × w / turns, w clamped to [0, turns] | `springTorque` in `src/kinematics/mainspringEnergy.ts` | REF-ENG §11 | ASM-0026 | DERIVED from entered values | L3 | `mainspringEnergy.test.ts` › linear in wind |
+| Power reserve (s) | turns / (abs(ω_drum) / 2π) | `powerReserveSeconds` | definition | ASM-0026 | DERIVED | L2 | › 6.5 turns at one drum turn per 6 h is 39 h |
+| Escape wheel torque (N·m) | T_drum × abs(ω_drum / ω_escape) × η_train (η = 1, the lossless bound, when not configured) | `escapeTorque` | conservation of power | ASM-0002, ASM-0026 | DERIVED; upper bound without η | L3 | › escape torque conserves power |
+| Energy per beat to the balance (J) | T_escape × π / z × η_escapement | `energyPerBeat`, `escapeRotationPerBeat` | work = torque × angle | ASM-0021, ASM-0026 | DERIVED | L3 | › energy per beat |
+| Steady amplitude (rad) | A = √(2 Q E_beat / (π k)), from 2 E_beat = 2π (½ k A²) / Q | `steadyAmplitude` | definition of Q; ½ k A² | ASM-0024, ASM-0026 | DERIVED; requires physical validation | L3 | › property: energy in per period equals the loss |
+| Stop wind (turns) | where A(w) = lift / 2, with A ∝ √T(w) | `summarizeEnergy` in `src/kinematics/energySummary.ts` | follows from the two above | ASM-0023, ASM-0026 | DERIVED | L3 | › finds where the balance stops unlocking |
+| Mainspring state of wind (turns) | dw/dt = (ω_arbor − ω_drum) × sign(ω_drum running) / 2π, clamped to [0, turns] | `stepSimulation`, `windTracks` in `src/simulation/simulationState.ts` | kinematics of the barrel | ASM-0018, ASM-0026 | DERIVED; simulation state | L2 | `simulationState.test.ts` › mainspring wind; `store.test.ts` › run-down |
 | Toleranced limits (m) | lower = nominal + lower deviation; upper = nominal + upper deviation | `Tolerance` in `src/domain/tolerance.ts` | REF-ENG §14 | none (declared intent) | user input; not validated | L1 | `toleranceAnalysis.test.ts` |
 | Worst-case stack (m) | R = Σ sᵢ xᵢ; R_min = Σ (sᵢ > 0 ? lowerᵢ : −upperᵢ); R_max likewise; untoleranced inputs at nominal | `evaluateStack` in `src/assembly/toleranceAnalysis.ts` | REF-ENG §14 | ASM-0017 | DERIVED | L1 | › property: min ≤ nominal ≤ max… |
 | Side shake over tolerances (m) | bore − pivot, worst case | `sideShakeStack` | REF-ENG §12, §14 | ASM-0013, ASM-0017 | DERIVED; acceptability UNKNOWN | L1 | › side shake: min takes… |
@@ -95,6 +106,15 @@ rev/min exist only at the UI boundary (`src/units/`).
 | Schema-3 file | Migrated to schema 4 on open (no keyless works, no dial). |
 | Schema-4 file | Migrated to schema 5 on open (no escapement). |
 | Schema-5 file | Migrated to schema 6 on open (balance inertia and stiffness unknown). |
+| Schema-6 file | Migrated to schema 7 on open (no pallet geometry; escapement efficiency, Q and mainspring data unknown). |
+| New pallet geometry (all empty) | Kept NaN; ESC-104 span error and ESC-105 errors until entered. No default angles. |
+| Pallet span not k + ½ teeth, or ≥ 180° | ESC-104 error; locking distance not derived; symbolic fork arms shown. |
+| Lock + run ≥ lever angle; lock ≤ 0; run < 0 | ESC-105 error. |
+| Draw ≤ 0 | ESC-105 warning (nothing pulls the lever onto its banking). |
+| Mainspring data empty, turns ≤ 0, torques ≤ 0, let-down > fully wound, efficiency outside (0, 1] | SPR-001 error; no energy chain; the wind is not tracked. |
+| Q or escapement efficiency unknown | Amplitude not predicted; SPR-002 names what is missing; the declared amplitude is shown. |
+| Q ≤ 0 or efficiency outside (0, 1] | SPR-001 error. |
+| Predicted amplitude below half the lift angle before let-down | SPR-003 warning with the stop wind and running reserve; error if even fully wound. The simulation stops a balance-governed train there. |
 | Balance inertia or stiffness empty | Stored as null (unknown); the model stays kinematic; a balance-governed drive reports BAL-001 and drives nothing. |
 | Balance inertia or stiffness ≤ 0 | BAL-001 error; no free frequency. |
 | New escapement (all empty, no arbors chosen) | Kept empty; ESC-101 lists what is missing; nothing ticks or swings. |
@@ -156,12 +176,17 @@ rev/min exist only at the UI boundary (`src/units/`).
 | DIAL-002 | error | L1 | the dial is below everything it covers (project addition) |
 | DIAL-003 | error | L1 | every hand arbor is over the dial (project addition) |
 | ESC-001 | info | L2 | declares the SIMPLIFIED ESCAPEMENT MODEL and the derived beat rate |
-| ESC-002 | info | L2 | states what the simplified model does not claim (contact, locking, dynamics, rate accuracy) |
+| ESC-002 | info | L2 | states what the simplified model does not claim (contact, drop, faces, rate accuracy) and which parts are simplified models |
+| ESC-104 | error | L1 | pallet span is k + ½ teeth and under 180°; pallet arbor at the tangential locking distance (project addition, ASM-0025) |
+| ESC-105 | error / warning | L1 | lock positive, run not negative, lock + run leave impulse; draw positive (warning) (project addition, ASM-0025) |
 | ESC-101 | error | L1 / L2 | one escapement, three distinct existing arbors, valid inputs, amplitude above half the lift angle (project addition) |
 | ESC-102 | error | L2 | pallet arbor and balance staff are not gear-driven (project addition) |
 | ESC-103 | error | L1 | escape wheel clears the pallet arbor, the balance and other gears at its height; the balance clears the pallet arbor (project addition) |
 | BAL-001 | error | L2 / L3 | entered inertia and stiffness positive; a balance-governed drive needs an escapement, escape wheel and both inputs (project addition) |
 | BAL-002 | info | L3 | free frequency, frequency needed for nominal time, stiffness for nominal, predicted daily rate, with limits (project addition) |
+| SPR-001 | error | L3 | mainspring data, Q and escapement efficiency within their valid ranges (project addition, ASM-0026) |
+| SPR-002 | info | L3 | reserve, escape torque (lossless bound when so), predicted amplitude or what it needs (project addition, ASM-0026) |
+| SPR-003 | warning / error | L3 | the balance stops before let-down (warning) or cannot unlock even fully wound (error) (project addition, ASM-0026) |
 | TOL-001 | error / warning | L1 | tolerance definition: target exists, one per dimension, finite limits, lower ≤ upper, positive size limit (project addition) |
 | TOL-002 | warning | L1 | a nominally positive side shake or endshake that can close within declared tolerances (project addition) |
 | MFG-001 | info | L1 | summary whenever tolerances exist: declared intent, untoleranced dimensions are nominal. Also stated in every output. |

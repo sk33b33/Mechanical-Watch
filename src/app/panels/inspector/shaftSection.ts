@@ -38,6 +38,7 @@ import {
 } from "./fields";
 import { deleteRow, meshLabel, type Section } from "./common";
 import { stackText, stackTitle, toleranceSection } from "./toleranceSection";
+import { mainspringDataRows } from "./energySection";
 
 interface EligibleMesh {
   mesh: GearMesh;
@@ -230,7 +231,7 @@ function clutchRows(store: AppStore, shaft: Shaft): Section {
   return out;
 }
 
-/** The mainspring link from a barrel arbor to its drum (no energy modeled, ASM-0018). */
+/** The mainspring link from a barrel arbor to its drum (ASM-0018), with the spring's data on the arbor (ASM-0026). */
 function mainspringRows(store: AppStore, shaft: Shaft): Section {
   const { movement } = store;
   const positions = store.analysis.placement.shaftPositions;
@@ -244,6 +245,7 @@ function mainspringRows(store: AppStore, shaft: Shaft): Section {
     out.push(listRow(winds ? `Winds the drum ${other?.name ?? "missing arbor"}` : `Wound by ${other?.name ?? "missing arbor"}`,
       actionButton("Remove", "Remove this mainspring link", () => { store.remove(spring.id); }, true),
       other === undefined ? undefined : () => { store.select(other.id); }));
+    if (winds && spring.kind === "MAINSPRING") out.push(...mainspringDataRows(store, spring));
   }
   if (springs.length > 0) return out;
   const axis = positions.get(shaft.id);
@@ -259,7 +261,7 @@ function mainspringRows(store: AppStore, shaft: Shaft): Section {
   ], (id) => {
     const drum = candidates.find((s) => s.id === id);
     if (drum !== undefined) store.edit((m) => addCoupling(m, newMainspring(m, shaft.id, drum.id)));
-  }, "Declares a mainspring from this barrel arbor to the drum. No spring energy or torque is modeled; it sets which way the crown winds (ASM-0018)."));
+  }, "Declares a mainspring from this barrel arbor to the drum. It sets which way the crown winds (ASM-0018); spring data for the energy model can be entered afterwards (ASM-0026)."));
   return out;
 }
 

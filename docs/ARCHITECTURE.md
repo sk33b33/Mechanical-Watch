@@ -74,6 +74,14 @@ viewport shows the train ticking without changing the simulation state
 (ASM-0023). The beat rate and impulse window come from
 `src/kinematics/escapement.ts`.
 
+The state also holds each mainspring's state of wind (ASM-0026),
+integrated from the arbor and drum speeds. `advanceSimulation` accepts a
+state-dependent solution source, which the store uses to switch to a
+stopped going train (`solveGearTrain` with `goingTrainStopped`) at the
+exact step a balance-governed movement runs down; the energy chain
+itself (`src/kinematics/energySummary.ts`) is derived from the running
+solve, like validation.
+
 ### Validation (`src/validation`)
 Rule families in `rules/`, each `(context) => ValidationIssue[]`, sharing
 one solved context. Rule IDs come from `reference/validation/RULE_IDS.md`.

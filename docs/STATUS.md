@@ -2,6 +2,53 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Pallet geometry (L1) and the energy chain (L3)
+
+- **Pallet geometry (ASM-0025).** Optional per escapement: span in
+  teeth, lock, draw and run angles. The pallets lock on the escape
+  wheel's tip circle at two points (k + ½) pitches apart, and the pallet
+  arbor must sit where the tangents at those points meet, R / cos(span/2).
+  ESC-104 flags a whole-tooth span, a span of 180° or more and a pallet
+  arbor off that distance. ESC-105 flags lock and run that leave no
+  impulse within the lever angle, and warns about a draw angle that isn't
+  positive. Whether the draw overcomes friction is not checked. The
+  viewport puts the pallet stones on the locking points.
+- **Mainspring data (ASM-0026).** Optional on the mainspring link:
+  usable turns, torque fully wound and let down (linear between them),
+  and an optional train efficiency (ASM-0002, now Active). Without an
+  efficiency, torques are the lossless upper bound, and are labelled so.
+- **Energy chain.** Power reserve from the drum's running speed; escape
+  wheel torque by power balance through the train; energy per beat =
+  torque × π/z × escapement efficiency; steady amplitude where the energy
+  in per period balances the loss 2πE/Q, A = √(2 Q E_beat / (π k)). The
+  balance stops once the amplitude falls to half the lift angle, which
+  gives a stop wind and a running reserve. SPR-001 checks the spring
+  data, SPR-002 reports the chain and names what the amplitude still
+  needs, SPR-003 warns when the balance stops before let-down (error when
+  it cannot start even fully wound).
+- **No invented losses.** Q and the escapement efficiency can only come
+  from measurement or a source, so the teaching movement leaves both
+  unknown. It shows the reserve (39 h) and the lossless escape torque,
+  and keeps its declared amplitude.
+- **Simulation.** The mainspring's state of wind is simulation state,
+  starting fully wound. The running drum unwinds it; winding at the crown
+  winds it, clamped at let-down and fully wound. A balance-governed
+  movement stops at the stop wind (or at let-down when the amplitude
+  can't be predicted): the balance rests and the fork lies on a banking.
+  Winding above the stop restarts it (the model assumes it self-starts).
+  The stop is checked before every fixed step, so it happens at the same
+  step however frame time is split (SIM-002). An imposed drive (nominal
+  time, prescribed) keeps turning when let down. The toolbar shows the
+  wind and the running time left; when predicted, the displayed amplitude
+  follows the wind (A ∝ √T).
+- **Outputs.** The escapement's component report and the movement
+  report add the pallet values (L1) and the energy chain (L3) with their
+  equations. The BOM lists the pallet angles and the spring data.
+- Design files move to schema 7.
+- The movement's declared level stays capped at L2.
+
+303 unit tests and 20 browser tests pass.
+
 ## Balance dynamics: simplified dynamic model (L3)
 
 - **Inputs.** The balance takes an optional moment of inertia (mg·cm²)
@@ -378,10 +425,13 @@ dimensions round-trip, and picking and issue selection work.
   for them. The stem passes through the mainplate slab (grooves are not
   modeled, ASM-0010), and stem parts aren't checked for interference.
   There is no stop-seconds (hacking) and no third crown position (date).
-  Winding is kinematic only: there is no spring state, torque or power
-  reserve.
-- Escapement: no locking, draw, drop, banking, impact or sliding
-  contact; the balance is a sinusoid at a declared amplitude; the escape
+  Winding moves the spring's state of wind, but winding torque, the
+  slipping bridle and a spring's hysteresis are not modeled.
+- Escapement: no drop, impact or sliding contact, and no tooth or
+  pallet faces; locking is checked only as tangential locking points
+  (ASM-0025); the balance is a sinusoid at a declared or predicted
+  amplitude, and amplitude does not change its rate (isochronous,
+  ASM-0024); the escape
   wheel's tooth form, the fork and the balance's arms are visual. The STL
   omits the escapement parts. The toolbar's dial reading follows the
   average motion, not the ticks.
@@ -402,6 +452,7 @@ dimensions round-trip, and picking and issue selection work.
 - Phase 6 follow-ups, if useful: an elevation (axial stack) drawing,
   tolerances shown on drawings, tolerances on gear and placement
   dimensions for centre-distance variation.
-- Escapement beyond the simplified model: locking, draw and banking
-  geometry; amplitude from an energy balance (needs mainspring torque);
-  sources for ASM-0021 and ASM-0024.
+- Escapement beyond the simplified models: sourced or measured values
+  for Q and escapement efficiency; tooth and pallet faces (drop, impulse
+  geometry); amplitude-dependent rate; sources for ASM-0021, ASM-0024,
+  ASM-0025 and ASM-0026.

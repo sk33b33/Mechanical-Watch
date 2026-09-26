@@ -88,6 +88,11 @@ export interface SolveOptions {
   settingAngularVelocity?: AngularVelocity;
   /** Crown angular velocity about the stem direction. Required for WINDING and CROWN_SETTING. */
   crownAngularVelocity?: AngularVelocity;
+  /**
+   * The going train is stopped (the balance-governed movement ran down,
+   * ASM-0026): the drive delivers nothing. The crown can still wind and set.
+   */
+  goingTrainStopped?: boolean;
 }
 
 interface Edge {
@@ -366,8 +371,17 @@ export function solveGearTrain(movement: Movement, options: SolveOptions = { mod
   const velocities = new Map<BodyId, AngularVelocity>();
   const conflicts: GearTrainConflict[] = [];
   const runningEdges = buildEdges(movement, { clutchesEngaged: true, stemPosition: "WINDING", ratchetTeethEngaged: false });
-  const seed = driveSeed(movement, runningEdges);
+  const realSeed = driveSeed(movement, runningEdges);
+  const seed: [ShaftId, AngularVelocity] | null =
+    realSeed !== null && options.goingTrainStopped === true ? [realSeed[0], radiansPerSecond(0)] : realSeed;
   propagate(seed === null ? [] : [seed], runningEdges, velocities, conflicts);
+  // Which way the drum would run: winding needs it even while the going train is stopped.
+  let directionReference: ReadonlyMap<BodyId, AngularVelocity> = velocities;
+  if (realSeed !== null && seed !== realSeed) {
+    const probe = new Map<BodyId, AngularVelocity>();
+    propagate([realSeed], runningEdges, probe, []);
+    directionReference = probe;
+  }
 
   let setting: SettingState = { status: "NOT_APPLICABLE" };
   let winding: WindingState = { status: "NOT_APPLICABLE" };
@@ -409,7 +423,7 @@ export function solveGearTrain(movement: Movement, options: SolveOptions = { mod
         break;
       }
       if (!crownTurning) break;
-      const response = windingResponse(movement, keyless, velocities);
+      const response = windingResponse(movement, keyless, directionReference);
       if ("status" in response) {
         winding = response;
       } else {

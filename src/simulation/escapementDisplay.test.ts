@@ -57,4 +57,19 @@ describe("escapement display (ASM-0023)", () => {
     expect(d?.beatFrequency).toBeNull();
     expect(d?.balanceAngle).toBe(0);
   });
+
+  it("swings at a supplied amplitude (the energy model's prediction) instead of the declared one", () => {
+    const d = escapementDisplay(movement, running, running, 0.1, { amplitude: radians(Math.PI) });
+    expect(toDegrees(d?.balanceAngle ?? radians(Number.NaN))).toBeCloseTo(180, 9);
+  });
+
+  it("run down: the balance rests, the fork lies against a banking and nothing is released", () => {
+    const stoppedTrain = solveGearTrain(movement, { mode: "RUNNING", goingTrainStopped: true });
+    const d = escapementDisplay(movement, running, stoppedTrain, 0.1, { stopped: true });
+    const esc = Object.values(movement.escapements)[0];
+    expect(d?.balanceAngle).toBe(0);
+    expect(d?.forkAngle).toBeCloseTo(-(esc?.leverAngle ?? Number.NaN) / 2, 12);
+    expect(d?.beatFrequency).toBeNull();
+    expect(d?.shaftAngleOffset.size).toBe(0);
+  });
 });

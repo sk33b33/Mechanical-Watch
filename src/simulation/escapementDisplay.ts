@@ -33,11 +33,22 @@ export function primaryEscapement(movement: Movement): Escapement | null {
   return Object.values(movement.escapements)[0] ?? null;
 }
 
+/**
+ * `amplitude` overrides the declared amplitude (the energy model's
+ * prediction, ASM-0026); `stopped` shows a run-down movement: the balance
+ * at rest, the fork against a banking, nothing released.
+ */
+export interface EscapementDisplayOptions {
+  amplitude?: Angle | null;
+  stopped?: boolean;
+}
+
 export function escapementDisplay(
   movement: Movement,
   running: GearTrainSolution,
   current: GearTrainSolution,
   time: number,
+  options: EscapementDisplayOptions = {},
 ): EscapementDisplay | null {
   const escapement = primaryEscapement(movement);
   if (escapement === null) return null;
@@ -48,11 +59,12 @@ export function escapementDisplay(
     forkAngle: forkAngle as Angle,
     shaftAngleOffset: offsets,
   });
+  if (options.stopped === true) return at(0, Number.isFinite(escapement.leverAngle) ? (0 - escapement.leverAngle) / 2 : 0, null);
   const omega = running.shaftAngularVelocity.get(escapement.escapeArborShaftId);
   if (omega === undefined || omega === 0 || !isValidToothCount(escapement.escapeWheel.toothCount)) return at(0, 0, null);
   const beats = beatFrequency(omega, escapement.escapeWheel.toothCount);
   const motion = escapementMotion(
-    { beatFrequency: beats, amplitude: escapement.balance.amplitude, liftAngle: escapement.balance.liftAngle, leverAngle: escapement.leverAngle },
+    { beatFrequency: beats, amplitude: options.amplitude ?? escapement.balance.amplitude, liftAngle: escapement.balance.liftAngle, leverAngle: escapement.leverAngle },
     time,
   );
   if (motion === null) return at(0, 0, beats);

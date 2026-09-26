@@ -48,8 +48,14 @@ Jewel (bearing; sits on its shaft's axis, so it has no position)
 Coupling
 - id, kind, name, shaftAId, shaftBId
 - FRICTION_CLUTCH: engaged while running, slipping while setting (ASM-0015)
-- MAINSPRING: shaftA = barrel arbor, shaftB = drum; no kinematic constraint
-  (no energy modeled); fixes the winding direction (ASM-0018)
+- MAINSPRING: shaftA = barrel arbor, shaftB = drum; no kinematic
+  constraint; fixes the winding direction (ASM-0018). spring:
+  MainspringSpec | null (null = data unknown)
+- MainspringSpec (SIMPLIFIED ENERGY MODEL, L3, ASM-0026): usableTurns
+  (arbor turns relative to the drum, let-down → fully wound),
+  fullyWoundTorque and letDownTorque (N·m; linear between them),
+  trainEfficiency: 0–1 | null (ASM-0002; null = not configured, torques
+  are the lossless upper bound)
 
 KeylessWorks (ASM-0019)
 - id, name
@@ -64,10 +70,17 @@ Escapement (SIMPLIFIED ESCAPEMENT MODEL, ESC-001; ASM-0021…0023)
 - id, name, kind (SWISS_LEVER), modelLevel (SIMPLIFIED_KINEMATIC)
 - escapeArborShaftId; escapeWheel {toothCount, tipDiameter, thickness, zCentre}
 - palletArborShaftId; leverAngle (total swing between bankings)
+- pallets: PalletGeometry | null (simplified locking geometry, ASM-0025):
+  spanTeeth (pitches between the locking points; k + ½), lockAngle,
+  drawAngle, runAngle. lever = lock + impulse + run
+- escapementEfficiency: 0–1 | null (energy per beat reaching the balance,
+  ASM-0026; null = unknown)
 - balanceShaftId; balance {diameter, thickness, zCentre, amplitude
-  (declared, not predicted), liftAngle, inertia: kg·m² | null,
-  hairspringStiffness: N·m/rad | null} (the last two for the simplified
-  dynamic model, L3, ASM-0024; null = unknown)
+  (declared; replaced in the display by the energy model's prediction
+  when it has its inputs), liftAngle, inertia: kg·m² | null,
+  hairspringStiffness: N·m/rad | null (both for the simplified dynamic
+  model, L3, ASM-0024), qualityFactor: number | null (Q, ASM-0026)}; null
+  = unknown
 - The pallet arbor and balance staff are ordinary shafts that oscillate;
   they must not be gear-driven (ESC-102).
 
@@ -90,14 +103,16 @@ ValidationIssue
 Derived, never stored: shaft axis positions, centre distances, angular
 velocities (including the stem's), bearing positions, side shake,
 endshake, tolerance limits and worst-case stacks, stem engagement
-geometry, winding direction, shaft and stem angles, and every output (report, BOM,
+geometry, winding direction, energy chain (reserve, escape torque,
+predicted amplitude), shaft and stem angles, the mainspring's state of
+wind (simulation state, starting fully wound), and every output (report, BOM,
 drawings, STL).
 
 ## Saved files (`src/persistence/designFile.ts`)
 
 ```
 { "format": "mechanical-watchmaker-3d.design",
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "savedAt": "<ISO time>",
   "movement": { …Movement as above… } }
 ```
@@ -116,7 +131,9 @@ drawings, STL).
   drive union, makes every shaft PIVOTED with no hand, and adds empty
   couplings. v2 → v3 adds empty tolerances. v3 → v4 adds empty keyless
   works and dials. v4 → v5 adds empty escapements. v5 → v6 adds unknown
-  (null) balance inertia and hairspring stiffness.
+  (null) balance inertia and hairspring stiffness. v6 → v7 adds no pallet
+  geometry, unknown escapement efficiency and Q, and unknown mainspring
+  data (all null).
 - Autosave keeps the current design in browser storage under
   `mw3d.autosave`. An unreadable autosave is moved to
   `mw3d.autosave.unreadable` rather than overwritten.

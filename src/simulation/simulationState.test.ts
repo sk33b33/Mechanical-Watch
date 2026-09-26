@@ -10,10 +10,14 @@ import {
   stepSimulation,
   advanceSimulation,
   NonFiniteSimulationStateError,
+  reconcileWind,
+  type WindTrack,
 } from "./simulationState";
+import type { CouplingId } from "@/domain/coupling";
+import { newtonMillimetres } from "@/units/torque";
 
 const shaftId = "shaft_1" as ShaftId;
-const movement = { shafts: { [shaftId]: {} }, keylessWorks: {} } as unknown as Movement;
+const movement = { shafts: { [shaftId]: {} }, keylessWorks: {}, couplings: {} } as unknown as Movement;
 
 function solutionAt(rpm: number): GearTrainSolution {
   return {
@@ -90,5 +94,61 @@ describe("advanceSimulation (SIM-002 determinism)", () => {
     const state = advanceSimulation(createSimulationState(movement), solutionAt(6), 1000);
     expect(state.stepCount).toBe(NUMERICAL_PARAMETERS.maxSimulationStepsPerAdvance);
     expect(state.pendingSeconds).toBeCloseTo(0, 12);
+  });
+});
+
+describe("mainspring wind (ASM-0026)", () => {
+  const arbor = "shaft_arbor" as ShaftId;
+  const drum = "shaft_drum" as ShaftId;
+  const springId = "coupling_1" as CouplingId;
+  const spec = { usableTurns: 6.5, fullyWoundTorque: newtonMillimetres(10), letDownTorque: newtonMillimetres(6), trainEfficiency: null };
+  const withSpring = {
+    shafts: { [arbor]: {}, [drum]: {} },
+    keylessWorks: {},
+    couplings: { [springId]: { id: springId, kind: "MAINSPRING", shaftAId: arbor, shaftBId: drum, spring: spec } },
+  } as unknown as Movement;
+  // The drum runs negative (clockwise) in this fixture, so the arbor winds by turning negative too.
+  const track: WindTrack = { id: springId, arbor, drum, sign: -1, maxTurns: 6.5 };
+  const turning = (arborRevPerSecond: number, drumRevPerSecond: number): GearTrainSolution => ({
+    ...solutionAt(0),
+    shaftAngularVelocity: new Map([
+      [arbor, radiansPerSecond(arborRevPerSecond * 2 * Math.PI)],
+      [drum, radiansPerSecond(drumRevPerSecond * 2 * Math.PI)],
+    ]),
+  });
+
+  it("starts fully wound", () => {
+    expect(createSimulationState(withSpring).mainspringWind[springId]).toBe(6.5);
+  });
+
+  it("the running drum unwinds it and the arbor turning the drum's way winds it, within let-down and fully wound", () => {
+    const start = createSimulationState(withSpring);
+    const unwound = stepSimulation(start, turning(0, -0.5), 1, [track]);
+    expect(unwound.mainspringWind[springId]).toBeCloseTo(6, 12);
+    const wound = stepSimulation(unwound, turning(-0.25, 0), 1, [track]);
+    expect(wound.mainspringWind[springId]).toBeCloseTo(6.25, 12);
+    expect(stepSimulation(start, turning(-3, 0), 1, [track]).mainspringWind[springId]).toBe(6.5);
+    expect(stepSimulation(start, turning(0, -10), 1, [track]).mainspringWind[springId]).toBe(0);
+  });
+
+  it("a state-dependent source is consulted before every step", () => {
+    const start = { ...createSimulationState(withSpring), mainspringWind: { [springId]: 0.01 } };
+    // Stops once the wind reaches zero, whatever the tick size.
+    const source = (s: typeof start): GearTrainSolution => ((s.mainspringWind[springId] ?? 0) > 0 ? turning(0, -1) : turning(0, 0));
+    const dt = NUMERICAL_PARAMETERS.simulationTimestepSeconds;
+    const one = advanceSimulation(start, source, 200 * dt, [track]);
+    let many = start;
+    for (let i = 0; i < 8; i += 1) many = advanceSimulation(many, source, 25 * dt, [track]);
+    expect(one.shaftAngle).toEqual(many.shaftAngle);
+    expect(one.mainspringWind[springId]).toBe(0);
+  });
+
+  it("reconciles with an edited design: new data starts wound, fewer turns clamp, removed springs drop", () => {
+    const state = { ...createSimulationState(withSpring), mainspringWind: { [springId]: 5 } };
+    expect(reconcileWind(state, withSpring)).toBe(state);
+    const fewer = { ...withSpring, couplings: { [springId]: { ...withSpring.couplings[springId], spring: { ...spec, usableTurns: 4 } } } } as Movement;
+    expect(reconcileWind(state, fewer).mainspringWind[springId]).toBe(4);
+    expect(reconcileWind(state, { ...withSpring, couplings: {} }).mainspringWind).toEqual({});
+    expect(reconcileWind({ ...state, mainspringWind: {} }, withSpring).mainspringWind[springId]).toBe(6.5);
   });
 });

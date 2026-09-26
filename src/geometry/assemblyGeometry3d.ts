@@ -115,6 +115,8 @@ export const ESCAPEMENT_VISUALIZATION = {
   palletStoneMetres: 0.35e-3,
   balanceRimWidthFraction: 0.1,
   balanceArmWidthMetres: 0.3e-3,
+  /** Half-angle between the fork's arms when no pallet geometry is entered (visual only). */
+  symbolicPalletHalfAngleRadians: 0.45,
   assumption: "ASM-0012" satisfies AssumptionId,
 } as const;
 
@@ -162,7 +164,18 @@ export function createBalanceGeometry(radius: number, thickness: number): THREE.
  * staff, and two arms toward the escape wheel ending in pallet stones.
  * Directions are angles from +X in the plan; lengths in metres.
  */
-export function createForkGeometry(towardBalance: number, leverLength: number, towardEscape: number, armLength: number): THREE.BufferGeometry[] {
+/** A pallet arm from the pallet axis: direction and length to its stone. */
+export interface PalletArm {
+  angle: number;
+  length: number;
+}
+
+/**
+ * Visual pallet fork. With pallet geometry (ASM-0025) the arms end at the
+ * locking points; without it they are spread symbolically toward the
+ * escape wheel.
+ */
+export function createForkGeometry(towardBalance: number, leverLength: number, arms: readonly [PalletArm, PalletArm]): THREE.BufferGeometry[] {
   const v = ESCAPEMENT_VISUALIZATION;
   const bar = (angle: number, length: number, width: number): THREE.BufferGeometry => {
     const g = new THREE.BoxGeometry(length, width, v.forkThicknessMetres);
@@ -170,16 +183,16 @@ export function createForkGeometry(towardBalance: number, leverLength: number, t
     g.rotateZ(angle);
     return g;
   };
-  const spread = 0.45; // half-angle between the pallet arms (visual)
-  const stones = [towardEscape - spread, towardEscape + spread].map((a) => {
+  const stones = arms.map(({ angle, length }) => {
     const g = new THREE.BoxGeometry(v.palletStoneMetres, v.palletStoneMetres, v.forkThicknessMetres * 1.5);
-    g.translate(armLength * Math.cos(a), armLength * Math.sin(a), 0);
+    g.translate(length * Math.cos(angle), length * Math.sin(angle), 0);
     return g;
   });
-  return [
-    bar(towardBalance, leverLength, v.forkWidthMetres),
-    bar(towardEscape - spread, armLength, v.forkWidthMetres),
-    bar(towardEscape + spread, armLength, v.forkWidthMetres),
-    ...stones,
-  ];
+  return [bar(towardBalance, leverLength, v.forkWidthMetres), ...arms.map(({ angle, length }) => bar(angle, length, v.forkWidthMetres)), ...stones];
+}
+
+/** Symbolic arms when no pallet geometry is given: a fixed visual half-angle either side of the escape direction. */
+export function symbolicPalletArms(towardEscape: number, armLength: number): [PalletArm, PalletArm] {
+  const spread = ESCAPEMENT_VISUALIZATION.symbolicPalletHalfAngleRadians;
+  return [{ angle: towardEscape - spread, length: armLength }, { angle: towardEscape + spread, length: armLength }];
 }

@@ -130,7 +130,7 @@ export function renderMovementReport(movement: Movement, analysis: MovementAnaly
     ? "none declared: every dimension in this report is nominal only (MFG-001)"
     : `${String(tolerances.length)} declared; worst-case stacks shown for side shake and endshake; all other dimensions are nominal (MFG-001, ASM-0017)`}</div>
 <div><b>Manufacturing readiness</b> not validated. No manufacturing or physical validation has been performed (MFG-002, L5 not reached).</div>
-${Object.keys(movement.escapements).length > 0 ? `<div><b>Escapement</b> SIMPLIFIED ESCAPEMENT MODEL (kinematic). Beat rate is derived from the train${movement.drive?.kind === "BALANCE" ? ", which is governed by the balance's free frequency (simplified dynamic model, L3, ASM-0024)" : ""}; the balance is shown at a declared amplitude; rate accuracy is not modeled (ESC-001, ESC-002).</div>` : ""}
+${Object.keys(movement.escapements).length > 0 ? `<div><b>Escapement</b> SIMPLIFIED ESCAPEMENT MODEL (kinematic). Beat rate is derived from the train${movement.drive?.kind === "BALANCE" ? ", which is governed by the balance's free frequency (simplified dynamic model, L3, ASM-0024)" : ""}; the balance is shown at a declared amplitude unless the simplified energy model (L3, ASM-0026) can predict it from entered spring data, Q and escapement efficiency; pallet locking geometry is simplified (ASM-0025); rate accuracy is not modeled (ESC-001, ESC-002).</div>` : ""}
 ${movement.isTeachingDemo ? `<div><b>Teaching demo</b> dimensions are illustrative and not a production caliber (ASM-0009).</div>` : ""}
 </div>
 
@@ -154,7 +154,7 @@ ${table(["Severity", "Rule", "Level", "Message", "Parts", "Basis"], issueRows(mo
       ? "nominal time: the minutes-hand arbor turns once per hour (ASM-0014)"
       : movement.drive.kind === "BALANCE"
         ? "the balance: its free frequency (simplified dynamic model, L3, ASM-0024) sets the escape arbor's speed and the train follows"
-        : `prescribed on ${esc(movement.shafts[movement.drive.shaftId]?.name ?? "a missing arbor")} (ASM-0007)`}. No torque, energy or friction is modeled (ASM-0007).</p>
+        : `prescribed on ${esc(movement.shafts[movement.drive.shaftId]?.name ?? "a missing arbor")} (ASM-0007)`}. Speeds are kinematic: no friction is modeled, and torque and energy appear only in the simplified energy model reported with the escapement (L3, ASM-0026).</p>
 <h4>Meshes</h4>
 ${table(["Driving", "Driven", "z1", "z2", "Module", "Speed ratio −z1/z2", "Ideal centre distance", "Placed centre distance"], meshes.map((m) => [
     m.driving, m.driven, String(m.z1), String(m.z2), m.module,
@@ -165,7 +165,7 @@ ${table(["Driving", "Driven", "z1", "z2", "Module", "Speed ratio −z1/z2", "Ide
 <h4>Arbors</h4>
 ${table(["Arbor", "Hand", "Speed (rev/min)", "Direction seen from the dial"], arborRows)}
 ${components.filter((c) => c.kind === "Escapement").map((c) => `<h4>${esc(c.name)}: SIMPLIFIED ESCAPEMENT MODEL</h4>
-<p>Two beats per escape tooth (ASM-0021, source pending). Balance frequencies from inertia and hairspring stiffness use a linear, undamped, isochronous oscillator (simplified dynamic, L3, ASM-0024); amplitude, escapement, position and temperature effects are not modeled, so the daily rate is a model prediction, not a rate-accuracy claim.</p>
+<p>Two beats per escape tooth (ASM-0021, source pending). Balance frequencies from inertia and hairspring stiffness use a linear, undamped, isochronous oscillator (simplified dynamic, L3, ASM-0024); amplitude, escapement, position and temperature effects on rate are not modeled, so the daily rate is a model prediction, not a rate-accuracy claim. Pallet values use simplified tangential locking (L1, ASM-0025). Energy values use a linear torque curve, power balance through the train and a steady-state amplitude from the balance's Q (simplified, L3, ASM-0026); without a configured train efficiency, torques are lossless upper bounds. All of it requires physical validation.</p>
 ${table(["Quantity", "Value", "Equation", "Basis"], c.derived.map((d) => [d.label, d.text, d.equation ?? "", d.references.join(", ")]))}`).join("\n")}
 ${components.filter((c) => c.kind === "Keyless works").map((c) => `<h4>${esc(c.name)}: crown</h4>
 <p>Winding and setting are kinematic only: no winding torque, spring state or setting friction is modeled (ASM-0007, ASM-0015). Right-angle stem meshes are rolling pitch circles (ASM-0019).</p>

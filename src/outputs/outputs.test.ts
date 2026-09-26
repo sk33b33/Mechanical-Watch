@@ -8,7 +8,7 @@ import { createDemoMovement } from "@/app/demoMovement";
 import { createEmptyMovement } from "@/domain/editing";
 import { analyzeMovement } from "@/analysis/analyzeMovement";
 import { buildBom, bomCsv, toCsv } from "./bom";
-import { componentReports, meshReports } from "./componentReport";
+import { componentReports, meshReports, type ReportValue } from "./componentReport";
 import { buildPlanDrawing } from "./drawing/planDrawing";
 import { renderPlanSvg } from "./drawing/svg";
 import { renderPlanDxf } from "./drawing/dxf";
@@ -266,6 +266,22 @@ describe("movement report", () => {
     expect(html).toContain("rate accuracy is not modeled");
     const esc = componentReports(teaching, analysis).find((c) => c.kind === "Escapement");
     expect(esc?.derived.find((d) => d.label === "Beat rate")?.si).toBeCloseTo(5, 12); // 18 000 / 3600 Hz
+  });
+
+  it("reports pallet geometry at L1 and the energy chain at L3, naming what the amplitude still needs", () => {
+    const esc = componentReports(teaching, analysis).find((c) => c.kind === "Escapement");
+    const value = (label: string): ReportValue | undefined => esc?.derived.find((d) => d.label === label);
+    // 2.3 mm tip radius, 3.5 of 15 teeth = 84°: 2.3 / cos 42°.
+    expect(value("Pallet arbor distance for tangential locking")?.si).toBeCloseTo(2.3e-3 / Math.cos((42 * Math.PI) / 180), 12);
+    expect(value("Pallet span angle")?.level).toBe("L1_GEOMETRIC");
+    expect((value("Power reserve")?.si ?? 0) / 3600).toBeCloseTo(39, 9);
+    expect(value("Escape wheel torque, fully wound")?.text).toContain("lossless upper bound");
+    expect(value("Predicted amplitude, fully wound → let down")?.text).toBe("needs escapement efficiency, balance quality factor Q");
+    expect(value("Predicted amplitude, fully wound → let down")?.level).toBe("L3_SIMPLIFIED_DYNAMIC");
+    expect(html).toContain("simplified tangential locking (L1, ASM-0025)");
+    const bom = buildBom(teaching);
+    expect(bom.find((r) => r.name === "Pallet stones")?.specification).toBe("span 3.5 teeth, lock 2.0°, draw 12.0°, run 0.5° (entered)");
+    expect(bom.some((r) => r.notes.includes("6.5 turns, 10.00 → 6.00 N·mm (entered, ASM-0026)"))).toBe(true);
   });
 
   it("reports the crown: winding direction and ratios", () => {

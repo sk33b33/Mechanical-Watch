@@ -4,6 +4,12 @@ import type { Shaft } from "@/domain/shaft";
 import { isValidModule, isValidToothCount, pitchDiameter } from "@/math/gearMath";
 import { mmText, optionalMmText } from "./componentReport";
 import { toMicronewtonMillimetresPerRadian, toMilligramSquareCentimetres } from "@/units/rotational";
+import { toNewtonMillimetres } from "@/units/torque";
+import { toDegrees, type Angle } from "@/units/angle";
+
+function degreesText(value: Angle): string {
+  return Number.isFinite(value) ? `${toDegrees(value).toFixed(1)}°` : "?";
+}
 
 /**
  * Bill of materials generated from the design model. Each row is one
@@ -93,7 +99,9 @@ export function buildBom(movement: Movement): BomRow[] {
         ...(shaft.hand === null ? [] : [`carries the ${shaft.hand.toLowerCase()} hand (hand not modeled, ASM-0016)`]),
         ...clutches.map((c) => c.kind === "FRICTION_CLUTCH"
           ? `friction clutch with ${other(c)} (ASM-0015)`
-          : c.shaftAId === shaft.id ? `winds the mainspring of ${other(c)} (ASM-0018)` : `driven by its mainspring from ${other(c)} (ASM-0018)`),
+          : c.shaftAId === shaft.id
+            ? `winds the mainspring of ${other(c)} (ASM-0018)${c.spring === null ? "" : `: ${String(c.spring.usableTurns)} turns, ${toNewtonMillimetres(c.spring.fullyWoundTorque).toFixed(2)} → ${toNewtonMillimetres(c.spring.letDownTorque).toFixed(2)} N·mm (entered, ASM-0026)`}`
+            : `driven by its mainspring from ${other(c)} (ASM-0018)`),
       ].join("; "),
     });
     let sub = 0;
@@ -154,7 +162,7 @@ export function buildBom(movement: Movement): BomRow[] {
     row({
       item: parent, depth: 0, entityId: esc.id, name: esc.name, type: "Escapement (simplified model)",
       specification: "Swiss lever, kinematic only (ESC-001)", location: "", tolerances: "nominal only",
-      notes: "assembly of the parts below; contact, locking and balance dynamics not modeled (ESC-002)",
+      notes: "assembly of the parts below; contact, drop and tooth and pallet faces not modeled (ESC-002)",
     });
     const w = esc.escapeWheel;
     const b = esc.balance;
@@ -162,7 +170,9 @@ export function buildBom(movement: Movement): BomRow[] {
     const parts: [string, string, string, string, string][] = [
       ["Escape wheel", "Escape wheel", `z = ${Number.isFinite(w.toothCount) ? String(w.toothCount) : "?"}, tip Ø ${mmText(w.tipDiameter)}, thickness ${mmText(w.thickness, 3)}`, `on ${shaftName(esc.escapeArborShaftId)}, mid-plane ${mmText(w.zCentre, 3)}`, "tooth form not modeled (drawn visually)"],
       ["Pallet fork", "Lever", "shape not modeled", `on ${shaftName(esc.palletArborShaftId)}`, "only its swing between bankings is modeled (ASM-0023)"],
-      ["Pallet stones", "Jewel", "not modeled", "", "impulse and locking faces not modeled"],
+      ["Pallet stones", "Jewel",
+        esc.pallets === null ? "not modeled" : `span ${String(esc.pallets.spanTeeth)} teeth, lock ${degreesText(esc.pallets.lockAngle)}, draw ${degreesText(esc.pallets.drawAngle)}, run ${degreesText(esc.pallets.runAngle)} (entered)`,
+        "", esc.pallets === null ? "impulse and locking faces not modeled" : "locking points only; impulse faces not modeled (ASM-0025)"],
       ["Balance", "Balance",
         `Ø ${mmText(b.diameter, 3)}, thickness ${mmText(b.thickness, 3)}${b.inertia === null ? "" : `, inertia ${toMilligramSquareCentimetres(b.inertia).toFixed(2)} mg·cm² (entered)`}`,
         `on ${shaftName(esc.balanceShaftId)}, mid-plane ${mmText(b.zCentre, 3)}`,

@@ -16,7 +16,10 @@ import { partReferencePoint } from "@/assembly/measure";
 import { stemBodyId, type KeylessWorksId } from "@/domain/keyless";
 import { buildDialMeshes, buildStemMeshes } from "./keylessMeshes";
 import { escapementDisplay, primaryEscapement } from "@/simulation/escapementDisplay";
-import { createBalanceGeometry, createEscapeWheelGeometry, createForkGeometry } from "@/geometry/assemblyGeometry3d";
+import { createBalanceGeometry, createEscapeWheelGeometry, createForkGeometry, symbolicPalletArms, type PalletArm } from "@/geometry/assemblyGeometry3d";
+import { isHalfToothSpan, lockingPoints, spanAngle } from "@/kinematics/palletGeometry";
+import { isValidToothCount } from "@/math/gearMath";
+import { metres } from "@/units/length";
 
 type PickKind = "gear" | "jewel" | "escapement" | "keyless" | "arbor" | "frame" | "dial";
 type ViewSide = "BRIDGE" | "DIAL";
@@ -395,10 +398,16 @@ export class Viewport {
     if (palletGroup !== undefined && pallet !== undefined && escape !== undefined && balance !== undefined && Number.isFinite(w.zCentre)) {
       const toEscape = Math.hypot(escape.x - pallet.x, escape.y - pallet.y);
       const toBalance = Math.hypot(balance.x - pallet.x, balance.y - pallet.y);
-      const parts = createForkGeometry(
-        Math.atan2(balance.y - pallet.y, balance.x - pallet.x), toBalance * 0.85,
-        Math.atan2(escape.y - pallet.y, escape.x - pallet.x), Math.max(toEscape - tipR * 0.9, toEscape * 0.2),
-      );
+      // With pallet geometry the stones sit on the locking points (ASM-0025); otherwise the arms are symbolic.
+      const pg = esc.pallets;
+      const arms: [PalletArm, PalletArm] =
+        pg !== null && isHalfToothSpan(pg.spanTeeth) && isValidToothCount(w.toothCount) && tipR > 0
+          ? (lockingPoints(escape, pallet, metres(tipR), spanAngle(w.toothCount, pg.spanTeeth)).map((p) => ({
+              angle: Math.atan2(p.y - pallet.y, p.x - pallet.x),
+              length: Math.hypot(p.x - pallet.x, p.y - pallet.y),
+            })) as [PalletArm, PalletArm])
+          : symbolicPalletArms(Math.atan2(escape.y - pallet.y, escape.x - pallet.x), Math.max(toEscape - tipR * 0.9, toEscape * 0.2));
+      const parts = createForkGeometry(Math.atan2(balance.y - pallet.y, balance.x - pallet.x), toBalance * 0.85, arms);
       for (const geometry of parts) {
         const mesh = new THREE.Mesh(geometry, material(COLORS.fork));
         mesh.position.z = this.displayZ(w.zCentre);
@@ -478,8 +487,11 @@ export class Viewport {
       group.rotation.z = this.store.simulation.shaftAngle[shaftId] ?? 0;
     }
     // The escapement ticks the going train once per beat and swings the fork and balance (display of ASM-0023).
-    const { movement, analysis, simulationTrain, simulation } = this.store;
-    const display = escapementDisplay(movement, analysis.train, simulationTrain, simulation.time);
+    const { movement, analysis, effectiveTrain, simulation, goingTrainStopped, displayAmplitude } = this.store;
+    const display = escapementDisplay(movement, analysis.train, effectiveTrain, simulation.time, {
+      amplitude: displayAmplitude,
+      stopped: goingTrainStopped,
+    });
     if (display !== null) {
       for (const [shaftId, offset] of display.shaftAngleOffset) {
         const group = this.shaftGroups.get(shaftId);

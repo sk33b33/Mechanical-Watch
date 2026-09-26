@@ -1,0 +1,174 @@
+import type { AppStore } from "@/app/store";
+import { degrees, toDegrees, type Angle } from "@/units/angle";
+import { newtonMillimetres, toNewtonMillimetres, type Torque } from "@/units/torque";
+import { toMicrojoules } from "@/units/energy";
+import { updateCouplingSpring, updateEscapement } from "@/domain/movement";
+import type { MainspringLink, MainspringSpec } from "@/domain/coupling";
+import type { Escapement, PalletGeometry } from "@/domain/escapement";
+import { isValidToothCount } from "@/math/gearMath";
+import { forkRatio, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance } from "@/kinematics/palletGeometry";
+import { actionRow, formatMm, inputRow, parseRequired, readonlyRow, sectionHeader } from "./fields";
+import { positive, type Section } from "./common";
+
+const ENERGY_MODEL_TITLE =
+  "SIMPLIFIED ENERGY MODEL (L3, ASM-0026): linear torque curve, power balance through the train, steady amplitude where the energy per beat balances the loss 2πE/Q. Requires physical validation.";
+
+function optionalText<T extends number>(value: T | null, scale: (v: T) => number = (v) => v): string {
+  return value === null || !Number.isFinite(value) ? "" : String(scale(value));
+}
+
+function hours(seconds: number | null): string {
+  return seconds === null ? "—" : `${(seconds / 3600).toFixed(1)} h`;
+}
+
+function degreesText(value: Angle | null): string {
+  return value === null ? "—" : `${toDegrees(value).toFixed(1)}°`;
+}
+
+/** An empty entry clears an optional value; anything else must be a number. */
+function parseOptional(raw: string): number | null {
+  return raw.trim() === "" ? null : Number(raw);
+}
+
+/** Mainspring data on the barrel arbor (ASM-0026). Every value is entered; none is assumed. */
+export function mainspringDataRows(store: AppStore, link: MainspringLink): Section {
+  const spec = link.spring;
+  const set = (next: MainspringSpec | null): void => {
+    store.edit((m) => updateCouplingSpring(m, link.id, next));
+  };
+  if (spec === null) {
+    return [
+      readonlyRow("Spring data", "unknown", "Without it the power reserve and energy chain are not computed."),
+      actionRow("Enter spring data", "Adds empty spring fields (turns and end torques) to fill from a source or measurement.", () => {
+        set({ usableTurns: Number.NaN, fullyWoundTorque: newtonMillimetres(Number.NaN), letDownTorque: newtonMillimetres(Number.NaN), trainEfficiency: null });
+      }),
+    ];
+  }
+  const patch = (p: Partial<MainspringSpec>): void => { set({ ...spec, ...p }); };
+  const torqueRow = (label: string, value: Torque, key: "fullyWoundTorque" | "letDownTorque", title: string): HTMLDivElement =>
+    inputRow({
+      label, value: optionalText(value, toNewtonMillimetres), step: "0.1", invalid: !positive(value), title,
+      onCommit: (raw) => { patch({ [key]: newtonMillimetres(parseRequired(raw)) }); },
+    });
+  const energy = store.energy?.spring.id === link.id ? store.energy : null;
+  const wind = store.mainspringWindTurns;
+  return [
+    readonlyRow("Model", "SIMPLIFIED ENERGY MODEL (L3)", ENERGY_MODEL_TITLE),
+    inputRow({
+      label: "Usable turns", value: optionalText(spec.usableTurns), step: "0.1", invalid: !positive(spec.usableTurns),
+      title: "Arbor turns relative to the drum from let-down to fully wound.",
+      onCommit: (raw) => { patch({ usableTurns: parseRequired(raw) }); },
+    }),
+    torqueRow("Torque fully wound (N·mm)", spec.fullyWoundTorque, "fullyWoundTorque", "Spring torque at full wind. Torque falls linearly to the let-down value (ASM-0026)."),
+    torqueRow("Torque let down (N·mm)", spec.letDownTorque, "letDownTorque", "Spring torque at the end of the usable turns. Equal to the fully wound value for a constant-torque model."),
+    inputRow({
+      label: "Train efficiency (0–1)", value: optionalText(spec.trainEfficiency), step: "0.01", placeholder: "not configured",
+      invalid: spec.trainEfficiency !== null && !(spec.trainEfficiency > 0 && spec.trainEfficiency <= 1),
+      title: "Overall efficiency from barrel to escape wheel (ASM-0002). Empty: torques are the lossless upper bound.",
+      onCommit: (raw) => { patch({ trainEfficiency: parseOptional(raw) }); },
+    }),
+    readonlyRow("Power reserve", hours(energy?.reserveSeconds ?? null), "Usable turns ÷ the drum's running speed."),
+    readonlyRow("Running reserve", hours(energy?.runningReserveSeconds ?? null),
+      "Until the predicted amplitude falls to half the lift angle and the balance can no longer unlock (needs the escapement's losses)."),
+    readonlyRow("Wind now (simulation)", wind === null ? "—" : `${wind.toFixed(3)} turns`, "Starts fully wound when the simulation resets."),
+    actionRow("Clear spring data", "Returns the spring to unknown. Undo with Ctrl+Z.", () => { set(null); }, true),
+  ];
+}
+
+/** Pallet geometry (ASM-0025) and the escapement's losses for the energy model (ASM-0026). */
+export function palletAndEnergyRows(store: AppStore, esc: Escapement): Section {
+  const edit = (patch: Parameters<typeof updateEscapement>[2]): void => {
+    store.edit((m) => updateEscapement(m, esc.id, patch));
+  };
+  return [...palletRows(esc, edit), ...lossRows(store, esc, edit)];
+}
+
+function palletRows(esc: Escapement, edit: (patch: Parameters<typeof updateEscapement>[2]) => void): Section {
+  const pg = esc.pallets;
+  const out: Section = [sectionHeader("Pallet geometry (optional)")];
+  if (pg === null) {
+    out.push(
+      readonlyRow("Pallets", "not specified", "The locking geometry is not checked until it is entered (ESC-104, ESC-105)."),
+      actionRow("Enter pallet geometry", "Adds empty span, lock, draw and run fields to fill from a design or source.", () => {
+        const empty = degrees(Number.NaN);
+        edit({ pallets: { spanTeeth: Number.NaN, lockAngle: empty, drawAngle: empty, runAngle: empty } });
+      }),
+    );
+    return out;
+  }
+  const patch = (p: Partial<PalletGeometry>): void => { edit({ pallets: { ...pg, ...p } }); };
+  const angle = (label: string, value: Angle, key: "lockAngle" | "drawAngle" | "runAngle", invalid: boolean, title: string): HTMLDivElement =>
+    inputRow({
+      label, value: optionalText(value, toDegrees), step: "0.1", invalid, title,
+      onCommit: (raw) => { patch({ [key]: degrees(parseRequired(raw)) }); },
+    });
+  const w = esc.escapeWheel;
+  const span = isValidToothCount(w.toothCount) && isHalfToothSpan(pg.spanTeeth) ? spanAngle(w.toothCount, pg.spanTeeth) : null;
+  const needed = span === null ? null : tangentialCentreDistance((w.tipDiameter / 2) as typeof w.tipDiameter, span);
+  const impulse = impulseAngle(esc.leverAngle, pg.lockAngle, pg.runAngle);
+  const ratio = forkRatio(esc.balance.liftAngle, esc.leverAngle);
+  const runValid = Number.isFinite(pg.runAngle) && pg.runAngle >= 0;
+  out.push(
+    readonlyRow("Model", "SIMPLIFIED PALLET GEOMETRY (L1)",
+      "Tangential locking on the tip circle, (k+½)-pitch span, lever = lock + impulse + run (ASM-0025). Tooth and pallet faces, drop and recoil are not modeled."),
+    inputRow({
+      label: "Span (teeth)", value: optionalText(pg.spanTeeth), step: "0.5", invalid: !isHalfToothSpan(pg.spanTeeth),
+      title: "Pitches between the entry and exit locking points: a whole number plus a half for two beats per tooth (ESC-104).",
+      onCommit: (raw) => { patch({ spanTeeth: parseRequired(raw) }); },
+    }),
+    angle("Lock (°)", pg.lockAngle, "lockAngle", !positive(pg.lockAngle), "Lever rotation needed to unlock."),
+    angle("Draw (°)", pg.drawAngle, "drawAngle", !positive(pg.drawAngle), "Angle of the locking face that pulls the lever onto its banking. Must be positive; whether it overcomes friction is not checked."),
+    angle("Run (°)", pg.runAngle, "runAngle", !runValid, "Lever rotation from full lock to the banking."),
+    readonlyRow("Span angle", degreesText(span), "Span × 360° / escape teeth."),
+    readonlyRow("Pallet arbor distance needed", needed === null ? "—" : formatMm(needed), "R / cos(span/2): where the tangents at the two locking points meet."),
+    readonlyRow("Impulse (lever)", Number.isFinite(impulse) ? `${toDegrees(impulse).toFixed(2)}°` : "—", "Lever angle − lock − run."),
+    readonlyRow("Fork ratio (lift ÷ lever)", ratio === null ? "—" : ratio.toFixed(3), "Balance lift per unit of lever swing implied by the two declared angles."),
+    actionRow("Clear pallet geometry", "Stops checking the locking geometry. Undo with Ctrl+Z.", () => { edit({ pallets: null }); }, true),
+  );
+  return out;
+}
+
+function lossRows(
+  store: AppStore,
+  esc: Escapement,
+  edit: (patch: Parameters<typeof updateEscapement>[2]) => void,
+): Section {
+  const b = esc.balance;
+  const energy = store.energy?.escapement?.id === esc.id ? store.energy : null;
+  const eta = esc.escapementEfficiency;
+  const q = b.qualityFactor;
+  const delivered = energy?.deliveredPerBeatFull ?? null;
+  const deliveredLow = energy?.deliveredPerBeatLetDown ?? null;
+  const missing = energy === null ? ["a mainspring with data"] : energy.missingForAmplitude;
+  const amplitudeNow = store.displayAmplitude;
+  return [
+    sectionHeader("Energy (L3 simplified, optional)"),
+    inputRow({
+      label: "Escapement efficiency (0–1)", value: optionalText(eta), step: "0.01", placeholder: "unknown",
+      invalid: eta !== null && !(eta > 0 && eta <= 1),
+      title: "Fraction of the escape wheel's energy per beat that reaches the balance. Only measurement or a source can supply it; empty = unknown.",
+      onCommit: (raw) => { edit({ escapementEfficiency: parseOptional(raw) }); },
+    }),
+    inputRow({
+      label: "Balance quality factor Q", value: optionalText(q), step: "1", placeholder: "unknown",
+      invalid: q !== null && !positive(q),
+      title: "Loss per period is 2π × stored energy ÷ Q (ASM-0026). Only measurement or a source can supply it; empty = unknown.",
+      onCommit: (raw) => { edit({ balance: { ...b, qualityFactor: parseOptional(raw) } }); },
+    }),
+    readonlyRow("Escape torque (full → let down)",
+      energy?.escapeTorqueFull == null || energy.escapeTorqueLetDown === null
+        ? "—"
+        : `${(toNewtonMillimetres(energy.escapeTorqueFull) * 1000).toFixed(3)} → ${(toNewtonMillimetres(energy.escapeTorqueLetDown) * 1000).toFixed(3)} µN·m${energy.lossless ? " (lossless bound)" : ""}`,
+      "Spring torque × drum speed ÷ escape speed × train efficiency (power balance)."),
+    readonlyRow("Energy per beat to balance", delivered === null || deliveredLow === null ? "—" : `${toMicrojoules(delivered).toFixed(4)} → ${toMicrojoules(deliveredLow).toFixed(4)} µJ`,
+      "Escape torque × π/z × escapement efficiency."),
+    readonlyRow("Predicted amplitude (full → let down)",
+      energy?.amplitudeFull == null || energy.amplitudeLetDown === null
+        ? `needs ${missing.join(", ")}`
+        : `${degreesText(energy.amplitudeFull)} → ${degreesText(energy.amplitudeLetDown)}`,
+      "A = √(2 Q E_beat / (π k)). While predicted, it replaces the declared amplitude in the simulation display."),
+    readonlyRow("Amplitude now (simulation)", store.goingTrainStopped ? "stopped (run down)" : amplitudeNow === null ? "declared value" : degreesText(amplitudeNow)),
+    readonlyRow("Stops below", energy?.stopWindTurns == null ? "—" : `${energy.stopWindTurns.toFixed(3)} turns of wind`,
+      "Where the predicted amplitude falls to half the lift angle (SPR-003)."),
+  ];
+}

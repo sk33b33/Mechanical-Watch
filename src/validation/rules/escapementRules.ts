@@ -194,8 +194,8 @@ export const escapementRules: Rule = ({ movement, placement, train }) => {
         `${esc.name}: SIMPLIFIED ESCAPEMENT MODEL (Swiss lever, kinematic).${rate}`,
         ["REF-ENG §9", "ASM-0021", "ASM-0022"]),
       issue("ESC-002", "no-contact-claim", "info", "L2_KINEMATIC", [esc.id],
-        `${esc.name}: locking, draw, drop, impact, sliding contact, banking geometry and the balance's dynamics are not modeled. The balance is shown at a declared amplitude; nothing here predicts rate accuracy. Requires physical validation.`,
-        ["REF-ENG §9", "REF-ENG §10", "ASM-0023"]),
+        `${esc.name}: drop, impact, sliding contact and the tooth and pallet faces are not modeled. Locking geometry (ASM-0025), balance dynamics (ASM-0024) and the energy chain (ASM-0026) are simplified models used only when their inputs are entered; nothing here predicts rate accuracy. Requires physical validation.`,
+        ["REF-ENG §9", "REF-ENG §10", "ASM-0023", "ASM-0025", "ASM-0026"]),
     );
   }
   return issues;

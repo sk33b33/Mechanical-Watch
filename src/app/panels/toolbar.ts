@@ -146,6 +146,11 @@ export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
   dial.className = "toolbar-clock";
   dial.dataset.testid = "dial-reading";
   dial.title = "Time shown by the simulated hand angles, each hand read on its own (ASM-0014). Starts at 12:00:00.";
+  const reserve = document.createElement("span");
+  reserve.className = "toolbar-clock";
+  reserve.dataset.testid = "reserve";
+  reserve.title =
+    "State of wind of the mainspring and running time left (SIMPLIFIED ENERGY MODEL, L3, ASM-0026). Starts fully wound. A balance-governed movement stops where the balance can no longer unlock, or when let down; an imposed drive keeps turning.";
   const modeSelect = document.createElement("select");
   modeSelect.dataset.testid = "crown-action";
   let modeOptionsKey = "";
@@ -198,6 +203,7 @@ export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
     rateSelect,
     clock,
     dial,
+    reserve,
   );
 
   const editGroup = document.createElement("div");
@@ -241,6 +247,16 @@ export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
     const two = (v: number | null | undefined): string => (v === null || v === undefined ? "--" : String(Math.floor(v)).padStart(2, "0"));
     const hours = h === null || h === undefined ? "--" : String(Math.floor(h) === 0 ? 12 : Math.floor(h));
     dial.textContent = `Dial ${hours}:${two(m)}:${two(sec)}`;
+    const wind = store.mainspringWindTurns;
+    const left = store.reserveRemainingSeconds;
+    reserve.hidden = wind === null;
+    reserve.classList.toggle("run-down", store.goingTrainStopped);
+    if (wind !== null) {
+      const turns = `Spring ${wind.toFixed(2)} turns`;
+      reserve.textContent = store.goingTrainStopped
+        ? `${turns} · stopped: wind the crown`
+        : `${turns}${left === null ? "" : ` · ${(left / 3600).toFixed(1)} h left`}`;
+    }
   };
   refreshControls();
   refreshClock();

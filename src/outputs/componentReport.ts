@@ -14,6 +14,10 @@ import type { Escapement } from "@/domain/escapement";
 import { toBeatsPerHour } from "@/units/frequency";
 import { balanceFrequency, beatFrequency, beatsPerEscapeRevolution, impulseFraction } from "@/kinematics/escapement";
 import { summarizeBalance } from "@/kinematics/balanceSummary";
+import { summarizeEnergy } from "@/kinematics/energySummary";
+import { forkRatio, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance } from "@/kinematics/palletGeometry";
+import { toNewtonMillimetres } from "@/units/torque";
+import { toMicrojoules } from "@/units/energy";
 import { toMicronewtonMillimetresPerRadian, toMilligramSquareCentimetres } from "@/units/rotational";
 import {
   clockPositionFromDial,
@@ -450,6 +454,47 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
   const fraction = impulseFraction(b.amplitude, b.liftAngle);
   const dyn = summarizeBalance(movement, esc);
   const angleText = (a: Angle): string => (Number.isFinite(a) ? `${toDegrees(a).toFixed(1)}°` : "not set");
+  const pg = esc.pallets;
+  const span = pg !== null && teethValid && isHalfToothSpan(pg.spanTeeth) ? spanAngle(w.toothCount, pg.spanTeeth) : null;
+  const needed = span === null ? null : tangentialCentreDistance((w.tipDiameter / 2) as Length, span);
+  const impulse = pg === null ? null : impulseAngle(esc.leverAngle, pg.lockAngle, pg.runAngle);
+  const ratio = forkRatio(b.liftAngle, esc.leverAngle);
+  const palletParameters: ReportValue[] = pg === null
+    ? [entered("Pallet geometry", "not specified (locking not checked)")]
+    : [
+        entered("Pallet span", Number.isFinite(pg.spanTeeth) ? `${String(pg.spanTeeth)} teeth` : "not set", pg.spanTeeth),
+        entered("Lock angle", angleText(pg.lockAngle), pg.lockAngle),
+        entered("Draw angle", angleText(pg.drawAngle), pg.drawAngle),
+        entered("Run angle", angleText(pg.runAngle), pg.runAngle),
+      ];
+  const palletDerived: ReportValue[] = pg === null ? [] : [
+    { label: "Pallet span angle", text: span === null ? "—" : `${toDegrees(span).toFixed(2)}°`, si: span, equation: "span × 2π / z", level: "L1_GEOMETRIC", references: ["ASM-0025"] },
+    { label: "Pallet arbor distance for tangential locking", text: needed === null ? "—" : mmText(needed), si: needed, equation: "R_tip / cos(span angle / 2)", level: "L1_GEOMETRIC", references: ["ASM-0025"] },
+    { label: "Lever impulse angle", text: impulse === null || !Number.isFinite(impulse) ? "—" : `${toDegrees(impulse).toFixed(2)}°`, si: impulse !== null && Number.isFinite(impulse) ? impulse : null, equation: "lever − lock − run", level: "L1_GEOMETRIC", references: ["ASM-0025"] },
+    { label: "Fork ratio", text: ratio === null ? "—" : ratio.toFixed(3), si: ratio, equation: "lift angle / lever angle", level: "L1_GEOMETRIC", references: ["ASM-0025"] },
+  ];
+  const energy = summarizeEnergy(movement, analysis.train);
+  const en = energy?.escapement?.id === esc.id ? energy : null;
+  const spec = en?.spec ?? null;
+  const hoursText = (sec: number | null): string => (sec === null ? "—" : `${(sec / 3600).toFixed(2)} h`);
+  const energyParameters: ReportValue[] = [
+    entered("Escapement efficiency", esc.escapementEfficiency === null ? "unknown" : esc.escapementEfficiency.toFixed(3), esc.escapementEfficiency),
+    entered("Balance quality factor Q", b.qualityFactor === null ? "unknown" : b.qualityFactor.toFixed(1), b.qualityFactor),
+    ...(en === null ? [] : [
+      entered("Mainspring", spec === null
+        ? `${en.spring.name}: data unknown`
+        : `${en.spring.name}: ${String(spec.usableTurns)} turns, ${toNewtonMillimetres(spec.fullyWoundTorque).toFixed(3)} → ${toNewtonMillimetres(spec.letDownTorque).toFixed(3)} N·mm, train efficiency ${spec.trainEfficiency === null ? "not configured" : spec.trainEfficiency.toFixed(3)}`),
+    ]),
+  ];
+  const L3 = "L3_SIMPLIFIED_DYNAMIC" as const;
+  const energyDerived: ReportValue[] = en === null ? [] : [
+    { label: "Power reserve", text: hoursText(en.reserveSeconds), si: en.reserveSeconds, equation: "usable turns / (|ω_drum| / 2π)", level: "L2_KINEMATIC", references: ["ASM-0026", "REF-ENG §11"] },
+    { label: "Escape wheel torque, fully wound", text: en.escapeTorqueFull === null ? "—" : `${(toNewtonMillimetres(en.escapeTorqueFull) * 1000).toFixed(4)} µN·m${en.lossless ? " (lossless upper bound)" : ""}`, si: en.escapeTorqueFull, equation: "T_drum |ω_drum / ω_escape| η_train", level: L3, references: ["ASM-0026", "ASM-0002"] },
+    { label: "Escape wheel torque, let down", text: en.escapeTorqueLetDown === null ? "—" : `${(toNewtonMillimetres(en.escapeTorqueLetDown) * 1000).toFixed(4)} µN·m${en.lossless ? " (lossless upper bound)" : ""}`, si: en.escapeTorqueLetDown, equation: "T_drum |ω_drum / ω_escape| η_train", level: L3, references: ["ASM-0026", "ASM-0002"] },
+    { label: "Energy per beat to the balance, fully wound", text: en.deliveredPerBeatFull === null ? "—" : `${toMicrojoules(en.deliveredPerBeatFull).toFixed(5)} µJ`, si: en.deliveredPerBeatFull, equation: "T_escape × π / z × η_escapement", level: L3, references: ["ASM-0026", "ASM-0021"] },
+    { label: "Predicted amplitude, fully wound → let down", text: en.amplitudeFull === null || en.amplitudeLetDown === null ? `needs ${en.missingForAmplitude.join(", ")}` : `${toDegrees(en.amplitudeFull).toFixed(1)}° → ${toDegrees(en.amplitudeLetDown).toFixed(1)}°`, si: en.amplitudeFull, equation: "A = √(2 Q E_beat / (π k))", level: L3, references: ["ASM-0026", "ASM-0024"] },
+    { label: "Running reserve (until the balance cannot unlock)", text: hoursText(en.runningReserveSeconds), si: en.runningReserveSeconds, equation: "reserve × (turns − stop wind) / turns, stop where A = lift / 2", level: L3, references: ["ASM-0026"] },
+  ];
   return {
     id: esc.id,
     name: esc.name,
@@ -471,6 +516,8 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
       entered("Lift angle", angleText(b.liftAngle), b.liftAngle),
       entered("Balance inertia", b.inertia === null ? "unknown" : `${toMilligramSquareCentimetres(b.inertia).toFixed(3)} mg·cm²`, b.inertia),
       entered("Hairspring stiffness", b.hairspringStiffness === null ? "unknown" : `${toMicronewtonMillimetresPerRadian(b.hairspringStiffness).toFixed(3)} µN·mm/rad`, b.hairspringStiffness),
+      ...palletParameters,
+      ...energyParameters,
     ],
     derived: [
       { label: "Beats per escape revolution", text: teethValid ? String(beatsPerEscapeRevolution(w.toothCount)) : "—", si: teethValid ? beatsPerEscapeRevolution(w.toothCount) : null, equation: "2 z", level: "L2_KINEMATIC", references: ["ASM-0021"] },
@@ -481,6 +528,8 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
       { label: "Balance frequency for nominal time", text: dyn.nominalFrequency === null ? "—" : `${dyn.nominalFrequency.toFixed(4)} Hz`, si: dyn.nominalFrequency, equation: "from the escape arbor's speed at nominal time", level: "L2_KINEMATIC", references: ["ASM-0021"] },
       { label: "Hairspring stiffness for nominal time", text: dyn.stiffnessForNominal === null ? "—" : `${toMicronewtonMillimetresPerRadian(dyn.stiffnessForNominal).toFixed(3)} µN·mm/rad`, si: dyn.stiffnessForNominal, equation: "k = I (2π f)²", level: "L3_SIMPLIFIED_DYNAMIC", references: ["ASM-0024"] },
       { label: movement.drive?.kind === "BALANCE" ? "Predicted daily rate (balance governs)" : "Daily rate if the balance governed", text: dyn.dailyRate === null ? "—" : `${dyn.dailyRate >= 0 ? "+" : ""}${dyn.dailyRate.toFixed(2)} s/day`, si: dyn.dailyRate, equation: "(f / f_nominal − 1) × 86 400", level: "L3_SIMPLIFIED_DYNAMIC", references: ["ASM-0024"] },
+      ...palletDerived,
+      ...energyDerived,
       { label: "Rate accuracy", text: "not modeled; requires physical validation", si: null, level: "L2_KINEMATIC", references: ["REF-ENG §9", "REF-ENG §10"] },
     ],
     tolerances: [],
