@@ -40,8 +40,10 @@ export const kinematicRules: Rule = ({ movement, train }) => {
       issue("SIM-003", "prescribed-drive", "info", "L2_KINEMATIC", [shaftId],
         drive.kind === "NOMINAL_TIME"
           ? "Running at nominal time: the minutes hand is prescribed to turn once per hour. This is a kinematic input, not an energy source; no torque, energy or power reserve is modeled."
-          : "The drive is a prescribed angular velocity, not an energy source. No torque, energy or power reserve is modeled.",
-        ["ASM-0007"]),
+          : drive.kind === "BALANCE"
+            ? "Governed by the balance: its free frequency (simplified dynamic model) sets the escape arbor's speed. It is not an energy source; no torque, energy or power reserve is modeled."
+            : "The drive is a prescribed angular velocity, not an energy source. No torque, energy or power reserve is modeled.",
+        drive.kind === "BALANCE" ? ["ASM-0007", "ASM-0024"] : ["ASM-0007"]),
     );
   }
 

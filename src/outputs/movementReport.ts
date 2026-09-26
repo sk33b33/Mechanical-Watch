@@ -152,7 +152,9 @@ ${table(["Severity", "Rule", "Level", "Message", "Parts", "Basis"], issueRows(mo
     ? "not set, so no speeds are computed"
     : movement.drive.kind === "NOMINAL_TIME"
       ? "nominal time: the minutes-hand arbor turns once per hour (ASM-0014)"
-      : `prescribed on ${esc(movement.shafts[movement.drive.shaftId]?.name ?? "a missing arbor")} (ASM-0007)`}. No torque, energy or friction is modeled (ASM-0007).</p>
+      : movement.drive.kind === "BALANCE"
+        ? "the balance: its free frequency (simplified dynamic model, L3, ASM-0024) sets the escape arbor's speed and the train follows"
+        : `prescribed on ${esc(movement.shafts[movement.drive.shaftId]?.name ?? "a missing arbor")} (ASM-0007)`}. No torque, energy or friction is modeled (ASM-0007).</p>
 <h4>Meshes</h4>
 ${table(["Driving", "Driven", "z1", "z2", "Module", "Speed ratio −z1/z2", "Ideal centre distance", "Placed centre distance"], meshes.map((m) => [
     m.driving, m.driven, String(m.z1), String(m.z2), m.module,

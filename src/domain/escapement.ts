@@ -1,5 +1,6 @@
 import type { Length } from "@/units/length";
 import type { Angle } from "@/units/angle";
+import type { MomentOfInertia, TorsionalStiffness } from "@/units/rotational";
 import type { EntityId } from "./ids";
 import { createId } from "./ids";
 import type { ShaftId } from "./shaft";
@@ -41,6 +42,14 @@ export interface Balance {
   amplitude: Angle;
   /** Balance angle over which the escapement acts (unlocking plus impulse). */
   liftAngle: Angle;
+  /**
+   * Simplified dynamic model (L3, ASM-0024), optional: the balance's moment
+   * of inertia about its staff and the hairspring's torsional stiffness.
+   * Null when unknown; the model then stays kinematic. Entered directly:
+   * no material or hairspring geometry is used to derive them.
+   */
+  inertia: MomentOfInertia | null;
+  hairspringStiffness: TorsionalStiffness | null;
 }
 
 export interface Escapement {

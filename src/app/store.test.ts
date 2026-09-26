@@ -133,7 +133,8 @@ describe("AppStore history", () => {
 describe("AppStore hand setting", () => {
   it("setting through the crown moves the hands fast while the going train keeps time", async () => {
     const { createTeachingMovement } = await import("./teachingMovement");
-    const store = new AppStore(createTeachingMovement());
+    const { setNominalTimeDrive } = await import("@/domain/movement");
+    const store = new AppStore(setNominalTimeDrive(createTeachingMovement()));
     const id = (name: string): keyof typeof store.movement.shafts => {
       const s = Object.values(store.movement.shafts).find((x) => x.name === name);
       if (s === undefined) throw new Error(name);

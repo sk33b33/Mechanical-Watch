@@ -1,4 +1,13 @@
 import { describe, expect, it } from "vitest";
+import {
+  kilogramSquareMetres,
+  micronewtonMillimetresPerRadian,
+  milligramSquareCentimetres,
+  newtonMetresPerRadian,
+  toMicronewtonMillimetresPerRadian,
+  toMilligramSquareCentimetres,
+} from "./rotational";
+import { beatsPerHour, hertz, toBeatsPerHour, toHertz } from "./frequency";
 import { millimetres, toMillimetres, metres } from "./length";
 import { degrees, toDegrees, radians, normalizeAngle } from "./angle";
 import { minutes, toSeconds, seconds } from "./time";
@@ -34,5 +43,19 @@ describe("AngularVelocity", () => {
   it("converts RPM to rad/s and back", () => {
     expect(rpmToRadPerSecond(60)).toBeCloseTo(2 * Math.PI);
     expect(toRpm(radiansPerSecond(2 * Math.PI))).toBeCloseTo(60);
+  });
+});
+
+describe("rotational dynamics and frequency units", () => {
+  it("converts mg·cm² and µN·mm/rad to SI and back", () => {
+    expect(milligramSquareCentimetres(10)).toBeCloseTo(1e-9, 24);
+    expect(toMilligramSquareCentimetres(kilogramSquareMetres(1e-9))).toBeCloseTo(10, 12);
+    expect(micronewtonMillimetresPerRadian(246.7)).toBeCloseTo(2.467e-7, 20);
+    expect(toMicronewtonMillimetresPerRadian(newtonMetresPerRadian(2.467e-7))).toBeCloseTo(246.7, 9);
+  });
+
+  it("keeps hertz apart from rad/s and converts beats per hour", () => {
+    expect(toBeatsPerHour(hertz(5))).toBe(18000);
+    expect(toHertz(beatsPerHour(18000))).toBe(5);
   });
 });

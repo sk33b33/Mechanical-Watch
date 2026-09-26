@@ -134,7 +134,7 @@ export const escapementRules: Rule = ({ movement, placement, train }) => {
     const rate = omega !== undefined && omega !== 0 && isValidToothCount(w.toothCount)
       ? (() => {
           const beats = beatFrequency(omega, w.toothCount);
-          return ` At the current drive the escape arbor turns at ${Math.abs(toRpm(omega)).toFixed(3)} rev/min, so the model gives ${toBeatsPerHour(beats).toFixed(0)} beats per hour and requires a balance frequency of ${balanceFrequency(beats).toFixed(3)} Hz.`;
+          return ` At the current drive the escape arbor turns at ${Math.abs(toRpm(omega)).toFixed(3)} rev/min, so the model gives ${toBeatsPerHour(beats).toFixed(0)} beats per hour, which corresponds to a balance frequency of ${balanceFrequency(beats).toFixed(4)} Hz.`;
         })()
       : " The escape arbor is not turned by the running train, so no beat rate is derived.";
     issues.push(

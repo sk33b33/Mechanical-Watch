@@ -30,6 +30,7 @@ Machine-readable equivalent: `src/reference/assumptions.ts`. A test
 | ASM-0021 | A Swiss lever escape wheel gives two beats per tooth (one at each pallet), and a beat is one swing of the balance (half its period); source pending, accepted for the simplified model | Escapement | Active |
 | ASM-0022 | The balance is a sinusoidal kinematic approximation at a declared amplitude, at the frequency the train's speed requires; no inertia, hairspring torque, damping or amplitude dependence is modeled, so it does not govern the rate | Balance | Active |
 | ASM-0023 | The train is locked between beats and advances only in an impulse window, while the balance is within half the lift angle of its dead point; the pallet fork crosses between bankings in that window; locking, draw, drop, impact, sliding and banking geometry are not modeled | Escapement | Active |
+| ASM-0024 | The balance and hairspring are a linear, undamped torsional oscillator (I θ'' = −k θ, f = √(k/I)/2π) with inertia and stiffness entered directly; it is isochronous by construction, and escapement disturbance, amplitude, damping, position, temperature and hairspring geometry/material are not modeled | Balance (simplified dynamic, L3) | Active |
 
 Rules:
 1. Never hide an assumption.

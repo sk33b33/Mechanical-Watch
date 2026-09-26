@@ -18,6 +18,8 @@ import {
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import { nominalHandAngularVelocity } from "./timeDisplay";
 import { isDefinedPinion, verticalSide } from "./keylessGeometry";
+import { escapeSpeedFromBalance, naturalFrequency } from "./balance";
+import type { Frequency } from "@/units/frequency";
 
 /**
  * RUNNING: friction clutches are engaged (the two bodies turn together);
@@ -257,10 +259,34 @@ export function crownSettingState(movement: Movement): Exclude<SettingState, { s
   return handSideState(movement, handSide);
 }
 
-function driveSeed(movement: Movement): [ShaftId, AngularVelocity] | null {
+/** The escapement that the BALANCE drive uses, with its free balance frequency, if both are defined. */
+function governingBalance(movement: Movement): { escapeArbor: ShaftId; teeth: number; frequency: Frequency } | null {
+  const escapement = Object.values(movement.escapements)[0];
+  if (escapement === undefined || !(escapement.escapeArborShaftId in movement.shafts)) return null;
+  const frequency = naturalFrequency(escapement.balance.inertia, escapement.balance.hairspringStiffness);
+  if (frequency === null || !isValidToothCount(escapement.escapeWheel.toothCount)) return null;
+  return { escapeArbor: escapement.escapeArborShaftId, teeth: escapement.escapeWheel.toothCount, frequency };
+}
+
+function driveSeed(movement: Movement, runningEdges: Edges): [ShaftId, AngularVelocity] | null {
   const drive = movement.drive;
+  if (drive === null) return null;
+  if (drive.kind === "BALANCE") {
+    const balance = governingBalance(movement);
+    if (balance === null) return null; // BAL-001 reports why
+    // The direction the escape arbor turns when the hands run forward (clockwise from the dial).
+    const minutes = minutesHandShaftId(movement);
+    let sign = 1;
+    if (minutes !== null) {
+      const probe = new Map<BodyId, AngularVelocity>();
+      propagate([[minutes, nominalHandAngularVelocity("MINUTES")]], runningEdges, probe, []);
+      const escapeOmega = probe.get(balance.escapeArbor);
+      if (escapeOmega !== undefined && escapeOmega !== 0) sign = Math.sign(escapeOmega);
+    }
+    return [balance.escapeArbor, radiansPerSecond(sign * escapeSpeedFromBalance(balance.frequency, balance.teeth))];
+  }
   const shaftId = drivenShaftId(movement);
-  if (drive === null || shaftId === null) return null;
+  if (shaftId === null) return null;
   const omega = drive.kind === "PRESCRIBED" ? drive.angularVelocity : nominalHandAngularVelocity("MINUTES");
   // SIM-001: a non-finite drive is reported by validation, never propagated.
   return Number.isFinite(omega) ? [shaftId, omega] : null;
@@ -340,7 +366,7 @@ export function solveGearTrain(movement: Movement, options: SolveOptions = { mod
   const velocities = new Map<BodyId, AngularVelocity>();
   const conflicts: GearTrainConflict[] = [];
   const runningEdges = buildEdges(movement, { clutchesEngaged: true, stemPosition: "WINDING", ratchetTeethEngaged: false });
-  const seed = driveSeed(movement);
+  const seed = driveSeed(movement, runningEdges);
   propagate(seed === null ? [] : [seed], runningEdges, velocities, conflicts);
 
   let setting: SettingState = { status: "NOT_APPLICABLE" };

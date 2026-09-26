@@ -1,3 +1,4 @@
+import { setNominalTimeDrive } from "@/domain/movement";
 import { describe, expect, it } from "vitest";
 import { metres, millimetres as mm, toMillimetres } from "@/units/length";
 import { setTolerance, updateGear, updateJewel, updateShaft, type Movement } from "@/domain/movement";
@@ -15,7 +16,8 @@ import { buildStl } from "./stl";
 import { renderMovementReport } from "./movementReport";
 import { EXPORT_FORMATS, fileStem, produceExport } from "./exporters";
 
-const teaching = createTeachingMovement();
+// Nominal-time drive: these tests check exact nominal speeds; the default balance drive is tested separately.
+const teaching = setNominalTimeDrive(createTeachingMovement());
 const analysis = analyzeMovement(teaching);
 const byName = <T extends { name: string }>(items: Record<string, T>, name: string): T => {
   const found = Object.values(items).find((i) => i.name === name);

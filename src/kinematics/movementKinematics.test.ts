@@ -25,7 +25,8 @@ import { solveGearTrain } from "./solveGearTrain";
 import { solvePlacement } from "./solvePlacement";
 import { formatPeriod, nominalHandAngularVelocity, periodSeconds, readHand } from "./timeDisplay";
 
-const movement = createTeachingMovement();
+// Nominal-time drive: these tests check exact nominal speeds; the default balance drive is tested separately.
+const movement = setNominalTimeDrive(createTeachingMovement());
 const byName = <T extends { name: string }>(r: Record<string, T>, name: string): T => {
   const found = Object.values(r).find((x) => x.name === name);
   if (found === undefined) throw new Error(`no ${name}`);
@@ -61,7 +62,7 @@ describe("time display definitions (ASM-0014)", () => {
 describe("teaching movement at nominal time", () => {
   it("validates with no errors or warnings", () => {
     // Info only: bearing clearances not judged, the prescribed drive, and the escapement's declared model level.
-    const info = ["BRG-005", "SIM-003", "ESC-001", "ESC-002"];
+    const info = ["BRG-005", "SIM-003", "ESC-001", "ESC-002", "BAL-002"];
     expect(issuesOf(movement).filter((id) => !info.some((rule) => id.startsWith(rule)))).toEqual([]);
   });
 

@@ -1,3 +1,4 @@
+import { setNominalTimeDrive } from "@/domain/movement";
 import { describe, expect, it } from "vitest";
 import { millimetres as mm } from "@/units/length";
 import { degrees, radians } from "@/units/angle";
@@ -14,7 +15,8 @@ import { solvePlacement } from "./solvePlacement";
 import { solveGearTrain, windingCrownSense, handsForwardCrownSense, type SolveOptions } from "./solveGearTrain";
 import { summarizeKeyless, clockPositionFromDial } from "./keylessSummary";
 
-const movement = createTeachingMovement();
+// Nominal-time drive: these tests check exact nominal speeds; the default balance drive is tested separately.
+const movement = setNominalTimeDrive(createTeachingMovement());
 const keyless = Object.values(movement.keylessWorks)[0];
 if (keyless === undefined) throw new Error("teaching movement has no keyless works");
 const byName = <T extends { name: string }>(items: Record<string, T>, name: string): T => {

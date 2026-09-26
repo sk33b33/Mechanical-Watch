@@ -1,3 +1,4 @@
+import { setNominalTimeDrive } from "@/domain/movement";
 import { describe, expect, it } from "vitest";
 import { millimetres as mm } from "@/units/length";
 import { degrees } from "@/units/angle";
@@ -10,7 +11,8 @@ import { removeEntity } from "@/domain/editing";
 import { createTeachingMovement } from "@/app/teachingMovement";
 import { validateMovement } from "./validateMovement";
 
-const teaching = createTeachingMovement();
+// Nominal-time drive: these tests check exact nominal speeds; the default balance drive is tested separately.
+const teaching = setNominalTimeDrive(createTeachingMovement());
 const esc = Object.values(teaching.escapements)[0];
 if (esc === undefined) throw new Error("teaching movement has no escapement");
 const found = (m: Movement, prefix: string): string[] =>

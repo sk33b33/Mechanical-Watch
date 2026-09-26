@@ -70,6 +70,9 @@ ESC-101 At most one escapement; its arbors must exist and be distinct, the escap
 ESC-102 The pallet arbor and balance staff oscillate under the escapement and must not be gear-driven.
 ESC-103 The escape wheel must clear the pallet arbor and balance staff, and the balance must clear the pallet arbor.
 
+BAL-001 A balance-governed drive needs an escapement with a valid escape wheel and a positive balance inertia and hairspring stiffness; entered inertia and stiffness must be positive.
+BAL-002 The simplified dynamic balance model reports its free frequency, the frequency nominal time needs, and the predicted daily rate, with its assumptions.
+
 TOL-001 A declared tolerance must apply to an existing dimension once, with finite limits, lower ≤ upper, and a positive lower limit for a size.
 TOL-002 A clearance that is positive at nominal should stay positive at its worst-case declared tolerance limits.
 

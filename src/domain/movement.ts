@@ -16,16 +16,21 @@ import type { ValidationLevel } from "@/reference/validationLevels";
 export type MovementId = EntityId<"movement">;
 
 /**
- * The kinematic input that sets the train in motion. Neither kind models
- * energy, torque or a mainspring (ASM-0007).
+ * What sets the train's speed. No kind models energy, torque or a
+ * mainspring (ASM-0007).
  * - PRESCRIBED: a chosen shaft turns at a chosen angular velocity.
  * - NOMINAL_TIME: the train runs at its nominal timekeeping rate. The
  *   minutes-hand shaft turns once per hour, clockwise seen from the dial
  *   (ASM-0014), and everything else follows from the gearing.
+ * - BALANCE: the escapement's balance governs. Its free frequency (a
+ *   linear undamped oscillator, ASM-0024) sets the escape arbor's speed
+ *   (ASM-0021), and the train follows. The hands then run fast or slow
+ *   relative to nominal time by however much that frequency differs.
  */
 export type Drive =
   | { kind: "PRESCRIBED"; shaftId: ShaftId; angularVelocity: AngularVelocity }
-  | { kind: "NOMINAL_TIME" };
+  | { kind: "NOMINAL_TIME" }
+  | { kind: "BALANCE" };
 
 /**
  * The authoritative mechanical model of a watch movement (or, for
@@ -252,6 +257,20 @@ export function minutesHandShaftId(movement: Movement): ShaftId | null {
 
 /** The shaft the drive acts on: the prescribed shaft, or the minutes-hand shaft for nominal time. */
 export function drivenShaftId(movement: Movement): ShaftId | null {
-  if (movement.drive === null) return null;
-  return movement.drive.kind === "PRESCRIBED" ? movement.drive.shaftId : minutesHandShaftId(movement);
+  const drive = movement.drive;
+  if (drive === null) return null;
+  switch (drive.kind) {
+    case "PRESCRIBED":
+      return drive.shaftId;
+    case "NOMINAL_TIME":
+      return minutesHandShaftId(movement);
+    case "BALANCE": {
+      const escapement = Object.values(movement.escapements)[0];
+      return escapement !== undefined && escapement.escapeArborShaftId in movement.shafts ? escapement.escapeArborShaftId : null;
+    }
+  }
+}
+
+export function setBalanceDrive(movement: Movement): Movement {
+  return { ...movement, drive: { kind: "BALANCE" } };
 }

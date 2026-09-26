@@ -9,6 +9,7 @@ import type { Tolerance } from "@/domain/tolerance";
 import type { KeylessWorks, StemPinion } from "@/domain/keyless";
 import type { Dial } from "@/domain/dial";
 import type { Escapement } from "@/domain/escapement";
+import type { MomentOfInertia, TorsionalStiffness } from "@/units/rotational";
 import type { Vec2 } from "@/math/vec2";
 import type { Length } from "@/units/length";
 import type { Angle } from "@/units/angle";
@@ -35,7 +36,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 5;
+export const DESIGN_SCHEMA_VERSION = 6;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -87,6 +88,18 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
     const movement = doc.movement;
     if (!isRecord(movement)) return doc;
     return { ...doc, schemaVersion: 5, movement: { ...movement, escapements: {} } };
+  },
+  /** v5 → v6: balances gain `inertia` and `hairspringStiffness`, unknown (null); the drive may be BALANCE. */
+  5: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.escapements)) return doc;
+    const escapements = Object.fromEntries(
+      Object.entries(movement.escapements).map(([id, e]) => [
+        id,
+        isRecord(e) && isRecord(e.balance) ? { ...e, balance: { ...e.balance, inertia: null, hairspringStiffness: null } } : e,
+      ]),
+    );
+    return { ...doc, schemaVersion: 6, movement: { ...movement, escapements } };
   },
 };
 
@@ -200,7 +213,7 @@ const coupling: Decoder<Coupling> = (value, path) => {
 
 const drive: Decoder<Drive> = (value, path) => {
   const o = object(value, path);
-  const kind = field(o, "kind", oneOf(["PRESCRIBED", "NOMINAL_TIME"]), path);
+  const kind = field(o, "kind", oneOf(["PRESCRIBED", "NOMINAL_TIME", "BALANCE"]), path);
   return kind === "PRESCRIBED"
     ? {
         kind,
@@ -362,6 +375,8 @@ const escapement: Decoder<Escapement> = (value, path) => {
       zCentre: field(balance, "zCentre", length, bp),
       amplitude: field(balance, "amplitude", angle, bp),
       liftAngle: field(balance, "liftAngle", angle, bp),
+      inertia: field(balance, "inertia", nullable(number as Decoder<MomentOfInertia>), bp),
+      hairspringStiffness: field(balance, "hairspringStiffness", nullable(number as Decoder<TorsionalStiffness>), bp),
     },
   };
 };

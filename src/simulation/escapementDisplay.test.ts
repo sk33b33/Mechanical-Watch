@@ -1,3 +1,4 @@
+import { setNominalTimeDrive } from "@/domain/movement";
 import { describe, expect, it } from "vitest";
 import { radiansPerSecond } from "@/units/angularVelocity";
 import { radians, toDegrees } from "@/units/angle";
@@ -7,7 +8,8 @@ import { analyzeMovement } from "@/analysis/analyzeMovement";
 import { solveGearTrain } from "@/kinematics/solveGearTrain";
 import { escapementDisplay } from "./escapementDisplay";
 
-const movement = createTeachingMovement();
+// Nominal-time drive: these tests check exact nominal speeds; the default balance drive is tested separately.
+const movement = setNominalTimeDrive(createTeachingMovement());
 const running = analyzeMovement(movement).train;
 const idOf = (name: string): keyof typeof movement.shafts => {
   const s = Object.values(movement.shafts).find((x) => x.name === name);

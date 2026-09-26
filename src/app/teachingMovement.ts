@@ -9,7 +9,6 @@ import {
   addJewel,
   addShaft,
   createMovement,
-  setNominalTimeDrive,
   updateShaft,
   type Movement,
 } from "@/domain/movement";
@@ -21,7 +20,8 @@ import { createJewel } from "@/domain/jewel";
 import { createFrictionClutch, createMainspring } from "@/domain/coupling";
 import { createKeylessWorks } from "@/domain/keyless";
 import { createDial } from "@/domain/dial";
-import { addDial, addEscapement, addKeylessWorks } from "@/domain/movement";
+import { addDial, addEscapement, addKeylessWorks, setBalanceDrive } from "@/domain/movement";
+import { micronewtonMillimetresPerRadian, milligramSquareCentimetres } from "@/units/rotational";
 import { createEscapement } from "@/domain/escapement";
 import { meshCentreDistance } from "@/math/gearMath";
 
@@ -64,8 +64,10 @@ const mm = millimetres;
  *
  * Escapement (SIMPLIFIED ESCAPEMENT MODEL, ASM-0021…0023): a 15-tooth
  * escape wheel on the escape arbor, a pallet arbor and balance staff under
- * a balance cock. At nominal time the escape arbor turns at 10 rev/min, so
- * the model gives 18 000 beats per hour and requires a 2.5 Hz balance.
+ * a balance cock. At nominal time the escape arbor would turn at 10 rev/min
+ * (18 000 beats per hour, a 2.5 Hz balance). The movement is governed by
+ * the balance (ASM-0024): 10 mg·cm² and 246.7 µN·mm/rad give 2.4999 Hz, so
+ * the model predicts it runs about 7 s a day slow.
  * Amplitude, lift angle and lever angle are illustrative inputs, not
  * measured or sourced values (ASM-0009).
  */
@@ -251,8 +253,15 @@ export function createTeachingMovement(): Movement {
     leverAngle: degrees(10),
     balanceShaftId: balanceStaff.id,
     // Balance radius (3 mm) inside the pallet-to-balance distance, so the rim clears the pallet arbor (ESC-103).
-    balance: { diameter: mm(6), thickness: mm(0.3), zCentre: mm(3.0), amplitude: degrees(270), liftAngle: degrees(50) },
+    // Inertia and hairspring stiffness are illustrative inputs (ASM-0009). The stiffness is rounded
+    // to four figures, not solved for the train, so the model shows a small derived rate error.
+    balance: {
+      diameter: mm(6), thickness: mm(0.3), zCentre: mm(3.0), amplitude: degrees(270), liftAngle: degrees(50),
+      inertia: milligramSquareCentimetres(10),
+      hairspringStiffness: micronewtonMillimetresPerRadian(246.7),
+    },
   }));
 
-  return setNominalTimeDrive(m);
+  // The balance governs the rate (simplified dynamic model, ASM-0024).
+  return setBalanceDrive(m);
 }

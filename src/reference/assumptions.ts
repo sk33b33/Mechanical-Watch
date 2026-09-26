@@ -141,6 +141,12 @@ export const ASSUMPTIONS = {
     scope: "Escapement",
     status: "Active",
   },
+  "ASM-0024": {
+    summary:
+      "The balance and hairspring are a linear, undamped torsional oscillator (I θ'' = −k θ, f = √(k/I)/2π) with inertia and stiffness entered directly; it is isochronous by construction, and escapement disturbance, amplitude, damping, position, temperature and hairspring geometry/material are not modeled",
+    scope: "Balance (simplified dynamic, L3)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;
