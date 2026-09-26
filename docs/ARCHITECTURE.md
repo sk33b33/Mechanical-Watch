@@ -8,6 +8,7 @@ Domain model (authoritative)
 → validation (structured issues)
 → fixed-step kinematic simulation (shaft angles)
 → geometry generation → Three.js rendering
+→ engineering outputs (report, BOM, drawings, exports), from the same model and analysis
 
 `src/analysis/analyzeMovement.ts` runs the solves and validation once
 per edit. The store owns the movement, the derived analysis, undo
@@ -38,7 +39,16 @@ gear-train solver.
 
 ### Assembly (`src/assembly`)
 Axial geometry: frame and gear height ranges, bearing support, side
-shake, endshake, arbor spans.
+shake, endshake, arbor spans. Measurements between parts. Worst-case
+tolerance stacks (`toleranceAnalysis.ts`, ASM-0017).
+
+### Outputs (`src/outputs`)
+Pure functions from `(movement, analysis)` to documents. Component
+reports and the BOM are data; the HTML report, CSV, SVG, DXF and STL
+are renderings of that data. `exporters.ts` is the registry: each format
+declares the model level it represents and its caveats, and formats that
+can't be produced honestly (STEP) are listed with the reason. Outputs
+round only for display and never read the viewport.
 
 ### Geometry (`src/geometry`)
 Mesh generation for the viewport: gear outlines (L0 visual, ASM-0005),

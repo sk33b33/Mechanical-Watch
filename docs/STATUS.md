@@ -2,6 +2,59 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 6 — Engineering outputs: complete (Phase 5 not started)
+
+Phase 6 was done before Phase 5 because it needs no new engineering
+data. Phase 5 is waiting on a source for the escape-wheel/beat
+relationship.
+
+- **Tolerance model (REF-ENG §14).** Pivot and bore diameters, shoulder
+  span, and frame position and thickness can carry a tolerance: signed
+  lower/upper deviations from the model's own nominal, plus distribution,
+  source and "checked against". A new tolerance starts with empty limits;
+  no default band is assumed. Side shake and endshake get worst-case
+  stacks (min … max), and each stack says whether all, some or none of
+  its inputs are toleranced (ASM-0017). New rules:
+  - TOL-001: a tolerance must be well formed;
+  - TOL-002: warns when a nominally positive clearance can close within
+    the declared tolerances;
+  - MFG-001: a reminder that tolerances are declared intent and
+    everything else is nominal.
+
+  Design files move to schema 3, with a v2 migration.
+- **Outputs… (toolbar)** lists each format with the model level it
+  represents:
+  - **Engineering report** (HTML, open or download, printable). It opens
+    with a claims box: declared level and whether it is met, issue
+    counts, tolerance status, and "manufacturing readiness: not
+    validated (MFG-002)". Then validation, the gear train (ratios, ideal
+    and placed centre distances), arbor speeds and directions, the plan
+    drawing, BOM, tolerances, per-part component reports (entered
+    parameters, then derived values with equation, level and basis) and
+    the assumption register, with cited entries marked.
+  - **Bill of materials** (CSV): one row per modeled part, with gears
+    nested under their arbor. Material is "not specified", and a clutch
+    is a note, not a part.
+  - **Plan drawing** (SVG and DXF R12): frame outlines, axes (coaxial
+    arbors share one mark), pitch circles, and centre-distance
+    dimensions (the ideal distance is added when the placed one
+    differs), plus a gear table. It is nominal and labelled "not a
+    manufacturing drawing". The scale is chosen to fit a page; the DXF
+    is 1:1 in mm.
+  - **Visual mesh** (STL, mm): frames and gears as drawn, labelled L0,
+    because tooth shapes are visual (ASM-0005).
+  - **Solid model** (STEP): listed as unavailable. It would need a
+    B-rep kernel and real tooth profiles; a pitch model has no flank to
+    export.
+- Every output is a pure function of the design model and its analysis.
+  None reads the viewport.
+
+203 tests pass. Checked in a browser:
+- entering pivot and bore dimensions and their tolerances (TOL-001 while
+  a limit is empty, TOL-002 when the worst case closes the side shake);
+- downloading every format, and opening the report and drawing;
+- STEP disabled with its reason.
+
 ## Phase 4 — Watchmaker workspace: complete
 
 - **Measurement tool.** Measure, then pick two parts (viewport or tree).
@@ -180,8 +233,21 @@ dimensions round-trip, and picking and issue selection work.
   view.
 - No dial or keyless works are modeled. Hand setting is applied
   directly to the minutes-hand arbor.
+- Tolerances cover entered bearing and frame dimensions only. Gear
+  dimensions and axis positions aren't toleranced, so centre-distance
+  variation isn't analysed. Only worst-case stacks exist; distributions
+  are recorded, not used.
+- The plan drawing is a single view. There is no elevation or section
+  drawing, no tolerance annotation on the drawing, and no detail drawing
+  per part. Dimensions can crowd where several axes are close.
+- The STL leaves out arbors and jewels (placeholder sizes, ASM-0012), and
+  frames are solid slabs without bearing holes.
 
 ## Next (see `docs/ROADMAP.md`)
+
+- Phase 6 follow-ups, if useful: an elevation (axial stack) drawing,
+  tolerances shown on drawings, tolerances on gear and placement
+  dimensions for centre-distance variation.
 
 - A dial and keyless works (winding and setting), if you want hand
   setting driven through a real setting train.

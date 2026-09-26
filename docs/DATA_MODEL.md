@@ -9,6 +9,7 @@ Movement
 - declaredValidationLevel (L0–L5; set by the author, never raised automatically)
 - frames, shafts, gears, gearMeshes, jewels (records by ID)
 - couplings (friction clutches, by ID)
+- tolerances (by ID; see Tolerance)
 - drive: null | PRESCRIBED {shaftId, angularVelocity} | NOMINAL_TIME
   (kinematic inputs only, ASM-0007; nominal time turns the minutes-hand
   shaft once per hour)
@@ -43,18 +44,29 @@ Jewel (bearing; sits on its shaft's axis, so it has no position)
 Coupling (friction clutch; engaged while running, slipping while setting, ASM-0015)
 - id, kind (FRICTION_CLUTCH), name, shaftAId, shaftBId
 
+Tolerance (declared design intent, REF-ENG §14; never manufacturing validation)
+- id, entityId, dimension (SHAFT_PIVOT_LOWER | SHAFT_PIVOT_UPPER | SHAFT_SHOULDER_SPAN | JEWEL_BORE | FRAME_Z_BOTTOM | FRAME_THICKNESS)
+- lowerDeviation, upperDeviation: signed Lengths from the entity's own
+  nominal (so the nominal is stored once, on the entity)
+- distribution: NOT_STATED | UNIFORM | NORMAL (recorded; the worst-case
+  analysis doesn't use it, ASM-0017)
+- source: string | null; validationScope: string
+- At most one per dimension. Deleting the entity deletes its tolerances.
+
 ValidationIssue
 - id (deterministic), rule (RULE_IDS.md), severity (info | warning | error | blocker)
 - entityIds, message, validationLevel, references (REF-ENG sections, ASM, SRC)
 
 Derived, never stored: shaft axis positions, centre distances, angular
-velocities, bearing positions, side shake, endshake, shaft angles.
+velocities, bearing positions, side shake, endshake, tolerance limits
+and worst-case stacks, shaft angles, and every output (report, BOM,
+drawings, STL).
 
 ## Saved files (`src/persistence/designFile.ts`)
 
 ```
 { "format": "mechanical-watchmaker-3d.design",
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "savedAt": "<ISO time>",
   "movement": { …Movement as above… } }
 ```
@@ -71,7 +83,7 @@ velocities, bearing positions, side shake, endshake, shaft angles.
   `DESIGN_SCHEMA_VERSION` and adding a migration from the previous
   version to `MIGRATIONS`. v1 → v2 turns the flat drive fields into the
   drive union, makes every shaft PIVOTED with no hand, and adds empty
-  couplings.
+  couplings. v2 → v3 adds empty tolerances.
 - Autosave keeps the current design in browser storage under
   `mw3d.autosave`. An unreadable autosave is moved to
   `mw3d.autosave.unreadable` rather than overwritten.

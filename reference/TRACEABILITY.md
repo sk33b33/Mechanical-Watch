@@ -40,6 +40,12 @@ geometry standard) is open work.
 | Measured pitch-circle clearance (m) | d − (d1 + d2)/2 | `measureBetween` | REF-ENG §5.2, §6 | pitch model only | DERIVED | L1 | `measure.test.ts` |
 | Measured drawn-tip clearance (m) | d − tip1 − tip2, unmeshed pairs only | `measureBetween` | none (visual) | ASM-0005 | APPROXIMATION | L0 | `measure.test.ts` › drawn tips… |
 | Measured centre-distance deviation (m) | abs(d − m(z1 + z2)/2) for a meshed pair | `measureBetween` | REF-ENG §5.2 | ASM-0008 | DERIVED | L1 | `measure.test.ts` › meshed gears |
+| Toleranced limits (m) | lower = nominal + lower deviation; upper = nominal + upper deviation | `Tolerance` in `src/domain/tolerance.ts` | REF-ENG §14 | none (declared intent) | user input; not validated | L1 | `toleranceAnalysis.test.ts` |
+| Worst-case stack (m) | R = Σ sᵢ xᵢ; R_min = Σ (sᵢ > 0 ? lowerᵢ : −upperᵢ); R_max likewise; untoleranced inputs at nominal | `evaluateStack` in `src/assembly/toleranceAnalysis.ts` | REF-ENG §14 | ASM-0017 | DERIVED | L1 | › property: min ≤ nominal ≤ max… |
+| Side shake over tolerances (m) | bore − pivot, worst case | `sideShakeStack` | REF-ENG §12, §14 | ASM-0013, ASM-0017 | DERIVED; acceptability UNKNOWN | L1 | › side shake: min takes… |
+| Endshake over tolerances (m) | upper underside − lower underside − lower thickness − shoulder span, worst case | `endshakeStack` | REF-ENG §12, §14 | ASM-0010, ASM-0011, ASM-0017 | DERIVED; acceptability UNKNOWN | L1 | › endshake stacks… |
+| Plan drawing (mm) | frame outlines, solved axes, pitch circles (d = m z), placed centre distances; ideal added when they differ by more than the ASM-0008 tolerance | `buildPlanDrawing` in `src/outputs/drawing/planDrawing.ts` | REF-ENG §5.1, §5.2, §6 | ASM-0006, ASM-0008 | DERIVED; nominal only (MFG-001) | L1 | `outputs.test.ts` › plan drawing |
+| Visual mesh export (mm) | viewport frame slabs and visual tooth outlines at assembled positions | `buildStl` in `src/outputs/stl.ts` | none; visualization only | ASM-0004, ASM-0005, ASM-0010 | APPROXIMATION | L0 | `outputs.test.ts` › STL |
 | Tooth outline (visual) | trapezoid with addendum 1.0 × module and dedendum 1.25 × module | `generateGearOutline` | none; visualization only | ASM-0005, ASM-0004 | APPROXIMATION | L0 | `gearOutline.test.ts` |
 
 Units: SI internally (SRC-0001, SRC-0002 via REF-ENG §4). mm, degrees and
@@ -68,6 +74,12 @@ rev/min exist only at the UI boundary (`src/units/`).
 | Schema-1 file | Migrated to schema 2 on open (drive union; shafts PIVOTED with no hand; no couplings). |
 | Nominal-time drive without exactly one minutes hand | TIME-003 / TIME-001; nothing is driven. |
 | Hand setting where no clutch isolates the hands | SET-001 warning; the setting mode reports it and the hands are not moved. |
+| Schema-2 file | Migrated to schema 3 on open (no tolerances). |
+| New tolerance (limits empty) | Kept as NaN; TOL-001 error until both limits are entered. No default band is assumed. |
+| Tolerance with lower > upper, or a size whose lower limit is ≤ 0 | TOL-001 error; stacks that use it report invalid input. |
+| Tolerance on an unknown dimension | TOL-001 warning (no effect); the dimension stays unknown. |
+| Two tolerances on one dimension | TOL-001 error (`setTolerance` replaces, so this arises only from files). |
+| Export of a design with errors | Produced anyway; the report states the declared level is not met. STL and drawings skip parts they can't place or size and the STL lists them. |
 
 ## Rules implemented
 
@@ -105,9 +117,13 @@ rev/min exist only at the UI boundary (`src/units/`).
 | TIME-004 | info | L2 | hand rate relative to nominal under a prescribed drive (project addition) |
 | SET-001 | warning | L2 | hands settable without turning the train (project addition) |
 | VAL-001 | blocker | L1 | validation engine failure (project addition) |
+| TOL-001 | error / warning | L1 | tolerance definition: target exists, one per dimension, finite limits, lower ≤ upper, positive size limit (project addition) |
+| TOL-002 | warning | L1 | a nominally positive side shake or endshake that can close within declared tolerances (project addition) |
+| MFG-001 | info | L1 | summary whenever tolerances exist: declared intent, untoleranced dimensions are nominal. Also stated in every output. |
+| MFG-002 | none | none | Stated in the report, drawings and outputs dialog: nothing is manufacturing-validated. No level above L2 can be declared. |
 
 Not yet applicable: UNIT-001/002 (enforced by branded unit types, not a
-runtime rule), ESC-*, MFG-*.
+runtime rule), ESC-*.
 
 ## Validation levels
 
