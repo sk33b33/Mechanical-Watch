@@ -9,7 +9,7 @@ import {
   addJewel,
   addShaft,
   createMovement,
-  setDrivingShaft,
+  setPrescribedDrive,
   updateShaft,
   type Movement,
 } from "@/domain/movement";
@@ -91,5 +91,5 @@ export function createDemoMovement(): Movement {
   movement = updateShaft(movement, arborC.id, {
     placement: { kind: "MESH_POLAR", referenceShaftId: arborB.id, meshId: meshBC.id, angle: degrees(100) },
   });
-  return setDrivingShaft(movement, arborA.id, rpmToRadPerSecond(1));
+  return setPrescribedDrive(movement, arborA.id, rpmToRadPerSecond(1));
 }

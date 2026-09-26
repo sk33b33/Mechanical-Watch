@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { millimetres } from "@/units/length";
 import { rpmToRadPerSecond, toRpm, radiansPerSecond } from "@/units/angularVelocity";
-import { createMovement, addShaft, addGear, addGearMesh, setDrivingShaft } from "@/domain/movement";
+import { createMovement, addShaft, addGear, addGearMesh, setPrescribedDrive } from "@/domain/movement";
 import { createShaft, fixedAt } from "@/domain/shaft";
 import { createGear } from "@/domain/gear";
 import { createGearMesh } from "@/domain/gearMesh";
@@ -32,7 +32,7 @@ describe("solveGearTrain", () => {
     movement = addGear(movement, gearA);
     movement = addGear(movement, gearB);
     movement = addGearMesh(movement, createGearMesh(gearA.id, gearB.id));
-    movement = setDrivingShaft(movement, shaftA.id, rpmToRadPerSecond(60));
+    movement = setPrescribedDrive(movement, shaftA.id, rpmToRadPerSecond(60));
 
     const solution = solveGearTrain(movement);
 
@@ -81,7 +81,7 @@ describe("solveGearTrain", () => {
     movement = addGear(movement, gear3);
     movement = addGearMesh(movement, createGearMesh(gear1.id, gear2.id));
     movement = addGearMesh(movement, createGearMesh(gear2.id, gear3.id));
-    movement = setDrivingShaft(movement, shaft1.id, rpmToRadPerSecond(60));
+    movement = setPrescribedDrive(movement, shaft1.id, rpmToRadPerSecond(60));
 
     const solution = solveGearTrain(movement);
     expect(solution.conflicts).toHaveLength(0);
@@ -128,7 +128,7 @@ describe("solveGearTrain", () => {
     movement = addGearMesh(movement, createGearMesh(gearA.id, gearB.id));
     movement = addGearMesh(movement, createGearMesh(gearB.id, gearC.id));
     movement = addGearMesh(movement, createGearMesh(gearA.id, gearC.id));
-    movement = setDrivingShaft(movement, shaftA.id, rpmToRadPerSecond(60));
+    movement = setPrescribedDrive(movement, shaftA.id, rpmToRadPerSecond(60));
 
     const solution = solveGearTrain(movement);
     expect(solution.conflicts.length).toBeGreaterThan(0);
@@ -159,7 +159,7 @@ describe("solveGearTrain", () => {
     movement = addGear(movement, gearA);
     movement = addGear(movement, gearB);
     movement = addGearMesh(movement, createGearMesh(gearA.id, gearB.id));
-    movement = setDrivingShaft(movement, shaftA.id, rpmToRadPerSecond(60));
+    movement = setPrescribedDrive(movement, shaftA.id, rpmToRadPerSecond(60));
 
     expect(() => solveGearTrain(movement)).not.toThrow();
     const solution = solveGearTrain(movement);
@@ -182,7 +182,7 @@ describe("solveGearTrain", () => {
     movement = addShaft(movement, shaftA);
     movement = addShaft(movement, shaftIsolated);
     movement = addGear(movement, gearA);
-    movement = setDrivingShaft(movement, shaftA.id, rpmToRadPerSecond(60));
+    movement = setPrescribedDrive(movement, shaftA.id, rpmToRadPerSecond(60));
 
     const solution = solveGearTrain(movement);
     expect(solution.unreachableShaftIds).toContain(shaftIsolated.id);

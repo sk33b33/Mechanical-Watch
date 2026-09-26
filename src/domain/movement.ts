@@ -6,9 +6,22 @@ import type { Shaft, ShaftId } from "./shaft";
 import type { GearMesh, GearMeshId } from "./gearMesh";
 import type { Frame, FrameId } from "./frame";
 import type { Jewel, JewelId } from "./jewel";
+import type { Coupling, CouplingId } from "./coupling";
 import type { ValidationLevel } from "@/reference/validationLevels";
 
 export type MovementId = EntityId<"movement">;
+
+/**
+ * The kinematic input that sets the train in motion. Neither kind models
+ * energy, torque or a mainspring (ASM-0007).
+ * - PRESCRIBED: a chosen shaft turns at a chosen angular velocity.
+ * - NOMINAL_TIME: the train runs at its nominal timekeeping rate. The
+ *   minutes-hand shaft turns once per hour, clockwise seen from the dial
+ *   (ASM-0014), and everything else follows from the gearing.
+ */
+export type Drive =
+  | { kind: "PRESCRIBED"; shaftId: ShaftId; angularVelocity: AngularVelocity }
+  | { kind: "NOMINAL_TIME" };
 
 /**
  * The authoritative mechanical model of a watch movement (or, for
@@ -26,9 +39,8 @@ export interface Movement {
   /** Mainplate and bridges. A movement with no frames is a free-floating gear sandbox. */
   frames: Record<FrameId, Frame>;
   jewels: Record<JewelId, Jewel>;
-  /** The externally driven shaft, e.g. the mainspring/barrel arbor in a full movement, or the input gear in the sandbox. */
-  drivingShaftId: ShaftId | null;
-  drivingAngularVelocity: AngularVelocity;
+  couplings: Record<CouplingId, Coupling>;
+  drive: Drive | null;
   /**
    * The level this design's model targets (REFERENCE_ENGINEERING.md §15).
    * Set explicitly by the author; never raised automatically.
@@ -51,8 +63,8 @@ export function createMovement(
     gearMeshes: {},
     frames: {},
     jewels: {},
-    drivingShaftId: null,
-    drivingAngularVelocity: 0 as AngularVelocity,
+    couplings: {},
+    drive: null,
   };
 }
 
@@ -74,6 +86,10 @@ export function addFrame(movement: Movement, frame: Frame): Movement {
 
 export function addJewel(movement: Movement, jewel: Jewel): Movement {
   return { ...movement, jewels: { ...movement.jewels, [jewel.id]: jewel } };
+}
+
+export function addCoupling(movement: Movement, coupling: Coupling): Movement {
+  return { ...movement, couplings: { ...movement.couplings, [coupling.id]: coupling } };
 }
 
 export function updateFrame(
@@ -127,14 +143,30 @@ export function updateShaft(
   return { ...movement, shafts: { ...movement.shafts, [shaftId]: { ...existing, ...patch } } };
 }
 
-export function setDrivingShaft(
+export function setPrescribedDrive(
   movement: Movement,
   shaftId: ShaftId,
   angularVelocity: AngularVelocity,
 ): Movement {
-  return { ...movement, drivingShaftId: shaftId, drivingAngularVelocity: angularVelocity };
+  return { ...movement, drive: { kind: "PRESCRIBED", shaftId, angularVelocity } };
+}
+
+export function setNominalTimeDrive(movement: Movement): Movement {
+  return { ...movement, drive: { kind: "NOMINAL_TIME" } };
 }
 
 export function clearDrive(movement: Movement): Movement {
-  return { ...movement, drivingShaftId: null };
+  return { ...movement, drive: null };
+}
+
+/** The single shaft carrying the minutes hand, or null if there is none or more than one. */
+export function minutesHandShaftId(movement: Movement): ShaftId | null {
+  const minutes = Object.values(movement.shafts).filter((s) => s.hand === "MINUTES");
+  return minutes.length === 1 && minutes[0] !== undefined ? minutes[0].id : null;
+}
+
+/** The shaft the drive acts on: the prescribed shaft, or the minutes-hand shaft for nominal time. */
+export function drivenShaftId(movement: Movement): ShaftId | null {
+  if (movement.drive === null) return null;
+  return movement.drive.kind === "PRESCRIBED" ? movement.drive.shaftId : minutesHandShaftId(movement);
 }

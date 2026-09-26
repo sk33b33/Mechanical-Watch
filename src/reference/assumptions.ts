@@ -81,6 +81,18 @@ export const ASSUMPTIONS = {
     scope: "Bearings / side shake",
     status: "Active",
   },
+  "ASM-0014": {
+    summary:
+      "Time display uses a 12-hour dial on the −Z side of the mainplate; hands turn clockwise seen from the dial (hours 1 rev/12 h, minutes 1 rev/h, seconds 1 rev/min, by definition)",
+    scope: "Time display",
+    status: "Active",
+  },
+  "ASM-0015": {
+    summary:
+      "A friction clutch is kinematic only: fully engaged while running, freely slipping while setting the hands; slip torque is not modeled, and the going train keeps running during setting (no stop-seconds)",
+    scope: "Motion works / hand setting",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

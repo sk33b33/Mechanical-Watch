@@ -1,36 +1,25 @@
 import type { AppStore } from "@/app/store";
 import { millimetres, toMillimetres } from "@/units/length";
-import { degrees, toDegrees } from "@/units/angle";
-import { rpmToRadPerSecond, toRpm } from "@/units/angularVelocity";
+import { toDegrees } from "@/units/angle";
+import { toRpm } from "@/units/angularVelocity";
 import { toMillimetresPerSecond } from "@/units/linearVelocity";
 import type { Vec2 } from "@/math/vec2";
 import { gearPitchDiameter, type Gear } from "@/domain/gear";
-import type { Shaft, ShaftEnd, ShaftPlacement } from "@/domain/shaft";
 import type { BearingKind, Jewel } from "@/domain/jewel";
 import type { Frame, FrameKind, Outline } from "@/domain/frame";
-import type { GearMesh } from "@/domain/gearMesh";
-import type { EntityId } from "@/domain/ids";
 import {
-  addGear,
   addGearMesh,
-  addJewel,
   clearDrive,
-  setDrivingShaft,
+  minutesHandShaftId,
+  setNominalTimeDrive,
   updateFrame,
   updateGear,
   updateJewel,
-  updateShaft,
   type Movement,
 } from "@/domain/movement";
-import { emptyOutline, newGear, newGearMesh, newJewel } from "@/domain/editing";
+import { emptyOutline, newGearMesh } from "@/domain/editing";
 import { isValidModule, isValidToothCount, pitchLineVelocity } from "@/math/gearMath";
-import {
-  bearingInnerSpan,
-  endshake,
-  frameZRange,
-  shaftSupport,
-  sideShake,
-} from "@/assembly/assemblyGeometry";
+import { frameZRange, sideShake } from "@/assembly/assemblyGeometry";
 import { VALIDATION_LEVELS, VALIDATION_LEVEL_LABELS, levelRank } from "@/reference/validationLevels";
 import {
   actionButton,
@@ -49,25 +38,10 @@ import {
   selectRow,
   textRow,
 } from "./fields";
-
-type Section = HTMLElement[];
+import { deleteRow, positive, type Section } from "./common";
 
 /** The highest level any model in this app can currently support (kinematic gear train). */
 const HIGHEST_MODELED_LEVEL = "L2_KINEMATIC";
-
-function positive(value: number): boolean {
-  return Number.isFinite(value) && value > 0;
-}
-
-function meshLabel(movement: Movement, mesh: GearMesh): string {
-  return `${movement.gears[mesh.drivingGearId]?.name ?? "missing gear"} → ${movement.gears[mesh.drivenGearId]?.name ?? "missing gear"}`;
-}
-
-function deleteRow(store: AppStore, id: EntityId, label: string, cascade: string): HTMLDivElement {
-  return actionRow(label, `${cascade} Undo with Ctrl+Z.`, () => {
-    store.remove(id);
-  }, true);
-}
 
 // ---- movement ----------------------------------------------------------------
 
@@ -97,12 +71,31 @@ export function movementSection(store: AppStore): Section {
       "The level this design targets. Validation reports whether it is met and never raises it.",
     ),
     readonlyRow("Teaching demo", m.isTeachingDemo ? "yes (not a production caliber)" : "no"),
+    sectionHeader("Drive"),
+    selectRow("Drive", m.drive?.kind ?? "", [
+      { value: "", label: "None" },
+      {
+        value: "NOMINAL_TIME",
+        label: "Nominal time (minutes hand 1 rev/h)",
+        disabled: minutesHandShaftId(m) === null,
+        title: minutesHandShaftId(m) === null ? "Needs exactly one arbor carrying the minutes hand." : "",
+      },
+      {
+        value: "PRESCRIBED",
+        label: "Prescribed speed on an arbor",
+        disabled: m.drive?.kind !== "PRESCRIBED",
+        title: "Choose an arbor and use “Make this the drive” in its inspector.",
+      },
+    ], (value) => {
+      store.edit(value === "NOMINAL_TIME" ? setNominalTimeDrive : clearDrive);
+    }, "What sets the train in motion. Kinematic input only; no energy is modeled (ASM-0007)."),
     sectionHeader("Contents"),
     readonlyRow("Frames", count(m.frames)),
     readonlyRow("Arbors", count(m.shafts)),
     readonlyRow("Gears", count(m.gears)),
     readonlyRow("Meshes", count(m.gearMeshes)),
     readonlyRow("Bearings", count(m.jewels)),
+    readonlyRow("Friction clutches", count(m.couplings)),
     readonlyRow("Tip", "Add frames and arbors from the component list, then select a part to edit it."),
   ];
 }
@@ -183,200 +176,6 @@ export function gearSection(store: AppStore, gear: Gear): Section {
     "v = ω r (REF-ENG §5.5)"));
 
   out.push(deleteRow(store, gear.id, "Delete gear", "Also removes its meshes."));
-  return out;
-}
-
-// ---- shaft ------------------------------------------------------------------
-
-interface EligibleMesh {
-  mesh: GearMesh;
-  referenceShaftId: Shaft["id"];
-}
-
-/** Meshes between a gear on this shaft and a gear on another shaft: usable for MESH_POLAR placement. */
-function eligibleMeshes(movement: Movement, shaft: Shaft): EligibleMesh[] {
-  const out: EligibleMesh[] = [];
-  for (const mesh of Object.values(movement.gearMeshes)) {
-    const a = movement.gears[mesh.drivingGearId];
-    const b = movement.gears[mesh.drivenGearId];
-    if (a === undefined || b === undefined || a.shaftId === b.shaftId) continue;
-    if (a.shaftId === shaft.id) out.push({ mesh, referenceShaftId: b.shaftId });
-    else if (b.shaftId === shaft.id) out.push({ mesh, referenceShaftId: a.shaftId });
-  }
-  return out;
-}
-
-function placementRows(store: AppStore, shaft: Shaft): Section {
-  const { movement } = store;
-  const setPlacement = (placement: ShaftPlacement): void => {
-    store.edit((m) => updateShaft(m, shaft.id, { placement }));
-  };
-  const eligible = eligibleMeshes(movement, shaft);
-  const placement = shaft.placement;
-  const solved = store.analysis.placement.shaftPositions.get(shaft.id);
-
-  const out: Section = [
-    sectionHeader("Placement"),
-    selectRow("Constraint", placement.kind, [
-      { value: "FIXED", label: "Fixed coordinates" },
-      {
-        value: "MESH_POLAR",
-        label: "At mesh centre distance",
-        disabled: eligible.length === 0,
-        title: eligible.length === 0 ? "Needs a mesh between a gear on this arbor and a gear on another arbor." : "",
-      },
-    ], (kind) => {
-      if (kind === "FIXED") {
-        // Starts from the currently solved position, if there is one: an explicit conversion, not a guess.
-        const nan = millimetres(Number.NaN);
-        setPlacement({ kind: "FIXED", position: solved ?? { x: nan, y: nan } });
-        return;
-      }
-      const first = eligible[0];
-      if (first !== undefined) {
-        setPlacement({ kind: "MESH_POLAR", referenceShaftId: first.referenceShaftId, meshId: first.mesh.id, angle: degrees(Number.NaN) });
-      }
-    }, "Placement at mesh centre distance moves this arbor when tooth counts or module change (REF-ENG §5.2)."),
-  ];
-
-  if (placement.kind === "FIXED") {
-    for (const axis of ["x", "y"] as const) {
-      out.push(inputRow({
-        label: `${axis.toUpperCase()} (mm)`, value: mmText(placement.position[axis]), step: "0.1",
-        invalid: !Number.isFinite(placement.position[axis]),
-        onCommit: (raw) => {
-          setPlacement({ kind: "FIXED", position: { ...placement.position, [axis]: millimetres(parseRequired(raw)) } });
-        },
-      }));
-    }
-  } else {
-    const options = eligible.map(({ mesh, referenceShaftId }) => ({
-      value: mesh.id,
-      label: `${meshLabel(movement, mesh)} (from ${movement.shafts[referenceShaftId]?.name ?? "?"})`,
-    }));
-    if (!eligible.some((e) => e.mesh.id === placement.meshId)) {
-      options.unshift({ value: placement.meshId, label: "(missing or unusable mesh)" });
-    }
-    out.push(selectRow("Mesh", placement.meshId, options, (meshId) => {
-      const chosen = eligible.find((e) => e.mesh.id === meshId);
-      if (chosen !== undefined) {
-        setPlacement({ ...placement, meshId: chosen.mesh.id, referenceShaftId: chosen.referenceShaftId });
-      }
-    }));
-    out.push(readonlyRow("From", movement.shafts[placement.referenceShaftId]?.name ?? "missing shaft"));
-    out.push(inputRow({
-      label: "Direction (°)", value: Number.isFinite(placement.angle) ? String(toDegrees(placement.angle)) : "", step: "1",
-      invalid: !Number.isFinite(placement.angle),
-      title: "Angle from +X, counter-clockwise, seen from the bridge side.",
-      onCommit: (raw) => { setPlacement({ ...placement, angle: degrees(parseRequired(raw)) }); },
-    }));
-  }
-  out.push(readonlyRow("Solved position",
-    solved === undefined ? "unresolved" : `${toMillimetres(solved.x).toFixed(4)}, ${toMillimetres(solved.y).toFixed(4)} mm`));
-  return out;
-}
-
-function bearingRows(store: AppStore, shaft: Shaft): Section {
-  const { movement } = store;
-  const support = shaftSupport(movement, shaft.id);
-  const frames = Object.values(movement.frames);
-  const out: Section = [sectionHeader("Bearings")];
-  for (const end of ["LOWER", "UPPER"] as ShaftEnd[]) {
-    const jewel = end === "LOWER" ? support.lower : support.upper;
-    const endLabel = end === "LOWER" ? "Lower" : "Upper";
-    if (jewel !== null) {
-      out.push(listRow(
-        `${endLabel}: in ${movement.frames[jewel.frameId]?.name ?? "missing frame"}`,
-        actionButton("Remove", "Remove this bearing", () => { store.remove(jewel.id); }, true),
-        () => { store.select(jewel.id); },
-      ));
-    } else if (frames.length === 0) {
-      out.push(readonlyRow(endLabel, "add a frame first"));
-    } else {
-      out.push(selectRow(`${endLabel} bearing`, "", [
-        { value: "", label: "Add in frame…" },
-        ...frames.map((f) => ({ value: f.id, label: f.name })),
-      ], (frameId) => {
-        const frame = frames.find((f) => f.id === frameId);
-        if (frame !== undefined) store.edit((m) => addJewel(m, newJewel(m, shaft.id, end, frame.id)));
-      }));
-    }
-  }
-  return out;
-}
-
-export function shaftSection(store: AppStore, shaft: Shaft): Section {
-  const { movement } = store;
-  const edit = (patch: Parameters<typeof updateShaft>[2]): void => {
-    store.edit((m) => updateShaft(m, shaft.id, patch));
-  };
-  const out: Section = [textRow("Name", shaft.name, (name) => { edit({ name }); }), ...placementRows(store, shaft)];
-
-  const omega = store.analysis.train.shaftAngularVelocity.get(shaft.id);
-  out.push(readonlyRow("Angular velocity", omega === undefined ? "unpowered" : `${toRpm(omega).toFixed(3)} rev/min`));
-
-  out.push(sectionHeader("Drive"));
-  if (movement.drivingShaftId === shaft.id) {
-    out.push(inputRow({
-      label: "Drive speed (rev/min)",
-      value: Number.isFinite(movement.drivingAngularVelocity) ? String(toRpm(movement.drivingAngularVelocity)) : "",
-      step: "0.1", invalid: !Number.isFinite(movement.drivingAngularVelocity),
-      title: "Prescribed angular velocity of this arbor (ASM-0007). Positive is counter-clockwise seen from the bridge side.",
-      onCommit: (raw) => { store.edit((m) => setDrivingShaft(m, shaft.id, rpmToRadPerSecond(parseRequired(raw)))); },
-    }));
-    out.push(actionRow("Remove drive", "The train will be unpowered", () => { store.edit(clearDrive); }));
-  } else {
-    out.push(readonlyRow("Driven by", movement.drivingShaftId === null ? "no drive set" : "the gear train"));
-    out.push(actionRow("Make this the drive",
-      "Moves the prescribed drive to this arbor, keeping the current drive speed (if any).", () => {
-        store.edit((m) => setDrivingShaft(m, shaft.id,
-          m.drivingShaftId === null ? rpmToRadPerSecond(Number.NaN) : m.drivingAngularVelocity));
-      }));
-  }
-
-  out.push(sectionHeader("Gears"));
-  for (const gear of Object.values(movement.gears).filter((g) => g.shaftId === shaft.id)) {
-    out.push(listRow(gear.name, actionButton("Select", "Select this gear", () => { store.select(gear.id); })));
-  }
-  out.push(actionRow("Add gear", "Adds a gear to this arbor with every parameter empty.", () => {
-    const gear = newGear(store.movement, shaft.id);
-    store.edit((m) => addGear(m, gear));
-    store.select(gear.id);
-  }));
-
-  out.push(...bearingRows(store, shaft));
-
-  out.push(sectionHeader("Pivots (empty = unknown)"));
-  for (const end of ["LOWER", "UPPER"] as ShaftEnd[]) {
-    const value = shaft.pivotDiameter[end];
-    out.push(inputRow({
-      label: `${end === "LOWER" ? "Lower" : "Upper"} pivot Ø (mm)`, value: optionalMmText(value), step: "0.005",
-      placeholder: "unknown", invalid: !isPositiveOrUnknown(value),
-      onCommit: (raw) => { edit({ pivotDiameter: { ...shaft.pivotDiameter, [end]: parseOptionalMm(raw) } }); },
-    }));
-  }
-  out.push(inputRow({
-    label: "Shoulder span (mm)", value: optionalMmText(shaft.shoulderSpan), step: "0.01",
-    placeholder: "unknown", invalid: !isPositiveOrUnknown(shaft.shoulderSpan),
-    title: "Axial distance between the two pivot shoulders.",
-    onCommit: (raw) => { edit({ shoulderSpan: parseOptionalMm(raw) }); },
-  }));
-
-  if (Object.keys(movement.frames).length > 0) {
-    const support = shaftSupport(movement, shaft.id);
-    out.push(sectionHeader("Bearing clearances (computed, not judged)"));
-    out.push(readonlyRow("Side shake, lower", derivedText(sideShake(shaft, "LOWER", support.lower)),
-      "Bore − pivot diameter, diametral (ASM-0013). No sourced acceptable range (BRG-005)."));
-    out.push(readonlyRow("Side shake, upper", derivedText(sideShake(shaft, "UPPER", support.upper)),
-      "Bore − pivot diameter, diametral (ASM-0013). No sourced acceptable range (BRG-005)."));
-    out.push(readonlyRow("Space between bearings", derivedText(bearingInnerSpan(movement, support)),
-      "Frame inner faces; bearing faces assumed flush (ASM-0011)."));
-    out.push(readonlyRow("Endshake", derivedText(endshake(movement, shaft, support)),
-      "Space between bearings − shoulder span (ASM-0011). No sourced acceptable range (BRG-005)."));
-  }
-
-  out.push(deleteRow(store, shaft.id, "Delete arbor",
-    "Also removes its gears, their meshes and its bearings. Arbors placed from it will report an unresolved constraint."));
   return out;
 }
 

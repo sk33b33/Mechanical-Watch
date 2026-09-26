@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { radiansPerSecond } from "@/units/angularVelocity";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import { AppStore } from "./store";
+import { drivenShaftId } from "@/domain/movement";
 import { createDemoMovement } from "./demoMovement";
 
 const dt = NUMERICAL_PARAMETERS.simulationTimestepSeconds;
@@ -34,7 +35,7 @@ describe("AppStore simulation playback", () => {
 
   it("halts on a non-finite state with a SIM-001 blocker, until the design changes", () => {
     const store = new AppStore(createDemoMovement());
-    const drive = store.movement.drivingShaftId;
+    const drive = drivenShaftId(store.movement);
     if (drive === null) throw new Error("no drive");
     // Force an infinite velocity past the solver's guard to exercise the halt path.
     store.analysis = {

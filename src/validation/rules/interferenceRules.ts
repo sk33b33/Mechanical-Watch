@@ -109,6 +109,8 @@ export const interferenceRules: Rule = ({ movement, placement }) => {
       const otherAxis = placement.shaftPositions.get(shaft.id);
       const arbor = arborZRange(movement, shaft.id);
       if (otherAxis === undefined || arbor === null || !zOverlaps(zRange, arbor)) continue;
+      // A coaxial body (e.g. a cannon pinion on its arbor) shares the axis by design, not by collision.
+      if (distance(axis, otherAxis) <= NUMERICAL_PARAMETERS.centreDistanceToleranceMetres) continue;
       // The arbor is treated as its bare axis line. That is a lower bound,
       // since arbor diameters are not modeled.
       if (distance(axis, otherAxis) < pitchRadius(gear)) {

@@ -8,6 +8,8 @@ import { placementRules } from "./rules/placementRules";
 import { gearAxialRules, interferenceRules } from "./rules/interferenceRules";
 import { bearingRules, frameRules } from "./rules/bearingRules";
 import { kinematicRules } from "./rules/kinematicRules";
+import { timeRules } from "./rules/timeRules";
+import { couplingRules } from "./rules/couplingRules";
 
 /** Rule families, in the order their issues are reported. */
 const RULES: readonly Rule[] = [
@@ -17,8 +19,10 @@ const RULES: readonly Rule[] = [
   gearAxialRules,
   meshRules,
   bearingRules,
+  couplingRules,
   interferenceRules,
   kinematicRules,
+  timeRules,
 ];
 
 /**

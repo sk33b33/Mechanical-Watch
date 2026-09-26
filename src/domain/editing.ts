@@ -6,6 +6,7 @@ import { createShaft, type Shaft, type ShaftEnd, type ShaftId } from "./shaft";
 import { createGear, type Gear, type GearId } from "./gear";
 import { createGearMesh, type GearMesh, type GearMeshId } from "./gearMesh";
 import { createJewel, type BearingKind, type Jewel, type JewelId } from "./jewel";
+import { createFrictionClutch, type Coupling, type CouplingId } from "./coupling";
 
 /**
  * Structural editing: creating and deleting parts.
@@ -68,6 +69,12 @@ export function newGearMesh(drivingGearId: GearId, drivenGearId: GearId): GearMe
   return createGearMesh(drivingGearId, drivenGearId);
 }
 
+export function newFrictionClutch(movement: Movement, shaftAId: ShaftId, shaftBId: ShaftId): Coupling {
+  const a = movement.shafts[shaftAId]?.name ?? "?";
+  const b = movement.shafts[shaftBId]?.name ?? "?";
+  return createFrictionClutch(`Friction clutch ${a} / ${b}`, shaftAId, shaftBId);
+}
+
 export function newJewel(movement: Movement, shaftId: ShaftId, end: ShaftEnd, frameId: FrameId, kind: BearingKind = "HOLE_JEWEL"): Jewel {
   const shaftName = movement.shafts[shaftId]?.name ?? "Arbor";
   return createJewel({ name: `${shaftName} ${end.toLowerCase()} jewel`, kind, frameId, shaftId, end });
@@ -86,7 +93,7 @@ export interface RemovalResult {
 /**
  * Removes an entity together with the parts it owns:
  * - a frame owns the bearings seated in it;
- * - a shaft owns its gears and bearings (and is no longer the drive);
+ * - a shaft owns its gears, bearings and clutches (and is no longer the drive);
  * - a gear owns the meshes it takes part in.
  * References that are not ownership, such as another shaft's placement
  * constraint pointing at a removed shaft or mesh, are left in place and
@@ -98,12 +105,14 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
   const gears = new Set<GearId>();
   const meshes = new Set<GearMeshId>();
   const jewels = new Set<JewelId>();
+  const couplings = new Set<CouplingId>();
 
   if (id in movement.frames) frames.add(id as FrameId);
   if (id in movement.shafts) shafts.add(id as ShaftId);
   if (id in movement.gears) gears.add(id as GearId);
   if (id in movement.gearMeshes) meshes.add(id as GearMeshId);
   if (id in movement.jewels) jewels.add(id as JewelId);
+  if (id in movement.couplings) couplings.add(id as CouplingId);
 
   for (const gear of Object.values(movement.gears)) {
     if (shafts.has(gear.shaftId)) gears.add(gear.id);
@@ -114,8 +123,12 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
   for (const mesh of Object.values(movement.gearMeshes)) {
     if (gears.has(mesh.drivingGearId) || gears.has(mesh.drivenGearId)) meshes.add(mesh.id);
   }
+  for (const coupling of Object.values(movement.couplings)) {
+    if (shafts.has(coupling.shaftAId) || shafts.has(coupling.shaftBId)) couplings.add(coupling.id);
+  }
 
-  const removed = new Set<string>([...frames, ...shafts, ...gears, ...meshes, ...jewels]);
+  const removed = new Set<string>([...frames, ...shafts, ...gears, ...meshes, ...jewels, ...couplings]);
+  const drive = movement.drive;
   return {
     movement: {
       ...movement,
@@ -124,8 +137,8 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
       gears: without(movement.gears, removed),
       gearMeshes: without(movement.gearMeshes, removed),
       jewels: without(movement.jewels, removed),
-      drivingShaftId:
-        movement.drivingShaftId !== null && removed.has(movement.drivingShaftId) ? null : movement.drivingShaftId,
+      couplings: without(movement.couplings, removed),
+      drive: drive?.kind === "PRESCRIBED" && removed.has(drive.shaftId) ? null : drive,
     },
     removedIds: [...removed] as EntityId[],
   };

@@ -1,6 +1,7 @@
-import type { Movement } from "@/domain/movement";
+import type { Drive, Movement } from "@/domain/movement";
+import type { Coupling } from "@/domain/coupling";
 import type { Frame, Outline } from "@/domain/frame";
-import type { Shaft, ShaftPlacement } from "@/domain/shaft";
+import type { Shaft, ShaftPlacement, ShaftSupport } from "@/domain/shaft";
 import type { Gear } from "@/domain/gear";
 import type { GearMesh } from "@/domain/gearMesh";
 import type { Jewel } from "@/domain/jewel";
@@ -30,10 +31,42 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 1;
+export const DESIGN_SCHEMA_VERSION = 2;
 
-/** MIGRATIONS[n] upgrades a raw version-n document to version n+1. */
-const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string, unknown>> = {};
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * MIGRATIONS[n] upgrades a raw version-n document to version n+1. A
+ * migration only reshapes data; anything it doesn't recognise is passed
+ * through for the decoder to reject with a precise path.
+ */
+const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string, unknown>> = {
+  /**
+   * v1 → v2: `drivingShaftId`/`drivingAngularVelocity` become a `drive`
+   * union; shafts gain `support` (PIVOTED, which is how v1 treated every
+   * shaft) and `hand` (none); movements gain empty `couplings`.
+   */
+  1: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement)) return doc;
+    const { drivingShaftId, drivingAngularVelocity, ...rest } = movement;
+    const shafts = isRecord(rest.shafts)
+      ? Object.fromEntries(
+          Object.entries(rest.shafts).map(([id, shaft]) => [
+            id,
+            isRecord(shaft) ? { ...shaft, support: { kind: "PIVOTED" }, hand: null } : shaft,
+          ]),
+        )
+      : rest.shafts;
+    const drive =
+      drivingShaftId === null || drivingShaftId === undefined
+        ? null
+        : { kind: "PRESCRIBED", shaftId: drivingShaftId, angularVelocity: drivingAngularVelocity };
+    return { ...doc, schemaVersion: 2, movement: { ...rest, shafts, couplings: {}, drive } };
+  },
+};
 
 export class DesignFileError extends Error {}
 
@@ -101,15 +134,50 @@ const frame: Decoder<Frame> = (value, path) => {
 
 const placement: Decoder<ShaftPlacement> = (value, path) => {
   const o = object(value, path);
-  const kind = field(o, "kind", oneOf(["FIXED", "MESH_POLAR"]), path);
-  return kind === "FIXED"
-    ? { kind, position: field(o, "position", vec2, path) }
-    : {
+  const kind = field(o, "kind", oneOf(["FIXED", "MESH_POLAR", "COAXIAL"]), path);
+  switch (kind) {
+    case "FIXED":
+      return { kind, position: field(o, "position", vec2, path) };
+    case "MESH_POLAR":
+      return {
         kind,
         referenceShaftId: field(o, "referenceShaftId", id<Shaft["id"]>(), path),
         meshId: field(o, "meshId", id<GearMesh["id"]>(), path),
         angle: field(o, "angle", angle, path),
       };
+    case "COAXIAL":
+      return { kind, referenceShaftId: field(o, "referenceShaftId", id<Shaft["id"]>(), path) };
+  }
+};
+
+const support: Decoder<ShaftSupport> = (value, path) => {
+  const o = object(value, path);
+  const kind = field(o, "kind", oneOf(["PIVOTED", "STUD", "CARRIED"]), path);
+  return kind === "STUD" ? { kind, frameId: field(o, "frameId", id<Frame["id"]>(), path) } : { kind };
+};
+
+const coupling: Decoder<Coupling> = (value, path) => {
+  const o = object(value, path);
+  return {
+    id: field(o, "id", id<Coupling["id"]>(), path),
+    type: field(o, "type", literal("Coupling"), path),
+    kind: field(o, "kind", literal("FRICTION_CLUTCH"), path),
+    name: field(o, "name", string, path),
+    shaftAId: field(o, "shaftAId", id<Shaft["id"]>(), path),
+    shaftBId: field(o, "shaftBId", id<Shaft["id"]>(), path),
+  };
+};
+
+const drive: Decoder<Drive> = (value, path) => {
+  const o = object(value, path);
+  const kind = field(o, "kind", oneOf(["PRESCRIBED", "NOMINAL_TIME"]), path);
+  return kind === "PRESCRIBED"
+    ? {
+        kind,
+        shaftId: field(o, "shaftId", id<Shaft["id"]>(), path),
+        angularVelocity: field(o, "angularVelocity", number as Decoder<AngularVelocity>, path),
+      }
+    : { kind };
 };
 
 const shaft: Decoder<Shaft> = (value, path) => {
@@ -120,6 +188,8 @@ const shaft: Decoder<Shaft> = (value, path) => {
     type: field(o, "type", literal("Shaft"), path),
     name: field(o, "name", string, path),
     placement: field(o, "placement", placement, path),
+    support: field(o, "support", support, path),
+    hand: field(o, "hand", nullable(oneOf(["HOURS", "MINUTES", "SECONDS"])), path),
     pivotDiameter: {
       LOWER: field(pivots, "LOWER", nullable(length), `${path}.pivotDiameter`),
       UPPER: field(pivots, "UPPER", nullable(length), `${path}.pivotDiameter`),
@@ -185,8 +255,8 @@ const movement: Decoder<Movement> = (value, path) => {
     gears: field(o, "gears", entityRecord(gear), path),
     gearMeshes: field(o, "gearMeshes", entityRecord(gearMesh), path),
     jewels: field(o, "jewels", entityRecord(jewel), path),
-    drivingShaftId: field(o, "drivingShaftId", nullable(id<Shaft["id"]>()), path),
-    drivingAngularVelocity: field(o, "drivingAngularVelocity", number as Decoder<AngularVelocity>, path),
+    couplings: field(o, "couplings", entityRecord(coupling), path),
+    drive: field(o, "drive", nullable(drive), path),
   };
 };
 

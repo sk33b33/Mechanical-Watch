@@ -7,7 +7,7 @@ import {
   addShaft,
   addGear,
   addGearMesh,
-  setDrivingShaft,
+  setPrescribedDrive,
   updateGear,
   updateShaft,
   type Movement,
@@ -50,7 +50,7 @@ function twoGears({ centreDistanceMm = 7, gearB = {}, meshed = true }: Options =
   movement = addGear(movement, a);
   movement = addGear(movement, b);
   if (meshed) movement = addGearMesh(movement, createGearMesh(a.id, b.id));
-  return setDrivingShaft(movement, shaftA.id, rpmToRadPerSecond(60));
+  return setPrescribedDrive(movement, shaftA.id, rpmToRadPerSecond(60));
 }
 
 const rules = (movement: Movement): string[] => validateMovement(movement).map((i) => i.rule);
@@ -127,14 +127,16 @@ describe("validateMovement", () => {
   });
 
   it("KIN-001: says so when no drive is set", () => {
-    const movement = { ...twoGears(), drivingShaftId: null };
+    const movement = { ...twoGears(), drive: null };
     const info = validateMovement(movement).find((i) => i.id.startsWith("KIN-001:no-drive"));
     expect(info?.severity).toBe("info");
   });
 
   it("SIM-001: flags a non-finite drive", () => {
     const movement = twoGears();
-    const broken = { ...movement, drivingAngularVelocity: radiansPerSecond(Number.NaN) };
+    const drive = movement.drive;
+    if (drive?.kind !== "PRESCRIBED") throw new Error("expected a prescribed drive");
+    const broken: Movement = { ...movement, drive: { ...drive, angularVelocity: radiansPerSecond(Number.NaN) } };
     expect(rules(broken)).toContain("SIM-001");
   });
 

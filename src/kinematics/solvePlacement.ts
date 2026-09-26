@@ -39,6 +39,12 @@ function attempt(
   if (movement.shafts[placement.referenceShaftId] === undefined) {
     return { status: "failed", reason: "MISSING_REFERENCE" };
   }
+  if (placement.kind === "COAXIAL") {
+    if (placement.referenceShaftId === shaft.id) return { status: "failed", reason: "CIRCULAR_REFERENCE" };
+    if (failed.has(placement.referenceShaftId)) return { status: "failed", reason: "REFERENCE_UNRESOLVED" };
+    const axis = placed.get(placement.referenceShaftId);
+    return axis === undefined ? { status: "waiting" } : { status: "placed", position: axis };
+  }
   const mesh = movement.gearMeshes[placement.meshId];
   const gearA = mesh === undefined ? undefined : movement.gears[mesh.drivingGearId];
   const gearB = mesh === undefined ? undefined : movement.gears[mesh.drivenGearId];

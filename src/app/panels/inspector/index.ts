@@ -4,7 +4,8 @@ import type { EntityId } from "@/domain/ids";
 import { declaredLevelStatus } from "@/validation/validationIssue";
 import { VALIDATION_LEVEL_LABELS } from "@/reference/validationLevels";
 import { readonlyRow, sectionHeader } from "./fields";
-import { frameSection, gearSection, jewelSection, movementSection, shaftSection } from "./sections";
+import { frameSection, gearSection, jewelSection, movementSection } from "./sections";
+import { shaftSection } from "./shaftSection";
 
 const TYPE_LABEL: Record<SelectableEntity["type"], string> = {
   Gear: "Gear",

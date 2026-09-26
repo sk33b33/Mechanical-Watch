@@ -45,4 +45,16 @@ BRG-003 A pivot must be smaller than its bearing bore (positive side shake).
 BRG-004 The shoulder span must fit between the bearing faces (positive endshake).
 BRG-005 Bearing clearances are computed but not judged until acceptable ranges have a source.
 
+CPL-001 A friction clutch must join two different shafts on the same axis.
+
+SUP-001 A carried part must be placed coaxially on the shaft that carries it.
+SUP-002 A stud-mounted part's axis must lie within its frame.
+
+TIME-001 At most one shaft carries each hand (hours, minutes, seconds).
+TIME-002 Hand speeds must keep 12-hour-dial ratios (hours : minutes : seconds = 1 : 12 : 720) and turn the same way.
+TIME-003 A nominal-time drive needs a shaft that carries the minutes hand.
+TIME-004 Under a prescribed drive, the hand rates are reported relative to nominal.
+
+SET-001 The hands must be settable without turning the rest of the train (a slipping clutch must isolate them).
+
 VAL-001 The validation engine must complete; if it cannot, the design cannot be represented safely.

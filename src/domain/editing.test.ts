@@ -12,7 +12,7 @@ import {
   addGearMesh,
   addJewel,
   addShaft,
-  setDrivingShaft,
+  setPrescribedDrive,
   updateFrame,
   updateGear,
   updateShaft,
@@ -95,7 +95,7 @@ describe("creating parts", () => {
       m = addJewel(m, newJewel(m, shaft.id, "LOWER", plate.id));
       m = addJewel(m, newJewel(m, shaft.id, "UPPER", bridge.id));
     }
-    m = setDrivingShaft(m, a.id, rpmToRadPerSecond(1));
+    m = setPrescribedDrive(m, a.id, rpmToRadPerSecond(1));
 
     expect(rulesOf(m)).toEqual([]);
     expect(analyzeMovement(m).train.shaftAngularVelocity.size).toBe(2);
@@ -121,7 +121,7 @@ describe("removing parts", () => {
     expect(Object.values(movement.gears).map((g) => g.name)).not.toContain("Wheel A");
     expect(Object.keys(movement.gearMeshes)).toHaveLength(1);
     expect(Object.values(movement.jewels).some((j) => j.shaftId === arborA.id)).toBe(false);
-    expect(movement.drivingShaftId).toBeNull();
+    expect(movement.drive).toBeNull();
     expect(removedIds).toHaveLength(1 + 1 + 1 + 2);
   });
 

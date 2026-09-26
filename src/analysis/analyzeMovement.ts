@@ -19,6 +19,6 @@ export function analyzeMovement(movement: Movement): MovementAnalysis {
 
 export const EMPTY_ANALYSIS: MovementAnalysis = {
   placement: { shaftPositions: new Map(), failures: [] },
-  train: { shaftAngularVelocity: new Map(), unreachableShaftIds: [], conflicts: [] },
+  train: { mode: "RUNNING", shaftAngularVelocity: new Map(), unreachableShaftIds: [], conflicts: [], setting: { status: "NOT_APPLICABLE" } },
   issues: [],
 };

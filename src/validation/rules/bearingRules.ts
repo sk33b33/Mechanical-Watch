@@ -37,7 +37,7 @@ function describe(frame: Frame | undefined): string {
 
 /**
  * BRG-001…BRG-005 and dangling jewel references (ASSY-001). Only applies
- * when the movement has frames. Without frames it is a free-floating gear
+ * to PIVOTED shafts, and only when the movement has frames. Without frames it is a free-floating gear
  * sandbox and shafts are not expected to be supported.
  */
 export const bearingRules: Rule = ({ movement, placement }) => {
@@ -75,6 +75,8 @@ export const bearingRules: Rule = ({ movement, placement }) => {
   };
 
   for (const shaft of Object.values(movement.shafts)) {
+    // Studs and carried parts have no bearings of their own (see couplingRules for their checks).
+    if (shaft.support.kind !== "PIVOTED") continue;
     const support = shaftSupport(movement, shaft.id);
     for (const duplicate of support.duplicates) {
       issues.push(

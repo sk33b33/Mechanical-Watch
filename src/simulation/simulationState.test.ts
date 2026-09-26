@@ -20,6 +20,8 @@ function solutionAt(rpm: number): GearTrainSolution {
     shaftAngularVelocity: new Map([[shaftId, rpmToRadPerSecond(rpm)]]),
     unreachableShaftIds: [],
     conflicts: [],
+    mode: "RUNNING",
+    setting: { status: "NOT_APPLICABLE" },
   };
 }
 
@@ -44,6 +46,8 @@ describe("stepSimulation", () => {
       shaftAngularVelocity: new Map([[shaftId, radiansPerSecond(Number.POSITIVE_INFINITY)]]),
       unreachableShaftIds: [],
       conflicts: [],
+      mode: "RUNNING",
+      setting: { status: "NOT_APPLICABLE" },
     };
     expect(() => stepSimulation(createSimulationState(movement), solution, 0.1)).toThrow(
       NonFiniteSimulationStateError,

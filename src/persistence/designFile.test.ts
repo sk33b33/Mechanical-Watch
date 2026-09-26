@@ -129,3 +129,35 @@ describe("autosave", () => {
     expect(writeAutosave(full, demo)).toBe(false);
   });
 });
+
+describe("schema migration v1 → v2", () => {
+  /** A design exactly as schema 1 saved it: flat drive fields, no supports, hands or couplings. */
+  function asV1(movement: Movement): string {
+    const doc = JSON.parse(encodeDesign(movement)) as { movement: Record<string, unknown> };
+    const v1 = { ...doc.movement };
+    const drive = v1.drive as { shaftId: string; angularVelocity: number } | null;
+    Reflect.deleteProperty(v1, "drive");
+    Reflect.deleteProperty(v1, "couplings");
+    v1.shafts = Object.fromEntries(
+      Object.entries(v1.shafts as Record<string, Record<string, unknown>>).map(([id, s]) => {
+        const v1Shaft = { ...s };
+        Reflect.deleteProperty(v1Shaft, "support");
+        Reflect.deleteProperty(v1Shaft, "hand");
+        return [id, v1Shaft];
+      }),
+    );
+    v1.drivingShaftId = drive === null ? null : drive.shaftId;
+    v1.drivingAngularVelocity = drive === null ? 0 : drive.angularVelocity;
+    return JSON.stringify({ ...doc, schemaVersion: 1, movement: v1 });
+  }
+
+  it("opens a v1 design with a prescribed drive unchanged in meaning", () => {
+    // The Phase 2 demo is expressible in v1: pivoted shafts, no hands, no clutches.
+    expect(decodeDesign(asV1(demo))).toEqual(demo);
+  });
+
+  it("opens a v1 design with no drive", () => {
+    const noDrive = { ...demo, drive: null };
+    expect(decodeDesign(asV1(noDrive))).toEqual(noDrive);
+  });
+});
