@@ -99,6 +99,12 @@ export const ASSUMPTIONS = {
     scope: "Viewport",
     status: "Active",
   },
+  "ASM-0017": {
+    summary:
+      "Tolerance analysis is a worst-case (arithmetic) stack of declared limits; distributions are recorded but not used, and untoleranced inputs are taken at nominal and reported as such",
+    scope: "Tolerances",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

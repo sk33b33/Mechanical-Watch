@@ -7,6 +7,7 @@ import type { GearMesh, GearMeshId } from "./gearMesh";
 import type { Frame, FrameId } from "./frame";
 import type { Jewel, JewelId } from "./jewel";
 import type { Coupling, CouplingId } from "./coupling";
+import type { Tolerance, ToleranceId } from "./tolerance";
 import type { ValidationLevel } from "@/reference/validationLevels";
 
 export type MovementId = EntityId<"movement">;
@@ -40,6 +41,8 @@ export interface Movement {
   frames: Record<FrameId, Frame>;
   jewels: Record<JewelId, Jewel>;
   couplings: Record<CouplingId, Coupling>;
+  /** Declared tolerances on entered dimensions (REF-ENG §14). Nominal values stay on the entities. */
+  tolerances: Record<ToleranceId, Tolerance>;
   drive: Drive | null;
   /**
    * The level this design's model targets (REFERENCE_ENGINEERING.md §15).
@@ -64,6 +67,7 @@ export function createMovement(
     frames: {},
     jewels: {},
     couplings: {},
+    tolerances: {},
     drive: null,
   };
 }
@@ -90,6 +94,31 @@ export function addJewel(movement: Movement, jewel: Jewel): Movement {
 
 export function addCoupling(movement: Movement, coupling: Coupling): Movement {
   return { ...movement, couplings: { ...movement.couplings, [coupling.id]: coupling } };
+}
+
+/**
+ * Declares a tolerance, replacing any earlier one on the same dimension of
+ * the same entity (a dimension has at most one tolerance).
+ */
+export function setTolerance(movement: Movement, tolerance: Tolerance): Movement {
+  const kept = Object.fromEntries(
+    Object.entries(movement.tolerances).filter(
+      ([, t]) => !(t.entityId === tolerance.entityId && t.dimension === tolerance.dimension),
+    ),
+  ) as Record<ToleranceId, Tolerance>;
+  return { ...movement, tolerances: { ...kept, [tolerance.id]: tolerance } };
+}
+
+export function updateTolerance(
+  movement: Movement,
+  toleranceId: ToleranceId,
+  patch: Partial<Omit<Tolerance, "id" | "type" | "entityId" | "dimension">>,
+): Movement {
+  const existing = movement.tolerances[toleranceId];
+  if (existing === undefined) {
+    throw new Error(`Unknown tolerance id: ${toleranceId}`);
+  }
+  return { ...movement, tolerances: { ...movement.tolerances, [toleranceId]: { ...existing, ...patch } } };
 }
 
 export function updateFrame(

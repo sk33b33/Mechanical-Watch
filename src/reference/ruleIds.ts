@@ -36,6 +36,8 @@ export const RULE_IDS = [
   "TIME-003",
   "TIME-004",
   "SET-001",
+  "TOL-001",
+  "TOL-002",
   "VAL-001",
 ] as const;
 

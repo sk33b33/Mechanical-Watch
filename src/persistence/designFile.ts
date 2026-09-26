@@ -5,6 +5,7 @@ import type { Shaft, ShaftPlacement, ShaftSupport } from "@/domain/shaft";
 import type { Gear } from "@/domain/gear";
 import type { GearMesh } from "@/domain/gearMesh";
 import type { Jewel } from "@/domain/jewel";
+import type { Tolerance } from "@/domain/tolerance";
 import type { Vec2 } from "@/math/vec2";
 import type { Length } from "@/units/length";
 import type { Angle } from "@/units/angle";
@@ -31,7 +32,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 2;
+export const DESIGN_SCHEMA_VERSION = 3;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -65,6 +66,12 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
         ? null
         : { kind: "PRESCRIBED", shaftId: drivingShaftId, angularVelocity: drivingAngularVelocity };
     return { ...doc, schemaVersion: 2, movement: { ...rest, shafts, couplings: {}, drive } };
+  },
+  /** v2 → v3: movements gain `tolerances`, empty (v2 had no tolerance model). */
+  2: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement)) return doc;
+    return { ...doc, schemaVersion: 3, movement: { ...movement, tolerances: {} } };
   },
 };
 
@@ -243,6 +250,33 @@ const jewel: Decoder<Jewel> = (value, path) => {
   };
 };
 
+const tolerance: Decoder<Tolerance> = (value, path) => {
+  const o = object(value, path);
+  return {
+    id: field(o, "id", id<Tolerance["id"]>(), path),
+    type: field(o, "type", literal("Tolerance"), path),
+    entityId: field(o, "entityId", id<Tolerance["entityId"]>(), path),
+    dimension: field(
+      o,
+      "dimension",
+      oneOf([
+        "SHAFT_PIVOT_LOWER",
+        "SHAFT_PIVOT_UPPER",
+        "SHAFT_SHOULDER_SPAN",
+        "JEWEL_BORE",
+        "FRAME_Z_BOTTOM",
+        "FRAME_THICKNESS",
+      ]),
+      path,
+    ),
+    lowerDeviation: field(o, "lowerDeviation", length, path),
+    upperDeviation: field(o, "upperDeviation", length, path),
+    distribution: field(o, "distribution", oneOf(["NOT_STATED", "UNIFORM", "NORMAL"]), path),
+    source: field(o, "source", nullable(string), path),
+    validationScope: field(o, "validationScope", string, path),
+  };
+};
+
 const movement: Decoder<Movement> = (value, path) => {
   const o = object(value, path);
   return {
@@ -256,6 +290,7 @@ const movement: Decoder<Movement> = (value, path) => {
     gearMeshes: field(o, "gearMeshes", entityRecord(gearMesh), path),
     jewels: field(o, "jewels", entityRecord(jewel), path),
     couplings: field(o, "couplings", entityRecord(coupling), path),
+    tolerances: field(o, "tolerances", entityRecord(tolerance), path),
     drive: field(o, "drive", nullable(drive), path),
   };
 };

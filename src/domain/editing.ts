@@ -7,6 +7,7 @@ import { createGear, type Gear, type GearId } from "./gear";
 import { createGearMesh, type GearMesh, type GearMeshId } from "./gearMesh";
 import { createJewel, type BearingKind, type Jewel, type JewelId } from "./jewel";
 import { createFrictionClutch, type Coupling, type CouplingId } from "./coupling";
+import type { ToleranceId } from "./tolerance";
 
 /**
  * Structural editing: creating and deleting parts.
@@ -94,7 +95,8 @@ export interface RemovalResult {
  * Removes an entity together with the parts it owns:
  * - a frame owns the bearings seated in it;
  * - a shaft owns its gears, bearings and clutches (and is no longer the drive);
- * - a gear owns the meshes it takes part in.
+ * - a gear owns the meshes it takes part in;
+ * - every entity owns the tolerances declared on its dimensions.
  * References that are not ownership, such as another shaft's placement
  * constraint pointing at a removed shaft or mesh, are left in place and
  * reported by validation (ASSY-001). Nothing else is changed silently.
@@ -127,7 +129,14 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
     if (shafts.has(coupling.shaftAId) || shafts.has(coupling.shaftBId)) couplings.add(coupling.id);
   }
 
-  const removed = new Set<string>([...frames, ...shafts, ...gears, ...meshes, ...jewels, ...couplings]);
+  const tolerances = new Set<ToleranceId>();
+  if (id in movement.tolerances) tolerances.add(id as ToleranceId);
+  const owners = new Set<string>([...frames, ...shafts, ...jewels]);
+  for (const tolerance of Object.values(movement.tolerances)) {
+    if (owners.has(tolerance.entityId)) tolerances.add(tolerance.id);
+  }
+
+  const removed = new Set<string>([...frames, ...shafts, ...gears, ...meshes, ...jewels, ...couplings, ...tolerances]);
   const drive = movement.drive;
   return {
     movement: {
@@ -138,6 +147,7 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
       gearMeshes: without(movement.gearMeshes, removed),
       jewels: without(movement.jewels, removed),
       couplings: without(movement.couplings, removed),
+      tolerances: without(movement.tolerances, removed),
       drive: drive?.kind === "PRESCRIBED" && removed.has(drive.shaftId) ? null : drive,
     },
     removedIds: [...removed] as EntityId[],

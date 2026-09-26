@@ -57,4 +57,7 @@ TIME-004 Under a prescribed drive, the hand rates are reported relative to nomin
 
 SET-001 The hands must be settable without turning the rest of the train (a slipping clutch must isolate them).
 
+TOL-001 A declared tolerance must apply to an existing dimension once, with finite limits, lower ≤ upper, and a positive lower limit for a size.
+TOL-002 A clearance that is positive at nominal should stay positive at its worst-case declared tolerance limits.
+
 VAL-001 The validation engine must complete; if it cannot, the design cannot be represented safely.

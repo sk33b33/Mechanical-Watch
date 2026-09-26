@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { millimetres } from "@/units/length";
-import { updateGear, updateShaft, type Movement } from "@/domain/movement";
+import { setTolerance, updateGear, updateShaft, type Movement } from "@/domain/movement";
+import { createTolerance } from "@/domain/tolerance";
 import { createDemoMovement } from "@/app/demoMovement";
 import { analyzeMovement } from "@/analysis/analyzeMovement";
 import { decodeDesign, DESIGN_FORMAT, DESIGN_SCHEMA_VERSION, DesignFileError, encodeDesign } from "./designFile";
@@ -130,6 +131,25 @@ describe("autosave", () => {
   });
 });
 
+describe("schema migration v2 → v3", () => {
+  it("opens a v2 design with no tolerances", () => {
+    const doc = rawDoc() as { movement: Record<string, unknown> };
+    const v2 = { ...doc.movement };
+    Reflect.deleteProperty(v2, "tolerances");
+    expect(decodeDesign(JSON.stringify({ ...doc, schemaVersion: 2, movement: v2 }))).toEqual(demo);
+  });
+
+  it("round-trips a declared tolerance, including an unstated source", () => {
+    const shaft = Object.values(demo.shafts)[1];
+    if (shaft === undefined) throw new Error("no shaft");
+    const m = setTolerance(
+      updateShaft(demo, shaft.id, { shoulderSpan: millimetres(3) }),
+      createTolerance({ entityId: shaft.id, dimension: "SHAFT_SHOULDER_SPAN", lowerDeviation: millimetres(-0.01), upperDeviation: millimetres(0) }),
+    );
+    expect(decodeDesign(encodeDesign(m))).toEqual(m);
+  });
+});
+
 describe("schema migration v1 → v2", () => {
   /** A design exactly as schema 1 saved it: flat drive fields, no supports, hands or couplings. */
   function asV1(movement: Movement): string {
@@ -138,6 +158,7 @@ describe("schema migration v1 → v2", () => {
     const drive = v1.drive as { shaftId: string; angularVelocity: number } | null;
     Reflect.deleteProperty(v1, "drive");
     Reflect.deleteProperty(v1, "couplings");
+    Reflect.deleteProperty(v1, "tolerances");
     v1.shafts = Object.fromEntries(
       Object.entries(v1.shafts as Record<string, Record<string, unknown>>).map(([id, s]) => {
         const v1Shaft = { ...s };

@@ -16,6 +16,7 @@ import {
 } from "@/domain/movement";
 import { newFrictionClutch, newGear, newJewel } from "@/domain/editing";
 import { bearingInnerSpan, endshake, shaftSupport, sideShake } from "@/assembly/assemblyGeometry";
+import { endshakeStack, sideShakeStack } from "@/assembly/toleranceAnalysis";
 import { formatPeriod } from "@/kinematics/timeDisplay";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import {
@@ -35,6 +36,7 @@ import {
   textRow,
 } from "./fields";
 import { deleteRow, meshLabel, type Section } from "./common";
+import { stackText, stackTitle, toleranceSection } from "./toleranceSection";
 
 interface EligibleMesh {
   mesh: GearMesh;
@@ -321,7 +323,16 @@ export function shaftSection(store: AppStore, shaft: Shaft): Section {
         "Frame inner faces; bearing faces assumed flush (ASM-0011)."));
       out.push(readonlyRow("Endshake", derivedText(endshake(movement, shaft, support)),
         "Space between bearings − shoulder span (ASM-0011). No sourced acceptable range (BRG-005)."));
+      if (Object.keys(movement.tolerances).length > 0) {
+        const worst = [
+          ["Side shake, lower (tol.)", sideShakeStack(movement, shaft, "LOWER", support.lower)],
+          ["Side shake, upper (tol.)", sideShakeStack(movement, shaft, "UPPER", support.upper)],
+          ["Endshake (tol.)", endshakeStack(movement, shaft, support)],
+        ] as const;
+        for (const [label, result] of worst) out.push(readonlyRow(label, stackText(result), stackTitle(result)));
+      }
     }
+    out.push(...toleranceSection(store, shaft.id));
   }
 
   out.push(deleteRow(store, shaft.id, "Delete arbor",

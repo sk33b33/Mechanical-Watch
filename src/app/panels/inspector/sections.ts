@@ -20,6 +20,7 @@ import {
 import { emptyOutline, newGearMesh } from "@/domain/editing";
 import { isValidModule, isValidToothCount, pitchLineVelocity } from "@/math/gearMath";
 import { frameZRange, sideShake } from "@/assembly/assemblyGeometry";
+import { sideShakeStack } from "@/assembly/toleranceAnalysis";
 import { VALIDATION_LEVELS, VALIDATION_LEVEL_LABELS, levelRank } from "@/reference/validationLevels";
 import {
   actionButton,
@@ -39,6 +40,7 @@ import {
   textRow,
 } from "./fields";
 import { deleteRow, positive, type Section } from "./common";
+import { stackText, stackTitle, toleranceSection } from "./toleranceSection";
 
 /** The highest level any model in this app can currently support (kinematic gear train). */
 const HIGHEST_MODELED_LEVEL = "L2_KINEMATIC";
@@ -206,7 +208,13 @@ export function jewelSection(store: AppStore, jewel: Jewel): Section {
     }),
     readonlyRow("Side shake", shaft === undefined ? "—" : derivedText(sideShake(shaft, jewel.end, jewel)),
       "Bore − pivot diameter, diametral (ASM-0013). Not judged (BRG-005)."),
+    ...(shaft === undefined || Object.keys(movement.tolerances).length === 0
+      ? []
+      : ((result) => [readonlyRow("Side shake (tol.)", stackText(result), stackTitle(result))])(
+          sideShakeStack(movement, shaft, jewel.end, jewel),
+        )),
     readonlyRow("Outer size", "not modeled (drawn at a placeholder size, ASM-0012)"),
+    ...toleranceSection(store, jewel.id),
     deleteRow(store, jewel.id, "Delete bearing", "The shaft end becomes unsupported."),
   ];
 }
@@ -303,6 +311,7 @@ export function frameSection(store: AppStore, frame: Frame): Section {
     readonlyRow("Top height", Number.isFinite(range.hi) ? formatMm(range.hi, 3) : "—"),
     readonlyRow("Bearings", String(bearings)),
     readonlyRow("Model", "flat slab (ASM-0010)", "Pillars, screws, recesses and sinks are not modeled."),
+    ...toleranceSection(store, frame.id),
     deleteRow(store, frame.id, "Delete frame", "Also removes the bearings seated in it."),
   ];
 }
