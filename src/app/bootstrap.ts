@@ -1,5 +1,5 @@
 import { AppStore } from "./store";
-import { createDemoMovement } from "./demoMovement";
+import { createTeachingMovement } from "./teachingMovement";
 import { Viewport } from "@/viewport/viewport";
 import { browserStore, loadAutosave, writeAutosave } from "@/persistence/autosave";
 import { mountHeader } from "./panels/header";
@@ -27,7 +27,7 @@ export function bootstrapApp(root: HTMLElement): void {
 
   const storage = browserStore();
   const saved = loadAutosave(storage);
-  const store = new AppStore(saved.status === "LOADED" ? saved.movement : createDemoMovement());
+  const store = new AppStore(saved.status === "LOADED" ? saved.movement : createTeachingMovement());
 
   mountHeader(header, store);
   const toolbar = mountToolbar(toolbarEl, store);
@@ -38,7 +38,7 @@ export function bootstrapApp(root: HTMLElement): void {
 
   if (saved.status === "UNREADABLE") {
     toolbar.notify(
-      `Your autosaved design could not be read and was set aside, not deleted. Showing the demo instead. (${saved.reason})`,
+      `Your autosaved design could not be read and was set aside, not deleted. Showing the teaching movement instead. (${saved.reason})`,
       "error",
     );
   }

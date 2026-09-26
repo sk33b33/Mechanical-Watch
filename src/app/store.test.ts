@@ -38,10 +38,7 @@ describe("AppStore simulation playback", () => {
     const drive = drivenShaftId(store.movement);
     if (drive === null) throw new Error("no drive");
     // Force an infinite velocity past the solver's guard to exercise the halt path.
-    store.analysis = {
-      ...store.analysis,
-      train: { ...store.analysis.train, shaftAngularVelocity: new Map([[drive, radiansPerSecond(Infinity)]]) },
-    };
+    store.simulationTrain = { ...store.simulationTrain, shaftAngularVelocity: new Map([[drive, radiansPerSecond(Infinity)]]) };
     store.tick(0.1);
     expect(store.simulationHalted).toBe(true);
     expect(store.issues.some((i) => i.id === "SIM-001:halted" && i.severity === "blocker")).toBe(true);
@@ -119,5 +116,24 @@ describe("AppStore undo/redo", () => {
     expect(store.movement.shafts[arbor.id]).toBeUndefined();
     store.undo();
     expect(store.movement.shafts[arbor.id]).toBeDefined();
+  });
+});
+
+describe("AppStore hand setting", () => {
+  it("in setting mode the hands move fast while the going train keeps time", async () => {
+    const { createTeachingMovement } = await import("./teachingMovement");
+    const store = new AppStore(createTeachingMovement());
+    const id = (name: string): keyof typeof store.movement.shafts => {
+      const s = Object.values(store.movement.shafts).find((x) => x.name === name);
+      if (s === undefined) throw new Error(name);
+      return s.id;
+    };
+    store.setKinematicMode("HAND_SETTING", 1);
+    store.tick(0.25);
+    // Minutes hand at one turn per second: a quarter turn. The centre arbor: 0.25 s at 1 rev/h.
+    expect(store.simulation.shaftAngle[id("Cannon pinion")]).toBeCloseTo(Math.PI / 2, 9);
+    expect(store.simulation.shaftAngle[id("Centre arbor")]).toBeCloseTo((2 * Math.PI * 0.25) / 3600, 12);
+    store.setKinematicMode("RUNNING");
+    expect(store.simulationTrain).toBe(store.analysis.train);
   });
 });

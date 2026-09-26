@@ -12,7 +12,11 @@ export const NUMERICAL_PARAMETERS = {
   solverRelativeTolerance: 1e-6,
   /** Fixed simulation timestep, in seconds (SIM-002). */
   simulationTimestepSeconds: 1 / 240,
-  /** Upper bound on fixed steps per advance call, so a stalled tab cannot freeze the page. */
-  maxSimulationStepsPerAdvance: 240,
+  /**
+   * Upper bound on fixed steps per advance call, so a stalled tab cannot
+   * freeze the page. 960 steps = 4 simulated seconds per frame, enough for
+   * 60× playback down to 15 frames per second.
+   */
+  maxSimulationStepsPerAdvance: 960,
   assumption: "ASM-0008" satisfies AssumptionId,
 } as const;

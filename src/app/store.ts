@@ -4,6 +4,8 @@ import { removeEntity } from "@/domain/editing";
 import { findEntity } from "@/domain/lookup";
 import { analyzeMovement, EMPTY_ANALYSIS, type MovementAnalysis } from "@/analysis/analyzeMovement";
 import type { ValidationIssue } from "@/validation/validationIssue";
+import { solveGearTrain, type GearTrainSolution, type KinematicMode } from "@/kinematics/solveGearTrain";
+import { radiansPerSecond } from "@/units/angularVelocity";
 import {
   advanceSimulation,
   createSimulationState,
@@ -13,7 +15,13 @@ import {
 
 const HISTORY_LIMIT = 200;
 
-/** Playback speeds offered in the UI. Above 60× a 60 fps display would hit the per-frame step cap. */
+/**
+ * Hand-setting speed: the minutes hand turns once per real second (one
+ * hour per second). A UI choice, not a property of any mechanism.
+ */
+const HAND_SETTING_ANGULAR_VELOCITY = 2 * Math.PI;
+
+/** Playback speeds offered in the UI; 60× stays within the per-frame step cap down to 15 fps. */
 export const PLAYBACK_RATES = [0.1, 1, 10, 60] as const;
 export type PlaybackRate = (typeof PLAYBACK_RATES)[number];
 
@@ -96,6 +104,7 @@ export class AppStore {
         ],
       };
     }
+    this.updateSimulationTrain();
     this.issues =
       this.simulationIssue === null ? this.analysis.issues : [...this.analysis.issues, this.simulationIssue];
   }
@@ -173,6 +182,31 @@ export class AppStore {
   /** Simulation playback (UI state, not part of the design). */
   playing = true;
   playbackRate: PlaybackRate = 1;
+  /** Running, or setting the hands (clutches slip). UI state, not part of the design. */
+  kinematicMode: KinematicMode = "RUNNING";
+  settingDirection: 1 | -1 = 1;
+  /**
+   * The solution the simulation integrates: the running solve from the
+   * analysis, or a hand-setting solve. Validation always uses the running solve.
+   */
+  simulationTrain: GearTrainSolution = EMPTY_ANALYSIS.train;
+
+  setKinematicMode(mode: KinematicMode, direction: 1 | -1 = this.settingDirection): void {
+    this.kinematicMode = mode;
+    this.settingDirection = direction;
+    this.updateSimulationTrain();
+    this.notify();
+  }
+
+  private updateSimulationTrain(): void {
+    this.simulationTrain =
+      this.kinematicMode === "RUNNING"
+        ? this.analysis.train
+        : solveGearTrain(this.movement, {
+            mode: "HAND_SETTING",
+            settingAngularVelocity: radiansPerSecond(this.settingDirection * HAND_SETTING_ANGULAR_VELOCITY),
+          });
+  }
 
   setPlaying(playing: boolean): void {
     this.playing = playing;
@@ -186,7 +220,7 @@ export class AppStore {
 
   /** Advances exactly one fixed simulation step, whether playing or paused. */
   stepOnce(): void {
-    this.runSimulation(() => stepSimulation(this.simulation, this.analysis.train));
+    this.runSimulation(() => stepSimulation(this.simulation, this.simulationTrain));
     this.notify();
   }
 
@@ -208,7 +242,7 @@ export class AppStore {
   tick(elapsedRealSeconds: number): void {
     if (!this.playing) return;
     this.runSimulation(() =>
-      advanceSimulation(this.simulation, this.analysis.train, elapsedRealSeconds * this.playbackRate),
+      advanceSimulation(this.simulation, this.simulationTrain, elapsedRealSeconds * this.playbackRate),
     );
   }
 

@@ -3,6 +3,9 @@ import type { Movement } from "@/domain/movement";
 import { decodeDesign, DesignFileError, encodeDesign } from "@/persistence/designFile";
 import { createEmptyMovement } from "@/domain/editing";
 import { createDemoMovement } from "@/app/demoMovement";
+import { createTeachingMovement } from "@/app/teachingMovement";
+import { readHand } from "@/kinematics/timeDisplay";
+import type { HandFunction } from "@/domain/shaft";
 
 export interface Toolbar {
   element: HTMLElement;
@@ -55,7 +58,12 @@ export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
 
   const newSelect = document.createElement("select");
   newSelect.title = "Start a new design. The current one can be brought back with Undo.";
-  for (const [value, label] of [["", "New…"], ["empty", "Empty movement"], ["demo", "Demo template"]] as const) {
+  for (const [value, label] of [
+    ["", "New…"],
+    ["empty", "Empty movement"],
+    ["teaching", "Teaching movement (going train + motion works)"],
+    ["demo", "Gear-train demo (three arbors)"],
+  ] as const) {
     const option = document.createElement("option");
     option.value = value;
     option.textContent = label;
@@ -65,9 +73,9 @@ export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
     const choice = newSelect.value;
     newSelect.value = "";
     if (choice === "") return;
-    store.load(choice === "empty" ? createEmptyMovement() : createDemoMovement());
+    store.load(choice === "empty" ? createEmptyMovement() : choice === "teaching" ? createTeachingMovement() : createDemoMovement());
     toolbar.notify(
-      `Started ${choice === "empty" ? "an empty movement" : "from the demo template"}. Undo (Ctrl+Z) brings back the previous design.`,
+      `Started ${choice === "empty" ? "an empty movement" : "from a template"}. Undo (Ctrl+Z) brings back the previous design.`,
       "info",
     );
   });
@@ -128,7 +136,33 @@ export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
   const clock = document.createElement("span");
   clock.className = "toolbar-clock";
   clock.title = "Simulated time. Fixed-step kinematic simulation (SIM-002).";
+  const dial = document.createElement("span");
+  dial.className = "toolbar-clock";
+  dial.title = "Time shown by the simulated hand angles, each hand read on its own (ASM-0014). Starts at 12:00:00.";
+  const modeSelect = document.createElement("select");
+  modeSelect.title = "Running: clutches engaged. Setting: friction clutches slip, the hands are turned (1 h per second) while the going train keeps running (ASM-0015).";
+  for (const [value, label] of [["RUNNING", "Running"], ["SET+", "Set hands forward"], ["SET-", "Set hands backward"]] as const) {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = label;
+    modeSelect.appendChild(option);
+  }
+  modeSelect.addEventListener("change", () => {
+    const value = modeSelect.value;
+    if (value === "RUNNING") store.setKinematicMode("RUNNING");
+    else store.setKinematicMode("HAND_SETTING", value === "SET+" ? 1 : -1);
+    const setting = store.simulationTrain.setting;
+    if (setting.status === "UNAVAILABLE") {
+      toolbar.notify(
+        setting.reason === "NO_MINUTES_HAND"
+          ? "Hand setting needs exactly one arbor carrying the minutes hand."
+          : "The hands can't be set on their own in this design (see SET-001 in the validation panel).",
+        "error",
+      );
+    }
+  });
   simGroup.append(
+    modeSelect,
     playButton,
     button("Step", "Advance one fixed simulation step", () => {
       store.stepOnce();
@@ -138,6 +172,7 @@ export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
     }),
     rateSelect,
     clock,
+    dial,
   );
 
   const editGroup = document.createElement("div");
@@ -166,10 +201,20 @@ export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
     redoButton.disabled = !store.canRedo;
     playButton.textContent = store.playing ? "Pause" : "Play";
     rateSelect.value = String(store.playbackRate);
+    modeSelect.value = store.kinematicMode === "RUNNING" ? "RUNNING" : store.settingDirection === 1 ? "SET+" : "SET-";
+  };
+  const handReading = (hand: HandFunction): number | null => {
+    const shafts = Object.values(store.movement.shafts).filter((sh) => sh.hand === hand);
+    const only = shafts.length === 1 ? shafts[0] : undefined;
+    return only === undefined ? null : readHand(hand, store.simulation.shaftAngle[only.id] ?? 0);
   };
   const refreshClock = (): void => {
     const state = store.simulationHalted ? "halted" : store.playing ? "" : "paused";
     clock.textContent = `t = ${store.simulation.time.toFixed(3)} s${state === "" ? "" : ` (${state})`}`;
+    const [h, m, sec] = (["HOURS", "MINUTES", "SECONDS"] as const).map(handReading);
+    const two = (v: number | null | undefined): string => (v === null || v === undefined ? "--" : String(Math.floor(v)).padStart(2, "0"));
+    const hours = h === null || h === undefined ? "--" : String(Math.floor(h) === 0 ? 12 : Math.floor(h));
+    dial.textContent = `Dial ${hours}:${two(m)}:${two(sec)}`;
   };
   refreshControls();
   refreshClock();

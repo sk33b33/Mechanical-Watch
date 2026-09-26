@@ -13,6 +13,35 @@ export const ASSEMBLY_VISUALIZATION = {
   assumption: "ASM-0012" satisfies AssumptionId,
 } as const;
 
+/**
+ * Hands are not part of the engineering model (ASM-0016): they are drawn
+ * only to show each hand arbor's simulated angle. Pointing along +Y at
+ * angle 0 means 12 o'clock. Lengths, widths and stacking gaps are visual.
+ */
+export const HAND_VISUALIZATION = {
+  HOURS: { lengthMetres: 5e-3, widthMetres: 0.6e-3, gapBelowMovementMetres: 0.6e-3 },
+  MINUTES: { lengthMetres: 8e-3, widthMetres: 0.4e-3, gapBelowMovementMetres: 0.9e-3 },
+  SECONDS: { lengthMetres: 3e-3, widthMetres: 0.2e-3, gapBelowMovementMetres: 0.6e-3 },
+  thicknessMetres: 0.08e-3,
+  assumption: "ASM-0016" satisfies AssumptionId,
+} as const;
+
+/** A tapered hand along +Y from the axis, with a short tail, spanning z ∈ [0, thickness]. */
+export function createHandGeometry(hand: keyof Omit<typeof HAND_VISUALIZATION, "thicknessMetres" | "assumption">): THREE.ExtrudeGeometry {
+  const { lengthMetres: l, widthMetres: w } = HAND_VISUALIZATION[hand];
+  const tail = l * 0.18;
+  const shape = new THREE.Shape();
+  shape.moveTo(-w / 2, -tail);
+  shape.lineTo(w / 2, -tail);
+  shape.lineTo(w * 0.3, l);
+  shape.lineTo(-w * 0.3, l);
+  shape.closePath();
+  const hub = new THREE.Path();
+  shape.holes.push(hub);
+  hub.absarc(0, 0, w * 0.2, 0, Math.PI * 2, true);
+  return new THREE.ExtrudeGeometry(shape, { depth: HAND_VISUALIZATION.thicknessMetres, bevelEnabled: false });
+}
+
 export function outlineShape(outline: Outline): THREE.Shape {
   const shape = new THREE.Shape();
   if (outline.kind === "CIRCLE") {

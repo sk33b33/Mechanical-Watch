@@ -81,7 +81,11 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
     if (Object.keys(movement.shafts).length === 0) container.appendChild(empty("No arbors yet."));
     const driven = drivenShaftId(movement);
     for (const shaft of Object.values(movement.shafts)) {
-      const driving = shaft.id === driven ? "(drive)" : shaft.hand === null ? undefined : `(${shaft.hand.toLowerCase()} hand)`;
+      const tags = [
+        ...(shaft.hand === null ? [] : [`${shaft.hand.toLowerCase()} hand`]),
+        ...(shaft.id === driven ? [movement.drive?.kind === "NOMINAL_TIME" ? "nominal time" : "drive"] : []),
+      ];
+      const driving = tags.length === 0 ? undefined : `(${tags.join(", ")})`;
       container.appendChild(item(shaft.name, shaft.id, 0, driving));
       for (const gear of Object.values(movement.gears).filter((g) => g.shaftId === shaft.id)) {
         container.appendChild(item(gear.name, gear.id, 1, Number.isNaN(gear.toothCount) ? "no tooth count" : `${String(gear.toothCount)} teeth`));

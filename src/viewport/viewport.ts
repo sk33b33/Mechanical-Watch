@@ -6,12 +6,15 @@ import type { ShaftId } from "@/domain/shaft";
 import { createGearGeometry } from "@/geometry/gearGeometry";
 import {
   ASSEMBLY_VISUALIZATION,
+  HAND_VISUALIZATION,
   createFrameGeometry,
+  createHandGeometry,
   createZCylinder,
 } from "@/geometry/assemblyGeometry3d";
 import { arborZRange, frameZRange, isCompleteFrame } from "@/assembly/assemblyGeometry";
 
 type PickKind = "gear" | "jewel" | "arbor" | "frame";
+type ViewSide = "BRIDGE" | "DIAL";
 
 /** When several objects are under the pointer, the most specific wins. */
 const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, arbor: 2, frame: 3 };
@@ -24,6 +27,7 @@ const COLORS = {
   plainHole: 0x8a8a8a,
   frame: 0x5a6672,
   frameEdge: 0x8fa3b8,
+  hand: { HOURS: 0xe6e9ec, MINUTES: 0xe6e9ec, SECONDS: 0xe0a95c },
 } as const;
 
 const FRAME_OPACITY = { normal: 0.22, selected: 0.4 } as const;
@@ -49,7 +53,8 @@ export class Viewport {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
   private readonly camera: THREE.PerspectiveCamera;
-  private readonly controls: OrbitControls;
+  private controls: OrbitControls;
+  private view: ViewSide = "BRIDGE";
   private readonly content = new THREE.Group();
   private readonly shaftGroups = new Map<ShaftId, THREE.Group>();
   private readonly pickables: THREE.Mesh[] = [];
@@ -73,9 +78,7 @@ export class Viewport {
     container.appendChild(this.renderer.domElement);
 
     this.camera = new THREE.PerspectiveCamera(35, 1, 1e-4, 1);
-    this.camera.up.set(0, 0, 1);
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
+    this.controls = this.createControls();
 
     this.scene.background = new THREE.Color(0x0b0d10);
     this.scene.add(new THREE.AmbientLight(0xffffff, 0.55));
@@ -87,6 +90,7 @@ export class Viewport {
     this.scene.add(rimLight);
     this.scene.add(this.content);
 
+    container.appendChild(this.createViewButtons());
     this.renderer.domElement.addEventListener("pointerdown", this.handlePointerDown);
     this.renderer.domElement.addEventListener("pointerup", this.handlePointerUp);
     this.resizeObserver = new ResizeObserver(() => {
@@ -117,7 +121,45 @@ export class Viewport {
     this.renderer.setSize(clientWidth, clientHeight);
   }
 
-  /** Fits an oblique view to the content. Called once, so the user's view survives edits. */
+  /**
+   * OrbitControls fixes its orbit axis from camera.up when constructed, so
+   * switching between the bridge-side view (Z up) and the dial view (+Y up,
+   * 12 o'clock at the top) recreates the controls.
+   */
+  private createControls(): OrbitControls {
+    this.camera.up.set(0, this.view === "DIAL" ? 1 : 0, this.view === "DIAL" ? 0 : 1);
+    const controls = new OrbitControls(this.camera, this.renderer.domElement);
+    controls.enableDamping = true;
+    return controls;
+  }
+
+  private createViewButtons(): HTMLElement {
+    const bar = document.createElement("div");
+    bar.className = "viewport-views";
+    for (const [view, label, title] of [
+      ["BRIDGE", "Bridge side", "Oblique view from the bridge side"],
+      ["DIAL", "Dial side", "Straight onto the dial side, 12 o'clock at the top"],
+    ] as const) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = label;
+      button.title = title;
+      button.addEventListener("click", () => {
+        this.setView(view);
+      });
+      bar.appendChild(button);
+    }
+    return bar;
+  }
+
+  setView(view: ViewSide): void {
+    this.view = view;
+    this.controls.dispose();
+    this.controls = this.createControls();
+    this.frameCamera();
+  }
+
+  /** Fits the view to the content. Called on load and view change, so the user's view survives edits. */
   private frameCamera(): void {
     const box = new THREE.Box3().setFromObject(this.content);
     if (box.isEmpty()) {
@@ -126,8 +168,10 @@ export class Viewport {
     }
     const sphere = box.getBoundingSphere(new THREE.Sphere());
     const dist = sphere.radius / Math.sin(THREE.MathUtils.degToRad(this.camera.fov / 2));
-    const direction = new THREE.Vector3(0.35, -0.75, 0.9).normalize();
-    this.camera.position.copy(sphere.center).addScaledVector(direction, dist * 0.7);
+    // The dial is on the −Z side (ASM-0014): look up at it from below.
+    const direction =
+      this.view === "DIAL" ? new THREE.Vector3(0, 0, -1) : new THREE.Vector3(0.35, -0.75, 0.9).normalize();
+    this.camera.position.copy(sphere.center).addScaledVector(direction, dist * (this.view === "DIAL" ? 0.8 : 0.7));
     this.controls.target.copy(sphere.center);
     this.controls.update();
   }
@@ -206,6 +250,20 @@ export class Viewport {
       const mesh = new THREE.Mesh(geometry, material(COLORS.gear, { metalness: 0.55, roughness: 0.4 }));
       mesh.position.z = gear.zCentre;
       this.addPickable(group, mesh, { kind: "gear", entityId: gear.id, baseColor: COLORS.gear });
+    }
+
+    // Hands sit below the lowest part of the movement, on the dial side (ASM-0016).
+    const lowest = Math.min(
+      0,
+      ...Object.values(movement.gears).filter((g) => Number.isFinite(g.zCentre) && Number.isFinite(g.thickness)).map((g) => g.zCentre - g.thickness / 2),
+      ...Object.values(movement.frames).filter(isCompleteFrame).map((f) => f.zBottom),
+    );
+    for (const shaft of Object.values(movement.shafts)) {
+      const group = this.shaftGroups.get(shaft.id);
+      if (shaft.hand === null || group === undefined) continue;
+      const mesh = new THREE.Mesh(createHandGeometry(shaft.hand), material(COLORS.hand[shaft.hand], { metalness: 0.6, roughness: 0.3 }));
+      mesh.position.z = lowest - HAND_VISUALIZATION[shaft.hand].gapBelowMovementMetres - HAND_VISUALIZATION.thicknessMetres;
+      this.addPickable(group, mesh, { kind: "arbor", entityId: shaft.id, baseColor: COLORS.hand[shaft.hand] });
     }
 
     for (const jewel of Object.values(movement.jewels)) {

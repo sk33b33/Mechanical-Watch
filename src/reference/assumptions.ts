@@ -93,6 +93,12 @@ export const ASSUMPTIONS = {
     scope: "Motion works / hand setting",
     status: "Active",
   },
+  "ASM-0016": {
+    summary:
+      "Hands and dial are not modeled; hands are drawn only as indicators of their arbor's simulated angle (length, shape and stacking are visual)",
+    scope: "Viewport",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

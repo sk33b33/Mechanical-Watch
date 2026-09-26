@@ -22,6 +22,7 @@ Machine-readable equivalent: `src/reference/assumptions.ts`. A test
 | ASM-0013 | Side shake is reported as diametral clearance (bore − pivot diameter); the horological convention is still to be confirmed against a source | Bearings / side shake | Active |
 | ASM-0014 | Time display uses a 12-hour dial on the −Z side of the mainplate; hands turn clockwise seen from the dial (hours 1 rev/12 h, minutes 1 rev/h, seconds 1 rev/min, by definition) | Time display | Active |
 | ASM-0015 | A friction clutch is kinematic only: fully engaged while running, freely slipping while setting the hands; slip torque is not modeled, and the going train keeps running during setting (no stop-seconds) | Motion works / hand setting | Active |
+| ASM-0016 | Hands and dial are not modeled; hands are drawn only as indicators of their arbor's simulated angle (length, shape and stacking are visual) | Viewport | Active |
 
 Rules:
 1. Never hide an assumption.

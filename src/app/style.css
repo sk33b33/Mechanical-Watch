@@ -408,3 +408,19 @@ button.danger:hover:not(:disabled) {
 .point-row label {
   flex: 1;
 }
+
+.viewport-views {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+}
+
+.toolbar-notice[hidden] {
+  display: none;
+}
+
+.toolbar select {
+  max-width: 190px;
+}
