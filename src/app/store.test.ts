@@ -44,7 +44,7 @@ describe("AppStore simulation playback", () => {
     expect(store.issues.some((i) => i.id === "SIM-001:halted" && i.severity === "blocker")).toBe(true);
     store.tick(0.1);
     expect(store.simulation.stepCount).toBe(0);
-    store.edit((m) => ({ ...m }));
+    store.edit((m) => ({ ...m, name: `${m.name} (edited)` }));
     expect(store.simulationHalted).toBe(false);
     expect(store.issues.some((i) => i.id === "SIM-001:halted")).toBe(false);
   });
@@ -116,6 +116,17 @@ describe("AppStore undo/redo", () => {
     expect(store.movement.shafts[arbor.id]).toBeUndefined();
     store.undo();
     expect(store.movement.shafts[arbor.id]).toBeDefined();
+  });
+});
+
+describe("AppStore history", () => {
+  it("an edit that changes nothing is not an undo step", () => {
+    const store = new AppStore(createDemoMovement());
+    store.edit((m) => ({ ...m, name: "Renamed" }));
+    store.edit((m) => ({ ...m, name: "Renamed" })); // e.g. the field fires change again on blur
+    store.undo();
+    expect(store.movement.name).not.toBe("Renamed");
+    expect(store.canUndo).toBe(false);
   });
 });
 

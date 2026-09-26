@@ -1,6 +1,7 @@
 import type { Movement } from "@/domain/movement";
 import type { EntityId } from "@/domain/ids";
 import { removeEntity } from "@/domain/editing";
+import { designsEqual } from "@/persistence/designFile";
 import { findEntity } from "@/domain/lookup";
 import { analyzeMovement, EMPTY_ANALYSIS, type MovementAnalysis } from "@/analysis/analyzeMovement";
 import type { ValidationIssue } from "@/validation/validationIssue";
@@ -133,7 +134,8 @@ export class AppStore {
   /** Applies a pure domain update, then re-derives everything. Undoable. */
   edit(update: (movement: Movement) => Movement): void {
     const next = update(this.movement);
-    if (next === this.movement) return;
+    // An edit that changes nothing (e.g. a field committing its unchanged value on blur) is not a history step.
+    if (designsEqual(next, this.movement)) return;
     this.record();
     this.replaceDesign(next);
   }

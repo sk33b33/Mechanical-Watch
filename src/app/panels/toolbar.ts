@@ -60,6 +60,7 @@ export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
   });
 
   const newSelect = document.createElement("select");
+  newSelect.dataset.testid = "new-design";
   newSelect.title = "Start a new design. The current one can be brought back with Undo.";
   for (const [value, label] of [
     ["", "New…"],
@@ -108,6 +109,7 @@ export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
 
   const notice = document.createElement("div");
   notice.className = "toolbar-notice";
+  notice.dataset.testid = "toolbar-notice";
   notice.hidden = true;
   const noticeText = document.createElement("span");
   const dismiss = button("×", "Dismiss", () => {
@@ -138,11 +140,14 @@ export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
   });
   const clock = document.createElement("span");
   clock.className = "toolbar-clock";
+  clock.dataset.testid = "sim-clock";
   clock.title = "Simulated time. Fixed-step kinematic simulation (SIM-002).";
   const dial = document.createElement("span");
   dial.className = "toolbar-clock";
+  dial.dataset.testid = "dial-reading";
   dial.title = "Time shown by the simulated hand angles, each hand read on its own (ASM-0014). Starts at 12:00:00.";
   const modeSelect = document.createElement("select");
+  modeSelect.dataset.testid = "crown-action";
   let modeOptionsKey = "";
   const renderModeOptions = (): void => {
     const keyless = Object.keys(store.movement.keylessWorks).length > 0;

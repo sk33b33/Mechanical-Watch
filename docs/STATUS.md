@@ -2,6 +2,14 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Browser test suite: added
+
+`npm run test:e2e` runs 12 Playwright tests against the production build
+(see docs/ARCHITECTURE.md, Testing). Writing them exposed one bug, now
+fixed: a field that commits its unchanged value again on blur added a
+second, identical undo step, so one edit could need two undos. Edits
+that change nothing are no longer recorded.
+
 ## Dial and keyless works: complete
 
 - **Model.** Keyless works (stem direction and height, winding pinion,

@@ -10,3 +10,5 @@ coverage/
 .idea/
 *.log
 *.tsbuildinfo
+test-results/
+playwright-report/

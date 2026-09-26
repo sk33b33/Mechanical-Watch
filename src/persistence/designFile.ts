@@ -107,6 +107,14 @@ function reviver(_key: string, value: unknown): unknown {
   return value;
 }
 
+/**
+ * True when two designs have the same content (non-finite values
+ * included), whatever their object identity.
+ */
+export function designsEqual(a: Movement, b: Movement): boolean {
+  return a === b || JSON.stringify(a, replacer) === JSON.stringify(b, replacer);
+}
+
 export function encodeDesign(movement: Movement, savedAt: Date = new Date()): string {
   return JSON.stringify(
     { format: DESIGN_FORMAT, schemaVersion: DESIGN_SCHEMA_VERSION, savedAt: savedAt.toISOString(), movement },

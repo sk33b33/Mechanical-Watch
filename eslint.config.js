@@ -24,7 +24,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["vite.config.ts", "vitest.config.ts"],
+    files: ["vite.config.ts", "vitest.config.ts", "playwright.config.ts", "e2e/**/*.ts"],
     languageOptions: {
       parserOptions: {
         project: ["./tsconfig.node.json"],

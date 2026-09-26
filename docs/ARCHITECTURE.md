@@ -105,3 +105,19 @@ Kinematic modes: validation always uses the running solve (clutches
 engaged). The simulation integrates either the running solve or, while
 setting the hands, a solve where clutches slip and the minutes-hand side
 is driven by the setting input (REF-ENG §8, ASM-0015).
+
+## Testing
+
+- `npm test`: unit tests (Vitest) for every formula, rule, solver mode,
+  persistence path and output generator.
+- `npm run test:e2e`: browser tests (Playwright, `e2e/`) against the
+  production build (`vite build` + `vite preview` on port 4174). Each test
+  starts from a clean browser profile with the teaching movement and fails
+  on any uncaught page error. They cover loading and validation, editing
+  and undo, autosave, setting and winding through the crown, the dial
+  view, every output format, the project library, measuring and building
+  from empty. Chromium comes from `PLAYWRIGHT_CHROMIUM_EXECUTABLE`, the
+  cloud image's preinstalled browser, or `npx playwright install chromium`.
+- Toolbar controls the tests drive carry `data-testid` attributes
+  (`new-design`, `crown-action`, `sim-clock`, `dial-reading`,
+  `toolbar-notice`).
