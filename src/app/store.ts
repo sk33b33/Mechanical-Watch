@@ -168,14 +168,35 @@ export class AppStore {
     if (this.selectedId !== null && findEntity(movement, this.selectedId) === undefined) {
       this.selectedId = null;
     }
+    this.measureIds = this.measureIds.map((id) => (id !== null && findEntity(movement, id) !== undefined ? id : null)) as [
+      EntityId | null,
+      EntityId | null,
+    ];
     this.recompute();
     for (const listener of this.designListeners) listener(movement);
     this.notify();
   }
 
   select(id: EntityId | null): void {
+    if (this.measuring && id !== null) {
+      const [a, b] = this.measureIds;
+      this.measureIds = a === null || b !== null ? [id, null] : [a, id];
+      this.selectedId = id;
+      this.notify();
+      return;
+    }
     if (id === this.selectedId) return;
     this.selectedId = id;
+    this.notify();
+  }
+
+  /** Measure mode (UI state): the next two picks become parts A and B. */
+  measuring = false;
+  measureIds: [EntityId | null, EntityId | null] = [null, null];
+
+  setMeasuring(on: boolean): void {
+    this.measuring = on;
+    this.measureIds = [null, null];
     this.notify();
   }
 

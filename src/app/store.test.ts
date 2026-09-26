@@ -137,3 +137,30 @@ describe("AppStore hand setting", () => {
     expect(store.simulationTrain).toBe(store.analysis.train);
   });
 });
+
+describe("AppStore measure mode", () => {
+  it("takes the next two picks as A and B, then starts over", () => {
+    const store = new AppStore(createDemoMovement());
+    const [g1, g2, g3] = Object.values(store.movement.gears).map((g) => g.id);
+    if (g1 === undefined || g2 === undefined || g3 === undefined) throw new Error("gears");
+    store.setMeasuring(true);
+    store.select(g1);
+    expect(store.measureIds).toEqual([g1, null]);
+    store.select(g2);
+    expect(store.measureIds).toEqual([g1, g2]);
+    store.select(g3);
+    expect(store.measureIds).toEqual([g3, null]);
+    store.setMeasuring(false);
+    expect(store.measureIds).toEqual([null, null]);
+  });
+
+  it("forgets a measured part that is deleted", () => {
+    const store = new AppStore(createDemoMovement());
+    const gear = Object.values(store.movement.gears)[0];
+    if (gear === undefined) throw new Error("gear");
+    store.setMeasuring(true);
+    store.select(gear.id);
+    store.remove(gear.id);
+    expect(store.measureIds).toEqual([null, null]);
+  });
+});

@@ -12,9 +12,23 @@ import {
   createZCylinder,
 } from "@/geometry/assemblyGeometry3d";
 import { arborZRange, frameZRange, isCompleteFrame } from "@/assembly/assemblyGeometry";
+import { partReferencePoint } from "@/assembly/measure";
 
 type PickKind = "gear" | "jewel" | "arbor" | "frame";
 type ViewSide = "BRIDGE" | "DIAL";
+
+/**
+ * Display-only section plane: vertical (parallel to the shaft axes),
+ * with its normal at `angleDeg` from +X, `offsetMetres` from the origin.
+ */
+export interface SectionState {
+  enabled: boolean;
+  angleDeg: number;
+  offsetMetres: number;
+}
+
+/** At full explode, axial positions are stretched by this factor (display only). */
+const EXPLODE_STRETCH = 3;
 
 /** When several objects are under the pointer, the most specific wins. */
 const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, arbor: 2, frame: 3 };
@@ -28,6 +42,7 @@ const COLORS = {
   frame: 0x5a6672,
   frameEdge: 0x8fa3b8,
   hand: { HOURS: 0xe6e9ec, MINUTES: 0xe6e9ec, SECONDS: 0xe0a95c },
+  measure: 0x5cc98a,
 } as const;
 
 const FRAME_OPACITY = { normal: 0.22, selected: 0.4 } as const;
@@ -38,8 +53,9 @@ interface Pickable {
   baseColor: number;
 }
 
+/** Double-sided so the inside of a part shows where the section plane cuts it. */
 function material(color: number, extra: THREE.MeshStandardMaterialParameters = {}): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ color, metalness: 0.35, roughness: 0.55, ...extra });
+  return new THREE.MeshStandardMaterial({ color, metalness: 0.35, roughness: 0.55, side: THREE.DoubleSide, ...extra });
 }
 
 /**
@@ -55,6 +71,9 @@ export class Viewport {
   private readonly camera: THREE.PerspectiveCamera;
   private controls: OrbitControls;
   private view: ViewSide = "BRIDGE";
+  private explode = 0;
+  private section: SectionState = { enabled: false, angleDeg: 0, offsetMetres: 0 };
+  private readonly sectionPlane = new THREE.Plane();
   private readonly content = new THREE.Group();
   private readonly shaftGroups = new Map<ShaftId, THREE.Group>();
   private readonly pickables: THREE.Mesh[] = [];
@@ -184,7 +203,7 @@ export class Viewport {
 
   private clear(): void {
     this.content.traverse((object) => {
-      if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments) {
+      if (object instanceof THREE.Mesh || object instanceof THREE.Line) {
         (object.geometry as THREE.BufferGeometry).dispose();
         const mat = object.material as THREE.Material | THREE.Material[];
         for (const m of Array.isArray(mat) ? mat : [mat]) m.dispose();
@@ -208,14 +227,14 @@ export class Viewport {
         geometry,
         material(COLORS.frame, { transparent: true, opacity: FRAME_OPACITY.normal, depthWrite: false, side: THREE.DoubleSide }),
       );
-      mesh.position.z = range.lo;
+      mesh.position.z = this.displayZ(range.lo);
       mesh.renderOrder = 2;
       this.addPickable(this.content, mesh, { kind: "frame", entityId: frame.id, baseColor: COLORS.frame });
       const edges = new THREE.LineSegments(
         new THREE.EdgesGeometry(geometry, 30),
         new THREE.LineBasicMaterial({ color: COLORS.frameEdge, transparent: true, opacity: 0.6 }),
       );
-      edges.position.z = range.lo;
+      edges.position.z = this.displayZ(range.lo);
       this.content.add(edges);
     }
 
@@ -233,7 +252,7 @@ export class Viewport {
           (d): d is NonNullable<typeof d> => d !== null && Number.isFinite(d) && d > 0,
         );
         const radius = knownPivots.length > 0 ? Math.max(...knownPivots) / 2 : ASSEMBLY_VISUALIZATION.arborRadiusMetres;
-        const arbor = new THREE.Mesh(createZCylinder(radius, span.lo, span.hi, 12), material(COLORS.arbor));
+        const arbor = new THREE.Mesh(createZCylinder(radius, this.displayZ(span.lo), this.displayZ(span.hi), 12), material(COLORS.arbor));
         this.addPickable(group, arbor, { kind: "arbor", entityId: shaft.id, baseColor: COLORS.arbor });
       }
     }
@@ -248,7 +267,7 @@ export class Viewport {
         continue;
       }
       const mesh = new THREE.Mesh(geometry, material(COLORS.gear, { metalness: 0.55, roughness: 0.4 }));
-      mesh.position.z = gear.zCentre;
+      mesh.position.z = this.displayZ(gear.zCentre);
       this.addPickable(group, mesh, { kind: "gear", entityId: gear.id, baseColor: COLORS.gear });
     }
 
@@ -262,7 +281,7 @@ export class Viewport {
       const group = this.shaftGroups.get(shaft.id);
       if (shaft.hand === null || group === undefined) continue;
       const mesh = new THREE.Mesh(createHandGeometry(shaft.hand), material(COLORS.hand[shaft.hand], { metalness: 0.6, roughness: 0.3 }));
-      mesh.position.z = lowest - HAND_VISUALIZATION[shaft.hand].gapBelowMovementMetres - HAND_VISUALIZATION.thicknessMetres;
+      mesh.position.z = this.displayZ(lowest) - HAND_VISUALIZATION[shaft.hand].gapBelowMovementMetres - HAND_VISUALIZATION.thicknessMetres;
       this.addPickable(group, mesh, { kind: "arbor", entityId: shaft.id, baseColor: COLORS.hand[shaft.hand] });
     }
 
@@ -271,18 +290,71 @@ export class Viewport {
       const frame = movement.frames[jewel.frameId];
       if (axis === undefined || frame === undefined || !isCompleteFrame(frame)) continue;
       const range = frameZRange(frame);
+      const lo = this.displayZ(range.lo);
+      const hi = lo + (range.hi - range.lo);
       const color = jewel.kind === "HOLE_JEWEL" ? COLORS.jewel : COLORS.plainHole;
       // Drawn slightly proud of the slab so it reads through the translucent frame.
-      const proud = (range.hi - range.lo) * 0.05;
+      const proud = (hi - lo) * 0.05;
       const mesh = new THREE.Mesh(
-        createZCylinder(ASSEMBLY_VISUALIZATION.jewelOuterRadiusMetres, range.lo - proud, range.hi + proud),
+        createZCylinder(ASSEMBLY_VISUALIZATION.jewelOuterRadiusMetres, lo - proud, hi + proud),
         material(color, { metalness: 0.1, roughness: 0.25 }),
       );
       mesh.position.set(axis.x, axis.y, 0);
       this.addPickable(this.content, mesh, { kind: "jewel", entityId: jewel.id, baseColor: color });
     }
 
+    this.addMeasurementLine();
     this.applySelection();
+  }
+
+  /** Display position of an axial coordinate. Exploding stretches positions, never thicknesses. */
+  private displayZ(z: number): number {
+    return z * (1 + this.explode * EXPLODE_STRETCH);
+  }
+
+  /** Indicator between the two measured parts. The values come from the domain (see assembly/measure.ts). */
+  private addMeasurementLine(): void {
+    const [a, b] = this.store.measureIds;
+    if (!this.store.measuring || a === null || b === null) return;
+    const { movement, analysis } = this.store;
+    const points = [a, b].map((id) => partReferencePoint(movement, analysis.placement, id));
+    const [pa, pb] = points;
+    if (pa === null || pb === null || pa === undefined || pb === undefined) return;
+    const geometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(pa.x, pa.y, this.displayZ(pa.z)),
+      new THREE.Vector3(pb.x, pb.y, this.displayZ(pb.z)),
+    ]);
+    const line = new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: COLORS.measure, depthTest: false }));
+    line.renderOrder = 10;
+    this.content.add(line);
+  }
+
+  /** 0 = assembled, 1 = fully exploded along the shaft axes. Display only. */
+  setExplode(factor: number): void {
+    this.explode = Math.min(1, Math.max(0, factor));
+    this.rebuild();
+  }
+
+  get sectionState(): SectionState {
+    return this.section;
+  }
+
+  setSection(section: SectionState): void {
+    this.section = section;
+    const angle = THREE.MathUtils.degToRad(section.angleDeg);
+    // Parts on the positive side of the plane stay visible.
+    this.sectionPlane.set(new THREE.Vector3(Math.cos(angle), Math.sin(angle), 0), -section.offsetMetres);
+    this.renderer.clippingPlanes = section.enabled ? [this.sectionPlane] : [];
+  }
+
+  /** Offset that puts the section plane through the selected part's axis, if it has one. */
+  offsetThroughSelection(): number | null {
+    const id = this.store.selectedId;
+    if (id === null) return null;
+    const point = partReferencePoint(this.store.movement, this.store.analysis.placement, id);
+    if (point === null) return null;
+    const angle = THREE.MathUtils.degToRad(this.section.angleDeg);
+    return point.x * Math.cos(angle) + point.y * Math.sin(angle);
   }
 
   private applySelection(): void {

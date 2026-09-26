@@ -424,3 +424,93 @@ button.danger:hover:not(:disabled) {
 .toolbar select {
   max-width: 190px;
 }
+
+.viewport-tools {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 220px);
+  padding: 4px 8px;
+  background: rgba(20, 23, 27, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.viewport-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-1);
+  font-size: 11px;
+}
+
+.viewport-control input[type="range"] {
+  width: 80px;
+}
+
+.viewport-note {
+  color: var(--text-1);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+button.active {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.measurement-panel {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  min-width: 320px;
+  max-width: 460px;
+  padding: 8px 10px;
+  background: rgba(20, 23, 27, 0.92);
+  border: 1px solid var(--ok);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.measurement-panel[hidden] {
+  display: none;
+}
+
+.measurement-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.measurement-panel table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.measurement-panel td {
+  padding: 2px 4px;
+}
+
+.measurement-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.measurement-level {
+  color: var(--text-1);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.measurement-level.visual {
+  color: var(--warn);
+}
+
+.measurement-foot {
+  margin-top: 6px;
+  font-size: 10px;
+}

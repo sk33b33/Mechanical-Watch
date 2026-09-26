@@ -1,6 +1,8 @@
 import { AppStore } from "./store";
 import { createTeachingMovement } from "./teachingMovement";
 import { Viewport } from "@/viewport/viewport";
+import { mountViewportControls } from "@/viewport/viewportControls";
+import { mountMeasurementPanel } from "./panels/measurementPanel";
 import { browserStore, loadAutosave, writeAutosave } from "@/persistence/autosave";
 import { mountHeader } from "./panels/header";
 import { mountToolbar } from "./panels/toolbar";
@@ -34,7 +36,9 @@ export function bootstrapApp(root: HTMLElement): void {
   mountComponentTree(tree, store);
   mountInspector(inspector, store);
   mountValidationConsole(consoleEl, store);
-  new Viewport(viewportEl, store);
+  const viewport = new Viewport(viewportEl, store);
+  mountViewportControls(viewportEl, viewport, store);
+  mountMeasurementPanel(viewportEl, store);
 
   if (saved.status === "UNREADABLE") {
     toolbar.notify(
