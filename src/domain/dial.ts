@@ -33,5 +33,5 @@ export interface CreateDialParams {
 }
 
 export function createDial(params: CreateDialParams): Dial {
-  return { id: createId("dial"), type: "Dial", ...params };
+  return { ...params, id: createId("dial"), type: "Dial" };
 }

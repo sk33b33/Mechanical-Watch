@@ -62,7 +62,7 @@ export interface CreateKeylessParams {
 }
 
 export function createKeylessWorks(params: CreateKeylessParams): KeylessWorks {
-  return { id: createId("keyless"), type: "KeylessWorks", ...params };
+  return { ...params, id: createId("keyless"), type: "KeylessWorks" };
 }
 
 /** Two stem positions. The going train keeps running in both (no stop-seconds, ASM-0015). */
