@@ -1,3 +1,4 @@
+import type { EntityId } from "@/domain/ids";
 import { drivenShaftId } from "@/domain/movement";
 import type { ValidationIssue } from "../validationIssue";
 import { issue, type Rule } from "./context";
@@ -44,11 +45,22 @@ export const kinematicRules: Rule = ({ movement, train }) => {
   }
 
   for (const conflict of train.conflicts) {
-    const shaft = movement.shafts[conflict.shaftId];
-    const viaId = conflict.via.kind === "MESH" ? conflict.via.meshId : conflict.via.couplingId;
+    const via = conflict.via;
+    const viaId = via.kind === "MESH" ? via.meshId : via.kind === "COUPLING" ? via.couplingId : via.keylessId;
+    const name = conflict.shaftId in movement.shafts
+      ? movement.shafts[conflict.shaftId as keyof typeof movement.shafts]?.name ?? conflict.shaftId
+      : `${movement.keylessWorks[conflict.shaftId.split("/")[0] as keyof typeof movement.keylessWorks]?.name ?? "Keyless works"} stem`;
+    if (via.kind === "KEYLESS" && via.part === "CLICK") {
+      issues.push(
+        issue("KEY-003", "click-blocks-train", "error", "L2_KINEMATIC", [conflict.shaftId as EntityId, viaId],
+          `${name}: the running train turns the ratchet wheel, but the click holds it still. The ratchet must only be turned by winding.`,
+          ["REF-ENG §11", "ASM-0019"]),
+      );
+      continue;
+    }
     issues.push(
-      issue("ASSY-001", "over-constrained", "error", "L2_KINEMATIC", [conflict.shaftId, viaId],
-        `${shaft?.name ?? conflict.shaftId}: over-constrained train, because two paths give different angular velocities.`,
+      issue("ASSY-001", "over-constrained", "error", "L2_KINEMATIC", [conflict.shaftId as EntityId, viaId],
+        `${name}: over-constrained train, because two paths give different angular velocities.`,
         ["REF-ENG §5.3", "ASM-0001"]),
     );
   }

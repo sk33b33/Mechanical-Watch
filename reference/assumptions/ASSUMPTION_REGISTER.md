@@ -22,8 +22,11 @@ Machine-readable equivalent: `src/reference/assumptions.ts`. A test
 | ASM-0013 | Side shake is reported as diametral clearance (bore − pivot diameter); the horological convention is still to be confirmed against a source | Bearings / side shake | Active |
 | ASM-0014 | Time display uses a 12-hour dial on the −Z side of the mainplate; hands turn clockwise seen from the dial (hours 1 rev/12 h, minutes 1 rev/h, seconds 1 rev/min, by definition) | Time display | Active |
 | ASM-0015 | A friction clutch is kinematic only: fully engaged while running, freely slipping while setting the hands; slip torque is not modeled, and the going train keeps running during setting (no stop-seconds) | Motion works / hand setting | Active |
-| ASM-0016 | Hands and dial are not modeled; hands are drawn only as indicators of their arbor's simulated angle (length, shape and stacking are visual) | Viewport | Active |
+| ASM-0016 | Hands are not modeled; they are drawn only as indicators of their arbor's simulated angle (length, shape and stacking are visual) | Viewport | Active |
 | ASM-0017 | Tolerance analysis is a worst-case (arithmetic) stack of declared limits; distributions are recorded but not used, and untoleranced inputs are taken at nominal and reported as such | Tolerances | Active |
+| ASM-0018 | A mainspring's inner end is on the barrel arbor and its outer end on the drum, so the arbor is wound in the direction the drum turns when running; spring torque and energy are not modeled | Barrel / winding | Active |
+| ASM-0019 | Keyless works: the stem lies in a plane parallel to the mainplate; each stem pinion engages its wheel at a right angle as rolling pitch circles (|ω1 z1| = |ω2 z2|), on the crown side of the wheel's axis; the setting lever, yoke, springs and ratchet (Breguet) teeth are represented only by two stem positions and a one-way coupling | Keyless works | Active |
+| ASM-0020 | The dial is a flat disc of uniform thickness; feet, holes and printing are not modeled, and the hour markers drawn on it are visual | Dial | Active |
 
 Rules:
 1. Never hide an assumption.

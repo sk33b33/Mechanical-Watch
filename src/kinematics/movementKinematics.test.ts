@@ -183,7 +183,7 @@ describe("couplings and supports", () => {
 
   it("removing the centre arbor removes its clutch and leaves the coaxial parts reported, not re-placed", () => {
     const { movement: m } = removeEntity(movement, shaft(movement, "Centre arbor").id);
-    expect(Object.keys(m.couplings)).toHaveLength(0);
+    expect(Object.values(m.couplings).filter((c) => c.kind === "FRICTION_CLUTCH")).toHaveLength(0);
     expect(shaft(m, "Hour wheel").placement.kind).toBe("COAXIAL");
     expect(solvePlacement(m).failures.map((f) => f.reason)).toContain("MISSING_REFERENCE");
   });

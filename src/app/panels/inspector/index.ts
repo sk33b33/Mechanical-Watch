@@ -6,12 +6,15 @@ import { VALIDATION_LEVEL_LABELS } from "@/reference/validationLevels";
 import { readonlyRow, sectionHeader } from "./fields";
 import { frameSection, gearSection, jewelSection, movementSection } from "./sections";
 import { shaftSection } from "./shaftSection";
+import { dialSection, keylessSection } from "./keylessSection";
 
 const TYPE_LABEL: Record<SelectableEntity["type"], string> = {
   Gear: "Gear",
   Shaft: "Arbor",
   Frame: "Frame",
   Jewel: "Bearing",
+  KeylessWorks: "Keyless works",
+  Dial: "Dial",
 };
 
 /** Entities whose issues bear on the selected one's status. */
@@ -21,6 +24,10 @@ function relatedIds(entity: SelectableEntity): EntityId[] {
       return [entity.id, entity.shaftId];
     case "Jewel":
       return [entity.id, entity.shaftId, entity.frameId];
+    case "KeylessWorks":
+      return [entity.id, entity.crownWheelGearId, entity.settingWheelGearId, entity.ratchetGearId];
+    case "Dial":
+      return [entity.id];
     default:
       return [entity.id];
   }
@@ -63,6 +70,8 @@ export function mountInspector(container: HTMLElement, store: AppStore): () => v
       entity.type === "Gear" ? gearSection(store, entity)
       : entity.type === "Shaft" ? shaftSection(store, entity)
       : entity.type === "Jewel" ? jewelSection(store, entity)
+      : entity.type === "KeylessWorks" ? keylessSection(store, entity)
+      : entity.type === "Dial" ? dialSection(store, entity)
       : frameSection(store, entity);
     container.append(...section);
 

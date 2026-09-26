@@ -97,6 +97,8 @@ export interface RemovalResult {
  * - a shaft owns its gears, bearings and clutches (and is no longer the drive);
  * - a gear owns the meshes it takes part in;
  * - every entity owns the tolerances declared on its dimensions.
+ * The keyless works and the dial own nothing: removing a wheel they refer
+ * to leaves the reference in place for validation to report.
  * References that are not ownership, such as another shaft's placement
  * constraint pointing at a removed shaft or mesh, are left in place and
  * reported by validation (ASSY-001). Nothing else is changed silently.
@@ -136,7 +138,10 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
     if (owners.has(tolerance.entityId)) tolerances.add(tolerance.id);
   }
 
-  const removed = new Set<string>([...frames, ...shafts, ...gears, ...meshes, ...jewels, ...couplings, ...tolerances]);
+  const others = new Set<string>();
+  if (id in movement.keylessWorks || id in movement.dials) others.add(id);
+
+  const removed = new Set<string>([...frames, ...shafts, ...gears, ...meshes, ...jewels, ...couplings, ...tolerances, ...others]);
   const drive = movement.drive;
   return {
     movement: {
@@ -148,6 +153,8 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
       jewels: without(movement.jewels, removed),
       couplings: without(movement.couplings, removed),
       tolerances: without(movement.tolerances, removed),
+      keylessWorks: without(movement.keylessWorks, removed),
+      dials: without(movement.dials, removed),
       drive: drive?.kind === "PRESCRIBED" && removed.has(drive.shaftId) ? null : drive,
     },
     removedIds: [...removed] as EntityId[],

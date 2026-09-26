@@ -90,7 +90,9 @@ export function buildBom(movement: Movement): BomRow[] {
       tolerances: toleranceSummary(movement, shaft.id),
       notes: [
         ...(shaft.hand === null ? [] : [`carries the ${shaft.hand.toLowerCase()} hand (hand not modeled, ASM-0016)`]),
-        ...clutches.map((c) => `friction clutch with ${other(c)} (ASM-0015)`),
+        ...clutches.map((c) => c.kind === "FRICTION_CLUTCH"
+          ? `friction clutch with ${other(c)} (ASM-0015)`
+          : c.shaftAId === shaft.id ? `winds the mainspring of ${other(c)} (ASM-0018)` : `driven by its mainspring from ${other(c)} (ASM-0018)`),
       ].join("; "),
     });
     let sub = 0;

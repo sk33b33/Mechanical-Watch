@@ -13,7 +13,7 @@ import {
 } from "./simulationState";
 
 const shaftId = "shaft_1" as ShaftId;
-const movement = { shafts: { [shaftId]: {} } } as unknown as Movement;
+const movement = { shafts: { [shaftId]: {} }, keylessWorks: {} } as unknown as Movement;
 
 function solutionAt(rpm: number): GearTrainSolution {
   return {
@@ -22,6 +22,9 @@ function solutionAt(rpm: number): GearTrainSolution {
     conflicts: [],
     mode: "RUNNING",
     setting: { status: "NOT_APPLICABLE" },
+    stemAngularVelocity: new Map(),
+    winding: { status: "NOT_APPLICABLE" },
+    stemPosition: "WINDING",
   };
 }
 
@@ -48,6 +51,9 @@ describe("stepSimulation", () => {
       conflicts: [],
       mode: "RUNNING",
       setting: { status: "NOT_APPLICABLE" },
+      stemAngularVelocity: new Map(),
+      winding: { status: "NOT_APPLICABLE" },
+      stemPosition: "WINDING",
     };
     expect(() => stepSimulation(createSimulationState(movement), solution, 0.1)).toThrow(
       NonFiniteSimulationStateError,

@@ -4,6 +4,7 @@ import type { TimeSpan } from "@/units/time";
 import { seconds } from "@/units/time";
 import type { Movement } from "@/domain/movement";
 import type { ShaftId } from "@/domain/shaft";
+import { stemBodyId, type StemBodyId } from "@/domain/keyless";
 import type { GearTrainSolution } from "@/kinematics/solveGearTrain";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 
@@ -17,6 +18,8 @@ export interface SimulationState {
   stepCount: number;
   time: TimeSpan;
   shaftAngle: Readonly<Record<ShaftId, Angle>>;
+  /** Rotation of stem bodies about the stem direction (crown, sliding and winding pinions). */
+  stemAngle: Readonly<Record<StemBodyId, Angle>>;
   /** Real time received but not yet consumed by a fixed step, in seconds. */
   pendingSeconds: number;
 }
@@ -28,7 +31,12 @@ export function createSimulationState(movement: Movement): SimulationState {
   for (const shaftId of Object.keys(movement.shafts) as ShaftId[]) {
     shaftAngle[shaftId] = radians(0);
   }
-  return { stepCount: 0, time: seconds(0), shaftAngle, pendingSeconds: 0 };
+  const stemAngle: Record<StemBodyId, Angle> = {};
+  for (const id of Object.keys(movement.keylessWorks) as (keyof Movement["keylessWorks"])[]) {
+    stemAngle[stemBodyId(id, "STEM")] = radians(0);
+    stemAngle[stemBodyId(id, "WINDING_PINION")] = radians(0);
+  }
+  return { stepCount: 0, time: seconds(0), shaftAngle, stemAngle, pendingSeconds: 0 };
 }
 
 /** One fixed step. Throws rather than storing a non-finite angle (SIM-001). */
@@ -46,11 +54,20 @@ export function stepSimulation(
     }
     nextShaftAngle[shaftId] = normalizeAngle(radians(next));
   }
+  const nextStemAngle: Record<StemBodyId, Angle> = { ...state.stemAngle };
+  for (const [id, angularVelocity] of solution.stemAngularVelocity) {
+    const next = (nextStemAngle[id] ?? radians(0)) + angularVelocity * dtSeconds;
+    if (!Number.isFinite(next)) {
+      throw new NonFiniteSimulationStateError(`SIM-001: stem body ${id} angle became non-finite`);
+    }
+    nextStemAngle[id] = normalizeAngle(radians(next));
+  }
   const stepCount = state.stepCount + 1;
   return {
     stepCount,
     time: seconds(stepCount * dtSeconds),
     shaftAngle: nextShaftAngle,
+    stemAngle: nextStemAngle,
     pendingSeconds: state.pendingSeconds,
   };
 }

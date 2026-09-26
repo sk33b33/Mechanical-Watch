@@ -136,6 +136,8 @@ describe("schema migration v2 → v3", () => {
     const doc = rawDoc() as { movement: Record<string, unknown> };
     const v2 = { ...doc.movement };
     Reflect.deleteProperty(v2, "tolerances");
+    Reflect.deleteProperty(v2, "keylessWorks");
+    Reflect.deleteProperty(v2, "dials");
     expect(decodeDesign(JSON.stringify({ ...doc, schemaVersion: 2, movement: v2 }))).toEqual(demo);
   });
 
@@ -159,6 +161,8 @@ describe("schema migration v1 → v2", () => {
     Reflect.deleteProperty(v1, "drive");
     Reflect.deleteProperty(v1, "couplings");
     Reflect.deleteProperty(v1, "tolerances");
+    Reflect.deleteProperty(v1, "keylessWorks");
+    Reflect.deleteProperty(v1, "dials");
     v1.shafts = Object.fromEntries(
       Object.entries(v1.shafts as Record<string, Record<string, unknown>>).map(([id, s]) => {
         const v1Shaft = { ...s };

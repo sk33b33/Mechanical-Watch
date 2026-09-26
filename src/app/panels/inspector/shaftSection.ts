@@ -205,6 +205,7 @@ function clutchRows(store: AppStore, shaft: Shaft): Section {
   const coupledWith = new Set<string>();
   for (const coupling of Object.values(movement.couplings)) {
     if (coupling.shaftAId !== shaft.id && coupling.shaftBId !== shaft.id) continue;
+    if (coupling.kind !== "FRICTION_CLUTCH") continue;
     const otherId = coupling.shaftAId === shaft.id ? coupling.shaftBId : coupling.shaftAId;
     coupledWith.add(otherId);
     const other = movement.shafts[otherId];

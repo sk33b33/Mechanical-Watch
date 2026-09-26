@@ -34,7 +34,10 @@ function axisOf(placement: PlacementSolution, entity: SelectableEntity): Vec2 | 
     case "Gear":
     case "Jewel":
       return placement.shaftPositions.get(entity.shaftId) ?? null;
+    case "Dial":
+      return placement.shaftPositions.get(entity.centreShaftId) ?? null;
     case "Frame":
+    case "KeylessWorks":
       return "none";
   }
 }
@@ -54,6 +57,13 @@ function zRangeOf(movement: Movement, entity: SelectableEntity): ZRange | null {
     }
     case "Shaft":
       return arborZRange(movement, entity.id);
+    case "Dial":
+      return Number.isFinite(entity.faceHeight) && Number.isFinite(entity.thickness) && entity.thickness > 0
+        ? { lo: entity.faceHeight, hi: entity.faceHeight + entity.thickness }
+        : null;
+    case "KeylessWorks":
+      // The stem axis height: a line, so the range has no thickness.
+      return Number.isFinite(entity.stemHeight) ? { lo: entity.stemHeight, hi: entity.stemHeight } : null;
   }
 }
 

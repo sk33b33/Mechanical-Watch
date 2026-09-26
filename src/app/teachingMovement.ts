@@ -18,7 +18,11 @@ import { createGear, type Gear } from "@/domain/gear";
 import { createGearMesh, type GearMesh } from "@/domain/gearMesh";
 import { createFrame } from "@/domain/frame";
 import { createJewel } from "@/domain/jewel";
-import { createFrictionClutch } from "@/domain/coupling";
+import { createFrictionClutch, createMainspring } from "@/domain/coupling";
+import { createKeylessWorks } from "@/domain/keyless";
+import { createDial } from "@/domain/dial";
+import { addDial, addKeylessWorks } from "@/domain/movement";
+import { meshCentreDistance } from "@/math/gearMath";
 
 const mm = millimetres;
 
@@ -38,6 +42,19 @@ const mm = millimetres;
  * The escape wheel is not modeled: it is not a gear and has no module
  * (escapement is Phase 5). Jewel bores, pivots and shoulder spans are
  * left unknown on purpose.
+ *
+ * Keyless works and dial (ASM-0019, ASM-0020), all on the dial side:
+ * - a barrel arbor, coaxial with the barrel drum and joined to it by a
+ *   mainspring (no energy modeled, ASM-0018), carries the ratchet wheel;
+ * - the crown wheel (on a stud) meshes the ratchet; the winding pinion on
+ *   the stem engages it at a right angle;
+ * - the setting wheel (on a stud) meshes the minute wheel; the sliding
+ *   pinion engages it when the stem is pulled out;
+ * - the stem points to 3 o'clock seen from the dial (−X). The crown wheel
+ *   and setting wheel are placed on its line, and its height is one
+ *   pinion pitch radius above each wheel, so both right-angle meshes
+ *   engage (KEY-002);
+ * - a dial below everything, centred on the centre arbor.
  */
 export function createTeachingMovement(): Movement {
   const trainModule = mm(0.12);
@@ -75,6 +92,9 @@ export function createTeachingMovement(): Movement {
   const cannon = shaft("Cannon pinion", "MINUTES", { kind: "CARRIED" });
   const minuteWheel = shaft("Minute wheel", null, { kind: "STUD", frameId: mainplate.id });
   const hourWheel = shaft("Hour wheel", "HOURS", { kind: "CARRIED" });
+  const barrelArbor = shaft("Barrel arbor", null, { kind: "CARRIED" });
+  const crownWheelArbor = shaft("Crown wheel", null, { kind: "STUD", frameId: mainplate.id });
+  const settingWheelArbor = shaft("Setting wheel", null, { kind: "STUD", frameId: mainplate.id });
 
   const gear = (name: string, s: Shaft, toothCount: number, module: Length, zCentre: number, thickness: number): Gear =>
     createGear({ name, toothCount, module, shaftId: s.id, zCentre: mm(zCentre), thickness: mm(thickness) });
@@ -95,6 +115,12 @@ export function createTeachingMovement(): Movement {
   const minutePinion = gear("Minute pinion", minuteWheel, 8, motionModule, -1.0, 0.4);
   const hourWheelGear = gear("Hour wheel", hourWheel, 32, motionModule, -1.0, 0.2);
 
+  // Keyless works, dial side.
+  const keylessModule = mm(0.1);
+  const ratchetWheel = gear("Ratchet wheel", barrelArbor, 40, keylessModule, -0.2, 0.2);
+  const crownWheel = gear("Crown wheel", crownWheelArbor, 20, keylessModule, -0.2, 0.2);
+  const settingWheel = gear("Setting wheel", settingWheelArbor, 16, keylessModule, -0.6, 0.2);
+
   const mesh = (a: Gear, b: Gear): GearMesh => createGearMesh(a.id, b.id);
   const barrelToCentre = mesh(barrelDrum, centrePinion);
   const centreToThird = mesh(centreWheel, thirdPinion);
@@ -102,16 +128,22 @@ export function createTeachingMovement(): Movement {
   const fourthToEscape = mesh(fourthWheel, escapePinion);
   const cannonToMinute = mesh(cannonPinion, minuteWheelGear);
   const minuteToHour = mesh(minutePinion, hourWheelGear);
+  const crownToRatchet = mesh(crownWheel, ratchetWheel);
+  const settingToMinute = mesh(settingWheel, minuteWheelGear);
 
   let m = createMovement("Teaching movement: going train and motion works", true);
   m = addFrame(m, mainplate);
   m = addFrame(m, bridge);
-  for (const s of [barrel, centre, third, fourth, escape, cannon, minuteWheel, hourWheel]) m = addShaft(m, s);
+  for (const s of [barrel, centre, third, fourth, escape, cannon, minuteWheel, hourWheel, barrelArbor, crownWheelArbor, settingWheelArbor]) {
+    m = addShaft(m, s);
+  }
   for (const g of [
     barrelDrum, centrePinion, centreWheel, thirdPinion, thirdWheel, fourthPinion, fourthWheel, escapePinion,
-    cannonPinion, minuteWheelGear, minutePinion, hourWheelGear,
+    cannonPinion, minuteWheelGear, minutePinion, hourWheelGear, ratchetWheel, crownWheel, settingWheel,
   ]) m = addGear(m, g);
-  for (const g of [barrelToCentre, centreToThird, thirdToFourth, fourthToEscape, cannonToMinute, minuteToHour]) {
+  for (const g of [
+    barrelToCentre, centreToThird, thirdToFourth, fourthToEscape, cannonToMinute, minuteToHour, crownToRatchet, settingToMinute,
+  ]) {
     m = addGearMesh(m, g);
   }
   for (const s of [barrel, centre, third, fourth, escape]) {
@@ -119,6 +151,7 @@ export function createTeachingMovement(): Movement {
     m = addJewel(m, createJewel({ name: `${s.name} upper jewel`, kind: "HOLE_JEWEL", frameId: bridge.id, shaftId: s.id, end: "UPPER" }));
   }
   m = addCoupling(m, createFrictionClutch("Cannon pinion clutch", cannon.id, centre.id));
+  m = addCoupling(m, createMainspring("Mainspring", barrelArbor.id, barrel.id));
 
   const polar = (s: Shaft, from: Shaft, via: GearMesh, angle: number): void => {
     m = updateShaft(m, s.id, {
@@ -132,6 +165,37 @@ export function createTeachingMovement(): Movement {
   m = updateShaft(m, cannon.id, { placement: { kind: "COAXIAL", referenceShaftId: centre.id } });
   m = updateShaft(m, hourWheel.id, { placement: { kind: "COAXIAL", referenceShaftId: centre.id } });
   polar(minuteWheel, cannon, cannonToMinute, 135);
+  m = updateShaft(m, barrelArbor.id, { placement: { kind: "COAXIAL", referenceShaftId: barrel.id } });
+
+  // Put the crown wheel and setting wheel on the stem line y = 0 (the centre arbor is at the origin).
+  // Each is placed from its partner by its mesh; the angle is the one that lands on y = 0 on the crown side.
+  const toDeg = (rad: number): number => (rad * 180) / Math.PI;
+  const onStemLine = (partnerY: number, centreDistance: number): number => 180 - toDeg(Math.asin(-partnerY / centreDistance));
+  const barrelY = meshCentreDistance(trainModule, 72, 12) * Math.sin((200 * Math.PI) / 180);
+  const minuteWheelY = meshCentreDistance(motionModule, 10, 30) * Math.sin((135 * Math.PI) / 180);
+  polar(crownWheelArbor, barrelArbor, crownToRatchet, onStemLine(barrelY, meshCentreDistance(keylessModule, 20, 40)));
+  polar(settingWheelArbor, minuteWheel, settingToMinute, onStemLine(minuteWheelY, meshCentreDistance(keylessModule, 16, 30)));
+
+  m = addKeylessWorks(m, createKeylessWorks({
+    name: "Keyless works",
+    stemDirection: degrees(180),
+    // One winding-pinion pitch radius (0.1 × 12 / 2) above the crown wheel's mid-plane,
+    // and one sliding-pinion pitch radius (0.1 × 20 / 2) above the setting wheel's.
+    stemHeight: mm(0.4),
+    windingPinion: { toothCount: 12, module: keylessModule },
+    slidingPinion: { toothCount: 20, module: keylessModule },
+    crownWheelGearId: crownWheel.id,
+    settingWheelGearId: settingWheel.id,
+    ratchetGearId: ratchetWheel.id,
+  }));
+  m = addDial(m, createDial({
+    name: "Dial",
+    centreShaftId: centre.id,
+    diameter: mm(28),
+    thickness: mm(0.4),
+    // Below the lowest motion-works part (−1.2 mm) with 0.2 mm clear.
+    faceHeight: mm(-1.8),
+  }));
 
   return setNominalTimeDrive(m);
 }

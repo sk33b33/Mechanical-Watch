@@ -95,7 +95,7 @@ export const ASSUMPTIONS = {
   },
   "ASM-0016": {
     summary:
-      "Hands and dial are not modeled; hands are drawn only as indicators of their arbor's simulated angle (length, shape and stacking are visual)",
+      "Hands are not modeled; they are drawn only as indicators of their arbor's simulated angle (length, shape and stacking are visual)",
     scope: "Viewport",
     status: "Active",
   },
@@ -103,6 +103,24 @@ export const ASSUMPTIONS = {
     summary:
       "Tolerance analysis is a worst-case (arithmetic) stack of declared limits; distributions are recorded but not used, and untoleranced inputs are taken at nominal and reported as such",
     scope: "Tolerances",
+    status: "Active",
+  },
+  "ASM-0018": {
+    summary:
+      "A mainspring's inner end is on the barrel arbor and its outer end on the drum, so the arbor is wound in the direction the drum turns when running; spring torque and energy are not modeled",
+    scope: "Barrel / winding",
+    status: "Active",
+  },
+  "ASM-0019": {
+    summary:
+      "Keyless works: the stem lies in a plane parallel to the mainplate; each stem pinion engages its wheel at a right angle as rolling pitch circles (|ω1 z1| = |ω2 z2|), on the crown side of the wheel's axis; the setting lever, yoke, springs and ratchet (Breguet) teeth are represented only by two stem positions and a one-way coupling",
+    scope: "Keyless works",
+    status: "Active",
+  },
+  "ASM-0020": {
+    summary:
+      "The dial is a flat disc of uniform thickness; feet, holes and printing are not modeled, and the hour markers drawn on it are visual",
+    scope: "Dial",
     status: "Active",
   },
 } as const satisfies Record<string, Omit<Assumption, "id">>;

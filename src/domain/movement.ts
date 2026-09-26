@@ -8,6 +8,8 @@ import type { Frame, FrameId } from "./frame";
 import type { Jewel, JewelId } from "./jewel";
 import type { Coupling, CouplingId } from "./coupling";
 import type { Tolerance, ToleranceId } from "./tolerance";
+import type { KeylessWorks, KeylessWorksId } from "./keyless";
+import type { Dial, DialId } from "./dial";
 import type { ValidationLevel } from "@/reference/validationLevels";
 
 export type MovementId = EntityId<"movement">;
@@ -43,6 +45,10 @@ export interface Movement {
   couplings: Record<CouplingId, Coupling>;
   /** Declared tolerances on entered dimensions (REF-ENG §14). Nominal values stay on the entities. */
   tolerances: Record<ToleranceId, Tolerance>;
+  /** Crown, stem and stem pinions (at most one; see KEY-001). */
+  keylessWorks: Record<KeylessWorksId, KeylessWorks>;
+  /** At most one (DIAL-001). */
+  dials: Record<DialId, Dial>;
   drive: Drive | null;
   /**
    * The level this design's model targets (REFERENCE_ENGINEERING.md §15).
@@ -68,6 +74,8 @@ export function createMovement(
     jewels: {},
     couplings: {},
     tolerances: {},
+    keylessWorks: {},
+    dials: {},
     drive: null,
   };
 }
@@ -94,6 +102,34 @@ export function addJewel(movement: Movement, jewel: Jewel): Movement {
 
 export function addCoupling(movement: Movement, coupling: Coupling): Movement {
   return { ...movement, couplings: { ...movement.couplings, [coupling.id]: coupling } };
+}
+
+export function addKeylessWorks(movement: Movement, keyless: KeylessWorks): Movement {
+  return { ...movement, keylessWorks: { ...movement.keylessWorks, [keyless.id]: keyless } };
+}
+
+export function updateKeylessWorks(
+  movement: Movement,
+  id: KeylessWorksId,
+  patch: Partial<Omit<KeylessWorks, "id" | "type">>,
+): Movement {
+  const existing = movement.keylessWorks[id];
+  if (existing === undefined) {
+    throw new Error(`Unknown keyless works id: ${id}`);
+  }
+  return { ...movement, keylessWorks: { ...movement.keylessWorks, [id]: { ...existing, ...patch } } };
+}
+
+export function addDial(movement: Movement, dial: Dial): Movement {
+  return { ...movement, dials: { ...movement.dials, [dial.id]: dial } };
+}
+
+export function updateDial(movement: Movement, id: DialId, patch: Partial<Omit<Dial, "id" | "type">>): Movement {
+  const existing = movement.dials[id];
+  if (existing === undefined) {
+    throw new Error(`Unknown dial id: ${id}`);
+  }
+  return { ...movement, dials: { ...movement.dials, [id]: { ...existing, ...patch } } };
 }
 
 /**

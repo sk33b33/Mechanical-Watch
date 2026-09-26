@@ -97,7 +97,7 @@ export function movementSection(store: AppStore): Section {
     readonlyRow("Gears", count(m.gears)),
     readonlyRow("Meshes", count(m.gearMeshes)),
     readonlyRow("Bearings", count(m.jewels)),
-    readonlyRow("Friction clutches", count(m.couplings)),
+    readonlyRow("Friction clutches", String(Object.values(m.couplings).filter((c) => c.kind === "FRICTION_CLUTCH").length)),
     readonlyRow("Tip", "Add frames and arbors from the component list, then select a part to edit it."),
   ];
 }

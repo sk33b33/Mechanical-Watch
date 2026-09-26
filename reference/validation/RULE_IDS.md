@@ -45,7 +45,7 @@ BRG-003 A pivot must be smaller than its bearing bore (positive side shake).
 BRG-004 The shoulder span must fit between the bearing faces (positive endshake).
 BRG-005 Bearing clearances are computed but not judged until acceptable ranges have a source.
 
-CPL-001 A friction clutch must join two different shafts on the same axis.
+CPL-001 A friction clutch or mainspring must join two different shafts on the same axis.
 
 SUP-001 A carried part must be placed coaxially on the shaft that carries it.
 SUP-002 A stud-mounted part's axis must lie within its frame.
@@ -56,6 +56,15 @@ TIME-003 A nominal-time drive needs a shaft that carries the minutes hand.
 TIME-004 Under a prescribed drive, the hand rates are reported relative to nominal.
 
 SET-001 The hands must be settable without turning the rest of the train (a slipping clutch must isolate them).
+
+KEY-001 At most one keyless works; its wheel references must exist, be three different gears on different arbors, and its stem pinions must have valid tooth counts and modules.
+KEY-002 A stem pinion must engage its wheel at a right angle: same module, the wheel's axis on the stem's plan line, and the stem height one pitch radius from the wheel's mid-plane.
+KEY-003 Winding must be derivable: the ratchet's arbor needs a declared mainspring to a drum the running train turns, and the running train must not turn the ratchet (the click holds it).
+KEY-004 Setting through the crown: the sliding pinion's train must reach the minutes hand and be isolated from the going train by a friction clutch.
+
+DIAL-001 At most one dial, with a positive diameter and thickness, a finite face height and an existing centre arbor.
+DIAL-002 The dial must be clear of the movement: nothing may share its height where it overlaps the dial in plan.
+DIAL-003 Every hand arbor must lie within the dial.
 
 TOL-001 A declared tolerance must apply to an existing dimension once, with finite limits, lower ≤ upper, and a positive lower limit for a size.
 TOL-002 A clearance that is positive at nominal should stay positive at its worst-case declared tolerance limits.

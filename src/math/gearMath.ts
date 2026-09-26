@@ -91,6 +91,20 @@ export function meshSpeedRatio(drivingTeeth: number, drivenTeeth: number): numbe
   return -drivingTeeth / drivenTeeth;
 }
 
+/**
+ * Right-angle mesh between a pinion on the stem and a wheel whose axis is
+ * perpendicular to it (the axes intersect), modeled as rolling pitch
+ * circles (ASM-0019). Teeth pass the contact at the same rate, so
+ * |ω_driven| z_driven = |ω_driving| z_driving. Unlike a parallel mesh,
+ * the direction is not fixed by the tooth counts: `sense` (±1) comes
+ * from the layout (see src/kinematics/keylessGeometry.ts).
+ */
+export function crossedMeshSpeedRatio(drivingTeeth: number, drivenTeeth: number, sense: 1 | -1): number {
+  assertValidToothCount(drivingTeeth);
+  assertValidToothCount(drivenTeeth);
+  return (sense * drivingTeeth) / drivenTeeth;
+}
+
 export function drivenAngularVelocity(
   drivingAngularVelocity: AngularVelocity,
   drivingTeeth: number,

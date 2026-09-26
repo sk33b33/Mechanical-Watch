@@ -2,11 +2,12 @@ import { distance } from "@/math/vec2";
 import { isCompleteFrame, outlineContains } from "@/assembly/assemblyGeometry";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import type { ValidationIssue } from "../validationIssue";
+import { COUPLING_KIND_LABELS } from "@/domain/coupling";
 import { issue, type Rule } from "./context";
 
 /**
- * CPL-001: a friction clutch joins two different, existing, coaxial
- * shafts. SUP-001: a CARRIED shaft rides coaxially on another shaft.
+ * CPL-001: a friction clutch or mainspring joins two different, existing,
+ * coaxial shafts. SUP-001: a CARRIED shaft rides coaxially on another shaft.
  * SUP-002: a STUD-mounted shaft's axis lies within its frame.
  */
 export const couplingRules: Rule = ({ movement, placement }) => {
@@ -34,8 +35,8 @@ export const couplingRules: Rule = ({ movement, placement }) => {
     if (pa !== undefined && pb !== undefined && distance(pa, pb) > NUMERICAL_PARAMETERS.centreDistanceToleranceMetres) {
       issues.push(
         issue("CPL-001", "not-coaxial", "error", "L1_GEOMETRIC", [coupling.id, a.id, b.id],
-          `${coupling.name}: ${a.name} and ${b.name} are not on the same axis, so a friction clutch cannot join them.`,
-          ["REF-ENG §8"]),
+          `${coupling.name}: ${a.name} and ${b.name} are not on the same axis, so a ${COUPLING_KIND_LABELS[coupling.kind]} cannot join them.`,
+          [coupling.kind === "MAINSPRING" ? "REF-ENG §11" : "REF-ENG §8"]),
       );
     }
   }

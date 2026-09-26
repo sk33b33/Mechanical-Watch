@@ -6,6 +6,8 @@ import type { Gear } from "@/domain/gear";
 import type { GearMesh } from "@/domain/gearMesh";
 import type { Jewel } from "@/domain/jewel";
 import type { Tolerance } from "@/domain/tolerance";
+import type { KeylessWorks, StemPinion } from "@/domain/keyless";
+import type { Dial } from "@/domain/dial";
 import type { Vec2 } from "@/math/vec2";
 import type { Length } from "@/units/length";
 import type { Angle } from "@/units/angle";
@@ -32,7 +34,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 3;
+export const DESIGN_SCHEMA_VERSION = 4;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -72,6 +74,12 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
     const movement = doc.movement;
     if (!isRecord(movement)) return doc;
     return { ...doc, schemaVersion: 3, movement: { ...movement, tolerances: {} } };
+  },
+  /** v3 → v4: movements gain empty `keylessWorks` and `dials`; couplings may now also be MAINSPRING. */
+  3: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement)) return doc;
+    return { ...doc, schemaVersion: 4, movement: { ...movement, keylessWorks: {}, dials: {} } };
   },
 };
 
@@ -168,7 +176,7 @@ const coupling: Decoder<Coupling> = (value, path) => {
   return {
     id: field(o, "id", id<Coupling["id"]>(), path),
     type: field(o, "type", literal("Coupling"), path),
-    kind: field(o, "kind", literal("FRICTION_CLUTCH"), path),
+    kind: field(o, "kind", oneOf(["FRICTION_CLUTCH", "MAINSPRING"]), path),
     name: field(o, "name", string, path),
     shaftAId: field(o, "shaftAId", id<Shaft["id"]>(), path),
     shaftBId: field(o, "shaftBId", id<Shaft["id"]>(), path),
@@ -277,6 +285,40 @@ const tolerance: Decoder<Tolerance> = (value, path) => {
   };
 };
 
+const stemPinion: Decoder<StemPinion> = (value, path) => {
+  const o = object(value, path);
+  return { toothCount: field(o, "toothCount", number, path), module: field(o, "module", length, path) };
+};
+
+const keylessWorks: Decoder<KeylessWorks> = (value, path) => {
+  const o = object(value, path);
+  return {
+    id: field(o, "id", id<KeylessWorks["id"]>(), path),
+    type: field(o, "type", literal("KeylessWorks"), path),
+    name: field(o, "name", string, path),
+    stemDirection: field(o, "stemDirection", angle, path),
+    stemHeight: field(o, "stemHeight", length, path),
+    windingPinion: field(o, "windingPinion", stemPinion, path),
+    slidingPinion: field(o, "slidingPinion", stemPinion, path),
+    crownWheelGearId: field(o, "crownWheelGearId", id<Gear["id"]>(), path),
+    settingWheelGearId: field(o, "settingWheelGearId", id<Gear["id"]>(), path),
+    ratchetGearId: field(o, "ratchetGearId", id<Gear["id"]>(), path),
+  };
+};
+
+const dial: Decoder<Dial> = (value, path) => {
+  const o = object(value, path);
+  return {
+    id: field(o, "id", id<Dial["id"]>(), path),
+    type: field(o, "type", literal("Dial"), path),
+    name: field(o, "name", string, path),
+    centreShaftId: field(o, "centreShaftId", id<Shaft["id"]>(), path),
+    diameter: field(o, "diameter", length, path),
+    thickness: field(o, "thickness", length, path),
+    faceHeight: field(o, "faceHeight", length, path),
+  };
+};
+
 const movement: Decoder<Movement> = (value, path) => {
   const o = object(value, path);
   return {
@@ -291,6 +333,8 @@ const movement: Decoder<Movement> = (value, path) => {
     jewels: field(o, "jewels", entityRecord(jewel), path),
     couplings: field(o, "couplings", entityRecord(coupling), path),
     tolerances: field(o, "tolerances", entityRecord(tolerance), path),
+    keylessWorks: field(o, "keylessWorks", entityRecord(keylessWorks), path),
+    dials: field(o, "dials", entityRecord(dial), path),
     drive: field(o, "drive", nullable(drive), path),
   };
 };
