@@ -1,7 +1,7 @@
 import type { AppStore } from "@/app/store";
 import type { EntityId } from "@/domain/ids";
-import { addFrame, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
-import { newFrame, newShaft } from "@/domain/editing";
+import { addDial, addFrame, addKeylessWorks, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
+import { newDial, newFrame, newKeylessWorks, newShaft } from "@/domain/editing";
 import { listAssumptions } from "@/reference/assumptions";
 
 export function mountComponentTree(container: HTMLElement, store: AppStore): () => void {
@@ -68,6 +68,14 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
         const shaft = newShaft(m);
         return { movement: addShaft(m, shaft), id: shaft.id };
       }),
+      addButton("+ Keyless works", "Add a crown and stem with every dimension empty; then choose its wheels", (m) => {
+        const keyless = newKeylessWorks(m);
+        return { movement: addKeylessWorks(m, keyless), id: keyless.id };
+      }),
+      addButton("+ Dial", "Add a dial with every dimension empty", (m) => {
+        const dial = newDial(m);
+        return { movement: addDial(m, dial), id: dial.id };
+      }),
     );
     container.appendChild(actions);
 
@@ -93,6 +101,12 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
       for (const jewel of Object.values(movement.jewels).filter((j) => j.shaftId === shaft.id)) {
         container.appendChild(item(jewel.name.replace(`${shaft.name} `, ""), jewel.id, 1));
       }
+    }
+
+    if (Object.keys(movement.keylessWorks).length > 0 || Object.keys(movement.dials).length > 0) {
+      container.appendChild(header("Keyless works and dial"));
+      for (const keyless of Object.values(movement.keylessWorks)) container.appendChild(item(keyless.name, keyless.id, 0, "(crown and stem)"));
+      for (const dial of Object.values(movement.dials)) container.appendChild(item(dial.name, dial.id, 0));
     }
 
     container.appendChild(header("Assumptions"));

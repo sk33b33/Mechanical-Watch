@@ -120,7 +120,7 @@ describe("AppStore undo/redo", () => {
 });
 
 describe("AppStore hand setting", () => {
-  it("in setting mode the hands move fast while the going train keeps time", async () => {
+  it("setting through the crown moves the hands fast while the going train keeps time", async () => {
     const { createTeachingMovement } = await import("./teachingMovement");
     const store = new AppStore(createTeachingMovement());
     const id = (name: string): keyof typeof store.movement.shafts => {
@@ -128,13 +128,33 @@ describe("AppStore hand setting", () => {
       if (s === undefined) throw new Error(name);
       return s.id;
     };
-    store.setKinematicMode("HAND_SETTING", 1);
-    store.tick(0.25);
-    // Minutes hand at one turn per second: a quarter turn. The centre arbor: 0.25 s at 1 rev/h.
+    store.setCrownAction("SET_FORWARD");
+    store.tick(0.125);
+    // Crown at 1 rev/s; the teaching setting train turns the minutes hand 2 rev per crown rev: a quarter turn in 0.125 s.
     expect(store.simulation.shaftAngle[id("Cannon pinion")]).toBeCloseTo(Math.PI / 2, 9);
-    expect(store.simulation.shaftAngle[id("Centre arbor")]).toBeCloseTo((2 * Math.PI * 0.25) / 3600, 12);
-    store.setKinematicMode("RUNNING");
+    expect(store.simulation.shaftAngle[id("Centre arbor")]).toBeCloseTo((2 * Math.PI * 0.125) / 3600, 12);
+    store.setCrownAction("RUNNING");
     expect(store.simulationTrain).toBe(store.analysis.train);
+  });
+
+  it("winding turns the barrel arbor the winding way; reversed, the ratchet teeth slip", async () => {
+    const { createTeachingMovement } = await import("./teachingMovement");
+    const store = new AppStore(createTeachingMovement());
+    const arbor = Object.values(store.movement.shafts).find((s) => s.name === "Barrel arbor");
+    const drum = Object.values(store.movement.shafts).find((s) => s.name === "Barrel");
+    if (arbor === undefined || drum === undefined) throw new Error("barrel");
+    store.setCrownAction("WIND");
+    expect(store.simulationTrain.winding.status).toBe("WINDING");
+    expect(Math.sign(store.simulationTrain.shaftAngularVelocity.get(arbor.id) ?? 0))
+      .toBe(Math.sign(store.analysis.train.shaftAngularVelocity.get(drum.id) ?? Number.NaN));
+    store.setCrownAction("WIND_REVERSE");
+    expect(store.simulationTrain.winding.status).toBe("SLIPPING");
+  });
+
+  it("without keyless works, setting turns the minutes hand directly", () => {
+    const store = new AppStore(createDemoMovement());
+    store.setCrownAction("SET_FORWARD");
+    expect(store.simulationTrain.mode).toBe("HAND_SETTING");
   });
 });
 

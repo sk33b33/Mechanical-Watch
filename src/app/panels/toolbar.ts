@@ -1,4 +1,5 @@
-import { PLAYBACK_RATES, type AppStore, type PlaybackRate } from "@/app/store";
+import { PLAYBACK_RATES, type AppStore, type CrownAction, type PlaybackRate } from "@/app/store";
+import { SETTING_UNAVAILABLE_TEXT, WINDING_UNAVAILABLE_TEXT } from "@/kinematics/keylessSummary";
 import type { Movement } from "@/domain/movement";
 import { decodeDesign, DesignFileError, encodeDesign } from "@/persistence/designFile";
 import { createEmptyMovement } from "@/domain/editing";
@@ -142,25 +143,42 @@ export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
   dial.className = "toolbar-clock";
   dial.title = "Time shown by the simulated hand angles, each hand read on its own (ASM-0014). Starts at 12:00:00.";
   const modeSelect = document.createElement("select");
-  modeSelect.title = "Running: clutches engaged. Setting: friction clutches slip, the hands are turned (1 h per second) while the going train keeps running (ASM-0015).";
-  for (const [value, label] of [["RUNNING", "Running"], ["SET+", "Set hands forward"], ["SET-", "Set hands backward"]] as const) {
-    const option = document.createElement("option");
-    option.value = value;
-    option.textContent = label;
-    modeSelect.appendChild(option);
-  }
+  let modeOptionsKey = "";
+  const renderModeOptions = (): void => {
+    const keyless = Object.keys(store.movement.keylessWorks).length > 0;
+    const key = keyless ? "crown" : "direct";
+    if (key === modeOptionsKey) return;
+    modeOptionsKey = key;
+    modeSelect.innerHTML = "";
+    const options: [CrownAction, string][] = keyless
+      ? [
+          ["RUNNING", "Running (crown in)"],
+          ["SET_FORWARD", "Crown out: set hands forward"],
+          ["SET_BACKWARD", "Crown out: set hands backward"],
+          ["WIND", "Crown in: wind"],
+          ["WIND_REVERSE", "Crown in: turn backward"],
+        ]
+      : [["RUNNING", "Running"], ["SET_FORWARD", "Set hands forward"], ["SET_BACKWARD", "Set hands backward"]];
+    for (const [value, label] of options) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = label;
+      modeSelect.appendChild(option);
+    }
+    modeSelect.title = keyless
+      ? "Turn the crown (1 rev/s). Out: the sliding pinion drives the setting train and the friction clutch slips. In: the ratchet teeth wind in one direction and slip in the other. The going train keeps running (ASM-0015, ASM-0019)."
+      : "Running: clutches engaged. Setting: friction clutches slip and the hands are turned directly (1 h per second) while the going train keeps running (ASM-0015). Add keyless works to set through a crown.";
+  };
+  renderModeOptions();
   modeSelect.addEventListener("change", () => {
-    const value = modeSelect.value;
-    if (value === "RUNNING") store.setKinematicMode("RUNNING");
-    else store.setKinematicMode("HAND_SETTING", value === "SET+" ? 1 : -1);
-    const setting = store.simulationTrain.setting;
-    if (setting.status === "UNAVAILABLE") {
-      toolbar.notify(
-        setting.reason === "NO_MINUTES_HAND"
-          ? "Hand setting needs exactly one arbor carrying the minutes hand."
-          : "The hands can't be set on their own in this design (see SET-001 in the validation panel).",
-        "error",
-      );
+    store.setCrownAction(modeSelect.value as CrownAction);
+    const train = store.simulationTrain;
+    if (train.setting.status === "UNAVAILABLE") {
+      toolbar.notify(`The hands can't be set: ${SETTING_UNAVAILABLE_TEXT[train.setting.reason]} (see SET-001 / KEY-004).`, "error");
+    } else if (train.winding.status === "UNAVAILABLE") {
+      toolbar.notify(`Winding can't be shown: ${WINDING_UNAVAILABLE_TEXT[train.winding.reason]} (see KEY-003).`, "error");
+    } else if (train.winding.status === "SLIPPING") {
+      toolbar.notify("Turned backward, the stem's ratchet teeth slip over the winding pinion: nothing is wound.", "info");
     }
   });
   simGroup.append(
@@ -203,7 +221,8 @@ export function mountToolbar(container: HTMLElement, store: AppStore): Toolbar {
     redoButton.disabled = !store.canRedo;
     playButton.textContent = store.playing ? "Pause" : "Play";
     rateSelect.value = String(store.playbackRate);
-    modeSelect.value = store.kinematicMode === "RUNNING" ? "RUNNING" : store.settingDirection === 1 ? "SET+" : "SET-";
+    renderModeOptions();
+    modeSelect.value = store.crownAction;
   };
   const handReading = (hand: HandFunction): number | null => {
     const shafts = Object.values(store.movement.shafts).filter((sh) => sh.hand === hand);

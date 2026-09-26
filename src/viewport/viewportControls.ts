@@ -23,8 +23,8 @@ function labelled(text: string, ...children: HTMLElement[]): HTMLLabelElement {
 }
 
 /**
- * Workspace view controls: measure mode, exploded view and section view.
- * Exploding and sectioning change only what is drawn, never the design,
+ * Workspace view controls: measure mode, exploded view, dial visibility
+ * and section view. These change only what is drawn, never the design,
  * validation or measurements.
  */
 export function mountViewportControls(container: HTMLElement, viewport: Viewport, store: AppStore): void {
@@ -65,6 +65,14 @@ export function mountViewportControls(container: HTMLElement, viewport: Viewport
     applySection();
   });
 
+  const dialOn = document.createElement("input");
+  dialOn.type = "checkbox";
+  dialOn.checked = true;
+  dialOn.title = "Show the dial. It hides the motion works when seen from the dial side. Display only.";
+  dialOn.addEventListener("input", () => {
+    viewport.setDialVisible(dialOn.checked);
+  });
+
   const note = document.createElement("span");
   note.className = "viewport-note";
   note.textContent = "View only";
@@ -73,6 +81,7 @@ export function mountViewportControls(container: HTMLElement, viewport: Viewport
   bar.append(
     measure,
     labelled("Explode", explode),
+    labelled("Dial", dialOn),
     labelled("Section", sectionOn),
     labelled("Angle", angle),
     labelled("Offset", offset),

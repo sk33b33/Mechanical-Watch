@@ -13,8 +13,10 @@ import {
 } from "@/geometry/assemblyGeometry3d";
 import { arborZRange, frameZRange, isCompleteFrame } from "@/assembly/assemblyGeometry";
 import { partReferencePoint } from "@/assembly/measure";
+import { stemBodyId, type KeylessWorksId } from "@/domain/keyless";
+import { buildDialMeshes, buildStemMeshes } from "./keylessMeshes";
 
-type PickKind = "gear" | "jewel" | "arbor" | "frame";
+type PickKind = "gear" | "jewel" | "keyless" | "arbor" | "frame" | "dial";
 type ViewSide = "BRIDGE" | "DIAL";
 
 /**
@@ -31,7 +33,7 @@ export interface SectionState {
 const EXPLODE_STRETCH = 3;
 
 /** When several objects are under the pointer, the most specific wins. */
-const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, arbor: 2, frame: 3 };
+const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, keyless: 2, arbor: 3, frame: 4, dial: 5 };
 
 const COLORS = {
   selected: 0x4fa3ff,
@@ -43,6 +45,11 @@ const COLORS = {
   frameEdge: 0x8fa3b8,
   hand: { HOURS: 0xe6e9ec, MINUTES: 0xe6e9ec, SECONDS: 0xe0a95c },
   measure: 0x5cc98a,
+  dial: 0xe6e1d5,
+  dialMarker: 0x23282e,
+  stem: 0x9aa4ae,
+  crown: 0xa9b3bd,
+  pinion: 0xb8c4d0,
 } as const;
 
 const FRAME_OPACITY = { normal: 0.22, selected: 0.4 } as const;
@@ -76,6 +83,8 @@ export class Viewport {
   private readonly sectionPlane = new THREE.Plane();
   private readonly content = new THREE.Group();
   private readonly shaftGroups = new Map<ShaftId, THREE.Group>();
+  private readonly stemSpins = new Map<KeylessWorksId, { stem: THREE.Group; windingPinion: THREE.Group }>();
+  private showDial = true;
   private readonly pickables: THREE.Mesh[] = [];
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
@@ -211,6 +220,7 @@ export class Viewport {
     });
     this.content.clear();
     this.shaftGroups.clear();
+    this.stemSpins.clear();
     this.pickables.length = 0;
   }
 
@@ -271,11 +281,13 @@ export class Viewport {
       this.addPickable(group, mesh, { kind: "gear", entityId: gear.id, baseColor: COLORS.gear });
     }
 
-    // Hands sit below the lowest part of the movement, on the dial side (ASM-0016).
+    // Hands sit below the dial face, or below the lowest part of the movement if there is no dial (ASM-0016).
+    const dialFaces = Object.values(movement.dials).map((d) => d.faceHeight).filter(Number.isFinite);
     const lowest = Math.min(
       0,
       ...Object.values(movement.gears).filter((g) => Number.isFinite(g.zCentre) && Number.isFinite(g.thickness)).map((g) => g.zCentre - g.thickness / 2),
       ...Object.values(movement.frames).filter(isCompleteFrame).map((f) => f.zBottom),
+      ...dialFaces,
     );
     for (const shaft of Object.values(movement.shafts)) {
       const group = this.shaftGroups.get(shaft.id);
@@ -303,8 +315,42 @@ export class Viewport {
       this.addPickable(this.content, mesh, { kind: "jewel", entityId: jewel.id, baseColor: color });
     }
 
+    if (this.showDial) {
+      for (const dial of Object.values(movement.dials)) {
+        const built = buildDialMeshes(dial, analysis.placement, (z) => this.displayZ(z), {
+          disc: material(COLORS.dial, { metalness: 0.05, roughness: 0.8 }),
+          marker: material(COLORS.dialMarker, { metalness: 0.2, roughness: 0.5 }),
+        });
+        if (built === null) continue;
+        this.content.add(built.root);
+        built.disc.userData = { kind: "dial", entityId: dial.id, baseColor: COLORS.dial } satisfies Pickable;
+        this.pickables.push(built.disc);
+      }
+    }
+
+    for (const keyless of Object.values(movement.keylessWorks)) {
+      const built = buildStemMeshes(movement, analysis.placement, keyless, this.store.simulationTrain.stemPosition, (z) => this.displayZ(z), {
+        stem: material(COLORS.stem),
+        crown: material(COLORS.crown, { metalness: 0.6, roughness: 0.35 }),
+        pinion: material(COLORS.pinion, { metalness: 0.55, roughness: 0.4 }),
+      });
+      if (built === null) continue;
+      this.content.add(built.root);
+      for (const mesh of built.pickMeshes) {
+        mesh.userData = { kind: "keyless", entityId: keyless.id, baseColor: (mesh.material as THREE.MeshStandardMaterial).color.getHex() } satisfies Pickable;
+        this.pickables.push(mesh);
+      }
+      this.stemSpins.set(keyless.id, { stem: built.stemSpin, windingPinion: built.windingSpin });
+    }
+
     this.addMeasurementLine();
     this.applySelection();
+  }
+
+  /** Shows or hides the dial (it hides the motion works from the dial side). Display only. */
+  setDialVisible(visible: boolean): void {
+    this.showDial = visible;
+    this.rebuild();
   }
 
   /** Display position of an axial coordinate. Exploding stretches positions, never thicknesses. */
@@ -371,6 +417,11 @@ export class Viewport {
     for (const [shaftId, group] of this.shaftGroups) {
       group.rotation.z = this.store.simulation.shaftAngle[shaftId] ?? 0;
     }
+    // Stem bodies turn about the stem direction, the group's local +X.
+    for (const [id, spins] of this.stemSpins) {
+      spins.stem.rotation.x = this.store.simulation.stemAngle[stemBodyId(id, "STEM")] ?? 0;
+      spins.windingPinion.rotation.x = this.store.simulation.stemAngle[stemBodyId(id, "WINDING_PINION")] ?? 0;
+    }
   }
 
   private readonly handlePointerDown = (event: PointerEvent): void => {
@@ -388,6 +439,12 @@ export class Viewport {
     this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     this.raycaster.setFromCamera(this.pointer, this.camera);
     const hits = this.raycaster.intersectObjects(this.pickables, false);
+    // The dial is opaque: when it is the nearest thing under the pointer, it is what was clicked.
+    const nearest = hits.reduce<(typeof hits)[number] | undefined>((best, h) => (best === undefined || h.distance < best.distance ? h : best), undefined);
+    if (nearest !== undefined && (nearest.object.userData as Pickable).kind === "dial") {
+      this.store.select((nearest.object.userData as Pickable).entityId);
+      return;
+    }
     hits.sort((a, b) => {
       const pa = PICK_PRIORITY[(a.object.userData as Pickable).kind];
       const pb = PICK_PRIORITY[(b.object.userData as Pickable).kind];

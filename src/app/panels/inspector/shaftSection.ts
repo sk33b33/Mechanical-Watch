@@ -14,7 +14,7 @@ import {
   updateShaft,
   type Movement,
 } from "@/domain/movement";
-import { newFrictionClutch, newGear, newJewel } from "@/domain/editing";
+import { newFrictionClutch, newGear, newJewel, newMainspring } from "@/domain/editing";
 import { bearingInnerSpan, endshake, shaftSupport, sideShake } from "@/assembly/assemblyGeometry";
 import { endshakeStack, sideShakeStack } from "@/assembly/toleranceAnalysis";
 import { formatPeriod } from "@/kinematics/timeDisplay";
@@ -229,6 +229,39 @@ function clutchRows(store: AppStore, shaft: Shaft): Section {
   return out;
 }
 
+/** The mainspring link from a barrel arbor to its drum (no energy modeled, ASM-0018). */
+function mainspringRows(store: AppStore, shaft: Shaft): Section {
+  const { movement } = store;
+  const positions = store.analysis.placement.shaftPositions;
+  const out: Section = [sectionHeader("Mainspring")];
+  const springs = Object.values(movement.couplings).filter(
+    (c) => c.kind === "MAINSPRING" && (c.shaftAId === shaft.id || c.shaftBId === shaft.id),
+  );
+  for (const spring of springs) {
+    const winds = spring.shaftAId === shaft.id;
+    const other = movement.shafts[winds ? spring.shaftBId : spring.shaftAId];
+    out.push(listRow(winds ? `Winds the drum ${other?.name ?? "missing arbor"}` : `Wound by ${other?.name ?? "missing arbor"}`,
+      actionButton("Remove", "Remove this mainspring link", () => { store.remove(spring.id); }, true),
+      other === undefined ? undefined : () => { store.select(other.id); }));
+  }
+  if (springs.length > 0) return out;
+  const axis = positions.get(shaft.id);
+  const candidates = Object.values(movement.shafts).filter((s) => {
+    if (s.id === shaft.id) return false;
+    const p = positions.get(s.id);
+    return axis !== undefined && p !== undefined && distance(axis, p) <= NUMERICAL_PARAMETERS.centreDistanceToleranceMetres;
+  });
+  if (candidates.length === 0) return [];
+  out.push(selectRow("This arbor winds", "", [
+    { value: "", label: "Choose the coaxial drum…" },
+    ...candidates.map((s) => ({ value: s.id, label: s.name })),
+  ], (id) => {
+    const drum = candidates.find((s) => s.id === id);
+    if (drum !== undefined) store.edit((m) => addCoupling(m, newMainspring(m, shaft.id, drum.id)));
+  }, "Declares a mainspring from this barrel arbor to the drum. No spring energy or torque is modeled; it sets which way the crown winds (ASM-0018)."));
+  return out;
+}
+
 function driveRows(store: AppStore, shaft: Shaft): Section {
   const { movement } = store;
   const drive = movement.drive;
@@ -294,6 +327,7 @@ export function shaftSection(store: AppStore, shaft: Shaft): Section {
   }));
 
   out.push(...clutchRows(store, shaft));
+  out.push(...mainspringRows(store, shaft));
 
   if (shaft.support.kind === "PIVOTED") {
     out.push(...bearingRows(store, shaft));

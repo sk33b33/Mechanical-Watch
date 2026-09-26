@@ -26,6 +26,33 @@ export const HAND_VISUALIZATION = {
   assumption: "ASM-0016" satisfies AssumptionId,
 } as const;
 
+/**
+ * Keyless parts drawn at placeholder sizes (ASM-0012): the stem, the crown
+ * and the pinions' thickness are not modeled. The pinions' pitch
+ * diameters are the model's; their tooth shapes are visual (ASM-0005).
+ * Pulling the crown out and the sliding pinion's travel are shown by
+ * visual offsets only (ASM-0019).
+ */
+export const KEYLESS_VISUALIZATION = {
+  stemRadiusMetres: 0.35e-3,
+  crownRadiusMetres: 1.4e-3,
+  crownLengthMetres: 1.4e-3,
+  crownGapMetres: 0.6e-3,
+  pinionThicknessMetres: 0.35e-3,
+  pulledOutMetres: 0.6e-3,
+  slidingPinionTravelMetres: 0.3e-3,
+  stemInnerOverhangMetres: 0.6e-3,
+  assumption: "ASM-0012" satisfies AssumptionId,
+} as const;
+
+/** Hour markers drawn on the dial face; visual only (ASM-0020). */
+export const DIAL_VISUALIZATION = {
+  markerLengthFraction: 0.1,
+  markerWidthMetres: 0.35e-3,
+  markerThicknessMetres: 0.03e-3,
+  assumption: "ASM-0020" satisfies AssumptionId,
+} as const;
+
 /** A tapered hand along +Y from the axis, with a short tail, spanning z ∈ [0, thickness]. */
 export function createHandGeometry(hand: keyof Omit<typeof HAND_VISUALIZATION, "thicknessMetres" | "assumption">): THREE.ExtrudeGeometry {
   const { lengthMetres: l, widthMetres: w } = HAND_VISUALIZATION[hand];

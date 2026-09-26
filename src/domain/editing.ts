@@ -6,7 +6,10 @@ import { createShaft, type Shaft, type ShaftEnd, type ShaftId } from "./shaft";
 import { createGear, type Gear, type GearId } from "./gear";
 import { createGearMesh, type GearMesh, type GearMeshId } from "./gearMesh";
 import { createJewel, type BearingKind, type Jewel, type JewelId } from "./jewel";
-import { createFrictionClutch, type Coupling, type CouplingId } from "./coupling";
+import { createFrictionClutch, createMainspring, type Coupling, type CouplingId } from "./coupling";
+import { createKeylessWorks, type KeylessWorks } from "./keyless";
+import { createDial, type Dial } from "./dial";
+import { radians } from "@/units/angle";
 import type { ToleranceId } from "./tolerance";
 
 /**
@@ -74,6 +77,37 @@ export function newFrictionClutch(movement: Movement, shaftAId: ShaftId, shaftBI
   const a = movement.shafts[shaftAId]?.name ?? "?";
   const b = movement.shafts[shaftBId]?.name ?? "?";
   return createFrictionClutch(`Friction clutch ${a} / ${b}`, shaftAId, shaftBId);
+}
+
+export function newMainspring(movement: Movement, arborShaftId: ShaftId, drumShaftId: ShaftId): Coupling {
+  const drum = movement.shafts[drumShaftId]?.name ?? "?";
+  return createMainspring(`Mainspring of ${drum}`, arborShaftId, drumShaftId);
+}
+
+/** Keyless works with every dimension empty and no wheels chosen yet (KEY-001 lists what is missing). */
+export function newKeylessWorks(movement: Movement): KeylessWorks {
+  const none = "" as GearId;
+  return createKeylessWorks({
+    name: nextName(Object.values(movement.keylessWorks), "Keyless works"),
+    stemDirection: radians(Number.NaN),
+    stemHeight: EMPTY,
+    windingPinion: { toothCount: Number.NaN, module: EMPTY },
+    slidingPinion: { toothCount: Number.NaN, module: EMPTY },
+    crownWheelGearId: none,
+    settingWheelGearId: none,
+    ratchetGearId: none,
+  });
+}
+
+/** A dial with every dimension empty and no centre arbor chosen yet (DIAL-001 lists what is missing). */
+export function newDial(movement: Movement): Dial {
+  return createDial({
+    name: nextName(Object.values(movement.dials), "Dial"),
+    centreShaftId: "" as ShaftId,
+    diameter: EMPTY,
+    thickness: EMPTY,
+    faceHeight: EMPTY,
+  });
 }
 
 export function newJewel(movement: Movement, shaftId: ShaftId, end: ShaftEnd, frameId: FrameId, kind: BearingKind = "HOLE_JEWEL"): Jewel {

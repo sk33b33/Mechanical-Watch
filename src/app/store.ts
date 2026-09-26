@@ -4,7 +4,13 @@ import { removeEntity } from "@/domain/editing";
 import { findEntity } from "@/domain/lookup";
 import { analyzeMovement, EMPTY_ANALYSIS, type MovementAnalysis } from "@/analysis/analyzeMovement";
 import type { ValidationIssue } from "@/validation/validationIssue";
-import { solveGearTrain, type GearTrainSolution, type KinematicMode } from "@/kinematics/solveGearTrain";
+import {
+  handsForwardCrownSense,
+  primaryKeyless,
+  solveGearTrain,
+  windingCrownSense,
+  type GearTrainSolution,
+} from "@/kinematics/solveGearTrain";
 import { radiansPerSecond } from "@/units/angularVelocity";
 import {
   advanceSimulation,
@@ -16,10 +22,25 @@ import {
 const HISTORY_LIMIT = 200;
 
 /**
- * Hand-setting speed: the minutes hand turns once per real second (one
- * hour per second). A UI choice, not a property of any mechanism.
+ * Direct hand-setting speed (movements without keyless works): the minutes
+ * hand turns once per real second (one hour per second). A UI choice, not
+ * a property of any mechanism.
  */
 const HAND_SETTING_ANGULAR_VELOCITY = 2 * Math.PI;
+
+/**
+ * How fast the user turns the crown: one revolution per real second. A UI
+ * choice, not a property of any mechanism; the hands' or ratchet's speed
+ * then follows from the keyless works' ratios.
+ */
+export const CROWN_TURNING_ANGULAR_VELOCITY = 2 * Math.PI;
+
+/**
+ * What the user is doing with the crown (UI state, not part of the design).
+ * With keyless works, setting and winding go through the crown; without
+ * them, setting turns the minutes-hand arbor directly.
+ */
+export type CrownAction = "RUNNING" | "SET_FORWARD" | "SET_BACKWARD" | "WIND" | "WIND_REVERSE";
 
 /** Playback speeds offered in the UI; 60× stays within the per-frame step cap down to 15 fps. */
 export const PLAYBACK_RATES = [0.1, 1, 10, 60] as const;
@@ -203,30 +224,45 @@ export class AppStore {
   /** Simulation playback (UI state, not part of the design). */
   playing = true;
   playbackRate: PlaybackRate = 1;
-  /** Running, or setting the hands (clutches slip). UI state, not part of the design. */
-  kinematicMode: KinematicMode = "RUNNING";
-  settingDirection: 1 | -1 = 1;
+  crownAction: CrownAction = "RUNNING";
   /**
    * The solution the simulation integrates: the running solve from the
-   * analysis, or a hand-setting solve. Validation always uses the running solve.
+   * analysis, or a setting or winding solve. Validation always uses the running solve.
    */
   simulationTrain: GearTrainSolution = EMPTY_ANALYSIS.train;
 
-  setKinematicMode(mode: KinematicMode, direction: 1 | -1 = this.settingDirection): void {
-    this.kinematicMode = mode;
-    this.settingDirection = direction;
+  setCrownAction(action: CrownAction): void {
+    this.crownAction = action;
     this.updateSimulationTrain();
     this.notify();
   }
 
   private updateSimulationTrain(): void {
-    this.simulationTrain =
-      this.kinematicMode === "RUNNING"
-        ? this.analysis.train
+    const action = this.crownAction;
+    if (action === "RUNNING") {
+      this.simulationTrain = this.analysis.train;
+      return;
+    }
+    const direction = action === "SET_FORWARD" || action === "WIND" ? 1 : -1;
+    const hasKeyless = primaryKeyless(this.movement) !== null;
+    if (action === "SET_FORWARD" || action === "SET_BACKWARD") {
+      this.simulationTrain = hasKeyless
+        ? solveGearTrain(this.movement, {
+            mode: "CROWN_SETTING",
+            // Turn the crown whichever way moves the hands the requested way (derived from the setting train).
+            crownAngularVelocity: radiansPerSecond(direction * (handsForwardCrownSense(this.movement) ?? 1) * CROWN_TURNING_ANGULAR_VELOCITY),
+          })
         : solveGearTrain(this.movement, {
             mode: "HAND_SETTING",
-            settingAngularVelocity: radiansPerSecond(this.settingDirection * HAND_SETTING_ANGULAR_VELOCITY),
+            settingAngularVelocity: radiansPerSecond(direction * HAND_SETTING_ANGULAR_VELOCITY),
           });
+      return;
+    }
+    this.simulationTrain = solveGearTrain(this.movement, {
+      mode: "WINDING",
+      // WIND turns the crown the winding way; WIND_REVERSE the other way, where the ratchet teeth slip.
+      crownAngularVelocity: radiansPerSecond(direction * (windingCrownSense(this.movement) ?? 1) * CROWN_TURNING_ANGULAR_VELOCITY),
+    });
   }
 
   setPlaying(playing: boolean): void {
