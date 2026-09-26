@@ -75,6 +75,11 @@ velocities, bearing positions, side shake, endshake, shaft angles.
 - Autosave keeps the current design in browser storage under
   `mw3d.autosave`. An unreadable autosave is moved to
   `mw3d.autosave.unreadable` rather than overwritten.
+- The project library (`src/persistence/library.ts`) keeps named designs
+  under `mw3d.library`, keyed by movement id. Each entry holds a complete
+  design file, so it migrates on its own. Entries that can't be opened
+  stay listed with the reason. An unreadable library is moved to
+  `mw3d.library.unreadable`.
 
 ## Creating and deleting (`src/domain/editing.ts`)
 

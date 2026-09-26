@@ -54,7 +54,8 @@ one solved context. Rule IDs come from `reference/validation/RULE_IDS.md`.
 
 ### Persistence (`src/persistence`)
 Versioned design file format, a strict structural decoder for untrusted
-input, and browser autosave. See `docs/DATA_MODEL.md`.
+input, browser autosave, and a project library in browser storage. See
+`docs/DATA_MODEL.md`.
 
 ### Reference (`src/reference`)
 Code mirrors of the assumption register, rule IDs, validation levels and
@@ -63,6 +64,13 @@ numerical parameters. Tests keep them in sync with `reference/`.
 ### UI (`src/app`, `src/viewport`)
 Panels, inspector, validation console and the Three.js viewport. UI code
 never calculates engineering relationships.
+
+Workspace views are display only. The exploded view stretches axial
+positions (not thicknesses), and the section view clips with a vertical
+plane. Neither changes the design, validation or measurements.
+Measurements (`src/assembly/measure.ts`) are computed from the design
+model and solved placement at assembled positions. The viewport only
+draws an indicator line.
 
 ## Coordinate convention
 

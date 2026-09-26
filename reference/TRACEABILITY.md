@@ -35,6 +35,11 @@ geometry standard) is open work.
 | Hand ratio check (1) | ω_h/ω_ref = T_ref/T_h, same sign | `timeRules` (TIME-002) | definition + REF-ENG §5.3 | ASM-0014 | DERIVED | L2 | › TIME-002 … |
 | Rotation period (s) | T = 2π / abs(ω) | `periodSeconds`, `formatPeriod` | definition | none | DERIVED | L2 | › reads hand angles… |
 | Dial reading | hand angle / 2π × (12 or 60), each hand read on its own | `readHand` | definition | ASM-0014 | DERIVED | L2 | › reads hand angles… |
+| Measured axis distance (m) | abs(p_a − p_b) between solved axes | `measureBetween` in `src/assembly/measure.ts` | geometric definition | ASM-0006 | DERIVED | L1 | `measure.test.ts` |
+| Measured axial gap / overlap (m) | overlap = min(hi) − max(lo); gap if negative | `measureBetween` | geometric definition | ASM-0010 (frames) | DERIVED | L1 | `measure.test.ts` › meshed gears, frames |
+| Measured pitch-circle clearance (m) | d − (d1 + d2)/2 | `measureBetween` | REF-ENG §5.2, §6 | pitch model only | DERIVED | L1 | `measure.test.ts` |
+| Measured drawn-tip clearance (m) | d − tip1 − tip2, unmeshed pairs only | `measureBetween` | none (visual) | ASM-0005 | APPROXIMATION | L0 | `measure.test.ts` › drawn tips… |
+| Measured centre-distance deviation (m) | abs(d − m(z1 + z2)/2) for a meshed pair | `measureBetween` | REF-ENG §5.2 | ASM-0008 | DERIVED | L1 | `measure.test.ts` › meshed gears |
 | Tooth outline (visual) | trapezoid with addendum 1.0 × module and dedendum 1.25 × module | `generateGearOutline` | none; visualization only | ASM-0005, ASM-0004 | APPROXIMATION | L0 | `gearOutline.test.ts` |
 
 Units: SI internally (SRC-0001, SRC-0002 via REF-ENG §4). mm, degrees and

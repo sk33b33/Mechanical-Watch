@@ -2,6 +2,37 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 4 — Watchmaker workspace: complete
+
+- **Measurement tool.** Measure, then pick two parts (viewport or tree).
+  The values come from the design model and solved placement, never
+  from rendered meshes. Each row states its model level and basis
+  (hover):
+  - axis distance;
+  - axial gap or overlap;
+  - pitch-circle clearance (L1);
+  - drawn tip clearance for unmeshed gears (L0, ASM-0005);
+  - for meshed pairs, ideal centre distance and deviation.
+  A line marks the measured pair.
+- **Exploded view.** A slider spreads parts along the shaft axes,
+  stretching positions but not thicknesses.
+- **Section view.** A vertical cutting plane set by angle and offset, or
+  placed through the selected part's axis.
+- Both views are **display only**. They never change the design,
+  validation or measurements (checked: measured values are identical
+  when exploded).
+- **Project library.** Projects… lists designs saved in this browser,
+  with save, open (undoable) and delete. Entries that can't be opened
+  stay listed with the reason, and a damaged library is set aside, not
+  overwritten. Downloaded files remain the durable copy.
+- The assembly tree and validation console from earlier phases complete
+  the workspace. The toolbar now fits down to 1280 px without scrolling
+  the page.
+
+159 tests pass. Checked in a browser: measuring meshed gears and
+frames, explode and section (including through a selected arbor), and
+saving, switching, reloading and deleting library projects.
+
 ## Phase 3 — Kinematic movement: complete
 
 - **Time display as the requirement.** Arbors can carry the hours,
@@ -139,6 +170,10 @@ dimensions round-trip, and picking and issue selection work.
 - Arbor diameters aren't modeled. The wheel/arbor check treats the
   arbor as its axis line, a lower bound.
 - The selected-arbor highlight is hard to see behind large wheels.
+- The section view has no caps: cut parts show their hollow inside
+  rather than a filled cross-section.
+- Measurements are between whole parts. There is no point-to-point
+  picking on surfaces yet.
 - Long dropdown labels are truncated in the narrow inspector.
 - The camera is framed once per loaded design or view change. A design
   built up from empty keeps the default view until you orbit or switch
@@ -148,7 +183,8 @@ dimensions round-trip, and picking and issue selection work.
 
 ## Next (see `docs/ROADMAP.md`)
 
-- Phase 4 workspace: exploded view, section view, measurement tools.
+- A dial and keyless works (winding and setting), if you want hand
+  setting driven through a real setting train.
 - Phase 5 escapement: escape wheel, pallet fork and balance as a
   separately declared, simplified model (ESC-001/002). It needs a source
   for the escape-wheel/beat relationship before any beat rate is shown.

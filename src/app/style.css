@@ -563,3 +563,21 @@ button.active {
 .projects-table button + button {
   margin-left: 4px;
 }
+
+/* Keep the toolbar within the window: the notice truncates first. */
+.toolbar {
+  overflow: hidden;
+}
+
+.toolbar-group,
+.toolbar-status {
+  flex: none;
+}
+
+.toolbar-notice {
+  flex: 0 1 auto;
+}
+
+.toolbar-clock {
+  min-width: 0;
+}
