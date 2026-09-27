@@ -1,6 +1,7 @@
 import type { Movement } from "@/domain/movement";
 import type { EntityId } from "@/domain/ids";
 import { removeEntity } from "@/domain/editing";
+import { TUTORIAL_STEPS } from "./tutorial/tutorialSteps";
 import { designsEqual } from "@/persistence/designFile";
 import { findEntity } from "@/domain/lookup";
 import { analyzeMovement, EMPTY_ANALYSIS, type MovementAnalysis } from "@/analysis/analyzeMovement";
@@ -158,6 +159,7 @@ export class AppStore {
     this.updateSimulationTrain();
     this.issues =
       this.simulationIssue === null ? this.analysis.issues : [...this.analysis.issues, this.simulationIssue];
+    this.advanceTutorialIfComplete();
   }
 
   /** Applies a pure domain update, then re-derives everything. Undoable. */
@@ -250,6 +252,57 @@ export class AppStore {
     this.measuring = on;
     this.measureIds = [null, null];
     this.notify();
+  }
+
+  /**
+   * Guided "build a movement from scratch" walkthrough (UI state, not part
+   * of the design; see tutorial/tutorialSteps.ts). A step with a
+   * completion check advances on its own when the design satisfies it,
+   * checked from recompute() on every edit — never on a UI event alone,
+   * since the domain model is what's authoritative here too.
+   */
+  tutorialActive = false;
+  tutorialStepIndex = 0;
+
+  get tutorialStep(): (typeof TUTORIAL_STEPS)[number] | null {
+    return this.tutorialActive ? (TUTORIAL_STEPS[this.tutorialStepIndex] ?? null) : null;
+  }
+
+  startTutorial(): void {
+    this.tutorialActive = true;
+    this.tutorialStepIndex = 0;
+    this.advanceTutorialIfComplete();
+    this.notify();
+  }
+
+  stopTutorial(): void {
+    this.tutorialActive = false;
+    this.notify();
+  }
+
+  /** Advances past the current step regardless of its own completion check (a manual "Next" / "Skip this step"). */
+  advanceTutorial(): void {
+    if (!this.tutorialActive) return;
+    if (this.tutorialStepIndex >= TUTORIAL_STEPS.length - 1) {
+      this.tutorialActive = false;
+    } else {
+      this.tutorialStepIndex += 1;
+    }
+    this.notify();
+  }
+
+  /** Auto-advances while the current step's own completion check is satisfied by the design. Called from recompute(). */
+  private advanceTutorialIfComplete(): void {
+    if (!this.tutorialActive) return;
+    let step = TUTORIAL_STEPS[this.tutorialStepIndex];
+    while (step?.isComplete?.(this.movement) === true) {
+      if (this.tutorialStepIndex >= TUTORIAL_STEPS.length - 1) {
+        this.tutorialActive = false;
+        return;
+      }
+      this.tutorialStepIndex += 1;
+      step = TUTORIAL_STEPS[this.tutorialStepIndex];
+    }
   }
 
   /** Simulation playback (UI state, not part of the design). */

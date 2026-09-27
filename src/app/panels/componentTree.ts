@@ -29,11 +29,17 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
     return el;
   }
 
-  function addButton(label: string, title: string, create: (m: Movement) => { movement: Movement; id: EntityId }): HTMLButtonElement {
+  function addButton(
+    label: string,
+    title: string,
+    create: (m: Movement) => { movement: Movement; id: EntityId },
+    tutorialId?: string,
+  ): HTMLButtonElement {
     const el = document.createElement("button");
     el.type = "button";
     el.textContent = label;
     el.title = title;
+    if (tutorialId !== undefined) el.dataset.tutorial = tutorialId;
     el.addEventListener("click", () => {
       const { movement, id } = create(store.movement);
       store.edit(() => movement);
@@ -59,15 +65,15 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
       addButton("+ Mainplate", "Add a mainplate with every dimension empty", (m) => {
         const frame = newFrame(m, "MAINPLATE");
         return { movement: addFrame(m, frame), id: frame.id };
-      }),
+      }, "add-mainplate"),
       addButton("+ Bridge", "Add a bridge with every dimension empty", (m) => {
         const frame = newFrame(m, "BRIDGE");
         return { movement: addFrame(m, frame), id: frame.id };
-      }),
+      }, "add-bridge"),
       addButton("+ Arbor", "Add an arbor with an empty position", (m) => {
         const shaft = newShaft(m);
         return { movement: addShaft(m, shaft), id: shaft.id };
-      }),
+      }, "add-arbor"),
       addButton("+ Keyless works", "Add a crown and stem with every dimension empty; then choose its wheels", (m) => {
         const keyless = newKeylessWorks(m);
         return { movement: addKeylessWorks(m, keyless), id: keyless.id };

@@ -1,4 +1,5 @@
 import type { AppStore } from "@/app/store";
+import type { KeyValueStore } from "@/persistence/autosave";
 import { millimetres, toMillimetres } from "@/units/length";
 import { toDegrees } from "@/units/angle";
 import { toRpm } from "@/units/angularVelocity";
@@ -42,6 +43,9 @@ import {
 } from "./fields";
 import { deleteRow, positive, type Section } from "./common";
 import { stackText, stackTitle, toleranceSection } from "./toleranceSection";
+import { presetRows } from "./presetsSection";
+
+type NotifyFn = (message: string, kind: "error" | "info") => void;
 
 /** The highest level any model in this app can currently support (kinematic gear train). */
 const HIGHEST_MODELED_LEVEL = "L2_KINEMATIC";
@@ -113,7 +117,7 @@ export function movementSection(store: AppStore): Section {
 
 // ---- gear -------------------------------------------------------------------
 
-export function gearSection(store: AppStore, gear: Gear): Section {
+export function gearSection(store: AppStore, gear: Gear, storage: KeyValueStore | null, notify: NotifyFn): Section {
   const { movement } = store;
   const edit = (patch: Parameters<typeof updateGear>[2]): void => {
     store.edit((m) => updateGear(m, gear.id, patch));
@@ -192,13 +196,24 @@ export function gearSection(store: AppStore, gear: Gear): Section {
     "v = ω r (REF-ENG §5.5)"));
 
   out.push(...toleranceSection(store, gear.id));
+  out.push(
+    ...presetRows(
+      "Gear",
+      { module: Number.isFinite(gear.module) ? gear.module : null, thickness: Number.isFinite(gear.thickness) ? gear.thickness : null },
+      (values) => {
+        edit({ module: values.module ?? gear.module, thickness: values.thickness ?? gear.thickness });
+      },
+      storage,
+      notify,
+    ),
+  );
   out.push(deleteRow(store, gear.id, "Delete gear", "Also removes its meshes."));
   return out;
 }
 
 // ---- jewel ------------------------------------------------------------------
 
-export function jewelSection(store: AppStore, jewel: Jewel): Section {
+export function jewelSection(store: AppStore, jewel: Jewel, storage: KeyValueStore | null, notify: NotifyFn): Section {
   const { movement } = store;
   const shaft = movement.shafts[jewel.shaftId];
   const frame = movement.frames[jewel.frameId];
@@ -230,6 +245,9 @@ export function jewelSection(store: AppStore, jewel: Jewel): Section {
         )),
     readonlyRow("Outer size", "not modeled (drawn at a placeholder size, ASM-0012)"),
     ...toleranceSection(store, jewel.id),
+    ...presetRows("Jewel", { boreDiameter: jewel.boreDiameter }, (values) => {
+      edit({ boreDiameter: values.boreDiameter ?? jewel.boreDiameter });
+    }, storage, notify),
     deleteRow(store, jewel.id, "Delete bearing", "The shaft end becomes unsupported."),
   ];
 }
@@ -301,7 +319,7 @@ function outlineRows(store: AppStore, frame: Frame): Section {
   return out;
 }
 
-export function frameSection(store: AppStore, frame: Frame): Section {
+export function frameSection(store: AppStore, frame: Frame, storage: KeyValueStore | null, notify: NotifyFn): Section {
   const edit = (patch: Parameters<typeof updateFrame>[2]): void => {
     store.edit((m) => updateFrame(m, frame.id, patch));
   };
@@ -327,6 +345,9 @@ export function frameSection(store: AppStore, frame: Frame): Section {
     readonlyRow("Bearings", String(bearings)),
     readonlyRow("Model", "flat slab (ASM-0010)", "Pillars, screws, recesses and sinks are not modeled."),
     ...toleranceSection(store, frame.id),
+    ...presetRows("Frame", { thickness: Number.isFinite(frame.thickness) ? frame.thickness : null }, (values) => {
+      edit({ thickness: values.thickness ?? frame.thickness });
+    }, storage, notify),
     deleteRow(store, frame.id, "Delete frame", "Also removes the bearings seated in it."),
   ];
 }

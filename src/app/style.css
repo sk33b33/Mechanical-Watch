@@ -840,3 +840,77 @@ button.active {
 .viewport-model-label[hidden] {
   display: none;
 }
+
+/*
+ * Guided walkthrough (tutorialBanner.ts). The pulsing highlight is an
+ * explicit, confirmed exception to this app's usual "no decorative UI":
+ * everywhere else avoids animation, but a first-build tutorial is the one
+ * place motion earns its place, to draw the eye to the next control.
+ */
+.tutorial-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 40;
+  width: min(520px, calc(100vw - 32px));
+  background: var(--bg-1);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  padding: 12px 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+
+.tutorial-banner[hidden] {
+  display: none;
+}
+
+.tutorial-progress {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.tutorial-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.tutorial-instructions {
+  color: var(--text-1);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.tutorial-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tutorial-exit {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-1);
+}
+
+@keyframes tutorial-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(79, 163, 255, 0.65);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(79, 163, 255, 0);
+  }
+}
+
+.tutorial-target {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px;
+  border-radius: 4px;
+  animation: tutorial-pulse 1.2s ease-in-out infinite;
+}

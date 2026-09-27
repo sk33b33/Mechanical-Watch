@@ -2,6 +2,55 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Guided tutorial, and reusable part presets
+
+Two workflow features, requested together: a walkthrough for building a
+movement from scratch, and a way to stop retyping the same dimensions on
+every part.
+
+- **Guided tutorial (`src/app/tutorial/tutorialSteps.ts`,
+  `src/app/panels/tutorialBanner.ts`).** A "Tutorial…" toolbar action
+  starts a 10-step walkthrough: empty movement → mainplate → bridge →
+  first arbor → its gear → second arbor → its gear → mesh them → bearings
+  on both → check validation. Each step (but the last) is checked against
+  the **domain model**, not a UI event — `isComplete(movement)` — so it
+  advances whether the user clicks the highlighted control or does the
+  same thing another way, and doesn't advance on a click that didn't
+  actually change the design. Every step can also be skipped manually.
+  Covers the opening workflow only, not a full caliber (no escapement,
+  keyless works or dial steps yet) — stated in the module's own comment,
+  not just here, and extending it is just appending to
+  `TUTORIAL_STEPS`.
+  - The pulsing glow on the current step's target control
+    (`.tutorial-target`, `@keyframes tutorial-pulse`) is an explicit,
+    confirmed exception to this app's usual "avoid decorative UI"
+    (CLAUDE.md): everywhere else in the UI stays static; this is the one
+    place asked for, and agreed, to draw the eye with motion.
+  - Target elements are marked with a `data-tutorial="…"` attribute (new
+    optional parameter on `actionButton`/`actionRow` and the component
+    tree's own `addButton`) or reuse an existing `data-field`/
+    `data-testid`. Only looked up in the main document — a control popped
+    out into its own window (`layout/panelWindows.ts`) won't be
+    highlighted there; stated as a limitation, not hidden.
+- **Reusable part presets (`src/persistence/presets.ts`,
+  `src/app/panels/inspector/presetsSection.ts`).** Every Shaft, Gear,
+  Jewel and Frame inspector now has a "Presets" section: name the part's
+  *current* values and save them, then apply that name's values to any
+  other part of the same kind. Deliberately **not** built-in "reasonable
+  defaults" — CLAUDE.md forbids inventing an engineering constant, and a
+  typical pivot diameter or module is exactly that. Every preset value
+  traces back to something a user typed into some part, at some point;
+  applying one only overwrites the fields the preset actually set,
+  leaving the rest of the part alone. Stored in the browser, independent
+  of any design (like the project library, `persistence/library.ts`),
+  with the same unreadable-store handling (set aside, never overwritten).
+- New tests: `persistence/presets.test.ts` (6, the storage layer),
+  `app/store.test.ts` (+6, the tutorial's auto-advance and manual-skip
+  logic against real edits), `e2e/tutorial.spec.ts` and
+  `e2e/presets.spec.ts` (3, the actual UI — highlight classes, banner
+  text, preset save/apply/remove, survives a reload). 357 unit tests and
+  30 browser tests pass (351 / 27 before).
+
 ## Endshake advisory (BRG-006): a low-confidence source, used carefully
 
 - Bearing clearances (side shake, endshake) have been computed since the

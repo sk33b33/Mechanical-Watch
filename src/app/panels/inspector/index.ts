@@ -1,4 +1,5 @@
 import type { AppStore } from "@/app/store";
+import type { KeyValueStore } from "@/persistence/autosave";
 import { findEntity, type SelectableEntity } from "@/domain/lookup";
 import type { EntityId } from "@/domain/ids";
 import { declaredLevelStatus } from "@/validation/validationIssue";
@@ -37,7 +38,12 @@ function relatedIds(entity: SelectableEntity): EntityId[] {
   }
 }
 
-export function mountInspector(container: HTMLElement, store: AppStore): () => void {
+export function mountInspector(
+  container: HTMLElement,
+  store: AppStore,
+  storage: KeyValueStore | null,
+  notify: (message: string, kind: "error" | "info") => void,
+): () => void {
   function render(): void {
     // Preserve which field had focus across the re-render an edit causes.
     // The panel may live in a separate window, so ask its own document.
@@ -68,13 +74,13 @@ export function mountInspector(container: HTMLElement, store: AppStore): () => v
     container.appendChild(title);
 
     const section =
-      entity.type === "Gear" ? gearSection(store, entity)
-      : entity.type === "Shaft" ? shaftSection(store, entity)
-      : entity.type === "Jewel" ? jewelSection(store, entity)
+      entity.type === "Gear" ? gearSection(store, entity, storage, notify)
+      : entity.type === "Shaft" ? shaftSection(store, entity, storage, notify)
+      : entity.type === "Jewel" ? jewelSection(store, entity, storage, notify)
       : entity.type === "KeylessWorks" ? keylessSection(store, entity)
       : entity.type === "Dial" ? dialSection(store, entity)
       : entity.type === "Escapement" ? escapementSection(store, entity)
-      : frameSection(store, entity);
+      : frameSection(store, entity, storage, notify);
     container.append(...section);
 
     container.append(

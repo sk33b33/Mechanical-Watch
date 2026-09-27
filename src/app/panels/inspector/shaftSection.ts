@@ -1,4 +1,5 @@
 import type { AppStore } from "@/app/store";
+import type { KeyValueStore } from "@/persistence/autosave";
 import { millimetres, toMillimetres } from "@/units/length";
 import { degrees, toDegrees } from "@/units/angle";
 import { rpmToRadPerSecond, toRpm } from "@/units/angularVelocity";
@@ -39,6 +40,7 @@ import {
 import { deleteRow, meshLabel, type Section } from "./common";
 import { stackText, stackTitle, toleranceSection } from "./toleranceSection";
 import { mainspringDataRows } from "./energySection";
+import { presetRows } from "./presetsSection";
 
 interface EligibleMesh {
   mesh: GearMesh;
@@ -298,7 +300,12 @@ function driveRows(store: AppStore, shaft: Shaft): Section {
   return out;
 }
 
-export function shaftSection(store: AppStore, shaft: Shaft): Section {
+export function shaftSection(
+  store: AppStore,
+  shaft: Shaft,
+  storage: KeyValueStore | null,
+  notify: (message: string, kind: "error" | "info") => void,
+): Section {
   const { movement } = store;
   const edit = (patch: Parameters<typeof updateShaft>[2]): void => {
     store.edit((m) => updateShaft(m, shaft.id, patch));
@@ -332,7 +339,7 @@ export function shaftSection(store: AppStore, shaft: Shaft): Section {
     const gear = newGear(store.movement, shaft.id);
     store.edit((m) => addGear(m, gear));
     store.select(gear.id);
-  }));
+  }, false, "add-gear"));
 
   out.push(...clutchRows(store, shaft));
   out.push(...mainspringRows(store, shaft));
@@ -376,6 +383,23 @@ export function shaftSection(store: AppStore, shaft: Shaft): Section {
       }
     }
     out.push(...toleranceSection(store, shaft.id));
+    out.push(
+      ...presetRows(
+        "Shaft",
+        { pivotDiameterLower: shaft.pivotDiameter.LOWER, pivotDiameterUpper: shaft.pivotDiameter.UPPER, shoulderSpan: shaft.shoulderSpan },
+        (values) => {
+          edit({
+            pivotDiameter: {
+              LOWER: values.pivotDiameterLower ?? shaft.pivotDiameter.LOWER,
+              UPPER: values.pivotDiameterUpper ?? shaft.pivotDiameter.UPPER,
+            },
+            shoulderSpan: values.shoulderSpan ?? shaft.shoulderSpan,
+          });
+        },
+        storage,
+        notify,
+      ),
+    );
   }
 
   out.push(deleteRow(store, shaft.id, "Delete arbor",

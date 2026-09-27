@@ -2,13 +2,15 @@ import { describe, expect, it } from "vitest";
 import { radiansPerSecond } from "@/units/angularVelocity";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import { AppStore } from "./store";
-import { drivenShaftId, setNominalTimeDrive, updateCouplingSpring, updateEscapement, type Movement } from "@/domain/movement";
+import { addFrame, addGear, addGearMesh, addJewel, addShaft, drivenShaftId, setNominalTimeDrive, updateCouplingSpring, updateEscapement, type Movement } from "@/domain/movement";
+import { createEmptyMovement, newFrame, newGear, newGearMesh, newJewel, newShaft } from "@/domain/editing";
 import type { CouplingId } from "@/domain/coupling";
 import { degrees, toDegrees } from "@/units/angle";
 import { analyzeMovement } from "@/analysis/analyzeMovement";
 import { summarizeEnergy } from "@/kinematics/energySummary";
 import { createDemoMovement } from "./demoMovement";
 import { createTeachingMovement } from "./teachingMovement";
+import { TUTORIAL_STEPS } from "./tutorial/tutorialSteps";
 
 const dt = NUMERICAL_PARAMETERS.simulationTimestepSeconds;
 
@@ -291,5 +293,94 @@ describe("mainspring wind and run-down (ASM-0026)", () => {
     expect(store.simulation.mainspringWind[id]).toBeUndefined();
     store.undo();
     expect(store.mainspringWindTurns).toBe(6.5);
+  });
+});
+
+describe("AppStore guided tutorial", () => {
+  const stepId = (store: AppStore): string | undefined => store.tutorialStep?.id;
+
+  it("starts on the first step, asking for an empty movement, when the current design isn't one", () => {
+    const store = new AppStore(createTeachingMovement());
+    store.startTutorial();
+    expect(store.tutorialActive).toBe(true);
+    expect(stepId(store)).toBe("start-empty");
+  });
+
+  it("skips the first step immediately if the design is already empty when the tutorial starts", () => {
+    const store = new AppStore(createEmptyMovement());
+    store.startTutorial();
+    expect(stepId(store)).toBe("add-mainplate");
+  });
+
+  it("advances on its own, step by step, as the user performs the walkthrough on an empty movement", () => {
+    const store = new AppStore(createEmptyMovement());
+    store.startTutorial();
+    // Already empty, so "start-empty" completes immediately (see the skip test above).
+    expect(stepId(store)).toBe("add-mainplate");
+
+    const mainplate = newFrame(store.movement, "MAINPLATE");
+    store.edit((m) => addFrame(m, mainplate));
+    expect(stepId(store)).toBe("add-bridge");
+
+    const bridge = newFrame(store.movement, "BRIDGE");
+    store.edit((m) => addFrame(m, bridge));
+    expect(stepId(store)).toBe("add-arbor-1");
+
+    const shaftA = newShaft(store.movement);
+    store.edit((m) => addShaft(m, shaftA));
+    expect(stepId(store)).toBe("add-gear-1");
+
+    const gearA = newGear(store.movement, shaftA.id);
+    store.edit((m) => addGear(m, gearA));
+    expect(stepId(store)).toBe("add-arbor-2");
+
+    const shaftB = newShaft(store.movement);
+    store.edit((m) => addShaft(m, shaftB));
+    expect(stepId(store)).toBe("add-gear-2");
+
+    const gearB = newGear(store.movement, shaftB.id);
+    store.edit((m) => addGear(m, gearB));
+    expect(stepId(store)).toBe("mesh-gears");
+
+    store.edit((m) => addGearMesh(m, newGearMesh(gearA.id, gearB.id)));
+    expect(stepId(store)).toBe("add-bearings");
+
+    for (const shaft of [shaftA, shaftB]) {
+      store.edit((m) => addJewel(m, newJewel(m, shaft.id, "LOWER", mainplate.id)));
+      store.edit((m) => addJewel(m, newJewel(m, shaft.id, "UPPER", bridge.id)));
+    }
+    expect(stepId(store)).toBe("check-validation");
+    expect(store.tutorialActive).toBe(true);
+
+    // The last step has no completion check: only "Done" (advanceTutorial) ends it.
+    store.edit((m) => ({ ...m, name: "Renamed" }));
+    expect(stepId(store)).toBe("check-validation");
+    store.advanceTutorial();
+    expect(store.tutorialActive).toBe(false);
+  });
+
+  it("advanceTutorial skips the current step regardless of whether the design satisfies it", () => {
+    const store = new AppStore(createTeachingMovement());
+    store.startTutorial();
+    const before = stepId(store);
+    store.advanceTutorial();
+    expect(stepId(store)).not.toBe(before);
+  });
+
+  it("stopTutorial exits without changing the design", () => {
+    const store = new AppStore(createEmptyMovement());
+    const before = store.movement;
+    store.startTutorial();
+    store.stopTutorial();
+    expect(store.tutorialActive).toBe(false);
+    expect(store.tutorialStep).toBeNull();
+    expect(store.movement).toBe(before);
+  });
+
+  it("every step's id is unique and only the last has no completion check", () => {
+    const ids = TUTORIAL_STEPS.map((s) => s.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(TUTORIAL_STEPS.slice(0, -1).every((s) => s.isComplete !== null)).toBe(true);
+    expect(TUTORIAL_STEPS.at(-1)?.isComplete).toBeNull();
   });
 });

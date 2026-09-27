@@ -11,6 +11,7 @@ import { mountToolbar } from "./panels/toolbar";
 import { mountComponentTree } from "./panels/componentTree";
 import { mountInspector } from "./panels/inspector/index";
 import { mountValidationConsole } from "./panels/validationConsole";
+import { mountTutorialBanner } from "./panels/tutorialBanner";
 import { PanelLayout } from "./layout/panelWindows";
 import { mountLayoutControls } from "./layout/layoutControls";
 
@@ -40,7 +41,7 @@ export function bootstrapApp(root: HTMLElement): void {
   // Side panels live in windows that can dock, float over the movement, open separately or close.
   const layout = new PanelLayout(workspace, storage, (message, kind) => { toolbar.notify(message, kind); });
   mountComponentTree(layout.add("tree", "panel tree").body, store);
-  mountInspector(layout.add("inspector", "panel inspector").body, store);
+  mountInspector(layout.add("inspector", "panel inspector").body, store, storage, (message, kind) => { toolbar.notify(message, kind); });
   const consoleWindow = layout.add("console", "panel console");
   mountValidationConsole(consoleWindow.body, store, consoleWindow.setTitle);
   mountLayoutControls(layoutControlsEl, layout);
@@ -52,6 +53,8 @@ export function bootstrapApp(root: HTMLElement): void {
   toolbar.addFileAction("Projects…", "Designs saved in this browser", () => { projects.open(); });
   const outputs = mountOutputsDialog(root, store, (message, kind) => { toolbar.notify(message, kind); });
   toolbar.addFileAction("Outputs…", "Engineering report, BOM, drawings and exports", () => { outputs.open(); });
+  mountTutorialBanner(root, store);
+  toolbar.addFileAction("Tutorial…", "Guided walkthrough: build a movement from scratch", () => { store.startTutorial(); });
 
   if (saved.status === "UNREADABLE") {
     toolbar.notify(

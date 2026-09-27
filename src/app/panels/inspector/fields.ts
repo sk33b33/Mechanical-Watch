@@ -106,20 +106,21 @@ export function selectRow(
   return field;
 }
 
-export function actionButton(label: string, title: string, onClick: () => void, danger = false): HTMLButtonElement {
+export function actionButton(label: string, title: string, onClick: () => void, danger = false, tutorialId?: string): HTMLButtonElement {
   const buttonEl = document.createElement("button");
   buttonEl.type = "button";
   buttonEl.textContent = label;
   buttonEl.title = title;
   if (danger) buttonEl.classList.add("danger");
+  if (tutorialId !== undefined) buttonEl.dataset.tutorial = tutorialId;
   buttonEl.addEventListener("click", onClick);
   return buttonEl;
 }
 
-export function actionRow(label: string, title: string, onClick: () => void, danger = false): HTMLDivElement {
+export function actionRow(label: string, title: string, onClick: () => void, danger = false, tutorialId?: string): HTMLDivElement {
   const field = document.createElement("div");
   field.className = "field field-action";
-  field.appendChild(actionButton(label, title, onClick, danger));
+  field.appendChild(actionButton(label, title, onClick, danger, tutorialId));
   return field;
 }
 
