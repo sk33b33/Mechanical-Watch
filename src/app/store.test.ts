@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { radiansPerSecond } from "@/units/angularVelocity";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import { AppStore } from "./store";
-import { addFrame, addGear, addGearMesh, addJewel, addShaft, drivenShaftId, setNominalTimeDrive, updateCouplingSpring, updateEscapement, type Movement } from "@/domain/movement";
-import { createEmptyMovement, newFrame, newGear, newGearMesh, newJewel, newShaft } from "@/domain/editing";
+import { addCoupling, addGearMesh, addJewel, drivenShaftId, setBalanceDrive, setNominalTimeDrive, updateCouplingSpring, updateEscapement, type Movement } from "@/domain/movement";
+import { createEmptyMovement, newFrictionClutch, newGearMesh, newJewel } from "@/domain/editing";
 import type { CouplingId } from "@/domain/coupling";
 import { degrees, toDegrees } from "@/units/angle";
 import { analyzeMovement } from "@/analysis/analyzeMovement";
@@ -312,51 +312,126 @@ describe("AppStore guided tutorial", () => {
     expect(stepId(store)).toBe("add-mainplate");
   });
 
-  it("advances on its own, step by step, as the user performs the walkthrough on an empty movement", () => {
+  /** Finds an entity by its (unique-within-collection) name, the same way a user would recognise it in the tree. */
+  function byName<T extends { name: string; id: string }>(record: Record<string, T>, name: string): T {
+    const found = Object.values(record).find((e) => e.name === name);
+    if (found === undefined) throw new Error(`no entity named "${name}"`);
+    return found;
+  }
+
+  /** Runs one tutorial step exactly as its UI control would, whether or not it has a preload override. */
+  function runStep(store: AppStore): void {
+    const step = store.tutorialStep;
+    if (step === null) throw new Error("no active tutorial step");
+    if (step.createOverride !== undefined) {
+      store.runTutorialCreation(step.id, step.createOverride);
+      return;
+    }
+    const m = store.movement;
+    switch (step.id) {
+      case "mesh-barrel-centre":
+        store.edit((mv) => addGearMesh(mv, newGearMesh(byName(m.gears, "Barrel drum").id, byName(m.gears, "Centre pinion").id)));
+        return;
+      case "mesh-centre-third":
+        store.edit((mv) => addGearMesh(mv, newGearMesh(byName(m.gears, "Centre wheel").id, byName(m.gears, "Third pinion").id)));
+        return;
+      case "mesh-third-fourth":
+        store.edit((mv) => addGearMesh(mv, newGearMesh(byName(m.gears, "Third wheel").id, byName(m.gears, "Fourth pinion").id)));
+        return;
+      case "mesh-fourth-escape":
+        store.edit((mv) => addGearMesh(mv, newGearMesh(byName(m.gears, "Fourth wheel").id, byName(m.gears, "Escape pinion").id)));
+        return;
+      case "mesh-cannon-minute": {
+        const cannonGear = Object.values(m.gears).find((g) => g.name === "Cannon pinion" && g.shaftId === byName(m.shafts, "Cannon pinion").id);
+        const minuteGear = Object.values(m.gears).find((g) => g.name === "Minute wheel" && g.toothCount === 30);
+        if (cannonGear === undefined || minuteGear === undefined) throw new Error("mesh-cannon-minute: gears missing");
+        store.edit((mv) => addGearMesh(mv, newGearMesh(cannonGear.id, minuteGear.id)));
+        return;
+      }
+      case "mesh-minute-hour": {
+        const hourGear = Object.values(m.gears).find((g) => g.name === "Hour wheel" && g.shaftId === byName(m.shafts, "Hour wheel").id);
+        if (hourGear === undefined) throw new Error("mesh-minute-hour: hour wheel gear missing");
+        store.edit((mv) => addGearMesh(mv, newGearMesh(byName(m.gears, "Minute pinion").id, hourGear.id)));
+        return;
+      }
+      case "mesh-crown-ratchet": {
+        const crownGear = Object.values(m.gears).find((g) => g.name === "Crown wheel" && g.shaftId === byName(m.shafts, "Crown wheel").id);
+        if (crownGear === undefined) throw new Error("mesh-crown-ratchet: crown wheel gear missing");
+        store.edit((mv) => addGearMesh(mv, newGearMesh(crownGear.id, byName(m.gears, "Ratchet wheel").id)));
+        return;
+      }
+      case "mesh-setting-minute": {
+        const settingGear = Object.values(m.gears).find((g) => g.name === "Setting wheel" && g.shaftId === byName(m.shafts, "Setting wheel").id);
+        const minuteGear = Object.values(m.gears).find((g) => g.name === "Minute wheel" && g.toothCount === 30);
+        if (settingGear === undefined || minuteGear === undefined) throw new Error("mesh-setting-minute: gears missing");
+        store.edit((mv) => addGearMesh(mv, newGearMesh(settingGear.id, minuteGear.id)));
+        return;
+      }
+      case "add-bearings": {
+        const mainplate = byName(m.frames, "Mainplate");
+        const trainBridge = byName(m.frames, "Train bridge");
+        const balanceCock = byName(m.frames, "Balance cock");
+        for (const name of ["Barrel", "Centre arbor", "Third arbor", "Fourth arbor", "Escape arbor"]) {
+          const shaft = byName(m.shafts, name);
+          store.edit((mv) => addJewel(mv, newJewel(mv, shaft.id, "LOWER", mainplate.id)));
+          store.edit((mv) => addJewel(mv, newJewel(mv, shaft.id, "UPPER", trainBridge.id)));
+        }
+        for (const name of ["Pallet arbor", "Balance staff"]) {
+          const shaft = byName(m.shafts, name);
+          store.edit((mv) => addJewel(mv, newJewel(mv, shaft.id, "LOWER", mainplate.id)));
+          store.edit((mv) => addJewel(mv, newJewel(mv, shaft.id, "UPPER", balanceCock.id)));
+        }
+        return;
+      }
+      case "add-clutch": {
+        const cannonShaft = byName(m.shafts, "Cannon pinion");
+        const centreShaft = byName(m.shafts, "Centre arbor");
+        store.edit((mv) => addCoupling(mv, newFrictionClutch(mv, cannonShaft.id, centreShaft.id)));
+        return;
+      }
+      case "set-balance-drive":
+        store.edit((mv) => setBalanceDrive(mv));
+        return;
+      default:
+        throw new Error(`runStep: no handler for step "${step.id}"`);
+    }
+  }
+
+  it("the full teaching-movement walkthrough reaches validation, matching the real design structurally", () => {
     const store = new AppStore(createEmptyMovement());
     store.startTutorial();
-    // Already empty, so "start-empty" completes immediately (see the skip test above).
-    expect(stepId(store)).toBe("add-mainplate");
+    expect(stepId(store)).toBe("add-mainplate"); // "start-empty" completes immediately (see the skip test above)
 
-    const mainplate = newFrame(store.movement, "MAINPLATE");
-    store.edit((m) => addFrame(m, mainplate));
-    expect(stepId(store)).toBe("add-bridge");
-
-    const bridge = newFrame(store.movement, "BRIDGE");
-    store.edit((m) => addFrame(m, bridge));
-    expect(stepId(store)).toBe("add-arbor-1");
-
-    const shaftA = newShaft(store.movement);
-    store.edit((m) => addShaft(m, shaftA));
-    expect(stepId(store)).toBe("add-gear-1");
-
-    const gearA = newGear(store.movement, shaftA.id);
-    store.edit((m) => addGear(m, gearA));
-    expect(stepId(store)).toBe("add-arbor-2");
-
-    const shaftB = newShaft(store.movement);
-    store.edit((m) => addShaft(m, shaftB));
-    expect(stepId(store)).toBe("add-gear-2");
-
-    const gearB = newGear(store.movement, shaftB.id);
-    store.edit((m) => addGear(m, gearB));
-    expect(stepId(store)).toBe("mesh-gears");
-
-    store.edit((m) => addGearMesh(m, newGearMesh(gearA.id, gearB.id)));
-    expect(stepId(store)).toBe("add-bearings");
-
-    for (const shaft of [shaftA, shaftB]) {
-      store.edit((m) => addJewel(m, newJewel(m, shaft.id, "LOWER", mainplate.id)));
-      store.edit((m) => addJewel(m, newJewel(m, shaft.id, "UPPER", bridge.id)));
+    while (stepId(store) !== "check-validation") {
+      const before = stepId(store);
+      runStep(store);
+      expect(stepId(store), `step "${String(before)}" should have advanced`).not.toBe(before);
     }
-    expect(stepId(store)).toBe("check-validation");
     expect(store.tutorialActive).toBe(true);
 
     // The last step has no completion check: only "Done" (advanceTutorial) ends it.
-    store.edit((m) => ({ ...m, name: "Renamed" }));
-    expect(stepId(store)).toBe("check-validation");
     store.advanceTutorial();
     expect(store.tutorialActive).toBe(false);
+
+    const reference = createTeachingMovement();
+    const built = store.movement;
+    expect(Object.keys(built.frames)).toHaveLength(Object.keys(reference.frames).length);
+    expect(Object.keys(built.shafts)).toHaveLength(Object.keys(reference.shafts).length);
+    expect(Object.keys(built.gears)).toHaveLength(Object.keys(reference.gears).length);
+    expect(Object.keys(built.gearMeshes)).toHaveLength(Object.keys(reference.gearMeshes).length);
+    expect(Object.keys(built.jewels)).toHaveLength(Object.keys(reference.jewels).length);
+    expect(Object.keys(built.couplings)).toHaveLength(Object.keys(reference.couplings).length);
+    expect(Object.keys(built.keylessWorks)).toHaveLength(1);
+    expect(Object.keys(built.dials)).toHaveLength(1);
+    expect(Object.keys(built.escapements)).toHaveLength(1);
+
+    // Same open questions as the real design (unset bore/pivot/etc.), nothing silently filled in.
+    // Compared by rule/severity/message, not raw issue id: meshes, jewels and the clutch get fresh
+    // ids from the normal (non-preloaded) creation path, so their issue ids differ even though the
+    // messages (which name parts, not ids) are the same.
+    const summarize = (issues: ReturnType<typeof analyzeMovement>["issues"]): string[] =>
+      issues.map((i) => `${i.rule}:${i.severity}:${i.message}`).sort();
+    expect(summarize(analyzeMovement(built).issues)).toEqual(summarize(analyzeMovement(reference).issues));
   });
 
   it("advanceTutorial skips the current step regardless of whether the design satisfies it", () => {

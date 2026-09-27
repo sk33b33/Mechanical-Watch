@@ -261,6 +261,11 @@ function mainspringRows(store: AppStore, shaft: Shaft): Section {
     { value: "", label: "Choose the coaxial drum…" },
     ...candidates.map((s) => ({ value: s.id, label: s.name })),
   ], (id) => {
+    const step = store.tutorialActive && store.tutorialStep?.targetSelector === '[data-field="This arbor winds"]' ? store.tutorialStep : null;
+    if (step?.createOverride !== undefined) {
+      store.runTutorialCreation(step.id, step.createOverride);
+      return;
+    }
     const drum = candidates.find((s) => s.id === id);
     if (drum !== undefined) store.edit((m) => addCoupling(m, newMainspring(m, shaft.id, drum.id)));
   }, "Declares a mainspring from this barrel arbor to the drum. It sets which way the crown winds (ASM-0018); spring data for the energy model can be entered afterwards (ASM-0026)."));
@@ -336,6 +341,11 @@ export function shaftSection(
     out.push(listRow(gear.name, actionButton("Select", "Select this gear", () => { store.select(gear.id); })));
   }
   out.push(actionRow("Add gear", "Adds a gear to this arbor with every parameter empty.", () => {
+    const step = store.tutorialActive && store.tutorialStep?.targetSelector === '[data-tutorial="add-gear"]' ? store.tutorialStep : null;
+    if (step?.createOverride !== undefined) {
+      store.runTutorialCreation(step.id, step.createOverride);
+      return;
+    }
     const gear = newGear(store.movement, shaft.id);
     store.edit((m) => addGear(m, gear));
     store.select(gear.id);

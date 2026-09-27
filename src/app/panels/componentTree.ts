@@ -41,6 +41,12 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
     el.title = title;
     if (tutorialId !== undefined) el.dataset.tutorial = tutorialId;
     el.addEventListener("click", () => {
+      // A guided-tutorial step targeting this exact button preloads the part instead of leaving it empty.
+      const step = store.tutorialActive && tutorialId !== undefined && store.tutorialStep?.targetSelector === `[data-tutorial="${tutorialId}"]` ? store.tutorialStep : null;
+      if (step?.createOverride !== undefined) {
+        store.runTutorialCreation(step.id, step.createOverride);
+        return;
+      }
       const { movement, id } = create(store.movement);
       store.edit(() => movement);
       store.select(id);
@@ -77,15 +83,15 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
       addButton("+ Keyless works", "Add a crown and stem with every dimension empty; then choose its wheels", (m) => {
         const keyless = newKeylessWorks(m);
         return { movement: addKeylessWorks(m, keyless), id: keyless.id };
-      }),
+      }, "add-keyless-works"),
       addButton("+ Dial", "Add a dial with every dimension empty", (m) => {
         const dial = newDial(m);
         return { movement: addDial(m, dial), id: dial.id };
-      }),
+      }, "add-dial"),
       addButton("+ Escapement", "Add a simplified Swiss lever escapement with every value empty; then choose its arbors", (m) => {
         const escapement = newEscapement(m);
         return { movement: addEscapement(m, escapement), id: escapement.id };
-      }),
+      }, "add-escapement"),
     );
     container.appendChild(actions);
 

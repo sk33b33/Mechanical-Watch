@@ -255,7 +255,7 @@ export class AppStore {
   }
 
   /**
-   * Guided "build a movement from scratch" walkthrough (UI state, not part
+   * Guided "build the teaching movement" walkthrough (UI state, not part
    * of the design; see tutorial/tutorialSteps.ts). A step with a
    * completion check advances on its own when the design satisfies it,
    * checked from recompute() on every edit — never on a UI event alone,
@@ -263,6 +263,8 @@ export class AppStore {
    */
   tutorialActive = false;
   tutorialStepIndex = 0;
+  /** Entity id created by each tutorial step so far, keyed by step id — lets a later step reselect an earlier part. */
+  private tutorialCreatedIds = new Map<string, EntityId>();
 
   get tutorialStep(): (typeof TUTORIAL_STEPS)[number] | null {
     return this.tutorialActive ? (TUTORIAL_STEPS[this.tutorialStepIndex] ?? null) : null;
@@ -271,7 +273,9 @@ export class AppStore {
   startTutorial(): void {
     this.tutorialActive = true;
     this.tutorialStepIndex = 0;
+    this.tutorialCreatedIds.clear();
     this.advanceTutorialIfComplete();
+    this.enterTutorialStep();
     this.notify();
   }
 
@@ -287,8 +291,45 @@ export class AppStore {
       this.tutorialActive = false;
     } else {
       this.tutorialStepIndex += 1;
+      this.enterTutorialStep();
     }
     this.notify();
+  }
+
+  /**
+   * Runs a tutorial step's part-creation override (in place of the UI
+   * control's normal "create an empty part" action), then resolves
+   * selection once the design (and so possibly the current step) has
+   * settled: the now-current step's `selectFromStep`, if it names one, or
+   * else the part just created.
+   */
+  runTutorialCreation(stepId: string, build: (movement: Movement) => { movement: Movement; id: EntityId }): void {
+    const { movement, id } = build(this.movement);
+    this.edit(() => movement);
+    this.tutorialCreatedIds.set(stepId, id);
+    const current = this.tutorialStep;
+    if (current?.deselect === true) {
+      this.select(null);
+      return;
+    }
+    const target = current?.selectFromStep === undefined ? id : (this.tutorialCreatedIds.get(current.selectFromStep) ?? id);
+    this.select(target);
+  }
+
+  /**
+   * Reselects the entity an earlier step created, if the step now current
+   * asks for one (TutorialStep.selectFromStep), or deselects entirely if
+   * it wants the movement-level section instead (TutorialStep.deselect).
+   */
+  private enterTutorialStep(): void {
+    const step = this.tutorialStep;
+    if (step?.deselect === true) {
+      this.selectedId = null;
+      return;
+    }
+    if (step?.selectFromStep === undefined) return;
+    const id = this.tutorialCreatedIds.get(step.selectFromStep);
+    if (id !== undefined) this.selectedId = id;
   }
 
   /** Auto-advances while the current step's own completion check is satisfied by the design. Called from recompute(). */
@@ -301,6 +342,7 @@ export class AppStore {
         return;
       }
       this.tutorialStepIndex += 1;
+      this.enterTutorialStep();
       step = TUTORIAL_STEPS[this.tutorialStepIndex];
     }
   }

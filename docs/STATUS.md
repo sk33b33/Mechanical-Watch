@@ -2,6 +2,78 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## The tutorial now builds the whole teaching movement, preloaded
+
+Replaces the first cut of the guided tutorial (previous section below):
+that one covered a two-arbor "opening workflow" stub with every field left
+empty, same as normal part creation. Requested instead: walk through the
+*real* teaching movement, with every part's fields already filled in from
+it, so the walkthrough teaches the assembly process without also being a
+data-entry exercise.
+
+- **Scope: everything `createTeachingMovement()` builds.** 48 steps —
+  3 frames, 13 arbors, 15 gears, 8 meshes, bearings on the 7 pivoted
+  arbors, the friction clutch, the mainspring, keyless works, dial,
+  escapement, and setting the drive to balance-governed. Rebuilt
+  entirely from `src/app/tutorial/tutorialSteps.ts`.
+- **Where values come from:** `tutorialSteps.ts` calls
+  `createTeachingMovement()` once at module load and reads every part
+  back out of it *by name* (frames/shafts/gears are looked up in their
+  own typed collection, so the handful of names a shaft happens to
+  share with one of its own gears — "Cannon pinion", "Crown wheel", …
+  — are never ambiguous). Nothing is retyped or re-derived by hand;
+  every preloaded number is the teaching movement's own.
+- **How "preloaded" actually works:** a step's `createOverride` runs
+  in place of the UI control's normal "create an empty part" action —
+  same button, same click, but it builds the part with real values
+  (and reuses the reference object's own id) instead of leaving every
+  field blank. Wired into the three places that create parts: the
+  component tree's "+ Mainplate/Bridge/Arbor/Keyless works/Dial/
+  Escapement" buttons, the inspector's "Add gear" button, and the "This
+  arbor winds" mainspring select — all three fall back to their
+  ordinary empty-part behavior outside a matching tutorial step, so
+  nothing changed for normal use.
+- **A structural simplification, stated as one:** 7 arbors are placed
+  by MESH_POLAR in the real design, which needs their mesh to exist
+  first. The tutorial gives them FIXED coordinates instead — the same
+  real, solved numbers (via `solvePlacement` on the reference), just
+  not the same constraint mechanism — so "add the arbor" stays one
+  action instead of "add it, then come back once it's meshed."
+- **Meshes, the clutch and bearings still need a real choice, not just
+  a click**, since selecting from a dropdown or filling a bore isn't
+  something to preload: for meshes and the clutch there's exactly one
+  valid candidate at each point in the build order, so the action is
+  quick without being automatic; bearings stay genuinely unfilled
+  (bore, pivot, shoulder span), because they're genuinely unset in the
+  real teaching movement too — "preloaded" only ever means "matches
+  what's actually there," never "invented to look complete."
+- **New: `selectFromStep` and `deselect`.** With 48 steps spanning 15
+  gears across 13 arbors, later steps routinely need a *different*
+  part selected than whatever the previous action left selected (e.g.
+  meshing "Barrel drum" right after creating "Centre pinion" stole the
+  selection to the pinion). `TutorialStep.selectFromStep` names an
+  earlier step whose created part should be reselected first;
+  `AppStore` tracks each step's created id in `tutorialCreatedIds` and
+  resolves the resulting selection once, after any auto-advance has
+  already happened, to avoid a later step's resolution clobbering an
+  earlier one's (or vice versa). `deselect` does the same for the one
+  step that needs the movement-level section instead of any part
+  (setting the drive).
+- **Verified two ways:** a store-level test drives all 48 steps for
+  real (via each step's actual override, or the same domain calls its
+  UI control would make) and checks the result against
+  `createTeachingMovement()` — not just entity counts, but the *same
+  validation issues*, compared by rule/severity/message rather than
+  raw id (meshes/jewels/the clutch get fresh ids from the ordinary,
+  non-preloaded path, same as a real user would produce); e2e tests
+  click through the real UI and check the actual preloaded field
+  values and the mesh-step reselection. Screenshotted by hand too, not
+  just asserted.
+- 357 unit tests and 31 browser tests pass (was 357/30 — one net new
+  e2e test; the unit-test count is unchanged because the old
+  multi-test tutorial suite collapsed into one exhaustive walkthrough
+  test replacing several narrower ones).
+
 ## Guided tutorial, and reusable part presets
 
 Two workflow features, requested together: a walkthrough for building a
