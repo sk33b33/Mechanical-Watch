@@ -138,6 +138,38 @@ describe("assembly rules", () => {
       .toEqual([]);
   });
 
+  it("BRG-007: no advisory for a small pivot's side shake at or under the informal 0.01 mm figure", () => {
+    const a = shaft(demo, "Arbor A");
+    let m = updateShaft(demo, a.id, { pivotDiameter: { LOWER: mm(0.1), UPPER: null } });
+    m = updateJewel(m, jewel(m, "Arbor A lower jewel").id, { boreDiameter: mm(0.109) }); // 0.009 mm side shake
+    expect(validateMovement(m).filter((i) => i.rule === "BRG-007")).toEqual([]);
+  });
+
+  it("BRG-007: an info advisory fires for a small pivot looser than the informal 0.01 mm figure", () => {
+    const a = shaft(demo, "Arbor A");
+    let m = updateShaft(demo, a.id, { pivotDiameter: { LOWER: mm(0.1), UPPER: null } });
+    m = updateJewel(m, jewel(m, "Arbor A lower jewel").id, { boreDiameter: mm(0.13) }); // 0.03 mm side shake
+    const advisory = validateMovement(m).find((i) => i.rule === "BRG-007");
+    expect(advisory?.severity).toBe("info");
+    expect(advisory?.entityIds).toContain(a.id);
+    expect(advisory?.message).toContain("pivot up to 0.30 mm");
+    expect(advisory?.message).toContain("SRC-0012");
+    expect(advisory?.message).toContain("Jendritzki");
+    expect(advisory?.references).toContain("ASM-0029");
+  });
+
+  it("BRG-007: a larger pivot is compared to the looser ~0.02 mm figure, not the small-pivot one", () => {
+    const a = shaft(demo, "Arbor A");
+    const m = updateShaft(demo, a.id, { pivotDiameter: { LOWER: mm(0.35), UPPER: null } });
+    const looseForLargePivot = updateJewel(m, jewel(m, "Arbor A lower jewel").id, { boreDiameter: mm(0.38) }); // 0.03 mm side shake
+    const advisory = validateMovement(looseForLargePivot).find((i) => i.rule === "BRG-007");
+    expect(advisory?.entityIds).toContain(a.id);
+    expect(advisory?.message).toContain("pivot over 0.30 mm");
+
+    const withinLargePivotFigure = updateJewel(m, jewel(m, "Arbor A lower jewel").id, { boreDiameter: mm(0.365) }); // 0.015 mm side shake
+    expect(validateMovement(withinLargePivotFigure).filter((i) => i.rule === "BRG-007")).toEqual([]);
+  });
+
   it("FRAME-001: a frame needs a positive thickness", () => {
     const m = updateFrame(demo, frame(demo, "Mainplate").id, { thickness: mm(0) });
     expect(blocking(m).some((i) => i.rule === "FRAME-001")).toBe(true);

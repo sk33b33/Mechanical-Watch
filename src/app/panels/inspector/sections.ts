@@ -237,7 +237,7 @@ export function jewelSection(store: AppStore, jewel: Jewel, storage: KeyValueSto
       onCommit: (raw) => { edit({ boreDiameter: parseOptionalMm(raw) }); },
     }),
     readonlyRow("Side shake", shaft === undefined ? "—" : derivedText(sideShake(shaft, jewel.end, jewel)),
-      "Bore − pivot diameter, diametral (ASM-0013). Not judged (BRG-005)."),
+      "Bore − pivot diameter, diametral (ASM-0013). Compared only to an informal, unconfirmed reference figure (BRG-007, ASM-0029)."),
     ...(shaft === undefined || Object.keys(movement.tolerances).length === 0
       ? []
       : ((result) => [readonlyRow("Side shake (tol.)", stackText(result), stackTitle(result))])(

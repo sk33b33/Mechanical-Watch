@@ -171,6 +171,12 @@ export const ASSUMPTIONS = {
     scope: "Bearings / endshake advisory",
     status: "Active",
   },
+  "ASM-0029": {
+    summary:
+      "Side-shake advisory thresholds (0.01 mm diametral for a pivot up to 0.30 mm, 0.02 mm for a larger pivot) are an informal rule of thumb credited to Hans Jendritzki, from forum testimony (SRC-0012, corroborated by SRC-0013), not a published standard read directly; used only as a BRG-007 informational advisory, never a pass/fail limit",
+    scope: "Bearings / side-shake advisory",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

@@ -2,6 +2,53 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Side-shake advisory (BRG-007): closing the gap BRG-006 left open
+
+BRG-006 (endshake) shipped with side shake explicitly still unjudged —
+the only figure found then (SRC-0011) was a single poster's
+balance-staff-specific value, too thin to turn into a range. Went back
+for side shake specifically.
+
+- Found a better source: a NAWCC thread ("Jewel hole dimensions") where
+  a poster gives a two-band rule — 0.01mm diametral side shake for a
+  pivot up to 0.30mm, 0.02mm above that — credited to **Hans
+  Jendritzki**, a real, named, WOSTEP-connected watchmaking instructor
+  and author of "Watch Adjustment" (1961/1963), not an anonymous
+  guess. Confirmed Jendritzki's book is real and well-regarded via an
+  unrelated document (Dewey Clark's "Watch Adjustment" article, hosted
+  on the same site as SRC-0011, independently: "the most complete work
+  on watch adjustment"). A second, unconnected thread (a different
+  forum, a different poster, watchrepairtalk.com) gives 0.01mm side
+  shake for a 0.15mm pivot — agrees with the Jendritzki rule without
+  either poster referencing the other.
+- Still forum testimony, not the book itself — Jendritzki's book
+  wasn't read directly, only a forum paraphrase of it. Registered as
+  SRC-0012 (the rule) and SRC-0013 (the corroborating data point, not
+  independently citable on its own). Same treatment as SRC-0011/
+  BRG-006: a **low-confidence informational advisory**, never a
+  pass/fail limit, following the precedent already set for endshake
+  rather than re-litigating it.
+- New rule **BRG-007** (info, `src/validation/rules/bearingRules.ts`):
+  compares a shaft's computed side shake to the Jendritzki figure for
+  its own pivot diameter (not a component-type split like BRG-006's
+  escapement/train — this rule is keyed to the pivot size itself).
+  New assumption ASM-0029. BRG-005's summary message and both
+  inspector tooltips (side shake, endshake) were also corrected: they
+  still said "no sourced range" / "not judged" for values that, since
+  BRG-006, were already being informally advised — an inconsistency
+  from when BRG-006 shipped, fixed now alongside BRG-007 rather than
+  left for later.
+- Updated SOURCES.yml, SOURCE_INDEX.md, TRACEABILITY.md,
+  ASSUMPTION_REGISTER.md, RULE_IDS.md and their `src/reference/`
+  mirrors. Three new tests in `assemblyRules.test.ts` (no advisory
+  under the small-pivot figure; fires over it; a larger pivot compared
+  to the looser figure, not the small one). Checked in a running
+  browser too, not just asserted: the exact message text, citation and
+  computed side-shake value all render correctly in the inspector and
+  validation panel.
+- 360 unit tests pass (357 before); browser/e2e suite unaffected (no UI
+  structure changed, only text and a new info-level issue).
+
 ## The tutorial now builds the whole teaching movement, preloaded
 
 Replaces the first cut of the guided tutorial (previous section below):
@@ -703,7 +750,10 @@ dimensions round-trip, and picking and issue selection work.
   source for d = m z etc. They are marked DERIVED with the citation
   pending.
 - **Side-shake convention (ASM-0013).** Reported as diametral clearance
-  until a source confirms the horological convention.
+  until a source confirms the horological convention. (Separate from
+  the BRG-007 advisory below, which judges the *size* of the value
+  once computed, not whether "diametral" is the right convention to
+  report in the first place.)
 - **Right-angle (stem) mesh relationship — citation closed, scope
   caveat remains.** Derived here from rolling pitch circles and tested;
   now also cited to SRC-0010 (Nie et al. 2026, JSME, peer-reviewed),
@@ -719,16 +769,16 @@ dimensions round-trip, and picking and issue selection work.
   `reference/sources/03-escapements/` (e.g. SRC-0004, not yet read).
 - **Oscillator equation (ASM-0024).** Standard linear-oscillator physics,
   marked DERIVED with the citation pending, like the gear equations.
-- **Acceptable bearing clearances — endshake gets a low-confidence
-  advisory, side shake still doesn't.** SRC-0011 (a NAWCC forum thread)
-  gave concrete escapement-vs-train endshake figures, now wired up as
-  an informational BRG-006 advisory (ASM-0028) — explicitly not a
-  validated limit, since forum testimony is a weak source. Side shake
-  is unchanged (ASM-0013): the only figure found was a single
-  balance-staff-specific value from one poster, too narrow to turn into
-  a range without inventing one. A published source (a book, NIHS/DIN/
-  AFNOR standard) would still let both become real pass/fail rules
-  instead of advisories.
+- **Acceptable bearing clearances — both endshake and side shake now
+  have a low-confidence advisory.** SRC-0011 gave the escapement-vs-
+  train endshake figures (BRG-006, ASM-0028); SRC-0012 (corroborated
+  by SRC-0013) gives the pivot-diameter-keyed side-shake figures
+  credited to Hans Jendritzki (BRG-007, ASM-0029). Both are
+  informational only, explicitly not validated limits, since both rest
+  on forum testimony rather than a source read directly. A published
+  source (Jendritzki's own "Watch Adjustment", a NIHS/DIN/AFNOR
+  standard) would still let either become a real pass/fail rule instead
+  of an advisory.
 
 ## Known limitations
 

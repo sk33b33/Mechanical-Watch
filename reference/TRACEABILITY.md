@@ -23,7 +23,7 @@ geometry standard) is open work.
 | Pitch-line velocity (m/s) | v = ω r, r = d/2 | `pitchLineVelocity` | REF-ENG §5.5 | ASM-0001 | DERIVED | L2 | › pitchLineVelocity (incl. equal on both gears) |
 | Shaft angle (rad) | θ(n+1) = θ(n) + ω Δt, with fixed Δt | `stepSimulation`, `advanceSimulation` | REF-ENG §15 (L2) | ASM-0007, ASM-0008 | DERIVED | L2 | `simulationState.test.ts` |
 | Shaft axis position (m) | FIXED: given; MESH_POLAR: p = p_ref + a·(cos θ, sin θ), with a = m(z1 + z2)/2 | `solvePlacement` in `src/kinematics/solvePlacement.ts` | REF-ENG §5.2, §7 | ASM-0006 | DERIVED | L1 | `solvePlacement.test.ts` |
-| Side shake (m) | bore Ø − pivot Ø (diametral) | `sideShake` in `src/assembly/assemblyGeometry.ts` | REF-ENG §12 | ASM-0013 (convention unconfirmed) | DERIVED from user inputs; acceptability UNKNOWN | L1 | `assemblyRules.test.ts` › bearing geometry |
+| Side shake (m) | bore Ø − pivot Ø (diametral) | `sideShake` in `src/assembly/assemblyGeometry.ts` | REF-ENG §12 | ASM-0013 (convention unconfirmed), ASM-0029 | DERIVED from user inputs; compared only to an informal, unconfirmed reference figure (BRG-007, SRC-0012) — not a validated acceptable range | L1 | `assemblyRules.test.ts` › bearing geometry, BRG-007 |
 | Space between bearings (m) | upper frame underside − lower frame top | `bearingInnerSpan` | REF-ENG §12 | ASM-0010, ASM-0011 | DERIVED | L1 | › computes endshake… |
 | Endshake (m) | space between bearings − shoulder span | `endshake` | REF-ENG §12 | ASM-0011, ASM-0028 | DERIVED from user inputs; compared only to an informal, unconfirmed reference figure (BRG-006, SRC-0011) — not a validated acceptable range | L1 | › computes endshake…; `assemblyRules.test.ts` › BRG-006 |
 | Axial overlap (bool) | lo_a < hi_b and lo_b < hi_a (touching faces don't overlap) | `zOverlaps`, `gearZRange`, `frameZRange` | none; geometric definition | ASM-0010 | DERIVED | L1 | `assemblyRules.test.ts` › GEAR-101, ASSY-002 |
@@ -158,8 +158,9 @@ rev/min exist only at the UI boundary (`src/units/`).
 | BRG-002 | error | L1 | bearing inside its frame outline (project addition) |
 | BRG-003 | error | L1 | side shake must be positive when known; inputs must be positive (project addition) |
 | BRG-004 | error | L1 | endshake must be positive when known; inputs must be positive (project addition) |
-| BRG-005 | info | L1 | counts computed vs unknown clearances; states side shake is unjudged and endshake is only advised against an informal figure (project addition) |
+| BRG-005 | info | L1 | counts computed vs unknown clearances; states side shake and endshake are each only advised against an informal figure (project addition) |
 | BRG-006 | info | L1 | endshake looser than an informal, unconfirmed forum-sourced figure — escapement (~0.05mm) vs train (~0.10mm) shafts (project addition, ASM-0028, SRC-0011) |
+| BRG-007 | info | L1 | side shake looser than an informal, unconfirmed forum-sourced figure credited to Hans Jendritzki — pivot up to 0.30mm (~0.01mm) vs larger (~0.02mm) (project addition, ASM-0029, SRC-0012) |
 | SIM-001 | error / blocker | L2 | drive and integrated state |
 | SIM-002 | none | none | Fixed-timestep integrator; tested for chunking independence |
 | SIM-003 | info | L2 | always states the drive is prescribed |

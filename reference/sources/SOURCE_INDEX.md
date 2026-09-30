@@ -67,12 +67,26 @@ environment's network policy and ISO 23509 is paid. See SOURCES.yml.
 Forum testimony (Tier 6, like Watchmaking.com), not a published standard.
 Gives the .05mm (escapement) / .10mm (train) endshake figures used for
 the BRG-006 informational advisory (ASM-0028). Also gives a
-balance-staff-specific side-shake figure (~.01mm), too narrow (one
-component, one poster, a single value) to turn into a general side-shake
-advisory — side shake stays unjudged. See SOURCES.yml for the full
-notes and quoted claims. `watchrepairtutorials.com`'s directly relevant
-articles were found but not read (bot-challenge page, not a network
-block) — worth another attempt if a better side-shake source is needed.
+balance-staff-specific side-shake figure (~.01mm), too narrow on its own
+(one component, one poster, a single value) — superseded for side shake
+by SRC-0012 below. See SOURCES.yml for the full notes and quoted claims.
+
+### NAWCC Forums — Jewel hole dimensions thread (SRC-0012, read)
+Forum testimony (Tier 6), not a published standard, but more specific
+and better attributed than SRC-0011's side-shake figure: a two-band rule
+(0.01mm side shake for pivots up to 0.30mm, 0.02mm above that) credited
+to Hans Jendritzki, a named, real, WOSTEP-connected watchmaking
+instructor and author of "Watch Adjustment" — not read directly (this is
+still a forum paraphrase of it), but independently corroborated by
+SRC-0013's unrelated data point. Used for the BRG-007 informational
+advisory (ASM-0029). `watchrepairtutorials.com`'s directly relevant
+articles were found but still not read (bot-challenge page, not a
+network block) — worth another attempt if a stronger source is needed.
+
+### Watch Repair Talk — end-shake/side-shake thread (SRC-0013, read)
+A single corroborating data point (0.01mm side shake for a 0.15mm
+pivot), not registered as its own citation — recorded because it agrees
+with SRC-0012's Jendritzki rule from an unconnected thread and poster.
 
 ## Movement-specific sources
 

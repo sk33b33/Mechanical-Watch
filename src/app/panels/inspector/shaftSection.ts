@@ -374,15 +374,15 @@ export function shaftSection(
 
     if (Object.keys(movement.frames).length > 0) {
       const support = shaftSupport(movement, shaft.id);
-      out.push(sectionHeader("Bearing clearances (computed, not judged)"));
+      out.push(sectionHeader("Bearing clearances (no validated acceptable range)"));
       out.push(readonlyRow("Side shake, lower", derivedText(sideShake(shaft, "LOWER", support.lower)),
-        "Bore − pivot diameter, diametral (ASM-0013). No sourced acceptable range (BRG-005)."));
+        "Bore − pivot diameter, diametral (ASM-0013). Compared only to an informal, unconfirmed reference figure (BRG-007, ASM-0029)."));
       out.push(readonlyRow("Side shake, upper", derivedText(sideShake(shaft, "UPPER", support.upper)),
-        "Bore − pivot diameter, diametral (ASM-0013). No sourced acceptable range (BRG-005)."));
+        "Bore − pivot diameter, diametral (ASM-0013). Compared only to an informal, unconfirmed reference figure (BRG-007, ASM-0029)."));
       out.push(readonlyRow("Space between bearings", derivedText(bearingInnerSpan(movement, support)),
         "Frame inner faces; bearing faces assumed flush (ASM-0011)."));
       out.push(readonlyRow("Endshake", derivedText(endshake(movement, shaft, support)),
-        "Space between bearings − shoulder span (ASM-0011). No sourced acceptable range (BRG-005)."));
+        "Space between bearings − shoulder span (ASM-0011). Compared only to an informal, unconfirmed reference figure (BRG-006, ASM-0028)."));
       if (Object.keys(movement.tolerances).length > 0) {
         const worst = [
           ["Side shake, lower (tol.)", sideShakeStack(movement, shaft, "LOWER", support.lower)],

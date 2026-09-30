@@ -20,12 +20,24 @@ import { issue, mm, type Rule } from "./context";
  * Informal endshake ceilings for the BRG-006 advisory: forum testimony
  * (SRC-0011), not a published standard. Used only as a low-confidence,
  * informational comparison — exceeding one is not itself wrong, and
- * staying under one is not a guarantee (ASM-0028). Side shake still has
- * no usable sourced range at all (ASM-0013).
+ * staying under one is not a guarantee (ASM-0028).
  */
 const ENDSHAKE_GUIDANCE_MM = {
   ESCAPEMENT: 0.05,
   TRAIN: 0.1,
+} as const;
+
+/**
+ * Informal side-shake ceiling for the BRG-007 advisory, keyed to the
+ * pivot's own diameter: forum testimony crediting Hans Jendritzki
+ * (SRC-0012, corroborated by SRC-0013), not a published standard read
+ * directly. Used only as a low-confidence, informational comparison
+ * (ASM-0029) — same caveats as ENDSHAKE_GUIDANCE_MM above.
+ */
+const SIDE_SHAKE_GUIDANCE_MM = {
+  SMALL_PIVOT_MAX: 0.3,
+  SMALL_PIVOT: 0.01,
+  LARGE_PIVOT: 0.02,
 } as const;
 
 /** FRAME-001: frames must have a positive thickness, finite height and a real outline. */
@@ -140,6 +152,19 @@ export const bearingRules: Rule = ({ movement, placement }) => {
             `${shaft.name}: ${end.toLowerCase()} pivot does not fit its bearing (side shake ${mm(shake.value)}).`,
             ["REF-ENG §12", "ASM-0013"]),
         );
+      } else if (shake.status === "KNOWN" && shaft.pivotDiameter[end] !== null) {
+        const pivotMm = toMillimetres(shaft.pivotDiameter[end]);
+        const smallPivot = pivotMm <= SIDE_SHAKE_GUIDANCE_MM.SMALL_PIVOT_MAX;
+        const guidanceMm = smallPivot ? SIDE_SHAKE_GUIDANCE_MM.SMALL_PIVOT : SIDE_SHAKE_GUIDANCE_MM.LARGE_PIVOT;
+        if (toMillimetres(shake.value) > guidanceMm) {
+          issues.push(
+            issue("BRG-007", `looser-${end}`, "info", "L1_GEOMETRIC", [shaft.id, ...(jewel === null ? [] : [jewel.id])],
+              `${shaft.name}: ${end.toLowerCase()} side shake ${mm(shake.value)} is looser than the informal figure for a ` +
+                `pivot ${smallPivot ? "up to 0.30 mm" : "over 0.30 mm"} (~${String(guidanceMm)} mm, SRC-0012 — forum ` +
+                "testimony crediting Hans Jendritzki, not a published standard read directly; informational only).",
+              ["ASM-0029"]),
+          );
+        }
       }
     }
 
@@ -174,9 +199,9 @@ export const bearingRules: Rule = ({ movement, placement }) => {
   issues.push(
     issue("BRG-005", "not-judged", "info", "L1_GEOMETRIC", [],
       `Bearing clearances: ${String(known)} computed, ${String(unknown)} unknown (missing pivot, bore or shoulder dimensions). ` +
-        "Side shake is not judged at all (no sourced range, ASM-0013). Endshake is only compared to an informal, " +
-        "unconfirmed reference figure (BRG-006, ASM-0028) — that is not a validated acceptable range.",
-      ["REF-ENG §12", "ASM-0011", "ASM-0013", "ASM-0028"]),
+        "Side shake (BRG-007, ASM-0029) and endshake (BRG-006, ASM-0028) are each only compared to an informal, " +
+        "unconfirmed reference figure — neither is a validated acceptable range.",
+      ["REF-ENG §12", "ASM-0011", "ASM-0013", "ASM-0028", "ASM-0029"]),
   );
   return issues;
 };

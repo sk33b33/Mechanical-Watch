@@ -248,3 +248,65 @@
     advisory (never a pass/fail limit), per an explicit decision to treat
     forum-sourced figures this way rather than as validated evidence or
     to hold out for a published source.
+
+# Follow-up: side shake still had no usable range after SRC-0011. Went
+# looking again specifically for it and found a more specific, better
+# corroborated figure — still forum-sourced (Tier 6), so used the same
+# way as SRC-0011: a low-confidence BRG-007 informational advisory.
+
+- id: SRC-0012
+  title: "Jewel hole dimensions (NAWCC Forums thread)"
+  author: Dushan Grujich, citing Hans Jendritzki
+  year: 2020
+  type: forum_discussion
+  url: https://mb.nawcc.org/threads/jewel-hole-dimensions.171918/
+  topics: [bearings, side-shake, jewel-holes]
+  claims_supported:
+    - "the required side shake suggested by Hans Jendritzki to practising watchmakers, is within the range of 1/100 to 2/100 mm for watches. Side shake of 1/100 mm for pivots up to 30/100 mm, and side shake of 2/100 mm for the larger pivots."
+  claims_to_check: []
+  retrieved: true
+  accessed: '2026-09-30'
+  notes: >
+    Read 2026-09-30 (NAWCC thread "Jewel hole dimensions", post by Dushan
+    Grujich, 20 August 2020). Tier 6, like SRC-0003/SRC-0011: a forum
+    post, not the primary source itself. But more specific than SRC-0011
+    (a two-band rule keyed to pivot diameter, not a single point value)
+    and better attributed: it names Hans Jendritzki, a real, specific,
+    identifiable watchmaking instructor, author of "Watch Adjustment"
+    (1961/1963), described independently (in the unrelated
+    historictimekeepers.com "Watch Adjustment" article by Dewey Clark —
+    the same person behind SRC-0011 — as "the most complete work on
+    watch adjustment" and still in print through WOSTEP's founder's
+    publishing house, booksimonin.ch) as a recognized authority, not an
+    anonymous forum guess. The same post also cites a formula-based
+    approach in M. Handelsmann, "Jewelled bearings" (1973), for deriving
+    optimal jewel-hole diameter from pivot diameter, lubricant and
+    bearing load — not itself used here (no formula quoted, only that it
+    exists), but recorded in case it becomes findable later. Neither
+    Jendritzki's book nor the Handelsmann book was read directly; this
+    remains a secondhand (forum-paraphrased) citation of both, so it is
+    used the same way as SRC-0011: a BRG-007 informational advisory
+    (ASM-0029), not a validated acceptable range.
+
+- id: SRC-0013
+  title: "Can end-shake and or side-shake ever be too small? (Watch Repair Talk thread)"
+  author: forum user "nickelsilver"
+  year: null
+  type: forum_discussion
+  url: https://www.watchrepairtalk.com/topic/23280-can-end-shake-and-or-side-shake-ever-be-too-small/
+  topics: [bearings, side-shake]
+  claims_supported:
+    - "The sideshake is 0.01, which is about right for a 0.15 pivot"
+  claims_to_check: []
+  retrieved: true
+  accessed: '2026-09-30'
+  notes: >
+    Read 2026-09-30. A single data point (0.01mm side shake for a
+    0.15mm pivot) from a different forum, a different poster, with no
+    named source of its own — too thin to register anything from on its
+    own. Recorded because it happens to agree with SRC-0012's Jendritzki
+    rule (0.01mm for pivots up to 0.30mm): independent corroboration
+    from an unconnected thread, which is why SRC-0012 was used for
+    BRG-007 rather than set aside like the single-poster,
+    single-component figure in SRC-0011 was. Not itself cited by the
+    advisory; a supporting data point only.
