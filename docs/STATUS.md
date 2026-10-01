@@ -2,6 +2,36 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Searched for a horological source for the stem-mesh ratio; found one, doesn't close the gap
+
+Went back to the one open gap SRC-0010 left on ASM-0019 (the right-angle
+winding-pinion/crown-wheel mesh): the citation is closed for the
+kinematic relation itself, but only against generic machine bevel-gear
+sources, never a horological one. Searched specifically for a
+watchmaking source about this exact mechanism.
+
+- Found Bruno Hillmann's "The Keyless Mechanism: A Practical Treatise
+  on its Design and Repair" (1910, English translation by Richard
+  Watkins, 2004, hosted at watkinsr.id.au). Its first chapter is
+  specifically "Gearing of the winding pinion with the crown wheel" —
+  the exact mechanism ASM-0019 models, described in period repairman's
+  terms (T the winding pinion, A the transmission wheel, gearing "at a
+  right angle[s]").
+- Read the available excerpt (26 pages, pdftotext — it has a real text
+  layer). It discusses correct engagement at length (depthing, tooth
+  shape, jamming defects) and explicitly ties bad engagement to "the
+  ratio of the sizes of the mobiles" and mismatched tooth counts/pitch
+  — consistent with the rolling-pitch-circle assumption this codebase
+  makes — but never states a speed-ratio or turn-count formula in
+  terms of tooth counts. So it's a genuine horological source about
+  the right mechanism, but doesn't supply the relation itself.
+  Registered as SRC-0019 anyway, per the instruction to keep evidence
+  found rather than drop it for not fully closing the gap.
+- Net effect: ASM-0019's citation status is unchanged (still generic
+  machine-gear only for the actual formula) but the open decision in
+  this file now reflects that a horological source for the mechanism
+  exists and was checked, not just that none was looked for.
+
 ## Side-shake diametral convention (ASM-0013): supported by a source already on file
 
 Re-read SRC-0011 (the NAWCC "Watchmaking tolerances" thread, already
@@ -867,15 +897,21 @@ dimensions round-trip, and picking and issue selection work.
   of the worked example, not an explicit statement. A published source
   stating the convention directly would still be better.
 - **Right-angle (stem) mesh relationship — citation closed, scope
-  caveat remains.** Derived here from rolling pitch circles and tested;
-  now also cited to SRC-0010 (Nie et al. 2026, JSME, peer-reviewed),
-  which states the same tooth-count ratio for a bevel gear pair, plus
+  caveat remains; a horological source was found but doesn't close it
+  either.** Derived here from rolling pitch circles and tested; now
+  also cited to SRC-0010 (Nie et al. 2026, JSME, peer-reviewed), which
+  states the same tooth-count ratio for a bevel gear pair, plus
   SRC-0009 (Wikipedia) for the general spur-gear principle. SRC-0007
   (ISO 23509:2016) and SRC-0008 (SDP/SI) are superseded and remain
-  unread. What's still open: SRC-0010, like SRC-0007/SRC-0008, covers
-  generic machine bevel gears, not horological contrate or winding
-  gearing, so a horological source for this specific mechanism would
-  still be better.
+  unread. Went looking specifically for a horological source and found
+  one — Hillmann's "The Keyless Mechanism" (1910, SRC-0019), a repair
+  manual with a chapter specifically on the winding-pinion/
+  transmission-wheel right-angle gearing this mechanism models. But it
+  only discusses "the ratio of the sizes of the mobiles" and matched
+  tooth counts/pitch qualitatively (as a cause of jamming defects, not
+  as a derived speed-ratio formula), so it doesn't itself close the
+  "generic machine gear, not horological" gap. Recorded anyway per the
+  rule to keep partial evidence rather than drop it for falling short.
 - **Two beats per escape tooth (ASM-0021).** Now supported by SRC-0016
   (corroborated by SRC-0017), both Tier 6/7 informal sources, not a
   published standard — still an accepted assumption, not

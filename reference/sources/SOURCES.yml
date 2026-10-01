@@ -490,3 +490,44 @@
     `pitchLineVelocity` in gearMath.ts), which is this formula applied
     at the pitch radius. Tier: encyclopedia, same tier as
     SRC-0009/SRC-0014/SRC-0015.
+
+# Searched specifically for a horological (not generic machine-gear)
+# source for ASM-0019's right-angle stem mesh, per the open gap SRC-0010
+# left (a spiral-bevel-gear paper, not horology). Found an actual
+# horology text on exactly this mechanism.
+
+- id: SRC-0019
+  title: "The Keyless Mechanism: A Practical Treatise on its Design and Repair"
+  author: B. Hillmann (German original, 1910); English translation by Richard Watkins, 2004
+  year: 1910
+  type: watchmaking_reference
+  url: http://www.watkinsr.id.au/Hillmann.pdf
+  topics: [keyless-works, winding, gear-geometry]
+  claims_supported: []
+  claims_to_check:
+    - whether a numeric or formulaic speed-ratio relation for the winding-pinion/transmission-wheel (crown wheel) right-angle mesh appears anywhere in the full book (only the publicly available excerpt, 26 pages covering gears, click-and-ratchet work, fixing the stem and hand setting, was found and read; it does not reach the needed detail)
+  retrieved: true
+  accessed: '2026-10-01'
+  notes: >
+    Read 2026-10-01 (pdftotext extraction of the 26-page PDF at the URL
+    above; the PDF has a real text layer, not scanned images). A
+    genuine horological primary source — Bruno Hillmann wrote four
+    watch-repair books 1900-1925; this is a 1910 one on keyless
+    (winding/setting) mechanisms specifically, translated by Richard
+    Watkins (also translator of Moritz Grossmann's prize essay, among
+    others, on watkinsr.id.au). Its opening chapter, "Gearing of the
+    winding pinion with the crown wheel", is specifically about the
+    right-angle mesh ASM-0019/`crossedMeshSpeedRatio` models — "T is the
+    winding pinion loose on the winding stem W... This transmission
+    wheel is turned by the winding pinion T, with which it gears at a
+    right angle[s]." It discusses correct engagement at length
+    (depthing, tooth shape, jamming) and states "the ratio of the sizes
+    of the mobiles" must be correct and that mismatched tooth counts or
+    pitch cause jamming defects — consistent with the rolling-pitch-circle
+    assumption ASM-0019 makes, but it is qualitative repair guidance, not
+    a stated formula (ω or turn-count ratio in terms of tooth counts).
+    Does NOT close the "still a generic-machine-gear source, not
+    horological" gap SRC-0010 left open: it is horological, but doesn't
+    give the relation itself. Recorded per CLAUDE_REFERENCE_INSTRUCTIONS.md
+    rule 12 (preserve evidence found, even partial) rather than left out
+    for not fully closing the gap.
