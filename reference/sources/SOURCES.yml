@@ -317,24 +317,41 @@
   year: null
   type: encyclopedia
   url: https://en.wikipedia.org/wiki/Gear
-  topics: [gear-geometry, module, pitch-diameter]
+  topics: [gear-geometry, module, pitch-diameter, gear-ratio, torque]
   claims_supported:
     - "the (reference/pitch) diameter of a gear is d = N m_n / cos(psi), where N is the tooth count, m_n the normal module and psi the helix angle; for a spur gear (psi = 0) this reduces to d = N m"
+    - "the centre distance between two meshing external gears is a = (m/2)(z1 + z2)"
+    - "for two meshing gears, T2/T1 = r = N2/N1 and omega2/omega1 = 1/r = N1/N2 (gear ratio r, an ideal/ undamped-loss relation from the 'mechanical advantage of this ideal lever')"
+    - "in the most common (parallel-axis) configuration, two meshing gears turn in opposite senses"
   claims_to_check: []
   retrieved: true
   accessed: '2026-10-01'
   notes: >
-    Read 2026-10-01 ("Nomenclature" > "General" section, "Pitch diameter,
-    d"). States the helical form of the diameter/module/tooth-count
-    relationship; the spur-gear case used by `pitchDiameter` in
-    gearMath.ts (d = m z) is the psi = 0 special case of the same
-    formula. Closes the "external citation pending" note on the Pitch
-    diameter row of TRACEABILITY.md: this is the pure geometric
-    definition of module, not a manufacturability claim, so
-    CLAUDE_REFERENCE_INSTRUCTIONS.md rule 10 (generic machine-gear
-    equations do not prove a horological gear is manufacturable) does
-    not block using a generic-gear source for it. Tier: encyclopedia,
-    same tier as SRC-0009.
+    Read 2026-10-01. Four separate passages used:
+    (1) "Nomenclature" > "General", "Pitch diameter, d" — states the
+    helical form of the diameter/module/tooth-count relationship; the
+    spur-gear case used by `pitchDiameter` in gearMath.ts (d = m z) is
+    the psi = 0 special case of the same formula, and the same
+    subsection also gives "the distance between the two axis becomes:
+    a = m/2 (z1 + z2)", closing `idealCentreDistance`/
+    `meshCentreDistance`'s centre-distance row directly (REF-ENG §5.2).
+    (2) The introduction states, verbatim, "the torque T to increase
+    but the rotational speed omega to decrease... The changes are
+    proportional to the gear ratio r, the ratio of the tooth counts:
+    namely, T2/T1 = r = N2/N1, and omega2/omega1 = 1/r = N1/N2" — this
+    closes both `meshSpeedRatio`/`drivenAngularVelocity` (REF-ENG §5.3,
+    magnitude) and `drivenTorque`'s lossless (eta = 1) case (REF-ENG
+    §5.4). (3) The "Relative axis position" > "Parallel" subsection
+    states "the two gears turn in opposite senses", closing the sign
+    convention in `meshSpeedRatio`'s direction reversal. None of this
+    is a manufacturability claim — it is the pure kinematic/ideal-lever
+    relationship, so CLAUDE_REFERENCE_INSTRUCTIONS.md rule 10 (generic
+    machine-gear equations do not prove a horological gear is
+    manufacturable) does not block using a generic-gear source for it.
+    The efficiency factor eta in `drivenTorque` (ASM-0002) for a real,
+    lossy mesh is not addressed by this source and remains an
+    assumption/configured value only. Tier: encyclopedia, same tier as
+    SRC-0009.
 
 - id: SRC-0015
   title: "Torsion spring"
@@ -437,3 +454,24 @@
     inconsistent with one release per tooth pitch. ASM-0021 is still
     recorded as "accepted for the simplified model" rather than
     VERIFIED_STANDARD, since even SRC-0016/SRC-0017 are Tier 6/7.
+
+- id: SRC-0018
+  title: "Tangential speed"
+  author: Wikipedia contributors
+  year: null
+  type: encyclopedia
+  url: https://en.wikipedia.org/wiki/Tangential_speed
+  topics: [kinematics, pitch-line-velocity]
+  claims_supported:
+    - "tangential (linear) speed v relates to angular speed omega and radius r by v = r omega"
+  claims_to_check: []
+  retrieved: true
+  accessed: '2026-10-01'
+  notes: >
+    Read 2026-10-01 ("Formula" section): "the direct proportion of v to
+    both r and omega becomes the exact equation v = r omega." General
+    circular-motion kinematics, not gear- or horology-specific. Closes
+    the "Pitch-line velocity" row of TRACEABILITY.md (REF-ENG §5.5,
+    `pitchLineVelocity` in gearMath.ts), which is this formula applied
+    at the pitch radius. Tier: encyclopedia, same tier as
+    SRC-0009/SRC-0014/SRC-0015.

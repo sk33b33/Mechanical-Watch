@@ -2,6 +2,41 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Remaining REF-ENG §5 gear equations cited: centre distance, speed ratio, compound ratio, torque, pitch-line velocity
+
+Continued from the pitch-diameter/balance-frequency/beats-per-tooth pass
+below: went back through SRC-0014 (Wikipedia "Gear") more thoroughly and
+through SRC-0009 (Wikipedia "Gear train", already registered for the
+stem-mesh citation) to close the rest of REF-ENG §5.
+
+- **Centre distance (a = m(z1+z2)/2).** SRC-0014's own "Pitch diameter"
+  subsection states it directly: "the distance between the two axis
+  becomes: a = m/2 (z1 + z2)".
+- **Speed ratio, with direction (ω2/ω1 = −z1/z2).** SRC-0014's
+  introduction states the magnitude (ω2/ω1 = N1/N2) as a direct
+  consequence of the "ideal lever" mechanical advantage; its "Relative
+  axis position > Parallel" subsection separately states "the two gears
+  turn in opposite senses", closing the sign. SRC-0009 independently
+  states the same magnitude relation (already registered for the
+  stem-mesh citation).
+- **Compound ratio (product of stage ratios).** SRC-0009's idler-gear
+  derivation (R_final = R_AI · R_IB, the NI term canceling) is the same
+  stage-product rule this project generalizes to an arbitrary train.
+- **Torque, lossless case (T2 = T1·z2/z1).** SRC-0014's introduction
+  states T2/T1 = r = N2/N1 for the ideal-lever case. The η < 1 real-mesh
+  extension (ASM-0002) is not addressed by this source and stays an
+  assumption/configured value, not externally verified.
+- **Pitch-line velocity (v = ωr).** Not in SRC-0014; found a dedicated
+  source instead — Wikipedia's "Tangential speed" article (SRC-0018),
+  general circular-motion kinematics, applied here at the pitch radius.
+- All of these are the pure kinematic/geometric relationships, not
+  manufacturability claims, so CLAUDE_REFERENCE_INSTRUCTIONS.md rule 10
+  (a generic machine-gear equation doesn't prove a horological gear is
+  manufacturable) doesn't block citing a generic-gear encyclopedia
+  source for them. None of REF-ENG §5 now rests solely on REF-ENG's own
+  say-so; none of it is a primary standard either (still open, see
+  below). All 360 tests still pass.
+
 ## Three more citation gaps closed: pitch diameter, balance frequency, two beats per tooth
 
 Went back through the "External citations pending" open decisions and
@@ -785,11 +820,15 @@ dimensions round-trip, and picking and issue selection work.
   dial ratios by construction, but aren't taken from any caliber. For a
   movement meant to match a real one, the counts need a source recorded
   under `reference/sources/09-movement-specific/`.
-- **External citations for gear equations.** Pitch diameter (d = m z) is
-  now cited (SRC-0014, Wikipedia "Gear" — the spur case of its general
-  d = N mₙ / cos ψ). The rest of REF-ENG §5 (centre distance, gear
-  ratio, torque relationship, pitch-line velocity) still cites no
-  primary source and remains marked DERIVED with the citation pending.
+- **External citations for gear equations.** All of REF-ENG §5 (pitch
+  diameter, centre distance, speed ratio with direction, compound
+  ratio, the lossless torque case, pitch-line velocity) is now cited to
+  SRC-0009/SRC-0014/SRC-0018, all Tier: encyclopedia. What's still
+  open: none of these is a primary standard (e.g. ISO/AGMA gear
+  geometry), and the η < 1 lossy-mesh torque extension (ASM-0002) is
+  still uncited and likely stays an assumption — a real mesh's
+  efficiency depends on lubrication, surface finish and load, not a
+  single citable constant.
 - **Side-shake convention (ASM-0013).** Reported as diametral clearance
   until a source confirms the horological convention. (Separate from
   the BRG-007 advisory below, which judges the *size* of the value

@@ -5,24 +5,26 @@ tests and validation rules. This answers the "Code review questions" in
 `CLAUDE_REFERENCE_INSTRUCTIONS.md`. Update this file in the same commit
 as any change to an equation, constant or rule.
 
-`REF-ENG §x` means `reference/REFERENCE_ENGINEERING.md` section x. Most of
-these equations still have no external primary citation: the gear
-relationships mostly rest only on REF-ENG §5. The pitch-diameter definition
-(SRC-0014) and the balance oscillator formula (SRC-0015) now have an
-external citation (Tier: encyclopedia); the others, including a primary
-gear-geometry standard, remain open work.
+`REF-ENG §x` means `reference/REFERENCE_ENGINEERING.md` section x. The
+core REF-ENG §5 gear equations (pitch diameter, centre distance, speed
+ratio with direction, compound ratio, the lossless torque case,
+pitch-line velocity) and the balance oscillator formula now each have an
+external citation (SRC-0009, SRC-0014, SRC-0015, SRC-0018 — all Tier:
+encyclopedia). None of these is a primary standard (e.g. a gear-geometry
+or horology standard), and none proves manufacturability (REF-ENG §5.2,
+CLAUDE_REFERENCE_INSTRUCTIONS.md rule 10); finding one remains open work.
 
 ## Equations
 
 | Quantity (SI unit) | Equation | Code | Basis | Assumptions | Evidence state | Level | Tests |
 |---|---|---|---|---|---|---|---|
 | Pitch diameter (m) | d = m z | `pitchDiameter` in `src/math/gearMath.ts` | REF-ENG §5.1 | ASM-0001 | DERIVED (definition of module); SRC-0014 (Wikipedia "Gear") states the general d = N mₙ / cos ψ form, of which this is the spur (ψ = 0) case | L1 | `gearMath.test.ts` › pitchDiameter |
-| Centre distance (m) | a = (d1 + d2)/2 = m(z1 + z2)/2 | `idealCentreDistance`, `meshCentreDistance` | REF-ENG §5.2 | ASM-0001 | DERIVED | L1 | › centre distance |
+| Centre distance (m) | a = (d1 + d2)/2 = m(z1 + z2)/2 | `idealCentreDistance`, `meshCentreDistance` | REF-ENG §5.2 | ASM-0001 | DERIVED; SRC-0014 (Wikipedia "Gear") states a = (m/2)(z1 + z2) directly | L1 | › centre distance |
 | Centre-distance match (bool) | abs(a_placed − a_ideal) ≤ tol | `isCentreDistanceAchievable` | REF-ENG §5.2 | ASM-0008 (tolerance is numerical, not manufacturing) | DERIVED | L1 | › flags an impossible centre distance; `gearMeshGeometry.test.ts` |
-| Speed ratio (1) | ω2/ω1 = −z1/z2 | `meshSpeedRatio`, `drivenAngularVelocity` | REF-ENG §5.3 | ASM-0001 | DERIVED | L2 | › meshSpeedRatio / direction reversal |
-| Compound ratio (1) | product of stage ratios | `compoundSpeedRatio`, `solveGearTrain` | REF-ENG §5.3, §7 | ASM-0001, ASM-0006, ASM-0007 | DERIVED | L2 | › compoundSpeedRatio; `solveGearTrain.test.ts` |
-| Torque (N·m) | T2 = η T1 (z2/z1), with η = 1 unless configured | `drivenTorque` | REF-ENG §5.4 | ASM-0001; η only via ASM-0002 or a SRC | DERIVED | L3 (not yet used by the solver or UI) | › drivenTorque |
-| Pitch-line velocity (m/s) | v = ω r, r = d/2 | `pitchLineVelocity` | REF-ENG §5.5 | ASM-0001 | DERIVED | L2 | › pitchLineVelocity (incl. equal on both gears) |
+| Speed ratio (1) | ω2/ω1 = −z1/z2 | `meshSpeedRatio`, `drivenAngularVelocity` | REF-ENG §5.3 | ASM-0001 | DERIVED; SRC-0014 states ω2/ω1 = N1/N2 (magnitude) and that two parallel-axis meshing gears turn in opposite senses (the sign); SRC-0009 states the same magnitude relation independently | L2 | › meshSpeedRatio / direction reversal |
+| Compound ratio (1) | product of stage ratios | `compoundSpeedRatio`, `solveGearTrain` | REF-ENG §5.3, §7 | ASM-0001, ASM-0006, ASM-0007 | DERIVED; SRC-0009 (Wikipedia "Gear train", idler-gear formula section) derives R_final = R_AI · R_IB for a two-stage train, the same stage-product rule generalized here | L2 | › compoundSpeedRatio; `solveGearTrain.test.ts` |
+| Torque (N·m) | T2 = η T1 (z2/z1), with η = 1 unless configured | `drivenTorque` | REF-ENG §5.4 | ASM-0001; η only via ASM-0002 or a SRC | DERIVED; SRC-0014 states T2/T1 = N2/N1 for the lossless (η = 1) case; the η < 1 real-mesh extension is not covered by this source and remains ASM-0002 | L3 (not yet used by the solver or UI) | › drivenTorque |
+| Pitch-line velocity (m/s) | v = ω r, r = d/2 | `pitchLineVelocity` | REF-ENG §5.5 | ASM-0001 | DERIVED; SRC-0018 (Wikipedia "Tangential speed") states v = r ω directly (general circular-motion kinematics, applied here at the pitch radius) | L2 | › pitchLineVelocity (incl. equal on both gears) |
 | Shaft angle (rad) | θ(n+1) = θ(n) + ω Δt, with fixed Δt | `stepSimulation`, `advanceSimulation` | REF-ENG §15 (L2) | ASM-0007, ASM-0008 | DERIVED | L2 | `simulationState.test.ts` |
 | Shaft axis position (m) | FIXED: given; MESH_POLAR: p = p_ref + a·(cos θ, sin θ), with a = m(z1 + z2)/2 | `solvePlacement` in `src/kinematics/solvePlacement.ts` | REF-ENG §5.2, §7 | ASM-0006 | DERIVED | L1 | `solvePlacement.test.ts` |
 | Side shake (m) | bore Ø − pivot Ø (diametral) | `sideShake` in `src/assembly/assemblyGeometry.ts` | REF-ENG §12 | ASM-0013 (convention unconfirmed), ASM-0029 | DERIVED from user inputs; compared only to an informal, unconfirmed reference figure (BRG-007, SRC-0012) — not a validated acceptable range | L1 | `assemblyRules.test.ts` › bearing geometry, BRG-007 |
