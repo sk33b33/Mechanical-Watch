@@ -566,3 +566,93 @@
     context for why only forum testimony (SRC-0011/SRC-0012/SRC-0013)
     has been found with actual figures. Does not raise BRG-006/BRG-007
     above their current Tier 6/7 informational-advisory status.
+
+# User asked to try finding a real caliber matching the teaching
+# movement's architecture/tooth counts (ASM-0009's open "Sources for
+# the teaching movement's tooth counts" item in STATUS.md).
+
+- id: SRC-0021
+  title: "16 1/2''' ETA 6497-1 — Technical Communication (CT 6497-1 FDE 482160 11)"
+  author: ETA SA Manufacture Horlogère Suisse
+  year: 2016
+  type: manufacturer_reference
+  url: https://patrimoine.bourgognefranchecomte.fr/documents/ETA_6497-1.pdf
+  topics: [movement-specific, teaching-movement, going-train, escapement]
+  claims_supported:
+    - "ETA 6497-1: frequency 18'000 A/h (alternances per hour, i.e. beats per hour); angle lift of balance 44°; 17 jewels; running time 46h; 16 1/2''' (Lepine, Ø 36.60mm, height 4.50mm)"
+  claims_to_check: []
+  retrieved: true
+  accessed: '2026-10-01'
+  notes: >
+    Read 2026-10-01 (pdftotext -layout extraction of the official ETA
+    manufacturer technical communication, Tier 3 in REFERENCE_ENGINEERING.md
+    §1 — well above any forum/encyclopedia source used elsewhere in this
+    file). This is ETA's assembly/lubrication manual for the caliber
+    (parts list in assembly order, lubrication points, stem-extraction
+    procedure, hand-fitting heights), not a dimensional/parts-dimension
+    spec sheet: it does NOT contain a gear-train tooth-count table (no
+    wheel or pinion tooth/leaf counts appear anywhere in the document;
+    checked by searching the full extracted text). Used only for the
+    frequency/lift-angle/jewel-count/reserve figures quoted above.
+    Found while looking for a real caliber matching the teaching
+    movement (`src/app/teachingMovement.ts`, ASM-0009): the teaching
+    movement's escapement is also 18,000 bph / 2.5Hz, the same
+    frequency as this real, specific, well-documented caliber. The
+    ETA/Unitas 6497-1 is independently described (by SRC-0022 and other
+    sources found) as a large, hand-wound pocket-watch movement
+    routinely used to train watchmakers — i.e. a real "teaching
+    movement" in the same sense this codebase uses the term. However:
+    the teaching movement's lift angle (50°, `teachingMovement.ts`) does
+    NOT match this caliber's real 44°, and no tooth-count claim rests on
+    this source (see SRC-0022 for why the tooth-count candidate found
+    elsewhere could not be attributed to this specific 2.5Hz execution).
+    So this closes only the frequency/architecture resemblance, not a
+    tooth-count citation.
+
+- id: SRC-0022
+  title: "Unitas/ETA 6497 (Modern ETA and clones)"
+  author: horology-student.org (unattributed; appears to be a watchmaking student's course notes site)
+  year: null
+  type: specialist_reference
+  url: http://horology-student.org/movements/modern-eta-and-clones/unitas-eta-6497-6498/
+  topics: [movement-specific, teaching-movement, going-train]
+  claims_supported:
+    - "Centre wheel has 80 teeth; Third wheel has 60 teeth and its pinion has 10 leaves; Fourth wheel (carrying small seconds) has 120 teeth and its pinion has 8 leaves; Escape wheel has 15 teeth and its pinion has 10 leaves"
+    - "The movement beats at 21'600 beats per hour or 6 beats per second (3Hz)"
+    - "[6497/6498] were designed as pocket watch movements and are therefore quite large. Their size makes them easier to manipulate, which is why they are often used to train watchmakers"
+  claims_to_check: []
+  retrieved: true
+  accessed: '2026-10-01'
+  notes: >
+    Read 2026-10-01. Tier 6 (specialist reference, unattributed site,
+    like SRC-0003), not a manufacturer or primary source. Gives a
+    specific, internally-complete tooth-count table for "Unitas/ETA
+    6497" (not disambiguated to a -1 or -2 execution), which is exactly
+    the kind of number the teaching movement's gear train needs if it
+    is to claim a real-caliber match rather than the current
+    illustrative design (ASM-0009).
+
+    Checked for consistency using this codebase's own gear-train math
+    (REF-ENG §5.3, ASM-0021's 2-beats-per-tooth) rather than taken on
+    faith: with the fourth arbor at 1 rpm (standard for a small-seconds
+    display — it must complete one revolution per minute), the stated
+    120-tooth fourth wheel and 10-leaf escape pinion give an escape
+    arbor speed of 120/10 = 12 rpm; at 15 escape-wheel teeth (2
+    beats/tooth) that is 12 × 30 = 360 beats/min = 21,600 beats/hour —
+    which matches this same page's own stated "21,600 bph / 3Hz", so
+    the page is internally consistent. But SRC-0021 (ETA's own
+    technical communication) confirms the 6497-1 specifically runs at
+    18,000 A/h (2.5Hz), not 21,600. The 6497-2 execution is documented
+    elsewhere (not yet read directly) as switchable between 2.5Hz and
+    3Hz, so this page's numbers most likely describe a 3Hz execution
+    (6497-2, or the unmodified base Unitas 6497 before ETA's -1/-2
+    executions) — not the 18,000bph 6497-1 the teaching movement's own
+    frequency matches. Per CLAUDE_REFERENCE_INSTRUCTIONS.md rule 12
+    (preserve conflicting evidence, identify scope, don't silently
+    resolve it), this tooth-count table is recorded but NOT applied to
+    the teaching movement: it would be inventing a claimed real-caliber
+    match this codebase's own math says doesn't hold at the 6497-1's
+    actual beat rate. A verified tooth-count table specifically for the
+    18,000bph 6497-1 execution (ideally from an ETA parts/dimension
+    sheet rather than a secondary site) would still be needed to close
+    this.

@@ -2,6 +2,56 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Looked for a real caliber matching the teaching movement: found one for frequency, not tooth counts
+
+Asked specifically to try matching the teaching movement
+(`src/app/teachingMovement.ts`) to a real caliber, rather than leaving
+its tooth counts illustrative (ASM-0009) by default.
+
+- The teaching movement's architecture (barrel → centre → third →
+  fourth (seconds) → escape going train; motion works; keyless works;
+  18,000 bph / 2.5Hz escapement) is textbook-standard, and its
+  frequency happens to match a real, specific, famous caliber: the
+  ETA/Unitas 6497-1 — a large hand-wound pocket-watch movement
+  explicitly known in the trade as a watchmaker *training* movement
+  (per a secondary source), which fits the "teaching movement" framing
+  rather well. Confirmed via ETA's own official technical
+  communication PDF (SRC-0021, Tier 3, manufacturer documentation):
+  18,000 A/h, 44° lift angle, 17 jewels, 46h reserve.
+- That document is an assembly/lubrication manual, not a dimensional
+  spec sheet — it has no gear tooth-count table at all. Found one
+  candidate elsewhere (SRC-0022, a watchmaking-course site's "Unitas/
+  ETA 6497" page): centre wheel 80t, third wheel 60t/pinion 10, fourth
+  wheel 120t/pinion 8, escape wheel 15t/pinion 10.
+- Before using those numbers, checked them with this codebase's own
+  gear-train math (REF-ENG §5.3, ASM-0021) rather than taking them on
+  faith: at 1 rpm on the fourth (seconds) arbor, a 120-tooth fourth
+  wheel driving a 10-leaf escape pinion gives 12 rpm on the escape
+  arbor; at 15 escape-wheel teeth that's 21,600 beats/hour (3Hz) — not
+  the 18,000 bph (2.5Hz) the official 6497-1 document confirms and the
+  teaching movement already uses. The source's own page agrees with
+  this (it states 21,600 bph/3Hz itself), so it's internally
+  consistent — just evidently describing a 3Hz execution (6497-2, or
+  unmodified Unitas 6497), not the specific 18,000bph 6497-1 that
+  matches our frequency. Also checked: the teaching movement's lift
+  angle (50°) doesn't match the real 6497-1's 44° either.
+- Per the rule to preserve conflicting evidence and its scope rather
+  than silently resolve it (CLAUDE_REFERENCE_INSTRUCTIONS.md rule 12),
+  recorded both sources but did **not** change any tooth counts in
+  `teachingMovement.ts` — applying SRC-0022's numbers would claim a
+  real-caliber match this project's own math says doesn't hold at the
+  6497-1's actual frequency, which is exactly the kind of invented
+  specification CLAUDE.md prohibits. The teaching movement's gears
+  stay illustrative, satisfying the dial ratios by construction
+  (ASM-0009), same as before.
+- Net result: closer than before (a real, verified, well-matched
+  caliber identified for the escapement frequency and the "teaching
+  movement" framing itself) but not fully closed — an actual verified
+  tooth-count table for the 18,000bph 6497-1 specifically (ideally an
+  ETA parts/dimension sheet rather than a secondary site) would still
+  be needed before the gear train itself could honestly claim to match
+  a real caliber.
+
 ## Checked a recognized watchmaking textbook for bearing-clearance figures; none found
 
 Went looking for a Tier 4 ("recognized watchmaking textbook", per
@@ -897,10 +947,21 @@ dimensions round-trip, and picking and issue selection work.
 
 ## Open decisions
 
-- **Sources for the teaching movement's tooth counts.** They satisfy the
-  dial ratios by construction, but aren't taken from any caliber. For a
-  movement meant to match a real one, the counts need a source recorded
-  under `reference/sources/09-movement-specific/`.
+- **Sources for the teaching movement's tooth counts — a real-caliber
+  match found for the frequency, not the gear train.** The teaching
+  movement's escapement frequency (18,000 bph / 2.5Hz) matches a real,
+  specific, well-documented caliber: the ETA/Unitas 6497-1, confirmed
+  via its own official manufacturer technical communication (SRC-0021,
+  Tier 3) — itself independently a famous "watchmaker training
+  movement" (large pocket-watch architecture, easy to see and work on).
+  But: its lift angle (our 50° vs. the real 44°) doesn't match, and the
+  one tooth-count table found for "Unitas/ETA 6497" (SRC-0022) checks
+  out, by this codebase's own gear-train math, as describing a 3Hz
+  (21,600 bph) execution, not the 2.5Hz 6497-1 — so it was not applied.
+  The counts still satisfy the dial ratios by construction, aren't
+  taken from any verified caliber, and stay illustrative (ASM-0009). A
+  verified tooth-count table specifically for the 18,000bph 6497-1
+  execution would still close this.
 - **External citations for gear equations.** All of REF-ENG §5 (pitch
   diameter, centre distance, speed ratio with direction, compound
   ratio, the lossless torque case, pitch-line velocity) is now cited to
