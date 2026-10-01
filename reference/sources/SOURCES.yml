@@ -704,3 +704,34 @@
     retail parts catalog (watchmakers order by ETA's own part number,
     not tooth count) and confirms this is not a venue where the number
     will turn up.
+
+# Spur-gear involute profile geometry (GEAR-103, ASM-0030), for
+# INVOLUTE_PROFILE gears (reference/REFERENCE_ENGINEERING.md §6).
+
+- id: SRC-0024
+  title: Elements of Metric Gear Technology — Introduction to Gear Technology (§2-3), Spur Gear Calculations (§4)
+  author: Stock Drive Products / Sterling Instrument (SDP/SI)
+  year: null
+  type: manufacturer_reference
+  url: http://qtcgears.com/materials/catalogs/Tech.pdf
+  topics: [gear-geometry, involute-profile]
+  claims_supported:
+    - "metric ISO basic rack (ISO 53, module 1): addendum h_a = m, dedendum h_f = 1.25m, pressure angle 20°, whole depth 2.25m, root radius r_f = 0.38m (§1.1.2, p.T5-T6)"
+    - "involute function inv(α) = tanα − α (eq. 3-6, p.T18), and the parametric involute curve x = r cos(invα), y = r sin(invα) with r = r_b / cosα (eq. 3-7, p.T18)"
+    - "standard spur gear base diameter d_b = d cosα, addendum h_a = 1.00m, dedendum h_f = 1.25m (Table 4-1, p.T19)"
+    - "minimum tooth count free of undercut for a standard (unshifted) full-depth gear: z_c ≥ 2/sin²α — 32 teeth at 14.5°, 18 teeth at 20° (eq. 4-1, p.T19-T20)"
+  retrieved: true
+  accessed: "2026-10-01"
+  notes: >
+    Same document family as SRC-0008 (SDP/SI "Elements of Metric Gear
+    Technology"), but a different section (spur gears, §1-4, not
+    bevel/helical) read via a mirror host (qtcgears.com) after
+    sdp-si.com itself returned an HTTP 307 redirect loop this
+    environment's fetch tool would not follow automatically. Actually
+    retrieved and read (unlike SRC-0008, still blocked/unread). Tier 3
+    (manufacturer technical documentation) per REFERENCE_ENGINEERING.md
+    §1 — a generic machine-gear reference, not a horological one
+    (CLAUDE_REFERENCE_INSTRUCTIONS.md rule 10): it establishes the
+    involute math and the standard full-depth tooth-proportion
+    convention, not that any watch gear is built to it. Used for
+    ASM-0030 and GEAR-103.

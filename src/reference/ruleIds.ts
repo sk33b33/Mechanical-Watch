@@ -21,6 +21,7 @@ export const RULE_IDS = [
   "MFG-002",
   "GEAR-101",
   "GEAR-102",
+  "GEAR-103",
   "KIN-001",
   "FRAME-001",
   "BRG-001",

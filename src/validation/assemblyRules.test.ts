@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { millimetres as mm, toMillimetres } from "@/units/length";
+import { degrees } from "@/units/angle";
 import { vec2 } from "@/math/vec2";
 import {
   updateFrame,
@@ -183,6 +184,28 @@ describe("assembly rules", () => {
   it("GEAR-102: a gear needs a positive thickness", () => {
     const m = updateGear(demo, gear(demo, "Wheel C").id, { thickness: mm(0) });
     expect(variants(m)).toContain("GEAR-102:axial");
+  });
+
+  it("GEAR-103: an involute gear needs a pressure angle", () => {
+    const m = updateGear(demo, gear(demo, "Wheel C").id, { profileModel: "INVOLUTE_PROFILE" });
+    expect(variants(m)).toContain("GEAR-103:pressure-angle-required");
+  });
+
+  it("GEAR-103: a tooth count below the standard no-undercut threshold is a warning, not an error", () => {
+    const m = updateGear(demo, gear(demo, "Pinion B").id, {
+      profileModel: "INVOLUTE_PROFILE", pressureAngle: degrees(20), toothCount: 8,
+    });
+    expect(variants(m)).not.toContain("GEAR-103:undercut");
+    const advisory = validateMovement(m).find((i) => i.rule === "GEAR-103" && i.id.includes("undercut"));
+    expect(advisory?.severity).toBe("warning");
+    expect(advisory?.message).toContain("below the standard no-undercut threshold");
+  });
+
+  it("GEAR-103: 18 teeth at 20° is exactly at the no-undercut threshold (no advisory)", () => {
+    const m = updateGear(demo, gear(demo, "Pinion B").id, {
+      profileModel: "INVOLUTE_PROFILE", pressureAngle: degrees(20), toothCount: 18,
+    });
+    expect(validateMovement(m).some((i) => i.rule === "GEAR-103" && i.id.includes("undercut"))).toBe(false);
   });
 
   it("ASSY-002: two gears on one arbor cannot share axial space", () => {

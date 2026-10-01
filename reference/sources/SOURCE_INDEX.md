@@ -61,6 +61,16 @@ Left here unread rather than removed, per the rule to never hide an
 assumption or its evidence trail: sdp-si.com remains blocked by this
 environment's network policy and ISO 23509 is paid. See SOURCES.yml.
 
+### SDP/SI — Elements of Metric Gear Technology, spur gears/involute geometry (SRC-0024, read)
+Same document family as SRC-0008, a different section, read via a mirror
+host after sdp-si.com itself kept redirecting. Supplies the metric ISO
+basic rack proportions (addendum m, dedendum 1.25m, 20° pressure angle),
+the involute function inv(α) = tanα − α and parametric involute curve,
+standard base/outside/root diameter formulas, and the minimum-tooth-count-
+before-undercut formula z_c ≥ 2/sin²α. Used for GEAR-103 and ASM-0030 (the
+INVOLUTE_PROFILE tooth geometry). Generic machine-gear source, not
+horological — see SOURCES.yml for the full scope note.
+
 ## Bearing clearances
 
 ### NAWCC Forums — Watchmaking tolerances thread (SRC-0011, read)

@@ -177,6 +177,12 @@ export const ASSUMPTIONS = {
     scope: "Bearings / side-shake advisory",
     status: "Active",
   },
+  "ASM-0030": {
+    summary:
+      "INVOLUTE_PROFILE tooth geometry uses the standard full-depth metric system (SRC-0024: 20° pressure angle, addendum 1.00m, dedendum 1.25m, zero profile shift, zero backlash); a generic machine-gear convention, not a horological one (REF-ENG §6, CLAUDE_REFERENCE_INSTRUCTIONS.md rule 10). The dedendum flank below the base circle is drawn as a straight radial segment into the root circle, not the true trochoidal fillet a rack cutter would generate — an explicit simplification, most visible on low tooth counts (below GEAR-103's undercut threshold), which are common among watch pinions",
+    scope: "Geometry / viewport",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

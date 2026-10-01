@@ -2,6 +2,7 @@ import { toDegrees } from "@/units/angle";
 import type { Gear } from "@/domain/gear";
 import type { EntityId } from "@/domain/ids";
 import { isValidModule, isValidToothCount } from "@/math/gearMath";
+import { minimumToothCountForNoUndercut } from "@/math/involute";
 import { computeGearMeshGeometry } from "@/kinematics/gearMeshGeometry";
 import { gearZRange, zOverlaps } from "@/assembly/assemblyGeometry";
 import type { ValidationIssue } from "../validationIssue";
@@ -37,6 +38,22 @@ export const gearParameterRules: Rule = ({ movement }) => {
         issue("ASSY-001", "gear-shaft", "error", "L1_GEOMETRIC", [gear.id],
           `${gear.name}: mounted on a shaft that does not exist.`, []),
       );
+    }
+    if (gear.profileModel === "INVOLUTE_PROFILE") {
+      if (gear.pressureAngle === null) {
+        issues.push(
+          issue("GEAR-103", "pressure-angle-required", "error", "L1_GEOMETRIC", [gear.id],
+            `${gear.name}: an involute profile needs a pressure angle.`, ["REF-ENG §6", "ASM-0030"]),
+        );
+      } else if (isValidToothCount(gear.toothCount) && gear.toothCount < minimumToothCountForNoUndercut(gear.pressureAngle)) {
+        issues.push(
+          issue("GEAR-103", "undercut", "warning", "L1_GEOMETRIC", [gear.id],
+            `${gear.name}: ${String(gear.toothCount)} teeth is below the standard no-undercut threshold `
+            + `(${String(minimumToothCountForNoUndercut(gear.pressureAngle))} at ${formatPressureAngle(gear)}); `
+            + `the drawn dedendum is a straight-line approximation, not the true undercut form.`,
+            ["REF-ENG §6", "ASM-0030"]),
+        );
+      }
     }
   }
   return issues;

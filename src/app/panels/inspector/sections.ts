@@ -1,11 +1,11 @@
 import type { AppStore } from "@/app/store";
 import type { KeyValueStore } from "@/persistence/autosave";
 import { millimetres, toMillimetres } from "@/units/length";
-import { toDegrees } from "@/units/angle";
+import { degrees, toDegrees } from "@/units/angle";
 import { toRpm } from "@/units/angularVelocity";
 import { toMillimetresPerSecond } from "@/units/linearVelocity";
 import type { Vec2 } from "@/math/vec2";
-import { gearPitchDiameter, type Gear } from "@/domain/gear";
+import { gearPitchDiameter, type Gear, type GearProfileModel } from "@/domain/gear";
 import type { BearingKind, Jewel } from "@/domain/jewel";
 import type { Frame, FrameKind, Outline } from "@/domain/frame";
 import {
@@ -144,11 +144,33 @@ export function gearSection(store: AppStore, gear: Gear, storage: KeyValueStore 
       title: "Height of the gear's mid-plane.",
       onCommit: (raw) => { edit({ zCentre: millimetres(parseRequired(raw)) }); },
     }),
-    readonlyRow("Tooth profile", gear.profileModel,
-      "Pitch-circle model (REF-ENG §6). The drawn teeth are a visual approximation (ASM-0005)."),
-    readonlyRow("Pressure angle",
-      gear.pressureAngle === null ? "not modeled" : `${toDegrees(gear.pressureAngle).toFixed(1)}°`,
-      "A pitch model has no tooth flank, so no pressure angle is assumed."),
+    selectRow(
+      "Tooth profile",
+      gear.profileModel,
+      [
+        { value: "PITCH_MODEL", label: "Pitch model (visual placeholder)" },
+        { value: "INVOLUTE_PROFILE", label: "Involute (standard full-depth)" },
+        { value: "WATCH_SPECIFIC_PROFILE", label: "Watch-specific profile", disabled: true, title: "Not implemented yet." },
+        { value: "MANUFACTURING_VALIDATED_PROFILE", label: "Manufacturing-validated", disabled: true, title: "Not implemented yet." },
+      ],
+      (value) => {
+        const profileModel = value as GearProfileModel;
+        edit(profileModel === "PITCH_MODEL" ? { profileModel, pressureAngle: null } : { profileModel });
+      },
+      "Pitch model: generic trapezoidal placeholder, not an involute (ASM-0005, REF-ENG §6). "
+      + "Involute: real tooth flank, standard full-depth proportions (ASM-0030) — a generic machine-gear "
+      + "convention, not a validated horological profile.",
+    ),
+    gear.profileModel === "INVOLUTE_PROFILE"
+      ? inputRow({
+        label: "Pressure angle (°)",
+        value: gear.pressureAngle === null ? "" : toDegrees(gear.pressureAngle).toFixed(3),
+        step: "0.5",
+        invalid: gear.pressureAngle === null || !(toDegrees(gear.pressureAngle) > 0),
+        title: "The standard full-depth convention uses 20° (SRC-0024).",
+        onCommit: (raw) => { edit({ pressureAngle: raw.trim() === "" ? null : degrees(parseRequired(raw)) }); },
+      })
+      : readonlyRow("Pressure angle", "not modeled", "A pitch model has no tooth flank, so no pressure angle is assumed."),
   ];
   out.push(shaft === undefined
     ? readonlyRow("Arbor", "missing")

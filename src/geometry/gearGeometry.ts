@@ -2,14 +2,20 @@ import * as THREE from "three";
 import type { Gear } from "@/domain/gear";
 import { toMetres } from "@/units/length";
 import { generateGearOutline, visualBoreRadius } from "./gearOutline";
+import { generateInvoluteGearOutline } from "./involuteGearOutline";
 
 /**
  * Builds a Three.js geometry from a Gear's domain parameters. Presentation
- * only (validation level L0 for the tooth shape, ASM-0005); the domain
- * model remains the authoritative mechanical state.
+ * only; the domain model remains the authoritative mechanical state. A
+ * PITCH_MODEL gear draws the generic visual placeholder (L0, ASM-0005).
+ * An INVOLUTE_PROFILE gear with a pressure angle draws the real involute
+ * tooth form (L1, ASM-0030); without one it falls back to the placeholder
+ * rather than fail to render (GEAR-103 reports the missing input).
  */
 export function createGearGeometry(gear: Gear): THREE.ExtrudeGeometry {
-  const outline = generateGearOutline(gear);
+  const outline = gear.profileModel === "INVOLUTE_PROFILE" && gear.pressureAngle !== null
+    ? generateInvoluteGearOutline(gear)
+    : generateGearOutline(gear);
   const shape = new THREE.Shape();
   const first = outline[0];
   if (first === undefined) {
