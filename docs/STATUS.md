@@ -2,6 +2,62 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Section view caps extended to the escapement
+
+The biggest remaining "section view has no caps" gap: the escape
+wheel, balance (rim + arms) and pallet fork (lever, two arms, two
+stones) — the most geometrically varied parts yet, several pieces
+built from multiple `BoxGeometry`s rather than one extruded profile.
+
+- **Escape wheel**: same shape as a gear (tooth polygon minus a hub
+  hole), so it reused the `polygonWithHole` footprint already built
+  for gears. Refactored `createEscapeWheelGeometry` to extract a pure
+  `generateEscapeWheelOutline` (mirroring the `generateGearOutline`
+  split) plus `escapeWheelHubRadius`, so the cap and the real mesh
+  can't drift apart.
+- **Balance**: the rim is an annulus (circle minus a smaller circle),
+  which needed a new footprint kind, `circleWithHole` — the same
+  interval-subtraction math as `polygonWithHole`, just with a circle
+  for the outer boundary instead of a polygon. The two arms are an
+  axis-aligned box, extracted as `balanceArmHalfExtents` and expressed
+  as a 4-point rectangle (the existing `polygon` kind, no new
+  machinery needed).
+- **Pallet fork**: the lever and its two arms are boxes translated
+  then rotated around the pallet axis (not axis-aligned); the two
+  pallet stones are boxes translated but not rotated. Added two small
+  pure helpers to `sectionCap.ts`, `barFootprint` (a rectangle
+  extending from the local origin along a given angle — covers the
+  lever and both arms) and `squareFootprint` (an axis-aligned square
+  at a given centre — covers the stones), fed by the exact same
+  `(angle, length)` values already flowing into `createForkGeometry`,
+  so there's no separate formula to keep in sync.
+- Found and fixed a real bug from the first pass while working in this
+  code: the gear cap's z-range applied `displayZ` (the exploded-view
+  stretch) to `zCentre ± thickness/2` as a whole, which incorrectly
+  stretches the gear's thickness during explode — every other part's
+  cap (correctly) applies `displayZ` only to the centre position and
+  adds the raw, unstretched thickness on top, matching how the real
+  mesh is built (`mesh.position.z = displayZ(zCentre)` with a fixed
+  local thickness baked into the geometry). Only visible with explode
+  and section view on at once, which is why it wasn't caught the first
+  time; fixed and now matches the established pattern.
+- Verified the same way as the previous two passes: read live cap
+  coordinates back out of the running app (temporary debug hook,
+  removed before committing) and confirmed exact matches against the
+  teaching movement's own escapement parameters — e.g. the escape
+  wheel's z-range (2.325–2.475mm, from zCentre 2.4mm ± thickness
+  0.15mm/2), the balance rim's z-range (2.85–3.15mm) versus its arms'
+  narrower one (2.88–3.12mm, thickness × 0.8), and the pallet stones'
+  z-range (2.2875–2.5125mm, thickness × 1.5) all matched to four
+  decimal places. Also confirmed the cap data changes within 400ms of
+  simulated time (the balance oscillates fast), so the live
+  rotation-tracking still holds for the fastest-moving parts in the
+  model.
+- Added `assemblyGeometry3d.test.ts` for the new pure outline/extent
+  functions, plus tests for `barFootprint`/`squareFootprint` in
+  `sectionCap.test.ts`. All 384 tests pass; `tsc --noEmit` and
+  `eslint` are clean.
+
 ## Section view caps extended to the dial
 
 Picked the next "section view has no caps" gap to close: the dial.
@@ -1159,10 +1215,10 @@ dimensions round-trip, and picking and issue selection work.
 - Arbor diameters aren't modeled. The wheel/arbor check treats the
   arbor as its axis line, a lower bound.
 - The selected-arbor highlight is hard to see behind large wheels.
-- The section view fills cut faces for frames, arbors, gears, jewels
-  and the dial, but not hands, the escapement (escape wheel, balance,
-  fork) or keyless-works parts (stem, crown, pinions) — those still
-  show the pre-existing hollow clip.
+- The section view fills cut faces for frames, arbors, gears, jewels,
+  the dial and the escapement (escape wheel, balance rim and arms,
+  pallet fork and stones), but not hands or keyless-works parts (stem,
+  crown, pinions) — those still show the pre-existing hollow clip.
 - Measurements are between whole parts. There is no point-to-point
   picking on surfaces yet.
 - Long dropdown labels are truncated in the narrow inspector.

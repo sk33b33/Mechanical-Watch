@@ -5,20 +5,31 @@ import type { EntityId } from "@/domain/ids";
 import type { ShaftId } from "@/domain/shaft";
 import { createGearGeometry } from "@/geometry/gearGeometry";
 import { generateGearOutline, visualBoreRadius, type Point2D } from "@/geometry/gearOutline";
-import { lineCircleInterval, linePolygonIntervals, subtractIntervals, type Interval } from "@/geometry/sectionCap";
+import { barFootprint, lineCircleInterval, linePolygonIntervals, squareFootprint, subtractIntervals, type Interval } from "@/geometry/sectionCap";
 import {
   ASSEMBLY_VISUALIZATION,
   HAND_VISUALIZATION,
+  balanceArmHalfExtents,
+  balanceRimInnerRadius,
   createFrameGeometry,
   createHandGeometry,
   createZCylinder,
+  escapeWheelHubRadius,
+  generateEscapeWheelOutline,
 } from "@/geometry/assemblyGeometry3d";
 import { arborZRange, frameZRange, isCompleteFrame } from "@/assembly/assemblyGeometry";
 import { partReferencePoint } from "@/assembly/measure";
 import { stemBodyId, type KeylessWorksId } from "@/domain/keyless";
 import { buildDialMeshes, buildStemMeshes } from "./keylessMeshes";
 import { escapementDisplay, primaryEscapement } from "@/simulation/escapementDisplay";
-import { createBalanceGeometry, createEscapeWheelGeometry, createForkGeometry, symbolicPalletArms, type PalletArm } from "@/geometry/assemblyGeometry3d";
+import {
+  createBalanceGeometry,
+  createEscapeWheelGeometry,
+  createForkGeometry,
+  ESCAPEMENT_VISUALIZATION,
+  symbolicPalletArms,
+  type PalletArm,
+} from "@/geometry/assemblyGeometry3d";
 import { isHalfToothSpan, lockingPoints, spanAngle } from "@/kinematics/palletGeometry";
 import { isValidToothCount } from "@/math/gearMath";
 import { metres } from "@/units/length";
@@ -79,7 +90,8 @@ interface Pickable {
 type Footprint =
   | { kind: "circle"; radius: number; centre: Point2D }
   | { kind: "polygon"; points: Point2D[] }
-  | { kind: "polygonWithHole"; points: Point2D[]; holeRadius: number; holeCentre: Point2D };
+  | { kind: "polygonWithHole"; points: Point2D[]; holeRadius: number; holeCentre: Point2D }
+  | { kind: "circleWithHole"; radius: number; centre: Point2D; holeRadius: number; holeCentre: Point2D };
 
 function footprintIntervals(footprint: Footprint, base: Point2D, dir: Point2D): Interval[] {
   switch (footprint.kind) {
@@ -94,6 +106,12 @@ function footprintIntervals(footprint: Footprint, base: Point2D, dir: Point2D): 
       const hole = lineCircleInterval(base, dir, footprint.holeCentre, footprint.holeRadius);
       return hole === null ? outer : subtractIntervals(outer, [hole]);
     }
+    case "circleWithHole": {
+      const outer = lineCircleInterval(base, dir, footprint.centre, footprint.radius);
+      if (outer === null) return [];
+      const hole = lineCircleInterval(base, dir, footprint.holeCentre, footprint.holeRadius);
+      return hole === null ? [outer] : subtractIntervals([outer], [hole]);
+    }
   }
 }
 
@@ -102,9 +120,10 @@ function footprintIntervals(footprint: Footprint, base: Point2D, dir: Point2D): 
  * footprint's offset in content space, captured once per rebuild;
  * `rotationGroup` (if set) is read live each update, since shafts spin
  * during simulation playback and the cap must track them (STATUS.md
- * "section view has no caps"). Covers frames, arbors, gears, jewels and
- * the dial — not hands, the escapement or keyless parts (ASM-0012
- * visual shapes), which still show the pre-existing uncapped clip.
+ * "section view has no caps"). Covers frames, arbors, gears, jewels,
+ * the dial and the escapement (escape wheel, balance, pallet fork) —
+ * not hands or keyless parts (ASM-0012 visual shapes), which still
+ * show the pre-existing uncapped clip.
  */
 interface CappableSolid {
   positionX: number;
@@ -365,14 +384,16 @@ export class Viewport {
         continue;
       }
       const mesh = new THREE.Mesh(geometry, material(COLORS.gear, { metalness: 0.55, roughness: 0.4 }));
-      mesh.position.z = this.displayZ(gear.zCentre);
+      const meshZ = this.displayZ(gear.zCentre);
+      mesh.position.z = meshZ;
       this.addPickable(group, mesh, { kind: "gear", entityId: gear.id, baseColor: COLORS.gear });
       this.cappableSolids.push({
         positionX: group.position.x,
         positionY: group.position.y,
         rotationGroup: group,
-        zLo: this.displayZ(gear.zCentre - gear.thickness / 2),
-        zHi: this.displayZ(gear.zCentre + gear.thickness / 2),
+        // Explode stretches position (meshZ), never thickness, matching the mesh's own local ±thickness/2 extent.
+        zLo: meshZ - gear.thickness / 2,
+        zHi: meshZ + gear.thickness / 2,
         footprint: { kind: "polygonWithHole", points: generateGearOutline(gear), holeRadius: visualBoreRadius(gear), holeCentre: { x: 0, y: 0 } },
         color: COLORS.gear,
       });
@@ -485,17 +506,62 @@ export class Viewport {
     const tipR = w.tipDiameter / 2;
     if (escapeGroup !== undefined && Number.isInteger(w.toothCount) && w.toothCount > 0 && tipR > 0 && w.thickness > 0 && Number.isFinite(w.zCentre)) {
       const mesh = new THREE.Mesh(createEscapeWheelGeometry(w.toothCount, tipR, w.thickness), material(COLORS.escapeWheel, { metalness: 0.6, roughness: 0.35 }));
-      mesh.position.z = this.displayZ(w.zCentre);
+      const meshZ = this.displayZ(w.zCentre);
+      mesh.position.z = meshZ;
       pick(mesh, COLORS.escapeWheel, escapeGroup);
+      this.cappableSolids.push({
+        positionX: escapeGroup.position.x,
+        positionY: escapeGroup.position.y,
+        rotationGroup: escapeGroup,
+        zLo: meshZ - w.thickness / 2,
+        zHi: meshZ + w.thickness / 2,
+        footprint: {
+          kind: "polygonWithHole",
+          points: generateEscapeWheelOutline(w.toothCount, tipR),
+          holeRadius: escapeWheelHubRadius(tipR),
+          holeCentre: { x: 0, y: 0 },
+        },
+        color: COLORS.escapeWheel,
+      });
     }
     const b = esc.balance;
     const balanceGroup = this.shaftGroups.get(esc.balanceShaftId);
     if (balanceGroup !== undefined && b.diameter > 0 && b.thickness > 0 && Number.isFinite(b.zCentre)) {
+      const meshZ = this.displayZ(b.zCentre);
       for (const geometry of createBalanceGeometry(b.diameter / 2, b.thickness)) {
         const mesh = new THREE.Mesh(geometry, material(COLORS.balance, { metalness: 0.6, roughness: 0.35 }));
-        mesh.position.z = this.displayZ(b.zCentre);
+        mesh.position.z = meshZ;
         pick(mesh, COLORS.balance, balanceGroup);
       }
+      const radius = b.diameter / 2;
+      this.cappableSolids.push({
+        positionX: balanceGroup.position.x,
+        positionY: balanceGroup.position.y,
+        rotationGroup: balanceGroup,
+        zLo: meshZ - b.thickness / 2,
+        zHi: meshZ + b.thickness / 2,
+        footprint: { kind: "circleWithHole", radius, centre: { x: 0, y: 0 }, holeRadius: balanceRimInnerRadius(radius), holeCentre: { x: 0, y: 0 } },
+        color: COLORS.balance,
+      });
+      const { halfLength, halfWidth } = balanceArmHalfExtents(radius);
+      const armThickness = b.thickness * 0.8;
+      this.cappableSolids.push({
+        positionX: balanceGroup.position.x,
+        positionY: balanceGroup.position.y,
+        rotationGroup: balanceGroup,
+        zLo: meshZ - armThickness / 2,
+        zHi: meshZ + armThickness / 2,
+        footprint: {
+          kind: "polygon",
+          points: [
+            { x: -halfLength, y: -halfWidth },
+            { x: halfLength, y: -halfWidth },
+            { x: halfLength, y: halfWidth },
+            { x: -halfLength, y: halfWidth },
+          ],
+        },
+        color: COLORS.balance,
+      });
     }
     const palletGroup = this.shaftGroups.get(esc.palletArborShaftId);
     const pallet = positions.get(esc.palletArborShaftId);
@@ -513,11 +579,39 @@ export class Viewport {
               length: Math.hypot(p.x - pallet.x, p.y - pallet.y),
             })) as [PalletArm, PalletArm])
           : symbolicPalletArms(Math.atan2(escape.y - pallet.y, escape.x - pallet.x), Math.max(toEscape - tipR * 0.9, toEscape * 0.2));
-      const parts = createForkGeometry(Math.atan2(balance.y - pallet.y, balance.x - pallet.x), toBalance * 0.85, arms);
+      const towardBalance = Math.atan2(balance.y - pallet.y, balance.x - pallet.x);
+      const leverLength = toBalance * 0.85;
+      const parts = createForkGeometry(towardBalance, leverLength, arms);
+      const meshZ = this.displayZ(w.zCentre);
       for (const geometry of parts) {
         const mesh = new THREE.Mesh(geometry, material(COLORS.fork));
-        mesh.position.z = this.displayZ(w.zCentre);
+        mesh.position.z = meshZ;
         pick(mesh, COLORS.fork, palletGroup);
+      }
+      const v = ESCAPEMENT_VISUALIZATION;
+      const barHalfThickness = v.forkThicknessMetres / 2;
+      for (const { angle, length } of [{ angle: towardBalance, length: leverLength }, ...arms]) {
+        this.cappableSolids.push({
+          positionX: palletGroup.position.x,
+          positionY: palletGroup.position.y,
+          rotationGroup: palletGroup,
+          zLo: meshZ - barHalfThickness,
+          zHi: meshZ + barHalfThickness,
+          footprint: { kind: "polygon", points: barFootprint(angle, length, v.forkWidthMetres) },
+          color: COLORS.fork,
+        });
+      }
+      const stoneHalfThickness = (v.forkThicknessMetres * 1.5) / 2;
+      for (const { angle, length } of arms) {
+        this.cappableSolids.push({
+          positionX: palletGroup.position.x,
+          positionY: palletGroup.position.y,
+          rotationGroup: palletGroup,
+          zLo: meshZ - stoneHalfThickness,
+          zHi: meshZ + stoneHalfThickness,
+          footprint: { kind: "polygon", points: squareFootprint({ x: length * Math.cos(angle), y: length * Math.sin(angle) }, v.palletStoneMetres) },
+          color: COLORS.fork,
+        });
       }
     }
   }

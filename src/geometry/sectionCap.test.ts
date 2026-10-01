@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lineCircleInterval, linePolygonIntervals, subtractIntervals } from "./sectionCap";
+import { barFootprint, lineCircleInterval, linePolygonIntervals, squareFootprint, subtractIntervals } from "./sectionCap";
 import type { Point2D } from "./gearOutline";
 
 const p = (x: number, y: number): Point2D => ({ x, y });
@@ -119,5 +119,44 @@ describe("subtractIntervals", () => {
       { t0: 1, t1: 4 },
       { t0: 8, t1: 11 },
     ]);
+  });
+});
+
+describe("barFootprint", () => {
+  it("builds an unrotated bar extending along +X from the origin", () => {
+    const corners = barFootprint(0, 10, 4);
+    expect(corners).toEqual([p(0, -2), p(10, -2), p(10, 2), p(0, 2)]);
+  });
+
+  it("rotates the same bar 90° to extend along +Y", () => {
+    const corners = barFootprint(Math.PI / 2, 10, 4);
+    expect(corners[0]?.x).toBeCloseTo(2);
+    expect(corners[0]?.y).toBeCloseTo(0);
+    expect(corners[1]?.x).toBeCloseTo(2);
+    expect(corners[1]?.y).toBeCloseTo(10);
+  });
+
+  it("a line along the bar's own length crosses its footprint for exactly [0, length]", () => {
+    const angle = 0.7;
+    const length = 5;
+    const corners = barFootprint(angle, length, 1);
+    const dir = p(Math.cos(angle), Math.sin(angle));
+    const intervals = linePolygonIntervals(p(0, 0), dir, corners);
+    expect(intervals).toHaveLength(1);
+    expect(intervals[0]?.t0).toBeCloseTo(0);
+    expect(intervals[0]?.t1).toBeCloseTo(length);
+  });
+});
+
+describe("squareFootprint", () => {
+  it("builds an axis-aligned square centred on the given point", () => {
+    expect(squareFootprint(p(5, 5), 2)).toEqual([p(4, 4), p(6, 4), p(6, 6), p(4, 6)]);
+  });
+
+  it("a line through its centre crosses it for exactly its side length", () => {
+    const corners = squareFootprint(p(3, 3), 2);
+    const intervals = linePolygonIntervals(p(-10, 3), p(1, 0), corners);
+    expect(intervals).toHaveLength(1);
+    expect((intervals[0]?.t1 ?? 0) - (intervals[0]?.t0 ?? 0)).toBeCloseTo(2);
   });
 });

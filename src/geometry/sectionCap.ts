@@ -75,3 +75,27 @@ export function subtractIntervals(base: readonly Interval[], cut: readonly Inter
   for (const hole of cut) result = result.flatMap((seg) => subtractOne(seg, hole));
   return result;
 }
+
+/**
+ * Footprint of a bar extending from the local origin by `length` in
+ * direction `angle`, `width` across (e.g. the pallet fork's lever and
+ * arms, each a `THREE.BoxGeometry` translated then rotated the same way).
+ */
+export function barFootprint(angle: number, length: number, width: number): Point2D[] {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  const rotate = (x: number, y: number): Point2D => ({ x: x * c - y * s, y: x * s + y * c });
+  const half = width / 2;
+  return [rotate(0, -half), rotate(length, -half), rotate(length, half), rotate(0, half)];
+}
+
+/** Footprint of an axis-aligned square of side `size`, centred at `centre` (e.g. a pallet stone). */
+export function squareFootprint(centre: Point2D, size: number): Point2D[] {
+  const half = size / 2;
+  return [
+    { x: centre.x - half, y: centre.y - half },
+    { x: centre.x + half, y: centre.y - half },
+    { x: centre.x + half, y: centre.y + half },
+    { x: centre.x - half, y: centre.y + half },
+  ];
+}
