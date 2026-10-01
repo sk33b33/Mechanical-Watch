@@ -239,7 +239,8 @@
     .005mm for Illinois/Hamilton "half sizes") — too narrow (one
     component, one poster, a single point value rather than a range) to
     turn into a codebase-wide side-shake advisory without inventing a
-    band around it, so side shake stays unjudged (ASM-0013). Poster Al J
+    band around it; a usable range came later from SRC-0012 instead
+    (BRG-007, ASM-0029). Poster Al J
     explicitly cautions: "manufacturing tolerances are very different
     from desired clearances like end shake for example - these often get
     confused" — read as support for treating these as this project's own
@@ -248,6 +249,20 @@
     advisory (never a pass/fail limit), per an explicit decision to treat
     forum-sourced figures this way rather than as validated evidence or
     to hold out for a published source.
+
+    Separately, Coatsworth's worked example (a .12mm pivot paired with a
+    .13mm jewel hole, both diameters) closes a different open question —
+    ASM-0013, whether "side shake" as reported by this codebase (bore Ø
+    − pivot Ø, a diametral measure) matches the horological convention.
+    Since .12mm and .13mm are both diameters, their .01mm difference is
+    inherently diametral, not radial; calling that 0.01mm "the
+    convention" for side shake (2026-10-01 re-read for this question)
+    supports reading community "side shake" figures as diametral
+    clearance, the same convention `sideShake` in assemblyGeometry.ts
+    uses. Still Tier 6 (forum testimony); no source found states
+    "diametral" or "radial" outright (checked again in SRC-0012's
+    thread too — absent there as well), so this is read from the
+    arithmetic of the worked example, not an explicit statement.
 
 # Follow-up: side shake still had no usable range after SRC-0011. Went
 # looking again specifically for it and found a more specific, better

@@ -2,6 +2,34 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Side-shake diametral convention (ASM-0013): supported by a source already on file
+
+Re-read SRC-0011 (the NAWCC "Watchmaking tolerances" thread, already
+registered for the BRG-006 endshake advisory) specifically for the
+open "convention unconfirmed" note on ASM-0013: does "side shake" in
+the horological community mean a diametral clearance (bore Ø − pivot
+Ø, what `sideShake` computes) or a radial one (half that)?
+
+- Dave Coatsworth's post gives a worked example: "the convention is
+  one hundredth of a millimeter difference [between a balance pivot
+  and its jewel hole]... a .12mm balance pivot would require a .13mm
+  balance hole jewel." Both .12mm and .13mm are diameters, so their
+  .01mm difference is arithmetically a diametral clearance by
+  construction — supporting (not proving) that community "side shake"
+  figures are already diametral, the same convention this codebase
+  uses.
+- No source actually says the word "diametral" or "radial" —
+  re-checked SRC-0012's thread too, same absence. So this closes the
+  question by inference from a worked example, not an explicit
+  statement; recorded as such rather than overclaiming. Still Tier 6
+  (forum testimony).
+- Also cleaned up two stale notes found while re-reading: ASM-0028's
+  description and `assemblyGeometry.ts`'s `sideShake` comment still
+  said side shake "has no usable sourced range" / "acceptability is
+  not judged", left over from before BRG-007/ASM-0029 (SRC-0012,
+  SRC-0013) added the informal side-shake advisory. Updated both to
+  point at BRG-007 instead of claiming nothing exists.
+
 ## Remaining REF-ENG §5 gear equations cited: centre distance, speed ratio, compound ratio, torque, pitch-line velocity
 
 Continued from the pitch-diameter/balance-frequency/beats-per-tooth pass
@@ -829,11 +857,15 @@ dimensions round-trip, and picking and issue selection work.
   still uncited and likely stays an assumption — a real mesh's
   efficiency depends on lubrication, surface finish and load, not a
   single citable constant.
-- **Side-shake convention (ASM-0013).** Reported as diametral clearance
-  until a source confirms the horological convention. (Separate from
-  the BRG-007 advisory below, which judges the *size* of the value
-  once computed, not whether "diametral" is the right convention to
-  report in the first place.)
+- **Side-shake convention (ASM-0013) — now supported, not confirmed.**
+  SRC-0011's worked example (a .12mm pivot paired with a .13mm jewel
+  hole, both diameters, called "the convention" for the pivot/hole
+  difference) is inherently a diametral figure, supporting
+  `sideShake`'s bore Ø − pivot Ø convention. Still Tier 6 forum
+  testimony, and no source (checked again in SRC-0012's thread too)
+  states "diametral" or "radial" outright — read from the arithmetic
+  of the worked example, not an explicit statement. A published source
+  stating the convention directly would still be better.
 - **Right-angle (stem) mesh relationship — citation closed, scope
   caveat remains.** Derived here from rolling pitch circles and tested;
   now also cited to SRC-0010 (Nie et al. 2026, JSME, peer-reviewed),

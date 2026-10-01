@@ -91,8 +91,9 @@ export type DerivedLength =
 
 /**
  * Side shake at one shaft end: bore diameter − pivot diameter.
- * Reported as a diametral clearance (ASM-0013). Its acceptability is
- * not judged because no sourced range exists.
+ * Reported as a diametral clearance (ASM-0013, SRC-0011). Its
+ * acceptability is only advised against an informal, unconfirmed
+ * reference figure (BRG-007, ASM-0029), never a validated limit.
  */
 export function sideShake(shaft: Shaft, end: ShaftEnd, jewel: Jewel | null): DerivedLength {
   if (jewel === null) return { status: "UNKNOWN", missing: [`${end.toLowerCase()} bearing`] };

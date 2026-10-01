@@ -77,7 +77,7 @@ export const ASSUMPTIONS = {
   },
   "ASM-0013": {
     summary:
-      "Side shake is reported as diametral clearance (bore − pivot diameter); the horological convention is still to be confirmed against a source",
+      "Side shake is reported as diametral clearance (bore − pivot diameter); supported by SRC-0011's worked example (a .12mm pivot needs a .13mm jewel hole — a diameter-to-diameter difference), a Tier 6 forum source, not a published standard confirming the convention directly",
     scope: "Bearings / side shake",
     status: "Active",
   },
@@ -167,7 +167,7 @@ export const ASSUMPTIONS = {
   },
   "ASM-0028": {
     summary:
-      "Endshake advisory thresholds (~0.05 mm for escapement shafts — escape wheel, pallet arbor, balance staff; ~0.10 mm for other pivoted shafts) are informal figures from forum testimony (SRC-0011), not a published standard; used only as a BRG-006 informational advisory, never a pass/fail limit. Side shake still has no usable sourced range at all (ASM-0013)",
+      "Endshake advisory thresholds (~0.05 mm for escapement shafts — escape wheel, pallet arbor, balance staff; ~0.10 mm for other pivoted shafts) are informal figures from forum testimony (SRC-0011), not a published standard; used only as a BRG-006 informational advisory, never a pass/fail limit. (Side shake has its own advisory, ASM-0029/BRG-007, sourced separately)",
     scope: "Bearings / endshake advisory",
     status: "Active",
   },
