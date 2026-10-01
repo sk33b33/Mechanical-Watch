@@ -2,6 +2,47 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Section view caps extended to hands; keyless-works parts don't fit this approach
+
+Asked to close the keyless-works parts (stem, crown, pinions) next.
+Investigated before writing code and found they're a different
+geometric category from everything capped so far: every part covered
+up to now (frames, arbors, gears, jewels, dial, escape wheel, balance,
+fork) is a Z-extrusion — its axis runs vertically, along the shaft
+axis, which is exactly what makes the line/circle/polygon intersection
+in `sectionCap.ts` apply cleanly. The stem (and the rod, crown and
+pinions rigidly attached to it) lies flat in a plane parallel to the
+mainplate (ASM-0019) — a *horizontal* axis. Cutting a horizontal
+cylinder or disc with a vertical plane generally produces an ellipse
+or a skewed polygon, not a circle or polygon in the simple sense this
+codebase's capping math handles; closing it properly needs real
+conic-section (plane/quadric) intersection, a materially different and
+harder-to-verify piece of geometry than anything built so far.
+
+Flagged this to the user rather than either quietly doing the bigger,
+riskier math or quietly picking something else instead of what was
+asked. Given the choice between the full ellipse treatment, a
+scoped/approximate version, or closing hands instead (the one
+remaining part that *is* a straightforward Z-extrusion), chose hands.
+
+- Hands (`createHandGeometry`) are a tapered quadrilateral with a
+  small circular hub hole — extruded along Z, same shape family as a
+  gear. Refactored out a pure `generateHandOutline`/`handHubRadius`
+  pair (mirroring the gear/escape-wheel split) and registered the
+  `polygonWithHole` footprint right where the hand mesh is built,
+  reusing the same `rotationGroup`-tracks-the-shaft pattern as
+  everything else.
+- Verified against the live app as usual: read cap coordinates back
+  out and confirmed the hours/minutes/seconds hands each land on a
+  distinct, exactly-matching z-band (minutes sits 0.3mm lower than
+  hours/seconds, matching their different `gapBelowMovementMetres`;
+  every cap's z-span is exactly the hand thickness, 0.08mm), checked
+  across four different cut angles, and confirmed cap data changes
+  within 1s of simulated time (hands sweep continuously). All 387
+  tests pass; `tsc --noEmit` and `eslint` are clean.
+- Keyless-works parts remain the one documented gap — now with the
+  reason recorded, not just "not done yet".
+
 ## Section view caps extended to the escapement
 
 The biggest remaining "section view has no caps" gap: the escape
@@ -1216,9 +1257,12 @@ dimensions round-trip, and picking and issue selection work.
   arbor as its axis line, a lower bound.
 - The selected-arbor highlight is hard to see behind large wheels.
 - The section view fills cut faces for frames, arbors, gears, jewels,
-  the dial and the escapement (escape wheel, balance rim and arms,
-  pallet fork and stones), but not hands or keyless-works parts (stem,
-  crown, pinions) — those still show the pre-existing hollow clip.
+  the dial, the escapement (escape wheel, balance rim and arms,
+  pallet fork and stones) and hands, but not keyless-works parts
+  (stem, crown, pinions) — those still show the pre-existing hollow
+  clip, and can't use the same approach: the stem lies flat in the
+  mainplate plane (ASM-0019), so a vertical section plane generally
+  cuts its parts into an ellipse, not a circle or polygon.
 - Measurements are between whole parts. There is no point-to-point
   picking on surfaces yet.
 - Long dropdown labels are truncated in the narrow inspector.

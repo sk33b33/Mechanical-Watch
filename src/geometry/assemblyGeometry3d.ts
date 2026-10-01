@@ -54,19 +54,34 @@ export const DIAL_VISUALIZATION = {
   assumption: "ASM-0020" satisfies AssumptionId,
 } as const;
 
-/** A tapered hand along +Y from the axis, with a short tail, spanning z ∈ [0, thickness]. */
-export function createHandGeometry(hand: keyof Omit<typeof HAND_VISUALIZATION, "thicknessMetres" | "assumption">): THREE.ExtrudeGeometry {
+type HandKind = keyof Omit<typeof HAND_VISUALIZATION, "thicknessMetres" | "assumption">;
+
+/** 2D outline of a hand's tapered blade (not the hub hole), pointing +Y from the axis (ASM-0016, visual). */
+export function generateHandOutline(hand: HandKind): Point2D[] {
   const { lengthMetres: l, widthMetres: w } = HAND_VISUALIZATION[hand];
   const tail = l * 0.18;
+  return [
+    { x: -w / 2, y: -tail },
+    { x: w / 2, y: -tail },
+    { x: w * 0.3, y: l },
+    { x: -w * 0.3, y: l },
+  ];
+}
+
+/** Radius of a hand's visual hub hole, in metres (ASM-0016). */
+export function handHubRadius(hand: HandKind): number {
+  return HAND_VISUALIZATION[hand].widthMetres * 0.2;
+}
+
+/** A tapered hand along +Y from the axis, with a short tail, spanning z ∈ [0, thickness]. */
+export function createHandGeometry(hand: HandKind): THREE.ExtrudeGeometry {
+  const outline = generateHandOutline(hand);
   const shape = new THREE.Shape();
-  shape.moveTo(-w / 2, -tail);
-  shape.lineTo(w / 2, -tail);
-  shape.lineTo(w * 0.3, l);
-  shape.lineTo(-w * 0.3, l);
+  outline.forEach(({ x, y }, i) => { if (i === 0) shape.moveTo(x, y); else shape.lineTo(x, y); });
   shape.closePath();
   const hub = new THREE.Path();
   shape.holes.push(hub);
-  hub.absarc(0, 0, w * 0.2, 0, Math.PI * 2, true);
+  hub.absarc(0, 0, handHubRadius(hand), 0, Math.PI * 2, true);
   return new THREE.ExtrudeGeometry(shape, { depth: HAND_VISUALIZATION.thicknessMetres, bevelEnabled: false });
 }
 

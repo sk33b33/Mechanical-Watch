@@ -16,6 +16,8 @@ import {
   createZCylinder,
   escapeWheelHubRadius,
   generateEscapeWheelOutline,
+  generateHandOutline,
+  handHubRadius,
 } from "@/geometry/assemblyGeometry3d";
 import { arborZRange, frameZRange, isCompleteFrame } from "@/assembly/assemblyGeometry";
 import { partReferencePoint } from "@/assembly/measure";
@@ -121,9 +123,12 @@ function footprintIntervals(footprint: Footprint, base: Point2D, dir: Point2D): 
  * `rotationGroup` (if set) is read live each update, since shafts spin
  * during simulation playback and the cap must track them (STATUS.md
  * "section view has no caps"). Covers frames, arbors, gears, jewels,
- * the dial and the escapement (escape wheel, balance, pallet fork) —
- * not hands or keyless parts (ASM-0012 visual shapes), which still
- * show the pre-existing uncapped clip.
+ * the dial, the escapement (escape wheel, balance, pallet fork) and
+ * hands — not keyless-works parts (stem, crown, pinions): their axis
+ * lies horizontal, in the mainplate plane (ASM-0019), so a vertical
+ * section plane generally cuts them into an ellipse, not a circle or
+ * polygon; outside what this Z-extrusion-based approach covers (see
+ * STATUS.md). They still show the pre-existing uncapped clip.
  */
 interface CappableSolid {
   positionX: number;
@@ -411,8 +416,23 @@ export class Viewport {
       const group = this.shaftGroups.get(shaft.id);
       if (shaft.hand === null || group === undefined) continue;
       const mesh = new THREE.Mesh(createHandGeometry(shaft.hand), material(COLORS.hand[shaft.hand], { metalness: 0.6, roughness: 0.3 }));
-      mesh.position.z = this.displayZ(lowest) - HAND_VISUALIZATION[shaft.hand].gapBelowMovementMetres - HAND_VISUALIZATION.thicknessMetres;
+      const meshZ = this.displayZ(lowest) - HAND_VISUALIZATION[shaft.hand].gapBelowMovementMetres - HAND_VISUALIZATION.thicknessMetres;
+      mesh.position.z = meshZ;
       this.addPickable(group, mesh, { kind: "arbor", entityId: shaft.id, baseColor: COLORS.hand[shaft.hand] });
+      this.cappableSolids.push({
+        positionX: group.position.x,
+        positionY: group.position.y,
+        rotationGroup: group,
+        zLo: meshZ,
+        zHi: meshZ + HAND_VISUALIZATION.thicknessMetres,
+        footprint: {
+          kind: "polygonWithHole",
+          points: generateHandOutline(shaft.hand),
+          holeRadius: handHubRadius(shaft.hand),
+          holeCentre: { x: 0, y: 0 },
+        },
+        color: COLORS.hand[shaft.hand],
+      });
     }
 
     for (const jewel of Object.values(movement.jewels)) {
