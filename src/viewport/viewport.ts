@@ -4,6 +4,8 @@ import type { AppStore } from "@/app/store";
 import type { EntityId } from "@/domain/ids";
 import type { ShaftId } from "@/domain/shaft";
 import { createGearGeometry } from "@/geometry/gearGeometry";
+import { generateGearOutline, visualBoreRadius, type Point2D } from "@/geometry/gearOutline";
+import { lineCircleInterval, linePolygonIntervals, subtractIntervals, type Interval } from "@/geometry/sectionCap";
 import {
   ASSEMBLY_VISUALIZATION,
   HAND_VISUALIZATION,
@@ -68,6 +70,52 @@ interface Pickable {
   baseColor: number;
 }
 
+/**
+ * 2D cross-section of a solid, in its own unrotated local frame. Every
+ * solid this viewport draws is a Z-extrusion of one of these (the section
+ * plane is always vertical, SectionState above), so a section-view cap is
+ * just this footprint intersected with the cutting line.
+ */
+type Footprint =
+  | { kind: "circle"; radius: number; centre: Point2D }
+  | { kind: "polygon"; points: Point2D[] }
+  | { kind: "polygonWithHole"; points: Point2D[]; holeRadius: number; holeCentre: Point2D };
+
+function footprintIntervals(footprint: Footprint, base: Point2D, dir: Point2D): Interval[] {
+  switch (footprint.kind) {
+    case "circle": {
+      const hit = lineCircleInterval(base, dir, footprint.centre, footprint.radius);
+      return hit === null ? [] : [hit];
+    }
+    case "polygon":
+      return linePolygonIntervals(base, dir, footprint.points);
+    case "polygonWithHole": {
+      const outer = linePolygonIntervals(base, dir, footprint.points);
+      const hole = lineCircleInterval(base, dir, footprint.holeCentre, footprint.holeRadius);
+      return hole === null ? outer : subtractIntervals(outer, [hole]);
+    }
+  }
+}
+
+/**
+ * A solid registered for section-view capping. `positionX/Y` is its
+ * footprint's offset in content space, captured once per rebuild;
+ * `rotationGroup` (if set) is read live each update, since shafts spin
+ * during simulation playback and the cap must track them (STATUS.md
+ * "section view has no caps"). Covers frames, arbors, gears and jewels —
+ * not hands, the dial, the escapement or keyless parts (ASM-0012 visual
+ * shapes), which still show the pre-existing uncapped clip.
+ */
+interface CappableSolid {
+  positionX: number;
+  positionY: number;
+  rotationGroup: THREE.Group | null;
+  zLo: number;
+  zHi: number;
+  footprint: Footprint;
+  color: number;
+}
+
 /** Double-sided so the inside of a part shows where the section plane cuts it. */
 function material(color: number, extra: THREE.MeshStandardMaterialParameters = {}): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ color, metalness: 0.35, roughness: 0.55, side: THREE.DoubleSide, ...extra });
@@ -95,6 +143,8 @@ export class Viewport {
   private showDial = true;
   private readonly escapementLabel: HTMLDivElement;
   private readonly pickables: THREE.Mesh[] = [];
+  private readonly cappableSolids: CappableSolid[] = [];
+  private readonly sectionCapMeshes: THREE.Mesh[] = [];
   private readonly raycaster = new THREE.Raycaster();
   private readonly pointer = new THREE.Vector2();
   private readonly container: HTMLElement;
@@ -237,6 +287,8 @@ export class Viewport {
     this.shaftGroups.clear();
     this.stemSpins.clear();
     this.pickables.length = 0;
+    this.cappableSolids.length = 0;
+    this.sectionCapMeshes.length = 0;
   }
 
   private rebuild(): void {
@@ -261,6 +313,18 @@ export class Viewport {
       );
       edges.position.z = this.displayZ(range.lo);
       this.content.add(edges);
+      this.cappableSolids.push({
+        positionX: 0,
+        positionY: 0,
+        rotationGroup: null,
+        zLo: this.displayZ(range.lo),
+        zHi: this.displayZ(range.lo) + (range.hi - range.lo),
+        footprint:
+          frame.outline.kind === "CIRCLE"
+            ? { kind: "circle", radius: frame.outline.radius, centre: frame.outline.centre }
+            : { kind: "polygon", points: frame.outline.points },
+        color: COLORS.frame,
+      });
     }
 
     for (const shaft of Object.values(movement.shafts)) {
@@ -279,6 +343,15 @@ export class Viewport {
         const radius = knownPivots.length > 0 ? Math.max(...knownPivots) / 2 : ASSEMBLY_VISUALIZATION.arborRadiusMetres;
         const arbor = new THREE.Mesh(createZCylinder(radius, this.displayZ(span.lo), this.displayZ(span.hi), 12), material(COLORS.arbor));
         this.addPickable(group, arbor, { kind: "arbor", entityId: shaft.id, baseColor: COLORS.arbor });
+        this.cappableSolids.push({
+          positionX: axis.x,
+          positionY: axis.y,
+          rotationGroup: group,
+          zLo: this.displayZ(span.lo),
+          zHi: this.displayZ(span.hi),
+          footprint: { kind: "circle", radius, centre: { x: 0, y: 0 } },
+          color: COLORS.arbor,
+        });
       }
     }
 
@@ -294,6 +367,15 @@ export class Viewport {
       const mesh = new THREE.Mesh(geometry, material(COLORS.gear, { metalness: 0.55, roughness: 0.4 }));
       mesh.position.z = this.displayZ(gear.zCentre);
       this.addPickable(group, mesh, { kind: "gear", entityId: gear.id, baseColor: COLORS.gear });
+      this.cappableSolids.push({
+        positionX: group.position.x,
+        positionY: group.position.y,
+        rotationGroup: group,
+        zLo: this.displayZ(gear.zCentre - gear.thickness / 2),
+        zHi: this.displayZ(gear.zCentre + gear.thickness / 2),
+        footprint: { kind: "polygonWithHole", points: generateGearOutline(gear), holeRadius: visualBoreRadius(gear), holeCentre: { x: 0, y: 0 } },
+        color: COLORS.gear,
+      });
     }
 
     // Hands sit below the dial face, or below the lowest part of the movement if there is no dial (ASM-0016).
@@ -328,6 +410,15 @@ export class Viewport {
       );
       mesh.position.set(axis.x, axis.y, 0);
       this.addPickable(this.content, mesh, { kind: "jewel", entityId: jewel.id, baseColor: color });
+      this.cappableSolids.push({
+        positionX: axis.x,
+        positionY: axis.y,
+        rotationGroup: null,
+        zLo: lo - proud,
+        zHi: hi + proud,
+        footprint: { kind: "circle", radius: ASSEMBLY_VISUALIZATION.jewelOuterRadiusMetres, centre: { x: 0, y: 0 } },
+        color,
+      });
     }
 
     this.addEscapementMeshes();
@@ -362,6 +453,7 @@ export class Viewport {
 
     this.addMeasurementLine();
     this.applySelection();
+    this.updateSectionCaps();
   }
 
   /** Escape wheel on its arbor, pallet fork on its arbor, balance on its staff (visual shapes, ASM-0012). */
@@ -460,6 +552,66 @@ export class Viewport {
     // Parts on the positive side of the plane stay visible.
     this.sectionPlane.set(new THREE.Vector3(Math.cos(angle), Math.sin(angle), 0), -section.offsetMetres);
     this.renderer.clippingPlanes = section.enabled ? [this.sectionPlane] : [];
+    this.updateSectionCaps();
+  }
+
+  /**
+   * Fills the section plane's cut faces (STATUS.md "section view has no
+   * caps"): for every registered solid, finds where the cutting line
+   * crosses its 2D footprint and draws a flat quad there, z-spanning the
+   * solid. Cheap enough to call every frame while the section is on and
+   * the simulation is running, which is required: a spinning gear's cut
+   * face must track its rotation the same way the GPU clip already does.
+   */
+  private updateSectionCaps(): void {
+    for (const mesh of this.sectionCapMeshes) {
+      this.content.remove(mesh);
+      mesh.geometry.dispose();
+      (mesh.material as THREE.Material).dispose();
+    }
+    this.sectionCapMeshes.length = 0;
+    if (!this.section.enabled) return;
+
+    const angle = THREE.MathUtils.degToRad(this.section.angleDeg);
+    const normal: Point2D = { x: Math.cos(angle), y: Math.sin(angle) };
+    const dir: Point2D = { x: -normal.y, y: normal.x };
+    const base: Point2D = { x: this.section.offsetMetres * normal.x, y: this.section.offsetMetres * normal.y };
+    // A fraction of a nanometre off the plane, toward its kept side, so this cap's own vertices
+    // (which sit exactly on the clip plane by construction) don't flicker against the GPU clip test.
+    const NUDGE_METRES = 1e-7;
+    const nudgedBase: Point2D = { x: base.x + NUDGE_METRES * normal.x, y: base.y + NUDGE_METRES * normal.y };
+
+    for (const solid of this.cappableSolids) {
+      const rotation = solid.rotationGroup?.rotation.z ?? 0;
+      const c = Math.cos(rotation);
+      const s = Math.sin(rotation);
+      const relX = base.x - solid.positionX;
+      const relY = base.y - solid.positionY;
+      // Local frame = inverse of the solid's own (translate, then rotate by `rotation`) transform.
+      const localBase: Point2D = { x: relX * c + relY * s, y: -relX * s + relY * c };
+      const localDir: Point2D = { x: dir.x * c + dir.y * s, y: -dir.x * s + dir.y * c };
+
+      for (const { t0, t1 } of footprintIntervals(solid.footprint, localBase, localDir)) {
+        const ax = nudgedBase.x + t0 * dir.x;
+        const ay = nudgedBase.y + t0 * dir.y;
+        const bx = nudgedBase.x + t1 * dir.x;
+        const by = nudgedBase.y + t1 * dir.y;
+        const geometry = new THREE.BufferGeometry();
+        // prettier-ignore
+        const positions = new Float32Array([
+          ax, ay, solid.zLo,
+          bx, by, solid.zLo,
+          bx, by, solid.zHi,
+          ax, ay, solid.zHi,
+        ]);
+        geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+        geometry.setIndex([0, 1, 2, 0, 2, 3]);
+        geometry.computeVertexNormals();
+        const mesh = new THREE.Mesh(geometry, material(solid.color, { metalness: 0.2, roughness: 0.65 }));
+        this.content.add(mesh);
+        this.sectionCapMeshes.push(mesh);
+      }
+    }
   }
 
   /** Offset that puts the section plane through the selected part's axis, if it has one. */
@@ -545,6 +697,8 @@ export class Viewport {
 
     this.store.tick(elapsedSeconds);
     this.applyKinematicRotation();
+    // A spinning gear's cut face must track its rotation the same way the GPU clip already does.
+    if (this.section.enabled) this.updateSectionCaps();
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
 

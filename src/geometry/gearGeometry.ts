@@ -1,8 +1,7 @@
 import * as THREE from "three";
 import type { Gear } from "@/domain/gear";
-import { gearPitchDiameter } from "@/domain/gear";
 import { toMetres } from "@/units/length";
-import { generateGearOutline, GEAR_VISUALIZATION_PROPORTIONS } from "./gearOutline";
+import { generateGearOutline, visualBoreRadius } from "./gearOutline";
 
 /**
  * Builds a Three.js geometry from a Gear's domain parameters. Presentation
@@ -26,13 +25,8 @@ export function createGearGeometry(gear: Gear): THREE.ExtrudeGeometry {
   }
   shape.closePath();
 
-  const p = GEAR_VISUALIZATION_PROPORTIONS;
   const bore = new THREE.Path();
-  const boreRadius = Math.min(
-    toMetres(gear.module) * p.boreRadiusInModules,
-    (toMetres(gearPitchDiameter(gear)) / 2) * p.maxBoreRadiusFractionOfPitch,
-  );
-  bore.absarc(0, 0, boreRadius, 0, Math.PI * 2, false);
+  bore.absarc(0, 0, visualBoreRadius(gear), 0, Math.PI * 2, false);
   shape.holes.push(bore);
 
   const thickness = toMetres(gear.thickness);

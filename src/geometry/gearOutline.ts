@@ -34,6 +34,12 @@ export function visualTipRadius(gear: Gear): number {
   return pitchRadius + GEAR_VISUALIZATION_PROPORTIONS.addendumInModules * toMetres(gear.module);
 }
 
+/** Radius of the visualized bore hole, in metres (ASM-0005, visual only). */
+export function visualBoreRadius(gear: Gear): number {
+  const p = GEAR_VISUALIZATION_PROPORTIONS;
+  return Math.min(toMetres(gear.module) * p.boreRadiusInModules, (toMetres(gearPitchDiameter(gear)) / 2) * p.maxBoreRadiusFractionOfPitch);
+}
+
 /**
  * 2D outline for a gear wheel, in metres, centred on the shaft axis.
  * Visual (L0) approximation — see GEAR_VISUALIZATION_PROPORTIONS.

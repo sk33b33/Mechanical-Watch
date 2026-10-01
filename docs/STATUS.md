@@ -2,6 +2,50 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Section view: filled cut faces for frames, arbors, gears and jewels
+
+Closed the "section view has no caps" known limitation for the most
+common parts: cutting through a solid used to show its hollow inside
+(the clip plane discards geometry with nothing filling the hole); now
+the cut face is filled.
+
+- Every solid this app draws is a Z-extrusion of a 2D footprint, and
+  the section plane is always vertical (`SectionState`), so a cap is
+  exactly that footprint intersected with the cutting line, turned
+  into a flat quad spanning the solid's Z range. Added a small, pure,
+  unit-tested geometry module (`src/geometry/sectionCap.ts`:
+  `lineCircleInterval`, `linePolygonIntervals`, `subtractIntervals`)
+  rather than a GPU stencil-buffer trick — considered the standard
+  Three.js stencil-capping technique first, but it relies on a
+  precise, unfamiliar GPU state machine (depth-fail stencil ops) with
+  no way to unit test it; the analytic approach is fully covered by
+  `sectionCap.test.ts` and reuses this project's existing testable,
+  pure-function style (`generateGearOutline`, `pointInPolygon`, …).
+- Covers frames (circle or polygon outline), arbors (circle), gears
+  (tooth polygon minus the bore hole — refactored the bore-radius
+  formula into a shared `visualBoreRadius` so `createGearGeometry` and
+  the new cap code can't drift apart) and jewels (circle, matching
+  their existing "proud" z-offset). Hands, the dial, the escapement
+  and keyless-works parts aren't covered yet — still show the old
+  hollow clip (recorded in "Known limitations").
+- A spinning gear's cut face has to track its rotation the same way
+  the GPU clip already does, so caps are recomputed every frame while
+  the section is on (cheap: a few dozen solids, simple 2D intersection
+  math) rather than only on rebuild or when the section controls
+  change.
+- Verified by running the app (Playwright against the Vite dev
+  server) rather than trusting the math alone: checked that the
+  generated cap geometry's coordinates exactly match the domain
+  model's own values (e.g. a gear cap's bore-edge x matches
+  `visualBoreRadius` to the micrometre, a jewel cap's z-range matches
+  its frame's "proud" offset, a frame cap's x-extent matches its
+  circle outline's centre ± radius) rather than just eyeballing a
+  screenshot, and that the cap data changes as the simulation runs
+  (confirming the per-frame rotation tracking actually works, not just
+  compiles). All temporary debug hooks used for this were removed
+  before committing.
+- All 375 tests pass (15 new); `tsc --noEmit` and `eslint` are clean.
+
 ## Dug further for the 6497-1's actual tooth counts; confirmed why they're not findable on the free web
 
 Continued from the previous pass: asked to keep digging for a verified
@@ -1090,8 +1134,10 @@ dimensions round-trip, and picking and issue selection work.
 - Arbor diameters aren't modeled. The wheel/arbor check treats the
   arbor as its axis line, a lower bound.
 - The selected-arbor highlight is hard to see behind large wheels.
-- The section view has no caps: cut parts show their hollow inside
-  rather than a filled cross-section.
+- The section view fills cut faces for frames, arbors, gears and
+  jewels, but not hands, the dial, the escapement (escape wheel,
+  balance, fork) or keyless-works parts (stem, crown, pinions) — those
+  still show the pre-existing hollow clip.
 - Measurements are between whole parts. There is no point-to-point
   picking on surfaces yet.
 - Long dropdown labels are truncated in the narrow inspector.
