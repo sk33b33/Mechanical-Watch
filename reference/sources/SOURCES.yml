@@ -310,3 +310,130 @@
     BRG-007 rather than set aside like the single-poster,
     single-component figure in SRC-0011 was. Not itself cited by the
     advisory; a supporting data point only.
+
+- id: SRC-0014
+  title: "Gear"
+  author: Wikipedia contributors
+  year: null
+  type: encyclopedia
+  url: https://en.wikipedia.org/wiki/Gear
+  topics: [gear-geometry, module, pitch-diameter]
+  claims_supported:
+    - "the (reference/pitch) diameter of a gear is d = N m_n / cos(psi), where N is the tooth count, m_n the normal module and psi the helix angle; for a spur gear (psi = 0) this reduces to d = N m"
+  claims_to_check: []
+  retrieved: true
+  accessed: '2026-10-01'
+  notes: >
+    Read 2026-10-01 ("Nomenclature" > "General" section, "Pitch diameter,
+    d"). States the helical form of the diameter/module/tooth-count
+    relationship; the spur-gear case used by `pitchDiameter` in
+    gearMath.ts (d = m z) is the psi = 0 special case of the same
+    formula. Closes the "external citation pending" note on the Pitch
+    diameter row of TRACEABILITY.md: this is the pure geometric
+    definition of module, not a manufacturability claim, so
+    CLAUDE_REFERENCE_INSTRUCTIONS.md rule 10 (generic machine-gear
+    equations do not prove a horological gear is manufacturable) does
+    not block using a generic-gear source for it. Tier: encyclopedia,
+    same tier as SRC-0009.
+
+- id: SRC-0015
+  title: "Torsion spring"
+  author: Wikipedia contributors
+  year: null
+  type: encyclopedia
+  url: https://en.wikipedia.org/wiki/Torsion_spring
+  topics: [balance, hairspring, torsional-oscillator]
+  claims_supported:
+    - "for a torsional harmonic oscillator with torsional stiffness kappa and moment of inertia I, the natural frequency is f_n = (1/2pi) sqrt(kappa/I) and the period is T_n = 2pi sqrt(I/kappa)"
+  claims_to_check: []
+  retrieved: true
+  accessed: '2026-10-01'
+  notes: >
+    Read 2026-10-01 ("Torsional harmonic oscillators" section). States
+    the natural-frequency and period formulas for a torsional
+    spring/inertia oscillator in exactly the form used by
+    `naturalFrequency` in balance.ts (f = sqrt(k/I)/2pi). This is the
+    general physics of a torsional harmonic oscillator (I theta'' = -k
+    theta), not a horology-specific claim, so it closes the "external
+    citation pending" note on the Balance free frequency row of
+    TRACEABILITY.md without needing a watchmaking source: the equation
+    itself is the oscillator math (ASM-0024), not a claim that a real
+    balance/hairspring behaves as an ideal linear undamped oscillator
+    (that physical-modeling assumption remains ASM-0024, unproven by this
+    source). Tier: encyclopedia, same tier as SRC-0009/SRC-0014.
+
+- id: SRC-0016
+  title: "About watch movements: technical details"
+  author: null
+  year: null
+  type: specialist_reference
+  url: https://www.vintagewatchstraps.com/watchmovement2.php
+  topics: [escapement, beat-rate, gear-train]
+  claims_supported:
+    - "Vps = cw.tw.fw.ew.2 / tp.fp.ep.3600 — the standard watch gear-train beats-per-second formula, with a factor of 2 applied to the escape wheel (ew) tooth count"
+    - "The 2 on the top is there because each tooth of the escape wheel has to escape twice during one revolution [once at the entry pallet, once at the exit pallet]"
+  claims_to_check: []
+  retrieved: true
+  accessed: '2026-10-01'
+  notes: >
+    Read 2026-10-01. Tier 6, like SRC-0003/SRC-0011/SRC-0012: an
+    unattributed specialist horology reference page, not a published
+    standard or textbook, but explicit and specific: it gives the actual
+    gear-train beats-per-hour formula used by watchmakers to design a
+    train and explains the factor of 2 on the escape wheel exactly as
+    `beatsPerEscapeRevolution` (2 z) assumes — each tooth is released
+    once at the entrance pallet and once at the exit pallet per
+    revolution, i.e. the wheel advances half a tooth pitch per beat.
+    Closes the "source pending" note on ASM-0021 at Tier 6 confidence
+    (an informal source, not a validated fact); corroborated
+    independently by SRC-0017. See that record's notes for an apparently
+    conflicting one-line statement in Wikipedia's Lever escapement
+    article, and why it is not treated as overriding this and SRC-0017.
+
+- id: SRC-0017
+  title: "Escape wheel question (NAWCC Forums thread)"
+  author: Richmccarty, and other posters
+  year: 2008
+  type: forum_discussion
+  url: https://mb.nawcc.org/threads/escape-wheel-question.37500/
+  topics: [escapement, beat-rate]
+  claims_supported:
+    - "The EW [escape wheel] teeth are counted twice because it moves 1/2 a tooth per pendulum beat."
+  claims_to_check: []
+  retrieved: true
+  accessed: '2026-10-01'
+  notes: >
+    Read 2026-10-01 (post by Richmccarty, 11 Jan 2008, re: a longcase
+    clock with a one-second pendulum and seconds hand). Tier 7, like
+    SRC-0011/SRC-0012/SRC-0013: forum testimony, not a published source.
+    States the same half-tooth-per-beat relation as SRC-0016,
+    independently, for a pendulum clock escapement rather than a watch
+    lever escapement — the same locking-escapement structure (alternating
+    entrance/exit pallets) ASM-0021 assumes, so it is read as
+    corroborating rather than off-scope. Used only to corroborate
+    SRC-0016 for the ASM-0021 citation, the same role SRC-0013 plays for
+    SRC-0012.
+
+    Conflict note: Wikipedia's Lever escapement article (fetched
+    2026-10-01, https://en.wikipedia.org/wiki/Lever_escapement) states
+    "Each back and forth movement of the balance wheel from and back to
+    its center position corresponds to a drop of one tooth (called a
+    beat)" — read literally, one tooth per beat (z beats/revolution, not
+    2z). Per CLAUDE_REFERENCE_INSTRUCTIONS.md rule 12, this is recorded
+    rather than hidden. It is not treated as closing evidence against
+    ASM-0021/SRC-0016/SRC-0017 for three reasons: (1) "drop" is a
+    specific horological term for the small free rotation between
+    release and the next locking, not a synonym for "advance", so the
+    sentence may describe a drop event occurring within the beat rather
+    than claim the wheel advances a full tooth pitch per beat; (2) the
+    standard, widely-taught watch/clock gear-train design formula
+    (SRC-0016, corroborated by SRC-0017) explicitly multiplies the escape
+    wheel tooth count by 2 and explains why in mechanical terms (entrance
+    and exit pallet), which a single ambiguous encyclopedia sentence does
+    not outweigh; (3) the alternating two-pallet structure this
+    codebase's own pallet geometry models (ASM-0025, a span of k + ½
+    teeth between the pallets) mechanically requires two releases per
+    tooth pitch of travel, consistent with SRC-0016/SRC-0017 and
+    inconsistent with one release per tooth pitch. ASM-0021 is still
+    recorded as "accepted for the simplified model" rather than
+    VERIFIED_STANDARD, since even SRC-0016/SRC-0017 are Tier 6/7.

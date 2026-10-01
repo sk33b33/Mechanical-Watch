@@ -125,7 +125,7 @@ export const ASSUMPTIONS = {
   },
   "ASM-0021": {
     summary:
-      "A Swiss lever escape wheel gives two beats per tooth (one at each pallet), and a beat is one swing of the balance (half its period); source pending, accepted for the simplified model",
+      "A Swiss lever escape wheel gives two beats per tooth (one at each pallet), and a beat is one swing of the balance (half its period); supported by SRC-0016 (corroborated by SRC-0017), both Tier 6/7 informal sources, not a published standard — accepted for the simplified model",
     scope: "Escapement",
     status: "Active",
   },

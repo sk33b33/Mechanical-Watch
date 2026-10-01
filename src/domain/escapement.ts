@@ -12,7 +12,7 @@ export type EscapementId = EntityId<"escapement">;
  * a SIMPLIFIED ESCAPEMENT MODEL at the kinematic level (ESC-001, ESC-002):
  *
  * - the escape wheel turns with its arbor, driven by the going train, and
- *   gives two beats per tooth (ASM-0021, source pending);
+ *   gives two beats per tooth (ASM-0021, SRC-0016/SRC-0017);
  * - the balance swings sinusoidally at a declared amplitude, at the
  *   frequency the train's speed requires (ASM-0022). No inertia,
  *   hairspring torque or damping is modeled, so the amplitude is an input,

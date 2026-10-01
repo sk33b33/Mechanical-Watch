@@ -98,7 +98,7 @@ export function escapementSection(store: AppStore, esc: Escapement): Section {
     ...palletAndEnergyRows(store, esc),
     sectionHeader("Calculated (model predicts)"),
     readonlyRow("Beats per escape turn", isValidToothCount(w.toothCount) ? String(beatsPerEscapeRevolution(w.toothCount)) : "—",
-      "2 per tooth (ASM-0021, source pending)."),
+      "2 per tooth (ASM-0021, SRC-0016/SRC-0017 — informal, Tier 6/7 sources)."),
     readonlyRow("Escape arbor speed", omega === undefined ? "not driven" : `${Math.abs(toRpm(omega)).toFixed(4)} rev/min`),
     readonlyRow("Beat rate", beats === null ? "—" : `${toBeatsPerHour(beats).toFixed(0)} beats/h`,
       "Implied by the train's speed at the current drive (ASM-0021)."),

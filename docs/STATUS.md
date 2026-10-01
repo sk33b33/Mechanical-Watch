@@ -2,6 +2,45 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Three more citation gaps closed: pitch diameter, balance frequency, two beats per tooth
+
+Went back through the "External citations pending" open decisions and
+closed three of them.
+
+- **Pitch diameter (d = m z).** Wikipedia's "Gear" article (SRC-0014)
+  states the general helical form d = N mₙ / cos ψ; the spur case used
+  here (ψ = 0) is the same formula. This is the pure geometric
+  definition of module, not a manufacturability claim, so a generic-gear
+  encyclopedia source is fine for it (CLAUDE_REFERENCE_INSTRUCTIONS.md
+  rule 10 is about manufacturing proof, not definitions).
+- **Balance natural frequency (f = √(k/I)/2π).** Wikipedia's "Torsion
+  spring" article (SRC-0015) states the same formula for a torsional
+  harmonic oscillator. This closes the citation for the oscillator math
+  itself; it is not evidence that a real balance/hairspring behaves as
+  an ideal linear undamped oscillator — that physical-modeling
+  assumption stays ASM-0024, unproven.
+- **Two beats per escape tooth (ASM-0021).** Found a specialist
+  horology page (SRC-0016, vintagewatchstraps.com) giving the actual
+  watch/clock gear-train beats-per-hour design formula, which multiplies
+  the escape wheel's tooth count by 2 and explains why: each tooth is
+  released once at the entrance pallet and once at the exit pallet per
+  revolution. Corroborated independently by a 2008 NAWCC forum post
+  (SRC-0017) making the same claim for a pendulum clock escapement.
+  Both are Tier 6/7 (informal), so ASM-0021 stays an accepted assumption
+  rather than a verified fact — just no longer "source pending".
+  **Conflict found and preserved, not hidden (rule 12):** Wikipedia's
+  "Lever escapement" article has one sentence that reads, literally, as
+  one tooth per beat rather than two. Recorded in SRC-0017's notes with
+  the reasoning for not treating it as overriding: "drop" is a specific
+  horological term (the small free rotation between release and the
+  next locking), not a synonym for "advance"; the standard, widely-taught
+  gear-train design formula and this codebase's own pallet geometry
+  (ASM-0025, alternating entrance/exit pallets spanning k + ½ teeth)
+  both mechanically require two releases per tooth pitch of travel.
+- All 360 existing tests still pass; `registers.test.ts` (which checks
+  `ASSUMPTION_REGISTER.md` against `src/reference/assumptions.ts`) is
+  unaffected since only descriptive text changed, not IDs or status.
+
 ## Side-shake advisory (BRG-007): closing the gap BRG-006 left open
 
 BRG-006 (endshake) shipped with side shake explicitly still unjudged —
@@ -746,9 +785,11 @@ dimensions round-trip, and picking and issue selection work.
   dial ratios by construction, but aren't taken from any caliber. For a
   movement meant to match a real one, the counts need a source recorded
   under `reference/sources/09-movement-specific/`.
-- **External citations for gear equations.** REF-ENG §5 cites no primary
-  source for d = m z etc. They are marked DERIVED with the citation
-  pending.
+- **External citations for gear equations.** Pitch diameter (d = m z) is
+  now cited (SRC-0014, Wikipedia "Gear" — the spur case of its general
+  d = N mₙ / cos ψ). The rest of REF-ENG §5 (centre distance, gear
+  ratio, torque relationship, pitch-line velocity) still cites no
+  primary source and remains marked DERIVED with the citation pending.
 - **Side-shake convention (ASM-0013).** Reported as diametral clearance
   until a source confirms the horological convention. (Separate from
   the BRG-007 advisory below, which judges the *size* of the value
@@ -764,11 +805,18 @@ dimensions round-trip, and picking and issue selection work.
   generic machine bevel gears, not horological contrate or winding
   gearing, so a horological source for this specific mechanism would
   still be better.
-- **Two beats per escape tooth (ASM-0021).** Accepted as a declared
-  assumption for the simplified model; a source should be recorded under
-  `reference/sources/03-escapements/` (e.g. SRC-0004, not yet read).
-- **Oscillator equation (ASM-0024).** Standard linear-oscillator physics,
-  marked DERIVED with the citation pending, like the gear equations.
+- **Two beats per escape tooth (ASM-0021).** Now supported by SRC-0016
+  (corroborated by SRC-0017), both Tier 6/7 informal sources, not a
+  published standard — still an accepted assumption, not
+  VERIFIED_STANDARD. A published source (e.g. SRC-0004, not yet read)
+  would still raise its confidence. See SRC-0017's notes for a
+  one-sentence conflict found in Wikipedia's Lever escapement article
+  and why it isn't treated as overriding.
+- **Oscillator equation (ASM-0024).** The f = √(k/I)/2π formula itself is
+  now cited (SRC-0015, Wikipedia "Torsion spring" — standard
+  linear-oscillator physics). This closes the citation for the math;
+  it is not evidence that a real balance/hairspring is one (ASM-0024's
+  physical-modeling claim remains unproven, as declared).
 - **Acceptable bearing clearances — both endshake and side shake now
   have a low-confidence advisory.** SRC-0011 gave the escapement-vs-
   train endshake figures (BRG-006, ASM-0028); SRC-0012 (corroborated

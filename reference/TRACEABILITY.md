@@ -5,16 +5,18 @@ tests and validation rules. This answers the "Code review questions" in
 `CLAUDE_REFERENCE_INSTRUCTIONS.md`. Update this file in the same commit
 as any change to an equation, constant or rule.
 
-`REF-ENG §x` means `reference/REFERENCE_ENGINEERING.md` section x. None of
-these equations has an external primary citation recorded yet: the gear
-relationships currently rest only on REF-ENG §5. Adding one (e.g. a gear
-geometry standard) is open work.
+`REF-ENG §x` means `reference/REFERENCE_ENGINEERING.md` section x. Most of
+these equations still have no external primary citation: the gear
+relationships mostly rest only on REF-ENG §5. The pitch-diameter definition
+(SRC-0014) and the balance oscillator formula (SRC-0015) now have an
+external citation (Tier: encyclopedia); the others, including a primary
+gear-geometry standard, remain open work.
 
 ## Equations
 
 | Quantity (SI unit) | Equation | Code | Basis | Assumptions | Evidence state | Level | Tests |
 |---|---|---|---|---|---|---|---|
-| Pitch diameter (m) | d = m z | `pitchDiameter` in `src/math/gearMath.ts` | REF-ENG §5.1 | ASM-0001 | DERIVED (definition of module; external citation pending) | L1 | `gearMath.test.ts` › pitchDiameter |
+| Pitch diameter (m) | d = m z | `pitchDiameter` in `src/math/gearMath.ts` | REF-ENG §5.1 | ASM-0001 | DERIVED (definition of module); SRC-0014 (Wikipedia "Gear") states the general d = N mₙ / cos ψ form, of which this is the spur (ψ = 0) case | L1 | `gearMath.test.ts` › pitchDiameter |
 | Centre distance (m) | a = (d1 + d2)/2 = m(z1 + z2)/2 | `idealCentreDistance`, `meshCentreDistance` | REF-ENG §5.2 | ASM-0001 | DERIVED | L1 | › centre distance |
 | Centre-distance match (bool) | abs(a_placed − a_ideal) ≤ tol | `isCentreDistanceAchievable` | REF-ENG §5.2 | ASM-0008 (tolerance is numerical, not manufacturing) | DERIVED | L1 | › flags an impossible centre distance; `gearMeshGeometry.test.ts` |
 | Speed ratio (1) | ω2/ω1 = −z1/z2 | `meshSpeedRatio`, `drivenAngularVelocity` | REF-ENG §5.3 | ASM-0001 | DERIVED | L2 | › meshSpeedRatio / direction reversal |
@@ -47,13 +49,13 @@ geometry standard) is open work.
 | Crown setting | stem out: sliding pinion ↔ setting wheel engaged, friction clutches slip, hand side re-driven from the crown; going train keeps running | `solveGearTrain` (CROWN_SETTING), `crownSettingState` | REF-ENG §8 | ASM-0015, ASM-0019 | APPROXIMATION | L2 | › pulled out, the crown sets the hands… |
 | Crown clock position (h) | atan2(−cos θ, sin θ) × 12 / 2π, mod 12 (dial side mirrors x; 12 o'clock is +Y) | `clockPositionFromDial` | definition | ASM-0014 | definition | L1 | › maps plan directions to the dial's clock |
 | Dial clearance | every gear or frame overlapping the dial in plan must be entirely above its back | `dialRules` (DIAL-002) | geometric definition | ASM-0010, ASM-0020 | DERIVED | L1 | `keylessRules.test.ts` › DIAL-002 |
-| Beats per escape revolution (1) | 2 z_escape | `beatsPerEscapeRevolution` in `src/kinematics/escapement.ts` | REF-ENG §9 (mechanism structure) | ASM-0021 (two beats per tooth; source pending, accepted) | ASSUMPTION | L2 | `escapement.test.ts` › two beats per escape tooth |
+| Beats per escape revolution (1) | 2 z_escape | `beatsPerEscapeRevolution` in `src/kinematics/escapement.ts` | REF-ENG §9 (mechanism structure) | ASM-0021 (two beats per tooth; SRC-0016, corroborated by SRC-0017, both Tier 6/7 — see SRC-0017's notes for a conflicting Wikipedia sentence and why it doesn't override) | ASSUMPTION | L2 | `escapement.test.ts` › two beats per escape tooth |
 | Beat rate (Hz) | f_beat = abs(ω_escape) / 2π × 2 z; shown in beats/h = 3600 f_beat | `beatFrequency` | REF-ENG §4 (beats per hour as a display unit) | ASM-0021 | DERIVED from ASM-0021 | L2 | › 18 000 beats an hour… |
 | Required balance frequency (Hz) | f_balance = f_beat / 2 | `balanceFrequency` | definition of a beat as half a balance period | ASM-0021, ASM-0022 | DERIVED; the balance's own frequency is not modeled | L2 | › …the balance runs at 2.5 Hz |
 | Balance angle (rad) | θ_b = A sin(2π f_balance t), A declared | `escapementMotion` | REF-ENG §10 (kinematic model: angle and frequency) | ASM-0022 | APPROXIMATION (sinusoid; no dynamics) | L2 | › the fork rests on alternate bankings… |
 | Impulse window (1) | (2/π) asin(λ / 2A) of each beat, needs A > λ/2 | `impulseFraction` | derived from the sinusoid | ASM-0022, ASM-0023 | DERIVED | L2 | › is the share of each swing… |
 | Ticking train (s) | shown at t_eff = T (k − ½ + s), s = window progress; locked between windows, within T/2 of t | `escapementMotion`, `escapementDisplay` | REF-ENG §9 (release, impulse phases) | ASM-0023 | APPROXIMATION (no locking, draw, drop or impact) | L2 | › keeps real time on average…; › never runs backward… |
-| Balance free frequency (Hz) | f = √(k / I) / 2π | `naturalFrequency` in `src/kinematics/balance.ts` | REF-ENG §10 (simplified dynamic model: inertia, restoring torque); linear undamped oscillator (I θ'' = −k θ) | ASM-0024 | DERIVED from the oscillator equation; external citation pending | L3 | `balance.test.ts` › f = √(k/I) / 2π |
+| Balance free frequency (Hz) | f = √(k / I) / 2π | `naturalFrequency` in `src/kinematics/balance.ts` | REF-ENG §10 (simplified dynamic model: inertia, restoring torque); linear undamped oscillator (I θ'' = −k θ) | ASM-0024 | DERIVED from the oscillator equation; SRC-0015 (Wikipedia "Torsion spring") states the same f = √(κ/I)/2π formula for a torsional harmonic oscillator — the oscillator math only, not evidence that a real balance/hairspring behaves as one (that remains ASM-0024) | L3 | `balance.test.ts` › f = √(k/I) / 2π |
 | Hairspring for a frequency (N·m/rad) | k = I (2π f)² | `stiffnessForFrequency` | inverse of the above | ASM-0024 | DERIVED | L3 | › property: the stiffness for a frequency gives that frequency back |
 | Escape speed when the balance governs (rad/s) | abs(ω) = 2π f / z (one tooth per balance period); sign from the train so the hands run forward | `escapeSpeedFromBalance`, `driveSeed` (BALANCE) | REF-ENG §9, §10 | ASM-0021, ASM-0024 | DERIVED | L3 | › the escape wheel advances one tooth per balance period; › runs the hands clockwise… |
 | Daily rate (s/day) | (f / f_nominal − 1) × 86 400; f_nominal from the escape arbor at nominal time | `dailyRateSeconds`, `summarizeBalance` | definition (train speed ∝ balance frequency) | ASM-0024 | DERIVED; not a rate-accuracy claim | L3 | › predicts about 7 s a day slow… |
