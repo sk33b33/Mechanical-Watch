@@ -2,6 +2,29 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Checked a recognized watchmaking textbook for bearing-clearance figures; none found
+
+Went looking for a Tier 4 ("recognized watchmaking textbook", per
+REF-ENG §1's source hierarchy) source for side-shake/endshake clearance
+numbers, to see whether BRG-006/BRG-007 could move past their current
+Tier 6/7 forum-testimony advisories.
+
+- Found and read Moritz Grossmann's 1880 "Prize Essay on the
+  Construction of a Simple and Mechanically Perfect Watch" (SRC-0020,
+  same translator/host, watkinsr.id.au, as SRC-0019). Searched its
+  "Jewelling" chapter and pivot-sizing discussion specifically.
+- No numeric side-shake or endshake clearance figure appears anywhere
+  in the text. What it does say (article 60) is that ordinary
+  machine-design pivot-sizing rules don't apply to watch pivots, and
+  that accepted sizes come from experience, not a stated formula — an
+  authoritative 19th-century source explicitly declining to give the
+  kind of number this project has been looking for. That's useful
+  context (it helps explain why only forum testimony turns up this
+  kind of figure) but doesn't change BRG-006/BRG-007's status.
+- Registered as SRC-0020. No code or TRACEABILITY.md changes needed:
+  the "acceptability UNKNOWN" / informational-only framing was already
+  accurate and remains so.
+
 ## Searched for a horological source for the stem-mesh ratio; found one, doesn't close the gap
 
 Went back to the one open gap SRC-0010 left on ASM-0019 (the right-angle
@@ -933,7 +956,13 @@ dimensions round-trip, and picking and issue selection work.
   on forum testimony rather than a source read directly. A published
   source (Jendritzki's own "Watch Adjustment", a NIHS/DIN/AFNOR
   standard) would still let either become a real pass/fail rule instead
-  of an advisory.
+  of an advisory. Checked one candidate Tier 4 textbook already on file
+  for this purpose — Grossmann's 1880 prize essay (SRC-0020, read in
+  full for its "Jewelling" chapter and pivot-sizing discussion) — and
+  it gives no numeric clearance figure at all; it explicitly says
+  machine-design pivot-sizing rules don't transfer to watch pivots and
+  leaves sizing to accepted practice. Doesn't raise either advisory's
+  tier, but explains why only forum testimony has been found so far.
 
 ## Known limitations
 

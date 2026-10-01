@@ -531,3 +531,38 @@
     give the relation itself. Recorded per CLAUDE_REFERENCE_INSTRUCTIONS.md
     rule 12 (preserve evidence found, even partial) rather than left out
     for not fully closing the gap.
+
+# Searched for a published (Tier 4, "recognized watchmaking textbook")
+# source for acceptable side-shake/endshake clearances, to see if
+# BRG-006/BRG-007 could move past Tier 6/7 forum testimony.
+
+- id: SRC-0020
+  title: "Prize Essay on the Construction of a Simple and Mechanically Perfect Watch"
+  author: Moritz Grossmann (German original, 1880); English translation by Richard Watkins
+  year: 1880
+  type: watchmaking_reference
+  url: http://www.watkinsr.id.au/Grossmann.pdf
+  topics: [bearings, pivots, jewelling, side-shake, endshake]
+  claims_supported:
+    - "The generally accepted construction rules for machines cannot be used for the diameters of pivots in watch work... Consequently, very few can object to the diameters of pivots which are normally used in pocket watches [i.e. sizing is by accepted practice/experience, not a calculated rule]"
+  claims_to_check: []
+  retrieved: true
+  accessed: '2026-10-01'
+  notes: >
+    Read 2026-10-01 (pdftotext extraction, 50-page PDF, real text
+    layer). Grossmann's prize-winning 1880 essay, a recognized
+    watchmaking textbook (Tier 4 in REFERENCE_ENGINEERING.md §1,
+    well above forum testimony) — translated by Richard Watkins, the
+    same translator as SRC-0019. Searched its "Jewelling" chapter
+    (articles 98-109) and its pivot-sizing discussion (article 60) for
+    a numeric side-shake or endshake clearance figure. Found none: no
+    "mm", fraction-of-a-mm or other dimensioned clearance value appears
+    for jewel-hole-to-pivot fit or endshake anywhere in the text. What
+    it does say, in article 60, is that machine-design pivot-sizing
+    rules do not transfer to watch pivots and that practice instead
+    rests on accepted/experienced sizing, not a stated formula — this
+    doesn't supply a number for BRG-006/BRG-007, but it is a Tier 4
+    source explicitly declining to give one, which is itself relevant
+    context for why only forum testimony (SRC-0011/SRC-0012/SRC-0013)
+    has been found with actual figures. Does not raise BRG-006/BRG-007
+    above their current Tier 6/7 informational-advisory status.
