@@ -1,6 +1,6 @@
 import type { AppStore } from "@/app/store";
 import { findEntity } from "@/domain/lookup";
-import { measureBetween } from "@/assembly/measure";
+import { measureBetween, pointToPointRow } from "@/assembly/measure";
 import { VALIDATION_LEVEL_LABELS } from "@/reference/validationLevels";
 
 /** Floating panel over the viewport showing the current measurement. */
@@ -19,7 +19,7 @@ export function mountMeasurementPanel(container: HTMLElement, store: AppStore): 
 
     const title = document.createElement("div");
     title.className = "measurement-title";
-    title.textContent = idA === null ? "Measure: pick the first part" : idB === null ? `A: ${nameOf(idA)}. Pick the second part` : `${nameOf(idA)} ↔ ${nameOf(idB)}`;
+    title.textContent = idA === null ? "Measure: pick a point" : idB === null ? `A: ${nameOf(idA)}. Pick a second point` : `${nameOf(idA)} ↔ ${nameOf(idB)}`;
     panel.appendChild(title);
     if (idA === null || idB === null) return;
 
@@ -31,8 +31,9 @@ export function mountMeasurementPanel(container: HTMLElement, store: AppStore): 
       same.textContent = "Both picks are the same part.";
       panel.appendChild(same);
     }
+    const rows = [...result.rows, pointToPointRow(...store.measurePoints)];
     const table = document.createElement("table");
-    for (const row of result.rows) {
+    for (const row of rows) {
       const tr = document.createElement("tr");
       const label = document.createElement("td");
       label.textContent = row.label;

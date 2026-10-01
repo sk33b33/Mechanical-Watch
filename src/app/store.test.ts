@@ -202,6 +202,42 @@ describe("AppStore measure mode", () => {
     store.remove(gear.id);
     expect(store.measureIds).toEqual([null, null]);
   });
+
+  it("tracks the exact point picked alongside each part, for the on-screen ruler", () => {
+    const store = new AppStore(createDemoMovement());
+    const [g1, g2, g3] = Object.values(store.movement.gears).map((g) => g.id);
+    if (g1 === undefined || g2 === undefined || g3 === undefined) throw new Error("gears");
+    store.setMeasuring(true);
+    const pa = { x: 1e-3, y: 2e-3, z: 3e-3 };
+    store.select(g1, pa);
+    expect(store.measurePoints).toEqual([pa, null]);
+    const pb = { x: 4e-3, y: 5e-3, z: 6e-3 };
+    store.select(g2, pb);
+    expect(store.measurePoints).toEqual([pa, pb]);
+    // Starting over (A already has B) drops the stale point too.
+    const pc = { x: 7e-3, y: 8e-3, z: 9e-3 };
+    store.select(g3, pc);
+    expect(store.measurePoints).toEqual([pc, null]);
+  });
+
+  it("has no point when a pick came from outside the viewport (e.g. the tree)", () => {
+    const store = new AppStore(createDemoMovement());
+    const gear = Object.values(store.movement.gears)[0];
+    if (gear === undefined) throw new Error("gear");
+    store.setMeasuring(true);
+    store.select(gear.id); // no point argument, as a tree/inspector "Select" click would do
+    expect(store.measurePoints).toEqual([null, null]);
+  });
+
+  it("forgets a measured point when its part is deleted", () => {
+    const store = new AppStore(createDemoMovement());
+    const gear = Object.values(store.movement.gears)[0];
+    if (gear === undefined) throw new Error("gear");
+    store.setMeasuring(true);
+    store.select(gear.id, { x: 1e-3, y: 2e-3, z: 3e-3 });
+    store.remove(gear.id);
+    expect(store.measurePoints).toEqual([null, null]);
+  });
 });
 
 describe("mainspring wind and run-down (ASM-0026)", () => {

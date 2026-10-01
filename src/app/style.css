@@ -616,6 +616,9 @@ button.danger:hover:not(:disabled) {
 
 .field select {
   max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .list-row .link {

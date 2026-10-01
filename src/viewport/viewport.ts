@@ -20,7 +20,7 @@ import {
   handHubRadius,
 } from "@/geometry/assemblyGeometry3d";
 import { arborZRange, frameZRange, isCompleteFrame } from "@/assembly/assemblyGeometry";
-import { partReferencePoint } from "@/assembly/measure";
+import { partReferencePoint, type Point3 } from "@/assembly/measure";
 import { stemBodyId, type KeylessWorksId } from "@/domain/keyless";
 import { buildDialMeshes, buildStemMeshes } from "./keylessMeshes";
 import { escapementDisplay, primaryEscapement } from "@/simulation/escapementDisplay";
@@ -81,7 +81,18 @@ interface Pickable {
   kind: PickKind;
   entityId: EntityId;
   baseColor: number;
+  /** renderOrder/depthWrite to restore when deselected (addPickable captures these automatically). */
+  baseRenderOrder: number;
+  baseDepthWrite: boolean;
 }
+
+/**
+ * Selected parts draw through occluding geometry (e.g. an arbor hidden
+ * inside a large wheel) rather than just changing colour, since colour
+ * alone can be invisible when almost nothing of the part is on screen.
+ * Below the measurement line's renderOrder (10), which always wins.
+ */
+const SELECTION_RENDER_ORDER = 5;
 
 /**
  * 2D cross-section of a solid, in its own unrotated local frame. Every
@@ -179,6 +190,8 @@ export class Viewport {
   private unsubscribe: (() => void) | null = null;
   private framedGeneration: number;
   private resizeObserver: ResizeObserver | null = null;
+  private hasRebuilt = false;
+  private contentWasEmpty = true;
 
   constructor(container: HTMLElement, store: AppStore) {
     this.container = container;
@@ -212,19 +225,29 @@ export class Viewport {
     this.renderer.domElement.addEventListener("pointerup", this.handlePointerUp);
     this.resizeObserver = new ResizeObserver(() => {
       this.resize();
+      // Re-fit so the movement stays framed as panels dock, float, close or resize (STATUS.md
+      // "camera... does not re-fit the movement"). Skipped before the first rebuild, which frames on its own.
+      if (this.hasRebuilt) this.frameCamera();
     });
     this.resizeObserver.observe(container);
     this.resize();
 
     this.rebuild();
+    this.hasRebuilt = true;
     this.frameCamera();
     this.framedGeneration = store.designGeneration;
+    this.contentWasEmpty = this.contentIsEmpty();
     this.unsubscribe = store.subscribe(() => {
       this.rebuild();
-      if (store.designGeneration !== this.framedGeneration) {
+      const isEmpty = this.contentIsEmpty();
+      // Re-fit on a freshly loaded design, or the first time content appears in an empty one
+      // (STATUS.md "a design built up from empty keeps the default view"), not on every edit —
+      // once there's something to see, further edits shouldn't yank the user's chosen view.
+      if (store.designGeneration !== this.framedGeneration || (this.contentWasEmpty && !isEmpty)) {
         this.framedGeneration = store.designGeneration;
         this.frameCamera();
       }
+      this.contentWasEmpty = isEmpty;
     });
 
     this.animationHandle = requestAnimationFrame(this.animate);
@@ -276,6 +299,10 @@ export class Viewport {
     this.frameCamera();
   }
 
+  private contentIsEmpty(): boolean {
+    return new THREE.Box3().setFromObject(this.content).isEmpty();
+  }
+
   /** Fits the view to the content. Called on load and view change, so the user's view survives edits. */
   private frameCamera(): void {
     const box = new THREE.Box3().setFromObject(this.content);
@@ -293,8 +320,12 @@ export class Viewport {
     this.controls.update();
   }
 
-  private addPickable(parent: THREE.Object3D, mesh: THREE.Mesh, pick: Pickable): void {
-    mesh.userData = pick;
+  private addPickable(parent: THREE.Object3D, mesh: THREE.Mesh, pick: Omit<Pickable, "baseRenderOrder" | "baseDepthWrite">): void {
+    mesh.userData = {
+      ...pick,
+      baseRenderOrder: mesh.renderOrder,
+      baseDepthWrite: (mesh.material as THREE.MeshStandardMaterial).depthWrite,
+    } satisfies Pickable;
     parent.add(mesh);
     this.pickables.push(mesh);
   }
@@ -472,7 +503,13 @@ export class Viewport {
         });
         if (built === null) continue;
         this.content.add(built.root);
-        built.disc.userData = { kind: "dial", entityId: dial.id, baseColor: COLORS.dial } satisfies Pickable;
+        built.disc.userData = {
+          kind: "dial",
+          entityId: dial.id,
+          baseColor: COLORS.dial,
+          baseRenderOrder: built.disc.renderOrder,
+          baseDepthWrite: (built.disc.material as THREE.MeshStandardMaterial).depthWrite,
+        } satisfies Pickable;
         this.pickables.push(built.disc);
         const centre = positions.get(dial.centreShaftId);
         if (centre !== undefined) {
@@ -500,7 +537,13 @@ export class Viewport {
       if (built === null) continue;
       this.content.add(built.root);
       for (const mesh of built.pickMeshes) {
-        mesh.userData = { kind: "keyless", entityId: keyless.id, baseColor: (mesh.material as THREE.MeshStandardMaterial).color.getHex() } satisfies Pickable;
+        mesh.userData = {
+          kind: "keyless",
+          entityId: keyless.id,
+          baseColor: (mesh.material as THREE.MeshStandardMaterial).color.getHex(),
+          baseRenderOrder: mesh.renderOrder,
+          baseDepthWrite: (mesh.material as THREE.MeshStandardMaterial).depthWrite,
+        } satisfies Pickable;
         this.pickables.push(mesh);
       }
       this.stemSpins.set(keyless.id, { stem: built.stemSpin, windingPinion: built.windingSpin });
@@ -652,9 +695,12 @@ export class Viewport {
     const [a, b] = this.store.measureIds;
     if (!this.store.measuring || a === null || b === null) return;
     const { movement, analysis } = this.store;
-    const points = [a, b].map((id) => partReferencePoint(movement, analysis.placement, id));
-    const [pa, pb] = points;
-    if (pa === null || pb === null || pa === undefined || pb === undefined) return;
+    const [pointA, pointB] = this.store.measurePoints;
+    // Prefer the exact point picked in the viewport; a measurement pick made via the tree or an
+    // inspector "Select" button has no surface point, so fall back to that part's reference point.
+    const pa = pointA ?? partReferencePoint(movement, analysis.placement, a);
+    const pb = pointB ?? partReferencePoint(movement, analysis.placement, b);
+    if (pa === null || pb === null) return;
     const geometry = new THREE.BufferGeometry().setFromPoints([
       new THREE.Vector3(pa.x, pa.y, this.displayZ(pa.z)),
       new THREE.Vector3(pb.x, pb.y, this.displayZ(pb.z)),
@@ -759,6 +805,12 @@ export class Viewport {
       const selected = pick.entityId === this.store.selectedId;
       mat.color.set(selected ? COLORS.selected : pick.baseColor);
       if (pick.kind === "frame") mat.opacity = selected ? FRAME_OPACITY.selected : FRAME_OPACITY.normal;
+      // Draw through occluding geometry when selected (e.g. an arbor hidden inside a large wheel);
+      // depthWrite off too while selected, so this doesn't corrupt the depth buffer for what's
+      // drawn after it (restored to its own original value, e.g. frames already draw with it off).
+      mat.depthTest = !selected;
+      mat.depthWrite = selected ? false : pick.baseDepthWrite;
+      mesh.renderOrder = selected ? SELECTION_RENDER_ORDER : pick.baseRenderOrder;
     }
   }
 
@@ -794,6 +846,11 @@ export class Viewport {
   };
 
   /** A click selects; a drag (orbit) does not. */
+  /** Undoes the explode slider's display-only Z stretch, so a picked point reflects real geometry (never the view). */
+  private pickedPoint(point: THREE.Vector3): Point3 {
+    return { x: point.x, y: point.y, z: point.z / (1 + this.explode * EXPLODE_STRETCH) };
+  }
+
   private readonly handlePointerUp = (event: PointerEvent): void => {
     const start = this.pointerDown;
     this.pointerDown = null;
@@ -807,7 +864,7 @@ export class Viewport {
     // The dial is opaque: when it is the nearest thing under the pointer, it is what was clicked.
     const nearest = hits.reduce<(typeof hits)[number] | undefined>((best, h) => (best === undefined || h.distance < best.distance ? h : best), undefined);
     if (nearest !== undefined && (nearest.object.userData as Pickable).kind === "dial") {
-      this.store.select((nearest.object.userData as Pickable).entityId);
+      this.store.select((nearest.object.userData as Pickable).entityId, this.pickedPoint(nearest.point));
       return;
     }
     hits.sort((a, b) => {
@@ -816,7 +873,7 @@ export class Viewport {
       return pa - pb || a.distance - b.distance;
     });
     const hit = hits[0];
-    this.store.select(hit === undefined ? null : (hit.object.userData as Pickable).entityId);
+    this.store.select(hit === undefined ? null : (hit.object.userData as Pickable).entityId, hit === undefined ? null : this.pickedPoint(hit.point));
   };
 
   private readonly animate = (timestampMs: number): void => {

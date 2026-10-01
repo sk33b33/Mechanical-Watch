@@ -4,6 +4,7 @@ import { removeEntity } from "@/domain/editing";
 import { TUTORIAL_STEPS } from "./tutorial/tutorialSteps";
 import { designsEqual } from "@/persistence/designFile";
 import { findEntity } from "@/domain/lookup";
+import type { Point3 } from "@/assembly/measure";
 import { analyzeMovement, EMPTY_ANALYSIS, type MovementAnalysis } from "@/analysis/analyzeMovement";
 import type { ValidationIssue } from "@/validation/validationIssue";
 import {
@@ -222,19 +223,25 @@ export class AppStore {
     if (this.selectedId !== null && findEntity(movement, this.selectedId) === undefined) {
       this.selectedId = null;
     }
-    this.measureIds = this.measureIds.map((id) => (id !== null && findEntity(movement, id) !== undefined ? id : null)) as [
-      EntityId | null,
-      EntityId | null,
-    ];
+    for (let i = 0; i < 2; i += 1) {
+      const id = this.measureIds[i];
+      if (id !== null && findEntity(movement, id) === undefined) {
+        this.measureIds[i] = null;
+        this.measurePoints[i] = null;
+      }
+    }
     this.recompute();
     for (const listener of this.designListeners) listener(movement);
     this.notify();
   }
 
-  select(id: EntityId | null): void {
+  /** `point` is the exact spot picked on the rendered geometry (for the on-screen ruler row, Point3). */
+  select(id: EntityId | null, point: Point3 | null = null): void {
     if (this.measuring && id !== null) {
       const [a, b] = this.measureIds;
-      this.measureIds = a === null || b !== null ? [id, null] : [a, id];
+      const firstSlot = a === null || b !== null;
+      this.measureIds = firstSlot ? [id, null] : [a, id];
+      this.measurePoints = firstSlot ? [point, null] : [this.measurePoints[0], point];
       this.selectedId = id;
       this.notify();
       return;
@@ -244,13 +251,15 @@ export class AppStore {
     this.notify();
   }
 
-  /** Measure mode (UI state): the next two picks become parts A and B. */
+  /** Measure mode (UI state): the next two picks become parts A and B, each with the exact point picked. */
   measuring = false;
   measureIds: [EntityId | null, EntityId | null] = [null, null];
+  measurePoints: [Point3 | null, Point3 | null] = [null, null];
 
   setMeasuring(on: boolean): void {
     this.measuring = on;
     this.measureIds = [null, null];
+    this.measurePoints = [null, null];
     this.notify();
   }
 

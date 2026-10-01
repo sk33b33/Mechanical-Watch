@@ -10,6 +10,13 @@ import type { PlacementSolution } from "@/kinematics/solvePlacement";
 import type { ReferenceId, ValidationLevel } from "@/validation/validationIssue";
 import { arborZRange, frameZRange, isCompleteFrame, type ZRange } from "./assemblyGeometry";
 
+/** A point in 3D movement space (metres), e.g. one picked on the rendered geometry. */
+export interface Point3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
 export interface MeasurementRow {
   label: string;
   /** Null when an input is missing or unresolved; `note` says why. */
@@ -158,11 +165,7 @@ export function measureBetween(
  * frame's outline centre at mid-thickness. Used to draw indicators; the
  * measured values come from measureBetween.
  */
-export function partReferencePoint(
-  movement: Movement,
-  placement: PlacementSolution,
-  id: EntityId,
-): { x: number; y: number; z: number } | null {
+export function partReferencePoint(movement: Movement, placement: PlacementSolution, id: EntityId): Point3 | null {
   const entity = findEntity(movement, id);
   if (entity === undefined) return null;
   const z = zRangeOf(movement, entity);
@@ -177,4 +180,27 @@ export function partReferencePoint(
   }
   const axis = axisOf(placement, entity);
   return axis === null || axis === "none" ? null : { x: axis.x, y: axis.y, z: midZ };
+}
+
+/**
+ * Straight-line distance between two points picked on the rendered
+ * geometry — not a domain-model quantity like measureBetween's rows, so
+ * it carries no formula, assumption or reference: it is the exact
+ * surfaces as drawn, including visual-only proportions (tooth form
+ * ASM-0005, jewel/arbor placeholder sizes ASM-0012, etc.) that may not
+ * match a real part. Always L0_VISUAL. A quick on-screen ruler, not an
+ * engineering measurement.
+ */
+export function pointToPointRow(a: Point3 | null, b: Point3 | null): MeasurementRow {
+  if (a === null || b === null) {
+    return row("Picked-point distance", null, "pick two points on the rendered geometry", "L0_VISUAL");
+  }
+  const distance3 = Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+  return row(
+    "Picked-point distance",
+    distance3,
+    "the exact points picked on the rendered (visual) geometry, not a domain-model quantity",
+    "L0_VISUAL",
+    ["ASM-0004"],
+  );
 }

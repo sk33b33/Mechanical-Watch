@@ -4,7 +4,7 @@ import { updateGear, type Movement } from "@/domain/movement";
 import type { EntityId } from "@/domain/ids";
 import { createTeachingMovement } from "@/app/teachingMovement";
 import { solvePlacement } from "@/kinematics/solvePlacement";
-import { measureBetween } from "./measure";
+import { measureBetween, pointToPointRow } from "./measure";
 
 const movement = createTeachingMovement();
 const idOf = (m: Movement, name: string): EntityId => {
@@ -66,5 +66,29 @@ describe("measureBetween (domain-derived)", () => {
 
   it("returns null for an unknown part", () => {
     expect(measureBetween(movement, solvePlacement(movement), "gear_nope" as EntityId, idOf(movement, "Centre wheel"))).toBeNull();
+  });
+});
+
+describe("pointToPointRow (picked-point ruler, not a domain quantity)", () => {
+  it("computes straight-line 3D distance between two picked points", () => {
+    const row = pointToPointRow({ x: 0, y: 0, z: 0 }, { x: 3e-3, y: 4e-3, z: 0 });
+    expect(row.value).toBeCloseTo(5e-3, 12); // 3-4-5 triangle, in metres
+    expect(row.level).toBe("L0_VISUAL");
+  });
+
+  it("includes the z component, not just the plan distance", () => {
+    const row = pointToPointRow({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: 2e-3 });
+    expect(row.value).toBeCloseTo(2e-3, 12);
+  });
+
+  it("reports null, not a guess, when either point is missing", () => {
+    expect(pointToPointRow(null, { x: 0, y: 0, z: 0 }).value).toBeNull();
+    expect(pointToPointRow({ x: 0, y: 0, z: 0 }, null).value).toBeNull();
+    expect(pointToPointRow(null, null).value).toBeNull();
+  });
+
+  it("is zero for the same point picked twice", () => {
+    const p = { x: 1e-3, y: 2e-3, z: 3e-3 };
+    expect(pointToPointRow(p, p).value).toBe(0);
   });
 });

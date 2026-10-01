@@ -99,7 +99,13 @@ export function selectRow(
     select.appendChild(el);
   }
   select.value = value;
+  // The closed select truncates a long label (CSS ellipsis); a native tooltip spells it out.
+  const updateTitle = (): void => {
+    if (title === undefined) select.title = select.selectedOptions[0]?.textContent ?? "";
+  };
+  updateTitle();
   select.addEventListener("change", () => {
+    updateTitle();
     onChange(select.value);
   });
   field.append(labelEl, select);
