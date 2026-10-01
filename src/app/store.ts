@@ -223,7 +223,7 @@ export class AppStore {
     if (this.selectedId !== null && findEntity(movement, this.selectedId) === undefined) {
       this.selectedId = null;
     }
-    for (let i = 0; i < 2; i += 1) {
+    for (const i of [0, 1] as const) {
       const id = this.measureIds[i];
       if (id !== null && findEntity(movement, id) === undefined) {
         this.measureIds[i] = null;
