@@ -656,3 +656,51 @@
     18,000bph 6497-1 execution (ideally from an ETA parts/dimension
     sheet rather than a secondary site) would still be needed to close
     this.
+
+# Continued digging for the specific 18,000bph ETA 6497-1 tooth counts
+# (not the 21,600bph variant SRC-0022 turned out to describe).
+
+- id: SRC-0023
+  title: "ETA Part 705 (escape wheel) for 6497/6498 question (watchuseek thread)"
+  author: watchuseek forum posters (thread not fully accessible — see notes)
+  year: null
+  type: forum_discussion
+  url: https://www.watchuseek.com/threads/eta-part-705-escape-wheel-for-6497-6498-question.1618986/
+  topics: [movement-specific, teaching-movement, escapement]
+  claims_supported:
+    - "[ETA part 705, the 6497/6498 escape wheel,] variations include tooth count (at least on the wheel, 15 vs 20, less sure about pinion, 7 vs ?)"
+  claims_to_check:
+    - which exact escape-wheel tooth count (15 or 20) and escape-pinion leaf count pairs with the 18,000bph (2.5Hz) 6497-1 specifically, versus the 21,600bph (3Hz) 6497-2 — the thread itself (behind a paywall at the time of access, see notes) would very likely resolve this but could not be read directly
+  retrieved: false
+  accessed: null
+  notes: >
+    Attempted 2026-10-01: the thread itself returned an HTTP 402
+    Payment Required (watchuseek now serves AI/bot fetches through a
+    "tollbit" paywall), and a Wayback Machine fallback
+    (web.archive.org) is not reachable from this environment. The
+    quoted claim above is therefore only a search-engine snippet of the
+    thread, not independently verified against the primary page text —
+    recorded as Tier 7/unread rather than cited as settled, per
+    CLAUDE_REFERENCE_INSTRUCTIONS.md (claims must be read, not taken on
+    a snippet). Still useful: it independently confirms that ETA part
+    705 (the "escape wheel" ETA ships under one part number for both
+    6497 and 6498) is NOT a single fixed tooth count — there are at
+    least two wheel-tooth variants (15 vs 20) and apparently an
+    escape-pinion variant too — consistent with SRC-0022's 15t/10-leaf
+    numbers belonging to one specific execution (the 3Hz one) rather
+    than being "the" 6497 escape wheel, and explains why a single
+    confidently-cited tooth count for the escapement end of the 2.5Hz
+    6497-1 could not be found: ETA parts catalogs (checked directly,
+    see below) sell these parts by ETA part number only, never by
+    tooth count, so the number isn't published outside trade-only
+    wheel-cutting references or direct measurement of a real movement.
+
+    Also checked directly and confirmed to have NO tooth-count data:
+    tztoolshop.com's ETA 6497-1/6498-1 parts catalog page (4th wheel,
+    escape wheel, third wheel and centre wheel are all listed by ETA
+    part number only — e.g. "4th Wheel ... For ETA 6497-1" part
+    224/620 — never by tooth count) and passionchrono.com's individual
+    fourth-wheel product page (same pattern). This is expected of a
+    retail parts catalog (watchmakers order by ETA's own part number,
+    not tooth count) and confirms this is not a venue where the number
+    will turn up.

@@ -2,6 +2,54 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Dug further for the 6497-1's actual tooth counts; confirmed why they're not findable on the free web
+
+Continued from the previous pass: asked to keep digging for a verified
+tooth-count table specifically for the 2.5Hz/18,000bph ETA 6497-1
+(as opposed to SRC-0022's table, already established to describe the
+3Hz/21,600bph execution instead).
+
+- Found independent confirmation of the 2.5Hz/3Hz split: a search
+  result stated outright "the original ETA 6497 runs at 18,000 beats
+  per hour, while the version that the [Seagull] ST36 is cloned after
+  (the 6497-2) runs at 21,600" — the ST36 being the common Chinese
+  clone that shares SRC-0022's exact tooth-count table. This lines up
+  with, rather than just repeats, the arithmetic check from the last
+  pass.
+- Found a second, more specific confirmation that the escapement end
+  genuinely differs between executions: a watchuseek thread
+  specifically about ETA part 705 (the escape wheel ETA ships under
+  one part number for both 6497 and 6498) states there are "at least"
+  two tooth-count variants of that single part, "15 vs 20" teeth, with
+  a possible pinion difference too. Couldn't read the thread directly
+  (watchuseek now paywalls fetches via "tollbit"; a Wayback Machine
+  fallback isn't reachable from this environment either) so recorded
+  it unread (SRC-0023, Tier 7, not cited as settled) — but it
+  independently corroborates that "the" 6497 escape wheel isn't one
+  fixed number.
+- Checked two parts catalogs directly (tztoolshop.com, a dedicated
+  6497-1/6498-1 parts page; passionchrono.com, an individual
+  fourth-wheel listing) to see whether a retailer catalog would state
+  tooth counts for ordering purposes. Neither does — every wheel is
+  listed by ETA's own part number only (e.g. "4th Wheel ... For ETA
+  6497-1" #224/620), never by tooth count. That's a plausible
+  explanation for why this number doesn't surface in web search at
+  all: it's not published outside trade-only wheel-cutting references,
+  or without directly measuring a real movement.
+- One inference, not elevated to a citation: sources describing the
+  2.5→3Hz upgrade path only mention swapping the escape wheel, escape
+  pinion, fourth wheel, balance and mainspring — which would mean the
+  centre wheel (80t) and third wheel (60t/10-leaf pinion) are shared
+  between the 6497-1 and 6497-2. Plausible, but no source states this
+  for the 6497-1 directly, so it wasn't applied to the code either.
+- Net result: the real-caliber match for frequency/architecture
+  (SRC-0021, from the previous pass) stands, now with a clearer
+  picture of exactly where the gap is (the escapement-end tooth counts
+  specifically) and why it's hard to close for free. Short of
+  purchasing trade reference material or measuring a real 6497-1
+  movement, I don't have a further free-web avenue to try — said so
+  rather than stretching the evidence already found.
+
 ## Looked for a real caliber matching the teaching movement: found one for frequency, not tooth counts
 
 Asked specifically to try matching the teaching movement
@@ -947,21 +995,33 @@ dimensions round-trip, and picking and issue selection work.
 
 ## Open decisions
 
-- **Sources for the teaching movement's tooth counts — a real-caliber
-  match found for the frequency, not the gear train.** The teaching
-  movement's escapement frequency (18,000 bph / 2.5Hz) matches a real,
-  specific, well-documented caliber: the ETA/Unitas 6497-1, confirmed
-  via its own official manufacturer technical communication (SRC-0021,
-  Tier 3) — itself independently a famous "watchmaker training
-  movement" (large pocket-watch architecture, easy to see and work on).
-  But: its lift angle (our 50° vs. the real 44°) doesn't match, and the
-  one tooth-count table found for "Unitas/ETA 6497" (SRC-0022) checks
-  out, by this codebase's own gear-train math, as describing a 3Hz
-  (21,600 bph) execution, not the 2.5Hz 6497-1 — so it was not applied.
-  The counts still satisfy the dial ratios by construction, aren't
-  taken from any verified caliber, and stay illustrative (ASM-0009). A
-  verified tooth-count table specifically for the 18,000bph 6497-1
-  execution would still close this.
+- **Sources for the teaching movement's tooth counts — real-caliber
+  match confirmed for the frequency, the gear train stays open after a
+  thorough search.** The teaching movement's escapement frequency
+  (18,000 bph / 2.5Hz) matches a real, specific, well-documented
+  caliber: the ETA/Unitas 6497-1, confirmed via its own official
+  manufacturer technical communication (SRC-0021, Tier 3) — itself
+  independently a famous "watchmaker training movement" (large
+  pocket-watch architecture, easy to see and work on). Its lift angle
+  (our 50° vs. the real 44°) doesn't match, though. The one tooth-count
+  table found for "Unitas/ETA 6497" (SRC-0022) checks out, by this
+  codebase's own gear-train math, as describing the 21,600 bph (3Hz)
+  execution (6497-2/its clones), not the 2.5Hz 6497-1 — confirmed by a
+  second, independent source too (a forum thread on ETA's escape-wheel
+  part 705, SRC-0023, which documents at least two tooth-count variants
+  of that one part number). Checked ETA's own and third-party parts
+  catalogs directly (tztoolshop.com, passionchrono.com): they sell
+  every wheel by ETA's part number only, never by tooth count, which is
+  presumably why this number doesn't surface in ordinary web search —
+  it likely lives only in trade wheel-cutting references or requires
+  measuring a real movement. The centre wheel (80t) and third wheel
+  (60t/10-leaf pinion) are *probably* shared between the 6497-1 and
+  6497-2 — sources describing the 2.5→3Hz upgrade only mention swapping
+  the escape wheel, escape pinion, fourth wheel, balance and
+  mainspring — but that's an inference, not a citation, so it wasn't
+  applied either. The counts still satisfy the dial ratios by
+  construction, aren't taken from any verified caliber, and stay
+  illustrative (ASM-0009).
 - **External citations for gear equations.** All of REF-ENG §5 (pitch
   diameter, centre distance, speed ratio with direction, compound
   ratio, the lossless torque case, pitch-line velocity) is now cited to
