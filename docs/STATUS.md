@@ -2,6 +2,31 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Section view caps extended to the dial
+
+Picked the next "section view has no caps" gap to close: the dial.
+Its disc is a `createZCylinder` circle positioned at its centre
+shaft's solved axis, the same shape as an arbor or jewel, so this was
+a small, well-contained addition on top of the existing cap
+infrastructure (`src/geometry/sectionCap.ts`, `CappableSolid` in
+`viewport.ts`) rather than new machinery: registered the dial's circle
+footprint (radius = diameter/2, z = faceHeight to faceHeight +
+thickness, no rotation group since the dial never spins) right where
+its mesh is already built, next to the existing frame/arbor/gear/jewel
+registrations.
+
+The hour markers (small boxes, ASM-0020, cosmetic) are explicitly not
+covered — scoped out deliberately, noted in a code comment, same as
+hands/escapement/keyless parts remaining open.
+
+Verified the same way as the first pass, not just by screenshot: read
+the generated cap's coordinates back out of the live app (a temporary
+debug hook, removed before committing) and confirmed they exactly
+match the teaching movement's own dial parameters (±14mm chord for a
+28mm-diameter dial centred on the origin, z = −1.8 to −1.4mm for a
+0.4mm-thick dial at faceHeight −1.8mm). All 375 tests still pass;
+`tsc --noEmit` and `eslint` are clean.
+
 ## Section view: filled cut faces for frames, arbors, gears and jewels
 
 Closed the "section view has no caps" known limitation for the most
@@ -1134,10 +1159,10 @@ dimensions round-trip, and picking and issue selection work.
 - Arbor diameters aren't modeled. The wheel/arbor check treats the
   arbor as its axis line, a lower bound.
 - The selected-arbor highlight is hard to see behind large wheels.
-- The section view fills cut faces for frames, arbors, gears and
-  jewels, but not hands, the dial, the escapement (escape wheel,
-  balance, fork) or keyless-works parts (stem, crown, pinions) — those
-  still show the pre-existing hollow clip.
+- The section view fills cut faces for frames, arbors, gears, jewels
+  and the dial, but not hands, the escapement (escape wheel, balance,
+  fork) or keyless-works parts (stem, crown, pinions) — those still
+  show the pre-existing hollow clip.
 - Measurements are between whole parts. There is no point-to-point
   picking on surfaces yet.
 - Long dropdown labels are truncated in the narrow inspector.

@@ -102,9 +102,9 @@ function footprintIntervals(footprint: Footprint, base: Point2D, dir: Point2D): 
  * footprint's offset in content space, captured once per rebuild;
  * `rotationGroup` (if set) is read live each update, since shafts spin
  * during simulation playback and the cap must track them (STATUS.md
- * "section view has no caps"). Covers frames, arbors, gears and jewels —
- * not hands, the dial, the escapement or keyless parts (ASM-0012 visual
- * shapes), which still show the pre-existing uncapped clip.
+ * "section view has no caps"). Covers frames, arbors, gears, jewels and
+ * the dial — not hands, the escapement or keyless parts (ASM-0012
+ * visual shapes), which still show the pre-existing uncapped clip.
  */
 interface CappableSolid {
   positionX: number;
@@ -433,6 +433,20 @@ export class Viewport {
         this.content.add(built.root);
         built.disc.userData = { kind: "dial", entityId: dial.id, baseColor: COLORS.dial } satisfies Pickable;
         this.pickables.push(built.disc);
+        const centre = positions.get(dial.centreShaftId);
+        if (centre !== undefined) {
+          const face = this.displayZ(dial.faceHeight);
+          // The hour markers aren't capped: thin cosmetic boxes (ASM-0020), not a structural part.
+          this.cappableSolids.push({
+            positionX: centre.x,
+            positionY: centre.y,
+            rotationGroup: null,
+            zLo: face,
+            zHi: face + dial.thickness,
+            footprint: { kind: "circle", radius: dial.diameter / 2, centre: { x: 0, y: 0 } },
+            color: COLORS.dial,
+          });
+        }
       }
     }
 
