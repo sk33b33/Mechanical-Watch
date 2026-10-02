@@ -2,8 +2,17 @@ import { describe, expect, it } from "vitest";
 import { millimetres, toMetres } from "@/units/length";
 import { createGear } from "@/domain/gear";
 import type { Gear } from "@/domain/gear";
+import { addGear, addGearMesh, addShaft, createMovement } from "@/domain/movement";
+import type { Movement } from "@/domain/movement";
+import { createGearMesh } from "@/domain/gearMesh";
+import { createShaft, fixedAt } from "@/domain/shaft";
 import { cycloidalToothFactors, practicalAddendumFactor } from "@/math/cycloidTooth";
-import { cycloidRootRadius, cycloidTipRadius, generateWatchSpecificGearOutline } from "./watchSpecificGearOutline";
+import {
+  cycloidRootRadius,
+  cycloidTipRadius,
+  effectiveLeafCount,
+  generateWatchSpecificGearOutline,
+} from "./watchSpecificGearOutline";
 
 function cycloidGear(toothCount: number): Gear {
   return createGear({
@@ -115,5 +124,105 @@ describe("generateWatchSpecificGearOutline", () => {
   it("throws for a tooth count below SRC-0026's table range", () => {
     const gear = cycloidGear(5);
     expect(() => generateWatchSpecificGearOutline(gear)).toThrow();
+  });
+});
+
+function meshedMovement(wheelTeeth: number, pinionTeeth: number, pinionProfile: Gear["profileModel"] = "WATCH_SPECIFIC_PROFILE"): { movement: Movement; wheel: Gear; pinion: Gear } {
+  const shaftA = createShaft("Shaft A", fixedAt(millimetres(0), millimetres(0)));
+  const shaftB = createShaft("Shaft B", fixedAt(millimetres(1), millimetres(0)));
+  const wheel = createGear({
+    name: "wheel", toothCount: wheelTeeth, module: millimetres(0.12), thickness: millimetres(0.2),
+    shaftId: shaftA.id, profileModel: "WATCH_SPECIFIC_PROFILE",
+  });
+  const pinion = createGear({
+    name: "pinion", toothCount: pinionTeeth, module: millimetres(0.12), thickness: millimetres(0.2),
+    shaftId: shaftB.id, profileModel: pinionProfile,
+  });
+  let m = createMovement("test", true);
+  m = addShaft(m, shaftA);
+  m = addShaft(m, shaftB);
+  m = addGear(m, wheel);
+  m = addGear(m, pinion);
+  m = addGearMesh(m, createGearMesh(wheel.id, pinion.id));
+  return { movement: m, wheel, pinion };
+}
+
+describe("effectiveLeafCount (ASM-0033 mesh-pair dependency)", () => {
+  it("falls back to the gear's own tooth count when no movement is supplied", () => {
+    const gear = cycloidGear(40);
+    expect(effectiveLeafCount(gear)).toBe(40);
+  });
+
+  it("falls back to the gear's own tooth count when it has no mesh", () => {
+    const { movement } = meshedMovement(40, 8);
+    const unmeshedShaft = createShaft("Shaft C", fixedAt(millimetres(2), millimetres(0)));
+    const unmeshed = createGear({
+      name: "lone", toothCount: 40, module: millimetres(0.12), thickness: millimetres(0.2),
+      shaftId: unmeshedShaft.id, profileModel: "WATCH_SPECIFIC_PROFILE",
+    });
+    const m = addGear(addShaft(movement, unmeshedShaft), unmeshed);
+    expect(effectiveLeafCount(unmeshed, m)).toBe(40);
+  });
+
+  it("falls back to the gear's own tooth count when the mesh partner has a different profile model", () => {
+    const { movement, wheel } = meshedMovement(40, 8, "PITCH_MODEL");
+    expect(effectiveLeafCount(wheel, movement)).toBe(40);
+  });
+
+  it("uses the smaller (pinion) partner's tooth count for the larger (wheel) gear", () => {
+    const { movement, wheel } = meshedMovement(40, 8);
+    expect(effectiveLeafCount(wheel, movement)).toBe(8);
+  });
+
+  it("uses its own tooth count (already the smaller side) for the pinion", () => {
+    const { movement, pinion } = meshedMovement(40, 8);
+    expect(effectiveLeafCount(pinion, movement)).toBe(8);
+  });
+
+  it("uses the smallest partner when meshing more than one WATCH_SPECIFIC_PROFILE gear", () => {
+    const { movement, wheel } = meshedMovement(40, 10);
+    const thirdShaft = createShaft("Shaft D", fixedAt(millimetres(-1), millimetres(0)));
+    const smallerPinion = createGear({
+      name: "smaller pinion", toothCount: 6, module: millimetres(0.12), thickness: millimetres(0.2),
+      shaftId: thirdShaft.id, profileModel: "WATCH_SPECIFIC_PROFILE",
+    });
+    let m = addGear(addShaft(movement, thirdShaft), smallerPinion);
+    m = addGearMesh(m, createGearMesh(wheel.id, smallerPinion.id));
+    expect(effectiveLeafCount(wheel, m)).toBe(6);
+  });
+});
+
+describe("mesh-aware tooth proportions", () => {
+  it("a wheel meshing a small pinion gets that pinion's addendum factor, not its own leaf count's", () => {
+    const { movement, wheel } = meshedMovement(40, 8); // 40 teeth alone -> ROUND; 8 teeth -> MEDIUM_OGIVAL
+    const standaloneFactor = cycloidalToothFactors(40).addendumFactor;
+    const pinionFactor = cycloidalToothFactors(8).addendumFactor;
+    expect(standaloneFactor).not.toBeCloseTo(pinionFactor, 6);
+
+    const module = toMetres(wheel.module);
+    const pitchRadius = (module * wheel.toothCount) / 2;
+    const tipWithMesh = cycloidTipRadius(wheel, movement);
+    const tipStandalone = cycloidTipRadius(wheel);
+    expect(tipWithMesh).toBeCloseTo(pitchRadius + practicalAddendumFactor(8) * module, 12);
+    expect(tipStandalone).toBeCloseTo(pitchRadius + practicalAddendumFactor(40) * module, 12);
+    expect(tipWithMesh).not.toBeCloseTo(tipStandalone, 9);
+  });
+
+  it("the wheel's dedendum is deep enough to clear the meshing pinion's addendum height (mesh-consistent clearance)", () => {
+    const { movement, wheel, pinion } = meshedMovement(40, 8);
+    const module = toMetres(wheel.module);
+    const wheelPitch = (module * wheel.toothCount) / 2;
+    const pinionPitch = (module * pinion.toothCount) / 2;
+    const wheelDedendumDepth = wheelPitch - cycloidRootRadius(wheel, movement);
+    const pinionAddendumHeight = cycloidTipRadius(pinion, movement) - pinionPitch;
+    expect(wheelDedendumDepth).toBeGreaterThan(pinionAddendumHeight); // clearance, not just equality
+  });
+
+  it("GEAR-104's condition fires for a large wheel whose only mesh partner is below the table's range", () => {
+    const { movement, wheel } = meshedMovement(40, 5);
+    expect(effectiveLeafCount(wheel, movement)).toBe(5);
+    expect(() => generateWatchSpecificGearOutline(wheel, movement)).toThrow();
+    // Without the mesh (its own tooth count, 40), it would not throw.
+    expect(() => generateWatchSpecificGearOutline(wheel)).not.toThrow();
   });
 });

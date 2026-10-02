@@ -415,7 +415,7 @@ export class Viewport {
       if (group === undefined || !Number.isFinite(gear.zCentre)) continue;
       let geometry: THREE.ExtrudeGeometry;
       try {
-        geometry = createGearGeometry(gear);
+        geometry = createGearGeometry(gear, movement);
       } catch {
         continue;
       }

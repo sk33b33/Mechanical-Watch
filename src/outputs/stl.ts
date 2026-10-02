@@ -78,7 +78,7 @@ export function buildStl(movement: Movement, analysis: MovementAnalysis): StlRes
     }
     let geometry: THREE.BufferGeometry;
     try {
-      geometry = createGearGeometry(gear);
+      geometry = createGearGeometry(gear, movement);
     } catch {
       skipped.push(`${gear.name}: invalid gear parameters`);
       continue;
