@@ -790,3 +790,72 @@
     not horological. `cutterCornerCenter` alone is used for nothing
     yet — kept as a tested, correct building block for finishing this
     later.
+
+# Cycloidal tooth form for WATCH_SPECIFIC_PROFILE gears
+# (reference/REFERENCE_ENGINEERING.md §6): horological gearing is
+# traditionally cycloidal, not involute (British Standard 978 Part 2,
+# equivalent to Swiss NIHS 26702), specifically to avoid undercut in
+# low-leaf-count pinions and to give the pinion dedendum a flat,
+# easy-to-polish radial surface. Neither BS 978 Pt 2 nor NIHS 26702
+# itself was accessible (both are paywalled standards, not found free
+# online) — both sources below are secondary, derived from and citing
+# the primary standard and classic horological texts, not the standard
+# itself. That gap is recorded as UNKNOWN in TRACEABILITY.md.
+
+- id: SRC-0026
+  title: "Designing Cycloidal Gears"
+  author: Hugh Sparks
+  year: 2013
+  type: specialist_reference
+  url: https://www.csparks.com/watchmaking/CycloidalGears/index.jxl
+  topics: [gear-geometry, cycloidal-profile, horology]
+  claims_supported:
+    - "horological cycloidal gear design follows British Standard 978 Part 2: Cycloidal Type Gears, equivalent to Swiss standard NHS 26702; horological wheel and pinion cutters are supplied in cycloidal form to that standard"
+    - "'clock toothing': fixing the generating (rolling) circle diameter to the pinion's own pitch radius (half its pitch diameter) makes the acting part of the pinion leaf a flat radial surface — the dedendum hypocycloid degenerates to a straight line — easier to cut and polish without disturbing the tooth geometry, and avoids the undercut an involute profile would suffer at typical clock/watch pinion leaf counts (6-16)"
+    - "B.S. 978's addendum height for the mating wheel (eq. 9, 11, 13-17, solved iteratively) depends on both the pinion leaf count n_p and the gear ratio R = n_w/n_p — 'because the tooth profiles depend on the pinion counts' — so a wheel's cycloidal tooth shape is not self-symmetric but is specific to the pinion it is cut to mesh with"
+    - "the standard's own practical tooth form approximates the addendum as a circular arc (not the literal epicycloid), tabulated by leaf-count bracket (6-10 / 11+) and three profile styles — round, medium ogival, high ogival — with addendum-height and arc-radius factors f_a, f_r in modules; recommended style by leaf count: 6-7 leaves high ogival, 8-9 medium ogival, 10+ round top"
+    - "the tabulated f_a is the theoretical factor (eq. 17); the practical addendum height applies a further 5% reduction for clearance, f_prac = 0.95 f_a, a_h = m f_prac (eq. 21-22)"
+    - "pinion dedendum depth is the mating wheel's addendum factor plus a fixed 0.4-module bottom clearance: d_p = f_a + 0.4 (modules)"
+    - "pinion tooth (not space) width at the pitch circle is narrower than an equal 1:1 split of the circular pitch: 1.05 modules for 6-10 leaves, 1.25 modules for 11+ (nominal equal division would be π/2 ≈ 1.571 modules)"
+    - "wheel-tooth addendum construction: a circular arc of the tabulated radius factor f_r, passing through the apex (tip, on the tooth centreline) and through the point where the dedendum line meets the pitch circle, repeated mirrored for the other flank"
+  retrieved: true
+  accessed: "2026-10-02"
+  notes: >
+    Tier 5 (specialist/practitioner technical page), not the primary
+    standard itself (BS 978 Pt 2 / NIHS 26702, both paywalled and not
+    accessed) — a derived, secondary source. Higher confidence than a
+    forum thread (contrast Tier 6 sources like SRC-0011): the page
+    shows its working (numbered equations, a worked construction) and
+    explicitly cites the primary standard plus recognized horological
+    texts (Grossmann & Grossmann, "Lessons in Horology" 1905; Britten &
+    Good, "Britten's Watch and Clock Maker's Handbook" 16th ed. 1982;
+    J. Malcolm Wild, "Wheel and Pinion Cutting in Horology" 2001 — the
+    standard modern technical reference on this exact topic; Saunier,
+    "A Treatise of Modern Horology" 1887). Corroborated independently
+    by SRC-0027 (an academic source) on the standard's identity (BS
+    978 Pt 2), the undercut/manufacturing rationale, and the
+    clock-toothing straight-dedendum special case. Used for ASM-0032,
+    ASM-0033 and GEAR-104.
+
+- id: SRC-0027
+  title: "Analysis of Gear Tooth Profiles for Use in a Mechanical Clock"
+  author: Jacob Cowdrey (mentor Dr. Michael Latcha)
+  year: 2019
+  type: academic_thesis
+  url: https://our.oakland.edu/server/api/core/bitstreams/352daa9c-c353-43e0-a104-e43de6db875f/content
+  topics: [gear-geometry, cycloidal-profile, horology]
+  claims_supported:
+    - "cycloidal gear teeth were the standard tooth form for mechanical clocks from the 14th century until the mid-1920s invention of the involute tooth, and clockmakers never fully switched to involute despite several documented mid-20th-century proposals to do so (Louis Martin, late 1940s-50s; David A. Goldstein, 1960s) — cycloidal gearing remains standard for fully mechanical clocks and watches"
+    - "involute gears are limited to a minimum of 18 teeth at a 20° pressure angle before undercutting; cycloidal gears can be made with as few as two teeth and still function, which matters because clock/watch pinions have very few teeth"
+    - "'in clock gears the diameter of the rolling circle of the hypocycloid is one half the diameter of the pitch circle. This results in the dedendum flanks of the cycloidal tooth being a straight line' — called 'clock toothing'; on pinions the addendum is additionally rounded off short of its full cycloidal length for smooth meshing, a practical (not purely geometric) modification"
+    - "for two cycloidal gears to mesh, the addendum of one gear must match the shape of the dedendum of the other and vice versa, so (unlike involute) cycloidal gear design is specific to the pair it meshes with and the gears cannot be freely interchanged to change ratios"
+  retrieved: true
+  accessed: "2026-10-02"
+  notes: >
+    Tier 4 (undergraduate honors thesis, Oakland University Honors
+    College, mechanical engineering, faculty-mentored, cites numbered
+    sources throughout) — academic but not peer-reviewed or graduate
+    research; used here only to corroborate claims independently
+    reached by SRC-0026, not as a sole source for any numeric value.
+    Its own empirical conclusion (3D-printed gear sets, testing
+    sliding/friction) is out of scope for this project and not used.

@@ -150,16 +150,20 @@ export function gearSection(store: AppStore, gear: Gear, storage: KeyValueStore 
       [
         { value: "PITCH_MODEL", label: "Pitch model (visual placeholder)" },
         { value: "INVOLUTE_PROFILE", label: "Involute (standard full-depth)" },
-        { value: "WATCH_SPECIFIC_PROFILE", label: "Watch-specific profile", disabled: true, title: "Not implemented yet." },
+        { value: "WATCH_SPECIFIC_PROFILE", label: "Watch-specific (cycloidal)" },
         { value: "MANUFACTURING_VALIDATED_PROFILE", label: "Manufacturing-validated", disabled: true, title: "Not implemented yet." },
       ],
       (value) => {
         const profileModel = value as GearProfileModel;
-        edit(profileModel === "PITCH_MODEL" ? { profileModel, pressureAngle: null } : { profileModel });
+        edit(profileModel === "PITCH_MODEL" || profileModel === "WATCH_SPECIFIC_PROFILE"
+          ? { profileModel, pressureAngle: null }
+          : { profileModel });
       },
       "Pitch model: generic trapezoidal placeholder, not an involute (ASM-0005, REF-ENG §6). "
       + "Involute: real tooth flank, standard full-depth proportions (ASM-0030) — a generic machine-gear "
-      + "convention, not a validated horological profile.",
+      + "convention, not a validated horological profile. Watch-specific: cycloidal tooth form "
+      + "(ASM-0032, ASM-0033) — the traditional horological profile, at least 6 teeth (GEAR-104); "
+      + "no pressure angle (cycloidal teeth don't have one).",
     ),
     gear.profileModel === "INVOLUTE_PROFILE"
       ? inputRow({
@@ -170,7 +174,13 @@ export function gearSection(store: AppStore, gear: Gear, storage: KeyValueStore 
         title: "The standard full-depth convention uses 20° (SRC-0024).",
         onCommit: (raw) => { edit({ pressureAngle: raw.trim() === "" ? null : degrees(parseRequired(raw)) }); },
       })
-      : readonlyRow("Pressure angle", "not modeled", "A pitch model has no tooth flank, so no pressure angle is assumed."),
+      : readonlyRow(
+        "Pressure angle",
+        "not modeled",
+        gear.profileModel === "WATCH_SPECIFIC_PROFILE"
+          ? "A cycloidal tooth form has no pressure angle (REF-ENG §6)."
+          : "A pitch model has no tooth flank, so no pressure angle is assumed.",
+      ),
   ];
   out.push(shaft === undefined
     ? readonlyRow("Arbor", "missing")

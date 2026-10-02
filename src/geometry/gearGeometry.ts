@@ -1,8 +1,10 @@
 import * as THREE from "three";
 import type { Gear } from "@/domain/gear";
 import { toMetres } from "@/units/length";
+import { CYCLOID_TOOTH_PROPORTIONS } from "@/math/cycloidTooth";
 import { generateGearOutline, visualBoreRadius } from "./gearOutline";
 import { generateInvoluteGearOutline } from "./involuteGearOutline";
+import { generateWatchSpecificGearOutline } from "./watchSpecificGearOutline";
 
 /**
  * Builds a Three.js geometry from a Gear's domain parameters. Presentation
@@ -10,12 +12,17 @@ import { generateInvoluteGearOutline } from "./involuteGearOutline";
  * PITCH_MODEL gear draws the generic visual placeholder (L0, ASM-0005).
  * An INVOLUTE_PROFILE gear with a pressure angle draws the real involute
  * tooth form (L1, ASM-0030); without one it falls back to the placeholder
- * rather than fail to render (GEAR-103 reports the missing input).
+ * rather than fail to render (GEAR-103 reports the missing input). A
+ * WATCH_SPECIFIC_PROFILE gear with enough teeth draws the cycloidal
+ * tooth form (ASM-0032, ASM-0033); below SRC-0026's table range it
+ * falls back to the placeholder (GEAR-104 reports it).
  */
 export function createGearGeometry(gear: Gear): THREE.ExtrudeGeometry {
   const outline = gear.profileModel === "INVOLUTE_PROFILE" && gear.pressureAngle !== null
     ? generateInvoluteGearOutline(gear)
-    : generateGearOutline(gear);
+    : gear.profileModel === "WATCH_SPECIFIC_PROFILE" && gear.toothCount >= CYCLOID_TOOTH_PROPORTIONS.minimumToothCount
+      ? generateWatchSpecificGearOutline(gear)
+      : generateGearOutline(gear);
   const shape = new THREE.Shape();
   const first = outline[0];
   if (first === undefined) {

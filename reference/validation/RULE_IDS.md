@@ -35,6 +35,7 @@ with future pack IDs.
 GEAR-101 Meshed gears must overlap axially (share a meshing plane).
 GEAR-102 Gear thickness must be positive and its axial position finite.
 GEAR-103 An INVOLUTE_PROFILE gear needs a positive pressure angle; below the no-undercut tooth-count threshold is an advisory, not an error (REF-ENG §6, ASM-0030).
+GEAR-104 A WATCH_SPECIFIC_PROFILE gear needs at least 6 teeth, the cited cycloidal tooth-form table's lower bound (REF-ENG §6, ASM-0032, ASM-0033).
 
 KIN-001 Every shaft in a kinematic train should be connected to the declared drive.
 

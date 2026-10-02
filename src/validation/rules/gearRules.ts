@@ -3,6 +3,7 @@ import type { Gear } from "@/domain/gear";
 import type { EntityId } from "@/domain/ids";
 import { isValidModule, isValidToothCount } from "@/math/gearMath";
 import { minimumToothCountForNoUndercut } from "@/math/involute";
+import { CYCLOID_TOOTH_PROPORTIONS } from "@/math/cycloidTooth";
 import { computeGearMeshGeometry } from "@/kinematics/gearMeshGeometry";
 import { gearZRange, zOverlaps } from "@/assembly/assemblyGeometry";
 import type { ValidationIssue } from "../validationIssue";
@@ -54,6 +55,15 @@ export const gearParameterRules: Rule = ({ movement }) => {
             ["REF-ENG §6", "ASM-0031"]),
         );
       }
+    }
+    if (gear.profileModel === "WATCH_SPECIFIC_PROFILE" && isValidToothCount(gear.toothCount)
+      && gear.toothCount < CYCLOID_TOOTH_PROPORTIONS.minimumToothCount) {
+      issues.push(
+        issue("GEAR-104", "below-table-range", "error", "L1_GEOMETRIC", [gear.id],
+          `${gear.name}: ${String(gear.toothCount)} teeth is below the cycloidal tooth-form table's `
+          + `range (${String(CYCLOID_TOOTH_PROPORTIONS.minimumToothCount)} leaves minimum, SRC-0026).`,
+          ["REF-ENG §6", "ASM-0032", "ASM-0033"]),
+      );
     }
   }
   return issues;

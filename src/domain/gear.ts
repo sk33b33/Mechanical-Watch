@@ -10,8 +10,9 @@ export type GearId = EntityId<"gear">;
 
 /**
  * Tooth-profile scope, per reference/REFERENCE_ENGINEERING.md §6. A gear
- * is never silently promoted between these. Only PITCH_MODEL is
- * implemented.
+ * is never silently promoted between these. PITCH_MODEL, INVOLUTE_PROFILE
+ * and WATCH_SPECIFIC_PROFILE are implemented (src/geometry); MANUFACTURING_
+ * VALIDATED_PROFILE is not.
  */
 export type GearProfileModel =
   | "PITCH_MODEL"

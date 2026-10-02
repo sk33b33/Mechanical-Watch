@@ -189,6 +189,18 @@ export const ASSUMPTIONS = {
     scope: "Geometry / viewport",
     status: "Active",
   },
+  "ASM-0032": {
+    summary:
+      "WATCH_SPECIFIC_PROFILE tooth geometry uses the cycloidal \"clock toothing\" convention (SRC-0026, corroborated by SRC-0027): the dedendum's generating (rolling) circle diameter is fixed to half of the gear's OWN pitch diameter, which makes the dedendum flank a straight radial line. True BS 978 Pt 2 conjugate action would size that generating circle from the specific gear this one meshes with instead (its diameter equal to the meshing pinion's own pitch radius) — using the gear's own tooth count is a self-contained simplification, not a mesh-pair-aware construction; no assembly/mesh lookup is performed",
+    scope: "Geometry / viewport",
+    status: "Active",
+  },
+  "ASM-0033": {
+    summary:
+      "WATCH_SPECIFIC_PROFILE draws the addendum as the standard's own circular-arc tip approximation (SRC-0026), not the literal epicycloid: a circle of the tabulated radius factor, through the tip apex and the point where the dedendum meets the pitch circle, selected by profile style (round/medium/high ogival) and leaf-count bracket (6-10 / 11+) from the gear's OWN tooth count, with the standard's 5% practical clearance reduction applied. SRC-0026's own addendum-height equation (its eq. 17) is itself a function of the gear ratio (both leaf counts in the mesh, since \"the tooth profiles depend on the pinion counts\"), so using the gear's own tooth count alone is a simplification, in the same spirit as ASM-0030's non-mesh-specific involute proportions. The narrowed pinion tooth-width convention (1.05m / 1.25m by the same leaf-count bracket) and the dedendum-depth formula (this gear's own addendum factor + 0.4 modules clearance, rather than the specific meshing gear's) are likewise applied gear-intrinsically. Gears below 6 teeth are outside SRC-0026's tabulated range and are rejected (GEAR-104) rather than extrapolated",
+    scope: "Geometry / viewport",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

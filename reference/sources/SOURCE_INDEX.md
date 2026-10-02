@@ -86,6 +86,32 @@ before-undercut formula z_c ≥ 2/sin²α. Used for GEAR-103 and ASM-0030 (the
 INVOLUTE_PROFILE tooth geometry). Generic machine-gear source, not
 horological — see SOURCES.yml for the full scope note.
 
+### Hugh Sparks — Designing Cycloidal Gears (SRC-0026, read)
+Tier 5 practitioner page deriving British Standard 978 Part 2 (≡ Swiss
+NIHS 26702) cycloidal horological gear design into worked equations and
+standardized tables, citing BS 978 Pt 2 itself plus Grossmann, Britten &
+Good, Wild (2001, the standard modern reference on horological wheel and
+pinion cutting) and Saunier. Covers: why horology uses cycloidal, not
+involute, gearing (undercut at clock/watch pinions' typically low leaf
+counts); "clock toothing" (generating circle diameter = the pinion's own
+pitch radius, giving a straight-line pinion dedendum); the standard's
+own circular-arc approximation of the addendum tip, tabulated by leaf
+count and profile style (round/medium/high ogival) with a practical 5%
+clearance reduction; pinion dedendum depth and narrowed tooth-width
+conventions. BS 978 Pt 2 / NIHS 26702 itself is paywalled and was not
+accessed — this is a secondary, derived source. Used for ASM-0032,
+ASM-0033 and GEAR-104 (WATCH_SPECIFIC_PROFILE tooth geometry).
+
+### Jacob Cowdrey (Oakland University honors thesis) — Analysis of Gear Tooth Profiles for Use in a Mechanical Clock (SRC-0027, read)
+Tier 4 undergraduate honors thesis, faculty-mentored. Corroborates
+SRC-0026 independently: cycloidal gearing's history and continued
+standard use in mechanical clocks/watches, the ~18-tooth involute
+undercut threshold vs. cycloidal gears working with very few teeth, the
+"clock toothing" straight-dedendum special case in the author's own
+words, and that cycloidal tooth shape (unlike involute) is specific to
+the gear pair it meshes with. Used only for corroboration, never as a
+sole source for a numeric value.
+
 ## Bearing clearances
 
 ### NAWCC Forums — Watchmaking tolerances thread (SRC-0011, read)

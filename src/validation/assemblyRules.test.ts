@@ -208,6 +208,16 @@ describe("assembly rules", () => {
     expect(validateMovement(m).some((i) => i.rule === "GEAR-103" && i.id.includes("undercut"))).toBe(false);
   });
 
+  it("GEAR-104: a watch-specific profile gear below 6 teeth is below the cited table's range", () => {
+    const m = updateGear(demo, gear(demo, "Pinion B").id, { profileModel: "WATCH_SPECIFIC_PROFILE", toothCount: 5 });
+    expect(variants(m)).toContain("GEAR-104:below-table-range");
+  });
+
+  it("GEAR-104: 6 teeth is exactly at the cited table's lower bound (no issue)", () => {
+    const m = updateGear(demo, gear(demo, "Pinion B").id, { profileModel: "WATCH_SPECIFIC_PROFILE", toothCount: 6 });
+    expect(variants(m)).not.toContain("GEAR-104:below-table-range");
+  });
+
   it("ASSY-002: two gears on one arbor cannot share axial space", () => {
     const m = updateGear(demo, gear(demo, "Wheel B").id, { zCentre: mm(1.4) });
     expect(variants(m)).toContain("ASSY-002:same-arbor");
