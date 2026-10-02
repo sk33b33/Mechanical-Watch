@@ -6,7 +6,7 @@ import { addGear, addGearMesh, addShaft, createMovement } from "@/domain/movemen
 import type { Movement } from "@/domain/movement";
 import { createGearMesh } from "@/domain/gearMesh";
 import { createShaft, fixedAt } from "@/domain/shaft";
-import { cycloidalToothFactors, practicalAddendumFactor } from "@/math/cycloidTooth";
+import { cycloidalToothFactors, practicalAddendumFactor, toothWidthFactor } from "@/math/cycloidTooth";
 import {
   cycloidRootRadius,
   cycloidTipRadius,
@@ -74,29 +74,53 @@ describe("generateWatchSpecificGearOutline", () => {
     }
   });
 
-  it("the dedendum flank is a straight radial line (clock toothing, ASM-0032): root and pitch-edge points share the same angle", () => {
+  it("unmeshed, the dedendum flank is the exact straight radial line (clock toothing, ASM-0032): every dedendum sample point near a given tooth shares the pitch-edge angle", () => {
     const gear = cycloidGear(8);
     const outline = generateWatchSpecificGearOutline(gear);
     const root = cycloidRootRadius(gear);
     const pitchRadius = toMetres(gear.module) * gear.toothCount / 2;
-    // The first point of each tooth is the leading root point; the second is the leading pitch-edge point.
-    const perTooth = outline.length / gear.toothCount;
-    for (let i = 0; i < gear.toothCount; i += 1) {
-      const rootPoint = outline[i * perTooth];
-      const pitchPoint = outline[i * perTooth + 1];
-      if (rootPoint === undefined || pitchPoint === undefined) continue;
-      expect(Math.hypot(rootPoint.x, rootPoint.y)).toBeCloseTo(root, 9);
-      expect(Math.hypot(pitchPoint.x, pitchPoint.y)).toBeCloseTo(pitchRadius, 9);
-      expect(Math.atan2(rootPoint.y, rootPoint.x)).toBeCloseTo(Math.atan2(pitchPoint.y, pitchPoint.x), 9);
+    const toothAngle = (2 * Math.PI) / gear.toothCount;
+    const toothHalfAngle = (toothWidthFactor(gear.toothCount) * toMetres(gear.module)) / 2 / pitchRadius;
+    // Every point between the root and pitch radii (the dedendum band) should sit at one of the two pitch-edge angles (mod the tooth spacing) — i.e. on a straight radial line, not swept through a range of angles.
+    const dedendumBand = outline.filter((p) => {
+      const r = Math.hypot(p.x, p.y);
+      return r >= root - 1e-9 && r <= pitchRadius + 1e-9;
+    });
+    expect(dedendumBand.length).toBeGreaterThan(gear.toothCount * 2);
+    for (const p of dedendumBand) {
+      const angle = Math.atan2(p.y, p.x);
+      const nearestToothCentre = Math.round(angle / toothAngle) * toothAngle;
+      const offsetFromCentre = angle - nearestToothCentre;
+      const matchesLeading = Math.abs(offsetFromCentre + toothHalfAngle) < 1e-6;
+      const matchesTrailing = Math.abs(offsetFromCentre - toothHalfAngle) < 1e-6;
+      expect(matchesLeading || matchesTrailing).toBe(true);
     }
+  });
+
+  it("mesh-aware, the dedendum flank is a genuinely curved hypocycloid, not a straight line", () => {
+    const { movement, wheel } = meshedMovement(40, 8);
+    const outline = generateWatchSpecificGearOutline(wheel, movement);
+    const root = cycloidRootRadius(wheel, movement);
+    const pitchRadius = toMetres(wheel.module) * wheel.toothCount / 2;
+    // Points strictly between the root and pitch radii, for a single tooth's leading flank, should NOT all share one angle.
+    const toothAngle = (2 * Math.PI) / wheel.toothCount;
+    const band = outline.filter((p) => {
+      const r = Math.hypot(p.x, p.y);
+      const angle = Math.atan2(p.y, p.x);
+      return r > root + 1e-9 && r < pitchRadius - 1e-9 && angle > -toothAngle / 2 && angle < 0;
+    });
+    expect(band.length).toBeGreaterThan(2);
+    const angles = new Set(band.map((p) => Math.atan2(p.y, p.x).toFixed(9)));
+    expect(angles.size).toBeGreaterThan(1); // genuinely swept through a range of angles, not a single radial line
   });
 
   it("the tooth is narrower than the space (SRC-0026): tooth width at the pitch circle is less than half the circular pitch", () => {
     const gear = cycloidGear(8);
     const outline = generateWatchSpecificGearOutline(gear);
-    const perTooth = outline.length / gear.toothCount;
-    const leadingPitchEdge = outline[1];
-    const trailingPitchEdge = outline[perTooth - 2];
+    const pitchRadius = toMetres(gear.module) * gear.toothCount / 2;
+    const atPitch = outline.filter((p) => Math.abs(Math.hypot(p.x, p.y) - pitchRadius) < 1e-9);
+    const leadingPitchEdge = atPitch.find((p) => Math.atan2(p.y, p.x) < 0);
+    const trailingPitchEdge = atPitch.find((p) => Math.atan2(p.y, p.x) > 0);
     if (leadingPitchEdge === undefined || trailingPitchEdge === undefined) throw new Error("unreachable");
     const toothHalfAngle = Math.abs(Math.atan2(leadingPitchEdge.y, leadingPitchEdge.x));
     expect(toothHalfAngle).toBeCloseTo(Math.abs(Math.atan2(trailingPitchEdge.y, trailingPitchEdge.x)), 9);
@@ -224,5 +248,47 @@ describe("mesh-aware tooth proportions", () => {
     expect(() => generateWatchSpecificGearOutline(wheel, movement)).toThrow();
     // Without the mesh (its own tooth count, 40), it would not throw.
     expect(() => generateWatchSpecificGearOutline(wheel)).not.toThrow();
+  });
+});
+
+function segmentsIntersect(p1: { x: number; y: number }, p2: { x: number; y: number }, p3: { x: number; y: number }, p4: { x: number; y: number }): boolean {
+  const d1x = p2.x - p1.x;
+  const d1y = p2.y - p1.y;
+  const d2x = p4.x - p3.x;
+  const d2y = p4.y - p3.y;
+  const denom = d1x * d2y - d1y * d2x;
+  if (Math.abs(denom) < 1e-24) return false;
+  const t = ((p3.x - p1.x) * d2y - (p3.y - p1.y) * d2x) / denom;
+  const u = ((p3.x - p1.x) * d1y - (p3.y - p1.y) * d1x) / denom;
+  return t > 1e-9 && t < 1 - 1e-9 && u > 1e-9 && u < 1 - 1e-9;
+}
+
+function countSelfIntersections(outline: { x: number; y: number }[]): number {
+  let crossings = 0;
+  const n = outline.length;
+  for (let i = 0; i < n; i += 1) {
+    const a1 = outline[i];
+    const a2 = outline[(i + 1) % n];
+    if (a1 === undefined || a2 === undefined) continue;
+    for (let j = i + 1; j < n; j += 1) {
+      if (Math.abs(i - j) <= 1 || (i === 0 && j === n - 1)) continue;
+      const b1 = outline[j];
+      const b2 = outline[(j + 1) % n];
+      if (b1 === undefined || b2 === undefined) continue;
+      if (segmentsIntersect(a1, a2, b1, b2)) crossings += 1;
+    }
+  }
+  return crossings;
+}
+
+describe("mesh-aware dedendum: self-intersection scan", () => {
+  it("the curved hypocycloid dedendum never self-intersects the outline, across a range of wheel/pinion ratios including an extreme one", () => {
+    for (const [wheelTeeth, pinionTeeth] of [[15, 10], [40, 8], [80, 6], [40, 20], [12, 6], [40, 40], [100, 6]] as const) {
+      const { movement, wheel, pinion } = meshedMovement(wheelTeeth, pinionTeeth);
+      const wheelOutline = generateWatchSpecificGearOutline(wheel, movement);
+      const pinionOutline = generateWatchSpecificGearOutline(pinion, movement);
+      expect(countSelfIntersections(wheelOutline)).toBe(0);
+      expect(countSelfIntersections(pinionOutline)).toBe(0);
+    }
   });
 });

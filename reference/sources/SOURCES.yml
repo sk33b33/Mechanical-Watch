@@ -859,3 +859,32 @@
     reached by SRC-0026, not as a sole source for any numeric value.
     Its own empirical conclusion (3D-printed gear sets, testing
     sliding/friction) is out of scope for this project and not used.
+
+# Hypocycloid parametric curve, for the true (mesh-aware) cycloidal
+# dedendum shape tightening ASM-0032's straight-line "clock toothing"
+# special case into the general construction it is a degenerate case
+# of (reference/REFERENCE_ENGINEERING.md §6).
+
+- id: SRC-0028
+  title: "Hypocycloid"
+  author: Wikipedia contributors
+  year: null
+  type: encyclopedia
+  url: https://en.wikipedia.org/wiki/Hypocycloid
+  topics: [gear-geometry, cycloidal-profile]
+  claims_supported:
+    - "parametric equations for the path traced by a point on a circle of radius r rolling without slipping inside a fixed circle of radius R (R > r), starting at (R, 0): x(θ) = (R−r)cos θ + r cos((R−r)/r · θ), y(θ) = (R−r)sin θ − r sin((R−r)/r · θ), where θ is the rolling circle's centre's angle of revolution"
+    - "the special case r = R/2 (k = R/r = 2) degenerates the curve to a straight line (the diameter of the fixed circle) — the Tusi couple, after the 13th-century Persian mathematician Nasir al-Din al-Tusi"
+  retrieved: true
+  accessed: "2026-10-02"
+  notes: >
+    Tier 6 (encyclopedia), used here only for the elementary parametric
+    roulette-curve formula itself (standard, well-established
+    mathematics, not a horological or engineering claim) — not for any
+    horology-specific claim, which remains SRC-0026/SRC-0027's. The
+    degenerate r=R/2 case was independently algebraically re-derived
+    and confirmed numerically (expanding the formula at r=R/2 gives
+    y(θ)≡0 exactly) before relying on it, and matches ASM-0032's
+    already-shipped straight-line construction exactly in that case —
+    see `hypocycloidPoint` in src/math/cycloidTooth.ts and
+    src/math/cycloidTooth.test.ts.

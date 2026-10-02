@@ -112,6 +112,17 @@ words, and that cycloidal tooth shape (unlike involute) is specific to
 the gear pair it meshes with. Used only for corroboration, never as a
 sole source for a numeric value.
 
+### Wikipedia — Hypocycloid (SRC-0028, read)
+Tier 6 (encyclopedia), used only for the standard parametric
+roulette-curve formula (a circle rolling inside a fixed circle), not
+for any horological claim. Supplies the x(θ), y(θ) equations and the
+r=R/2 degenerate straight-line special case (the Tusi couple) that
+ASM-0032's "clock toothing" dedendum already relies on; used to extend
+that straight-line special case into the general mesh-aware curved
+dedendum (`hypocycloidPoint` in src/math/cycloidTooth.ts). The
+degenerate case was independently re-derived and checked numerically
+before being trusted.
+
 ## Bearing clearances
 
 ### NAWCC Forums — Watchmaking tolerances thread (SRC-0011, read)

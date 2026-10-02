@@ -7,6 +7,9 @@ import {
   addendumArcThroughTwoPoints,
   cycloidalToothFactors,
   dedendumDepthFactor,
+  generatingCircleRadius,
+  hypocycloidPoint,
+  hypocycloidThetaAtRadius,
   practicalAddendumFactor,
   toothWidthFactor,
 } from "@/math/cycloidTooth";
@@ -14,8 +17,15 @@ import type { Point2D } from "./gearOutline";
 
 export { CYCLOID_TOOTH_PROPORTIONS };
 
-/** Samples along each addendum arc flank. Rendering resolution, not an engineering value. */
+/** Samples along each addendum arc flank, and each dedendum hypocycloid flank. Rendering resolution, not an engineering value. */
 const ADDENDUM_ARC_SAMPLES = 8;
+const DEDENDUM_ARC_SAMPLES = 8;
+
+function rotate(p: Point2D, angle: number): Point2D {
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return { x: p.x * cos - p.y * sin, y: p.x * sin + p.y * cos };
+}
 
 /** The gears this one meshes with, in either mesh role — a mesh isn't directional for tooth-form purposes. */
 function meshPartners(movement: Movement, gear: Gear): Gear[] {
@@ -94,30 +104,56 @@ function addendumFlankPoints(from: Point2D, to: Point2D, radius: number, samples
 }
 
 /**
+ * Points along the dedendum hypocycloid flank (ASM-0032), from the
+ * pitch circle (idx 0, exactly `polar(pitchRadius, pitchEdgeAngle)`,
+ * the hypocycloid's own theta=0 cusp) to the root circle (idx last).
+ * `sign` selects which of the two mirror-symmetric directions the
+ * curve bends in — the tooth's two flanks curve the same way but
+ * mirrored, proven exactly by `hypocycloidPoint`'s own
+ * x(−θ)=x(θ), y(−θ)=−y(θ) symmetry (src/math/cycloidTooth.test.ts).
+ * Degenerates to the exact straight radial line "clock toothing"
+ * already relied on when `generatingRadius` is half `pitchRadius`
+ * (no smaller WATCH_SPECIFIC_PROFILE mesh partner — ASM-0032).
+ */
+function dedendumFlankPoints(pitchRadius: number, generatingRadius: number, rootRadius: number, pitchEdgeAngle: number, sign: 1 | -1, samples: number): Point2D[] {
+  const thetaRoot = hypocycloidThetaAtRadius(pitchRadius, generatingRadius, rootRadius, sign);
+  if (thetaRoot === null) {
+    throw new Error(
+      `Cycloidal dedendum construction did not reach the root radius within one revolution `
+      + `(pitch radius ${String(pitchRadius)} m, generating radius ${String(generatingRadius)} m, root radius ${String(rootRadius)} m)`,
+    );
+  }
+  const points: Point2D[] = [];
+  for (let s = 0; s <= samples; s += 1) {
+    const theta = (thetaRoot * s) / samples;
+    points.push(rotate(hypocycloidPoint(pitchRadius, generatingRadius, theta), pitchEdgeAngle));
+  }
+  return points;
+}
+
+/**
  * Full cycloidal tooth profile for a WATCH_SPECIFIC_PROFILE gear
- * (SRC-0026, "clock toothing", ASM-0032, ASM-0033), in metres, centred
- * on the shaft axis. Does not use `gear.pressureAngle` — a cycloidal
- * tooth has no pressure angle (REF-ENG §6).
+ * (SRC-0026, ASM-0032, ASM-0033), in metres, centred on the shaft
+ * axis. Does not use `gear.pressureAngle` — a cycloidal tooth has no
+ * pressure angle (REF-ENG §6).
  *
  * When `movement` is supplied, the standardized proportions (addendum
- * style/radius, dedendum depth, tooth width) are keyed by
+ * style/radius, dedendum depth and shape, tooth width) are keyed by
  * `effectiveLeafCount` — this gear's actual meshing pinion partner's
  * leaf count where there is one — rather than always this gear's own
  * tooth count; see `effectiveLeafCount`'s own doc comment.
  *
- * Each tooth: a straight radial dedendum line (the degenerate
- * hypocycloid "clock toothing" gives for free, ASM-0032 — still keyed
- * to this gear's OWN pitch diameter regardless of `movement`: a true
- * mesh-pair-aware dedendum SHAPE, not just depth, would need real
- * hypocycloid curve tracing, deliberately not attempted here, the same
- * call made for the trochoidal involute fillet earlier — see
- * src/math/trochoidFillet.ts and reference/sources/SOURCES.yml
- * SRC-0025) from the root circle to the pitch circle, then a
+ * Each tooth: a dedendum hypocycloid flank (`dedendumFlankPoints`,
+ * ASM-0032) from the pitch circle down to the root circle, then a
  * circular-arc addendum (ASM-0033) from there to the tip apex on the
  * tooth's own centreline, and the mirrored arc back down the other
- * flank. Unlike `generateGearOutline` and `generateInvoluteGearOutline`,
- * tooth and space are NOT equal (SRC-0026): the tooth is narrower than
- * half the circular pitch.
+ * flank. Unmeshed (or meshing no smaller WATCH_SPECIFIC_PROFILE
+ * partner), the dedendum is the exact straight radial line "clock
+ * toothing" always meant — now reached as that construction's own
+ * degenerate case, not a separately hardcoded shape. Unlike
+ * `generateGearOutline` and `generateInvoluteGearOutline`, tooth and
+ * space are NOT equal (SRC-0026): the tooth is narrower than half the
+ * circular pitch.
  */
 export function generateWatchSpecificGearOutline(gear: Gear, movement?: Movement): Point2D[] {
   const leafCount = effectiveLeafCount(gear, movement);
@@ -133,6 +169,7 @@ export function generateWatchSpecificGearOutline(gear: Gear, movement?: Movement
   const tipRadius = cycloidTipRadius(gear, movement);
   const rootRadius = cycloidRootRadius(gear, movement);
   const addendumArcRadius = cycloidalToothFactors(leafCount).addendumArcRadiusFactor * module;
+  const generatingRadius = generatingCircleRadius(leafCount, module);
 
   const toothAngle = (2 * Math.PI) / gear.toothCount;
   const toothWidthAtPitch = toothWidthFactor(leafCount) * module;
@@ -141,18 +178,20 @@ export function generateWatchSpecificGearOutline(gear: Gear, movement?: Movement
   const points: Point2D[] = [];
   for (let i = 0; i < gear.toothCount; i += 1) {
     const centreAngle = i * toothAngle;
-
-    const leadingPitchEdge = polar(pitchRadius, centreAngle - toothHalfAngleAtPitch);
-    const trailingPitchEdge = polar(pitchRadius, centreAngle + toothHalfAngleAtPitch);
-    const leadingRoot = polar(rootRadius, centreAngle - toothHalfAngleAtPitch);
-    const trailingRoot = polar(rootRadius, centreAngle + toothHalfAngleAtPitch);
+    const leadingPitchEdgeAngle = centreAngle - toothHalfAngleAtPitch;
+    const trailingPitchEdgeAngle = centreAngle + toothHalfAngleAtPitch;
+    const leadingPitchEdge = polar(pitchRadius, leadingPitchEdgeAngle);
+    const trailingPitchEdge = polar(pitchRadius, trailingPitchEdgeAngle);
     const apex = polar(tipRadius, centreAngle);
 
-    points.push(leadingRoot, leadingPitchEdge);
+    const leadingDedendum = dedendumFlankPoints(pitchRadius, generatingRadius, rootRadius, leadingPitchEdgeAngle, -1, DEDENDUM_ARC_SAMPLES);
+    const trailingDedendum = dedendumFlankPoints(pitchRadius, generatingRadius, rootRadius, trailingPitchEdgeAngle, 1, DEDENDUM_ARC_SAMPLES);
+
+    points.push(...leadingDedendum.slice().reverse()); // root -> pitch
     points.push(...addendumFlankPoints(leadingPitchEdge, apex, addendumArcRadius, ADDENDUM_ARC_SAMPLES).slice(1, -1));
     points.push(apex);
     points.push(...addendumFlankPoints(apex, trailingPitchEdge, addendumArcRadius, ADDENDUM_ARC_SAMPLES).slice(1, -1));
-    points.push(trailingPitchEdge, trailingRoot);
+    points.push(...trailingDedendum); // pitch -> root
   }
   return points;
 }

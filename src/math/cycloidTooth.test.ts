@@ -3,6 +3,9 @@ import {
   addendumArcThroughTwoPoints,
   cycloidalToothFactors,
   dedendumDepthFactor,
+  generatingCircleRadius,
+  hypocycloidPoint,
+  hypocycloidThetaAtRadius,
   practicalAddendumFactor,
   recommendedProfileStyle,
   toothWidthFactor,
@@ -84,5 +87,88 @@ describe("addendumArcThroughTwoPoints", () => {
     if (arc === null) throw new Error("unreachable");
     const other = { x: 2 * 10 - arc.centre.x, y: arc.centre.y }; // reflection = the other candidate, since both centres lie on the x-axis through the chord's midpoint
     expect(Math.hypot(arc.centre.x, arc.centre.y)).toBeLessThanOrEqual(Math.hypot(other.x, other.y));
+  });
+});
+
+describe("generatingCircleRadius (SRC-0026)", () => {
+  it("is a quarter of module times leaf count (half the pinion's own pitch radius)", () => {
+    expect(generatingCircleRadius(8, 0.0002)).toBeCloseTo((0.0002 * 8) / 4, 15);
+  });
+});
+
+describe("hypocycloidPoint (SRC-0028)", () => {
+  it("starts at (R, 0) when theta=0, for any rolling-circle radius", () => {
+    for (const r of [0.1, 0.3, 0.49, 0.5]) {
+      const p = hypocycloidPoint(1, r, 0);
+      expect(p.x).toBeCloseTo(1, 12);
+      expect(p.y).toBeCloseTo(0, 12);
+    }
+  });
+
+  it("always sits at exactly distance r from the rolling circle's own current centre (the rolling-without-slipping definition)", () => {
+    const R = 1;
+    const r = 0.23;
+    for (const theta of [0.1, 0.7, 1.5, 2.3, 4.0, 5.5]) {
+      const p = hypocycloidPoint(R, r, theta);
+      const rollingCentre = { x: (R - r) * Math.cos(theta), y: (R - r) * Math.sin(theta) };
+      expect(Math.hypot(p.x - rollingCentre.x, p.y - rollingCentre.y)).toBeCloseTo(r, 10);
+    }
+  });
+
+  it("degenerates to the straight line y=0, x=R·cos(theta) when r=R/2 (the Tusi couple)", () => {
+    const R = 1;
+    for (const theta of [0.1, 0.5, 1.0, 2.0, 3.0, -0.8]) {
+      const p = hypocycloidPoint(R, R / 2, theta);
+      expect(p.y).toBeCloseTo(0, 10);
+      expect(p.x).toBeCloseTo(R * Math.cos(theta), 10);
+    }
+  });
+
+  it("stays within the fixed circle of radius R (a hypocycloid never leaves the circle it rolls inside)", () => {
+    const R = 1;
+    const r = 0.3;
+    for (let i = 0; i <= 200; i += 1) {
+      const theta = (i / 200) * 2 * Math.PI;
+      const p = hypocycloidPoint(R, r, theta);
+      expect(Math.hypot(p.x, p.y)).toBeLessThanOrEqual(R + 1e-9);
+    }
+  });
+});
+
+describe("hypocycloidThetaAtRadius (SRC-0028)", () => {
+  it("finds the crossing in the degenerate (straight-line) case: R·cos(theta) = targetRadius", () => {
+    const R = 1;
+    const targetRadius = 0.6;
+    const theta = hypocycloidThetaAtRadius(R, R / 2, targetRadius, 1);
+    expect(theta).not.toBeNull();
+    if (theta === null) throw new Error("unreachable");
+    expect(R * Math.cos(theta)).toBeCloseTo(targetRadius, 6);
+  });
+
+  it("the negative-sign search finds the mirror-image (negated) theta of the positive-sign search", () => {
+    const R = 1;
+    const r = 0.3;
+    const targetRadius = 0.9;
+    const thetaPos = hypocycloidThetaAtRadius(R, r, targetRadius, 1);
+    const thetaNeg = hypocycloidThetaAtRadius(R, r, targetRadius, -1);
+    expect(thetaPos).not.toBeNull();
+    expect(thetaNeg).not.toBeNull();
+    if (thetaPos === null || thetaNeg === null) throw new Error("unreachable");
+    expect(thetaNeg).toBeCloseTo(-thetaPos, 6);
+  });
+
+  it("returns null for a target radius the curve can never reach (greater than R)", () => {
+    expect(hypocycloidThetaAtRadius(1, 0.3, 1.1, 1)).toBeNull();
+  });
+
+  it("the found theta's point is genuinely at the target radius, not just near it", () => {
+    const R = 0.0024;
+    const r = 0.00024; // a realistic wheel/pinion generating-circle scale
+    const targetRadius = 0.00227562;
+    const theta = hypocycloidThetaAtRadius(R, r, targetRadius, -1);
+    expect(theta).not.toBeNull();
+    if (theta === null) throw new Error("unreachable");
+    const p = hypocycloidPoint(R, r, theta);
+    expect(Math.hypot(p.x, p.y)).toBeCloseTo(targetRadius, 12);
   });
 });

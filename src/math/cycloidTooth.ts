@@ -10,18 +10,30 @@ export interface Point2D {
  * Cycloidal horological tooth form, SRC-0026 (practitioner derivation of
  * British Standard 978 Part 2 / Swiss NIHS 26702, neither of which was
  * itself accessed — see reference/sources/SOURCES.yml), corroborated by
- * SRC-0027. Two conventions, both explicitly scoped to a single gear's
- * own tooth count rather than its actual meshing partner (ASM-0032,
- * ASM-0033 — the real standard sizes both from the mesh pair):
+ * SRC-0027:
  *
- * - "Clock toothing": the dedendum's generating circle diameter is
- *   fixed to half the gear's own pitch diameter, which degenerates the
- *   dedendum hypocycloid to a straight radial line — see
- *   `dedendumDepthFactor` and `generateWatchSpecificGearOutline` in
- *   src/geometry/watchSpecificGearOutline.ts.
- * - The standard's own practical tooth form approximates the addendum
- *   as a circular arc (not the literal epicycloid), tabulated by
- *   profile style and leaf-count bracket — `cycloidalToothFactors`.
+ * - The dedendum is the hypocycloid traced by a "generating circle"
+ *   rolling inside the gear's own pitch circle (`hypocycloidPoint`,
+ *   SRC-0028). SRC-0026's generating circle diameter is the MESHING
+ *   PINION's own pitch radius (`generatingCircleRadius`) — the same
+ *   circle, rolled outside the wheel's pitch circle, also generates
+ *   the wheel's addendum (conjugate action), which is why
+ *   `cycloidalToothFactors` below is keyed by the same (mesh-aware)
+ *   leaf count. When a gear has no smaller WATCH_SPECIFIC_PROFILE mesh
+ *   partner, the generating circle's diameter equals half its OWN
+ *   pitch diameter exactly, and the hypocycloid degenerates to a
+ *   straight radial line (the Tusi couple, SRC-0028) — "clock
+ *   toothing", ASM-0032's originally-shipped special case, now exactly
+ *   the r=R/2 case of the one general construction, not a separate
+ *   hardcoded straight line.
+ * - The addendum is NOT the literal epicycloid: the standard's own
+ *   practical tooth form approximates it as a circular arc, tabulated
+ *   by profile style and leaf-count bracket — `cycloidalToothFactors`
+ *   (ASM-0033).
+ *
+ * Both are keyed by `effectiveLeafCount` (src/geometry/
+ * watchSpecificGearOutline.ts) rather than always the gear's own tooth
+ * count — the real standard sizes both from the mesh pair.
  */
 
 export type CycloidalProfileStyle = "ROUND" | "MEDIUM_OGIVAL" | "HIGH_OGIVAL";
@@ -121,4 +133,72 @@ export function addendumArcThroughTwoPoints(p1: Point2D, p2: Point2D, radius: nu
   const c2 = { x: mid.x + h * uy, y: mid.y - h * ux };
   const centre = Math.hypot(c1.x, c1.y) <= Math.hypot(c2.x, c2.y) ? c1 : c2;
   return { centre, radius };
+}
+
+/** SRC-0026's generating circle radius: half the diameter of the (mesh-aware) pinion's own pitch circle. */
+export function generatingCircleRadius(leafCount: number, module: number): number {
+  return (module * leafCount) / 4;
+}
+
+/**
+ * A point on the hypocycloid traced by a circle of radius `r` rolling
+ * without slipping inside a fixed circle of radius `R` (R ≥ r),
+ * centred on the origin, for the rolling circle's own point that
+ * starts, at theta=0, at (R, 0) (SRC-0028). `theta` is the rolling
+ * circle centre's own angle of revolution about the origin — not the
+ * rolling circle's spin.
+ *
+ * The degenerate case r = R/2 collapses this to the straight line
+ * y=0, x=R·cos(theta) (the Tusi couple, SRC-0028) — algebraically,
+ * (R−r)sinθ − r·sin((R−r)/r·θ) with r=R/2 reduces to (R/2)sinθ −
+ * (R/2)sinθ ≡ 0. This is `generateWatchSpecificGearOutline`'s
+ * "clock toothing" straight dedendum (ASM-0032), reached exactly when
+ * `r` is `generatingCircleRadius` of this gear's own (mesh-aware)
+ * effective leaf count, i.e. when the gear has no smaller
+ * WATCH_SPECIFIC_PROFILE mesh partner.
+ */
+export function hypocycloidPoint(R: number, r: number, theta: number): Point2D {
+  const k = (R - r) / r;
+  return {
+    x: (R - r) * Math.cos(theta) + r * Math.cos(k * theta),
+    y: (R - r) * Math.sin(theta) - r * Math.sin(k * theta),
+  };
+}
+
+/**
+ * The smallest |theta| (signed the same as `sign`) at which the
+ * hypocycloid (`hypocycloidPoint`) first reaches `targetRadius` from
+ * the origin, starting from the theta=0 cusp at radius `R`. `sign`
+ * selects which of the two mirror-symmetric directions to search — a
+ * tooth's two flanks curve the same way but mirrored (see
+ * `generateWatchSpecificGearOutline`). Radius is checked at `samples`
+ * evenly-spaced steps across up to one full revolution (2π) and the
+ * crossing is refined by bisection; returns `null` if the radius never
+ * reaches `targetRadius` within that revolution — not expected for any
+ * gear parameters this project validates (checked for ratios up to
+ * 100:6 teeth), but left as an explicit, checked failure rather than a
+ * silently wrong result. Also `null` for a `targetRadius` at or beyond
+ * `R`: the curve starts there and only descends, so there is nothing
+ * to search for.
+ */
+export function hypocycloidThetaAtRadius(R: number, r: number, targetRadius: number, sign: 1 | -1, samples = 2000): number | null {
+  if (targetRadius >= R) return null;
+  const step = ((2 * Math.PI) / samples) * sign;
+  let previousTheta = 0;
+  for (let i = 1; i <= samples; i += 1) {
+    const theta = i * step;
+    const p = hypocycloidPoint(R, r, theta);
+    if (Math.hypot(p.x, p.y) <= targetRadius) {
+      let lo = previousTheta;
+      let hi = theta;
+      for (let iter = 0; iter < 50; iter += 1) {
+        const mid = (lo + hi) / 2;
+        const midPoint = hypocycloidPoint(R, r, mid);
+        if (Math.hypot(midPoint.x, midPoint.y) > targetRadius) lo = mid; else hi = mid;
+      }
+      return hi;
+    }
+    previousTheta = theta;
+  }
+  return null;
 }
