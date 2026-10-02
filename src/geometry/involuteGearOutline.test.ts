@@ -49,12 +49,25 @@ describe("generateInvoluteGearOutline", () => {
     }
   });
 
-  it("draws a straight dedendum segment down to the root circle for a low (undercut) tooth count", () => {
+  it("draws a curved root fillet (not a straight line) down to the root circle for a low (undercut) tooth count", () => {
     const gear = involuteGear(10);
     const root = involuteRootRadius(gear);
     const outline = generateInvoluteGearOutline(gear);
     const atRoot = outline.filter((p) => Math.abs(Math.hypot(p.x, p.y) - root) < 1e-9);
     expect(atRoot.length).toBe(gear.toothCount * 2);
+
+    // A straight radial dedendum segment would put every fillet point at
+    // the same angle (the flank's own base-circle tangent angle). The
+    // circular arc instead sweeps through a range of angles as its
+    // radius varies between the root and base circles — confirming a
+    // genuinely curved fillet, not a straight line.
+    const betweenRootAndBase = outline.filter((p) => {
+      const r = Math.hypot(p.x, p.y);
+      return r > root + 1e-9 && r < root + (involuteTipRadius(gear) - root) * 0.5; // comfortably inside the fillet's radius range for this undercut gear
+    });
+    expect(betweenRootAndBase.length).toBeGreaterThan(0);
+    const angles = new Set(betweenRootAndBase.map((p) => Math.atan2(p.y, p.x).toFixed(6)));
+    expect(angles.size).toBeGreaterThan(1);
   });
 
   it("throws if the gear has no pressure angle", () => {

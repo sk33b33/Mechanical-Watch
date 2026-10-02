@@ -179,7 +179,13 @@ export const ASSUMPTIONS = {
   },
   "ASM-0030": {
     summary:
-      "INVOLUTE_PROFILE tooth geometry uses the standard full-depth metric system (SRC-0024: 20° pressure angle, addendum 1.00m, dedendum 1.25m, zero profile shift, zero backlash); a generic machine-gear convention, not a horological one (REF-ENG §6, CLAUDE_REFERENCE_INSTRUCTIONS.md rule 10). The dedendum flank below the base circle is drawn as a straight radial segment into the root circle, not the true trochoidal fillet a rack cutter would generate — an explicit simplification, most visible on low tooth counts (below GEAR-103's undercut threshold), which are common among watch pinions",
+      "INVOLUTE_PROFILE tooth geometry uses the standard full-depth metric system (SRC-0024: 20° pressure angle, addendum 1.00m, dedendum 1.25m, zero profile shift, zero backlash); a generic machine-gear convention, not a horological one (REF-ENG §6, CLAUDE_REFERENCE_INSTRUCTIONS.md rule 10)",
+    scope: "Geometry / viewport",
+    status: "Active",
+  },
+  "ASM-0031": {
+    summary:
+      "Where the root circle sits inside the base circle (GEAR-103's undercut case, common among watch pinions), the dedendum flank is drawn as a circular arc tangent to the root circle and to the involute flank's own base-circle tangent point — not the true trochoidal fillet a rack cutter would generate (SRC-0025 describes that construction; an attempt to implement it did not pass its own verification and was not shipped, see reference/sources/SOURCES.yml). The arc's radius is fixed by the two tangencies (half the gap between the root and base circles) and is not the cutter's own standard corner radius",
     scope: "Geometry / viewport",
     status: "Active",
   },

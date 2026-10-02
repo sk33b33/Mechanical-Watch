@@ -50,8 +50,8 @@ export const gearParameterRules: Rule = ({ movement }) => {
           issue("GEAR-103", "undercut", "warning", "L1_GEOMETRIC", [gear.id],
             `${gear.name}: ${String(gear.toothCount)} teeth is below the standard no-undercut threshold `
             + `(${String(minimumToothCountForNoUndercut(gear.pressureAngle))} at ${formatPressureAngle(gear)}); `
-            + `the drawn dedendum is a straight-line approximation, not the true undercut form.`,
-            ["REF-ENG §6", "ASM-0030"]),
+            + `the drawn dedendum is a circular-arc approximation, not the true trochoidal undercut form.`,
+            ["REF-ENG §6", "ASM-0031"]),
         );
       }
     }
