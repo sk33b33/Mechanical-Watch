@@ -61,6 +61,21 @@ Left here unread rather than removed, per the rule to never hide an
 assumption or its evidence trail: sdp-si.com remains blocked by this
 environment's network policy and ISO 23509 is paid. See SOURCES.yml.
 
+### Toman & Abdullah — rack-cutter parametric tracing of involute gears, J. Engineering 2025 (SRC-0025, read)
+Open access, peer-reviewed. States the standard construction for a gear's
+root fillet: the trochoid traced by the center of a rack-type cutter's
+rounded tip corner as it rolls on the gear's pitch circle, offset outward
+by the corner radius. Its corner-center formula (eq. 19-20) is reproduced
+independently in `src/math/trochoidFillet.ts` (`cutterCornerCenter`) and
+matches exactly; its dense final combined equations (eq. 41-42) were not
+transcribed (an inconsistency was found in an intermediate step when
+spot-checked). An independent rederivation of the rest of the
+construction (tracing the corner's trochoid and offsetting it by the
+fillet radius) did not pass its own cross-checks — see SOURCES.yml notes
+— so only the verified corner-center piece is implemented; the fillet
+itself is still the straight-line approximation ASM-0030 describes. Not
+yet used for GEAR-103 (only `cutterCornerCenter` exists, unused).
+
 ### SDP/SI — Elements of Metric Gear Technology, spur gears/involute geometry (SRC-0024, read)
 Same document family as SRC-0008, a different section, read via a mirror
 host after sdp-si.com itself kept redirecting. Supplies the metric ISO

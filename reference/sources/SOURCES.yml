@@ -735,3 +735,58 @@
     involute math and the standard full-depth tooth-proportion
     convention, not that any watch gear is built to it. Used for
     ASM-0030 and GEAR-103.
+
+# Trochoidal root fillet (replaces the straight-line dedendum
+# approximation ASM-0030 originally declared), for INVOLUTE_PROFILE
+# gears (reference/REFERENCE_ENGINEERING.md §6).
+
+- id: SRC-0025
+  title: "Computerized Generation of Nonstandard and Asymmetric Involute Spur Gears Based on Rack Cutter Parametric Tracing"
+  author: Ahmed A. Toman and Mohammad Q. Abdullah
+  year: 2025
+  type: peer_reviewed
+  url: https://doi.org/10.31026/j.eng.2025.02.05
+  topics: [gear-geometry, involute-profile, root-fillet]
+  claims_supported:
+    - "the gear root fillet is the trochoid traced by the center of a rack-type cutter's rounded tooth-tip corner (radius r_f) as the cutter rolls without slipping on the gear's pitch circle, offset outward by r_f along its own normal (the classical rack-generation / envelope-of-circles construction; the paper's own citation for the method is Lynwander 1983 and Mitchiner & Mabie 1982)"
+    - "the corner center's lateral position (their eq. 19-20): L = c/2 − b tanα − r_f/cosα, with b = h_d − r_f, c = the gear's circular tooth thickness at the pitch circle, h_d the dedendum, α the pressure angle"
+    - "the relevant part of the trochoid is the arc tangent to the dedendum (root) circle at one end and tangent to the involute at the other, at the diameter where cutting stops removing involute material (quoting Radzevich 2017) — i.e. undercut is simply this diameter rising above the base circle"
+  retrieved: true
+  accessed: "2026-10-02"
+  notes: >
+    Open access (CC BY 4.0), peer-reviewed (Journal of Engineering,
+    University of Baghdad). Its final combined parametric equations
+    (its eq. 41-42, 70-71) are large multi-line expressions only
+    available as PDF page images here, which could not be transcribed
+    with full confidence (a spot check of an intermediate step, eq. 24,
+    did not expand algebraically the way its own eq. 23 implies,
+    suggesting at least one OCR/typesetting slip somewhere in the
+    chain). Rather than risk silently encoding a transcription error as
+    "cited geometry" (CLAUDE_REFERENCE_INSTRUCTIONS.md rule 11: a
+    visual simulation is not proof of accuracy), an independent
+    Cartesian rederivation of the same construction was attempted
+    instead, using the method and the clearly-legible intermediate
+    steps (eq. 16-22) rather than the dense final formulas.
+
+    That attempt reached a partial, verified result and an
+    unresolved one. Verified: the corner-center formula
+    (src/math/trochoidFillet.ts, `cutterCornerCenter`) reproduces the
+    paper's own eq. 19-20 exactly (cross-check recorded above), and
+    the separate rolling-kinematics transform used to trace the
+    corner's path was checked against the one invariant pure rolling
+    without slip must satisfy (a rack point instantaneously at the
+    contact stays at exactly the gear's pitch radius, for any roll
+    angle) — confirmed numerically to floating-point precision.
+    Unresolved: tracing the corner's own trochoid and offsetting it
+    by the fillet radius to get the actual cut boundary (the
+    envelope-of-circles step) produced a curve that, in several
+    cross-checks (direct circle-intersection envelope computation,
+    dense sampling), did not connect to the involute flank at the
+    base circle the way the construction requires — some
+    sign/orientation choice in that step is wrong, and it was not
+    found in the time available. That part is therefore NOT
+    implemented or used anywhere; ASM-0030's straight-line dedendum
+    approximation still stands for now. Generic machine-gear source,
+    not horological. `cutterCornerCenter` alone is used for nothing
+    yet — kept as a tested, correct building block for finishing this
+    later.
