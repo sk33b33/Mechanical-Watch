@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { circularRootFillet, filletArcPoint, type CircularFillet } from "./circularFillet";
+import { circularRootFillet, cornerFillet, filletArcPoint, type CircularFillet } from "./circularFillet";
 
 const rootR = 3.75;
 const baseR = 4.698463103929543; // Rp cos(20°) for m=1, z=10
@@ -11,7 +11,7 @@ function fillet(root: number, base: number, angle: number): CircularFillet {
   return f;
 }
 
-describe("circularRootFillet", () => {
+describe("circularRootFillet (undercut: rootRadius < baseRadius)", () => {
   it("returns null when the involute already reaches the root circle (no undercut)", () => {
     expect(circularRootFillet(5, 4.698, flankAngle)).toBeNull();
     expect(circularRootFillet(baseR, baseR, flankAngle)).toBeNull();
@@ -58,5 +58,47 @@ describe("filletArcPoint", () => {
       const p = filletArcPoint(f, t);
       expect(Math.hypot(p.x - f.centre.x, p.y - f.centre.y)).toBeCloseTo(f.radius, 10);
     }
+  });
+});
+
+describe("cornerFillet", () => {
+  const corner = { x: 1, y: 1 };
+  const radius = 0.1;
+
+  it("for a right-angle corner (dir1 ⊥ dir2), the classical result holds: tangentDistance = radius, centre at radius·√2 along the bisector", () => {
+    const dir1 = { x: 1, y: 0 };
+    const dir2 = { x: 0, y: 1 };
+    const f = cornerFillet(corner, dir1, dir2, radius);
+    expect(f.tangentDistance).toBeCloseTo(radius, 10);
+    expect(Math.hypot(f.centre.x - corner.x, f.centre.y - corner.y)).toBeCloseTo(radius * Math.SQRT2, 10);
+  });
+
+  it("both tangent points lie exactly on their own edge, at `tangentDistance` from the corner", () => {
+    const dir1 = { x: 1, y: 0 };
+    const dir2 = { x: Math.cos(Math.PI / 3), y: Math.sin(Math.PI / 3) }; // 60° between edges
+    const f = cornerFillet(corner, dir1, dir2, radius);
+    expect(f.tangent1.x).toBeCloseTo(corner.x + f.tangentDistance * dir1.x, 10);
+    expect(f.tangent1.y).toBeCloseTo(corner.y + f.tangentDistance * dir1.y, 10);
+    expect(f.tangent2.x).toBeCloseTo(corner.x + f.tangentDistance * dir2.x, 10);
+    expect(f.tangent2.y).toBeCloseTo(corner.y + f.tangentDistance * dir2.y, 10);
+  });
+
+  it("both tangent points are at exactly `radius` from the fillet centre (true tangency, not just proximity)", () => {
+    const dir1 = { x: 1, y: 0 };
+    const dir2 = { x: Math.cos(Math.PI / 3), y: Math.sin(Math.PI / 3) };
+    const f = cornerFillet(corner, dir1, dir2, radius);
+    expect(Math.hypot(f.centre.x - f.tangent1.x, f.centre.y - f.tangent1.y)).toBeCloseTo(radius, 10);
+    expect(Math.hypot(f.centre.x - f.tangent2.x, f.centre.y - f.tangent2.y)).toBeCloseTo(radius, 10);
+  });
+
+  it("the centre lies on the angle bisector, equidistant in direction from both edges", () => {
+    const dir1 = { x: 1, y: 0 };
+    const dir2 = { x: Math.cos(Math.PI / 4), y: Math.sin(Math.PI / 4) };
+    const f = cornerFillet(corner, dir1, dir2, radius);
+    const toCentre = { x: f.centre.x - corner.x, y: f.centre.y - corner.y };
+    const toCentreAngle = Math.atan2(toCentre.y, toCentre.x);
+    const dir1Angle = Math.atan2(dir1.y, dir1.x);
+    const dir2Angle = Math.atan2(dir2.y, dir2.x);
+    expect(toCentreAngle).toBeCloseTo((dir1Angle + dir2Angle) / 2, 10);
   });
 });

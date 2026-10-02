@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { millimetres } from "@/units/length";
+import { millimetres, toMetres } from "@/units/length";
 import { degrees } from "@/units/angle";
 import { createGear } from "@/domain/gear";
 import type { Gear } from "@/domain/gear";
-import { generateInvoluteGearOutline, involuteRootRadius, involuteTipRadius } from "./involuteGearOutline";
+import { INVOLUTE_PROPORTIONS, generateInvoluteGearOutline, involuteRootRadius, involuteTipRadius } from "./involuteGearOutline";
 
 function involuteGear(toothCount: number, pressureAngleDeg = 20): Gear {
   return createGear({
@@ -68,6 +68,44 @@ describe("generateInvoluteGearOutline", () => {
     expect(betweenRootAndBase.length).toBeGreaterThan(0);
     const angles = new Set(betweenRootAndBase.map((p) => Math.atan2(p.y, p.x).toFixed(6)));
     expect(angles.size).toBeGreaterThan(1);
+  });
+
+  it("draws a small corner fillet (not a sharp corner) at the root for a non-undercut (high) tooth count", () => {
+    // z=50 is well above the ≈41.45-tooth no-undercut crossover for standard
+    // 20° full-depth proportions (z >= 2.5 / (1 - cos 20°)): the involute
+    // flank reaches the root circle on its own here.
+    const gear = involuteGear(50);
+    const root = involuteRootRadius(gear);
+    const tip = involuteTipRadius(gear);
+    const outline = generateInvoluteGearOutline(gear);
+
+    // No point should sit exactly at the unrounded, sharp-corner root
+    // radius any more — the corner has been rounded away.
+    const exactlyAtRoot = outline.filter((p) => Math.abs(Math.hypot(p.x, p.y) - root) < 1e-12);
+    expect(exactlyAtRoot.length).toBe(0);
+
+    // The fillet is a small arc confined close to the root (a few times
+    // the standard 0.38m cutter corner radius), unlike the undercut
+    // case's semicircle spanning most of the dedendum.
+    const filletRadius = INVOLUTE_PROPORTIONS.rootFilletRadiusInModules * toMetres(gear.module);
+    const filletBand = outline.filter((p) => {
+      const r = Math.hypot(p.x, p.y);
+      return r >= root - 1e-9 && r < root + 4 * filletRadius;
+    });
+    expect(filletBand.length).toBeGreaterThan(gear.toothCount * 2);
+    const angles = new Set(filletBand.map((p) => Math.atan2(p.y, p.x).toFixed(6)));
+    expect(angles.size).toBeGreaterThan(gear.toothCount * 2); // genuinely curved: many distinct angles, not a straight line
+
+    // Every point stays close to the declared root/tip bounds. The fillet
+    // (like the straight root "land" it rounds, already an approximation —
+    // any chord of the root circle dips inside it) can dip a little below
+    // the nominal root radius; bound that by the fillet radius itself,
+    // comfortably wider than the sub-percent dip this construction produces.
+    for (const p of outline) {
+      const r = Math.hypot(p.x, p.y);
+      expect(r).toBeGreaterThanOrEqual(root - filletRadius);
+      expect(r).toBeLessThanOrEqual(tip + 1e-9);
+    }
   });
 
   it("throws if the gear has no pressure angle", () => {

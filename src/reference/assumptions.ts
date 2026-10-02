@@ -185,7 +185,7 @@ export const ASSUMPTIONS = {
   },
   "ASM-0031": {
     summary:
-      "Where the root circle sits inside the base circle (GEAR-103's undercut case, common among watch pinions), the dedendum flank is drawn as a circular arc tangent to the root circle and to the involute flank's own base-circle tangent point — not the true trochoidal fillet a rack cutter would generate (SRC-0025 describes that construction; an attempt to implement it did not pass its own verification and was not shipped, see reference/sources/SOURCES.yml). The arc's radius is fixed by the two tangencies (half the gap between the root and base circles) and is not the cutter's own standard corner radius",
+      "The root fillet is a circular arc, not the true trochoidal fillet a rack cutter would generate (SRC-0025 describes that construction; an attempt to implement it did not pass its own verification and was not shipped, see reference/sources/SOURCES.yml). Where the root circle sits inside the base circle (GEAR-103's undercut case, common among watch pinions), the arc bridges the whole gap, tangent to the root circle and to the involute flank's own base-circle tangent point — its radius is fixed by the two tangencies (half the gap between the root and base circles), not the cutter's own standard corner radius. Otherwise the involute flank already reaches the root circle on its own, so only the resulting sharp corner is rounded, by a small arc of the standard cutter corner radius (0.38m, SRC-0024 Fig. 1-1) tangent to the flank's own local direction there and to the straight line this approximates the root land as, toward the neighbouring tooth's matching root point (REF-ENG §6)",
     scope: "Geometry / viewport",
     status: "Active",
   },
