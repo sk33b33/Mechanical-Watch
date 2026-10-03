@@ -467,7 +467,7 @@ describe("export registry", () => {
         expect(file.filename.endsWith(`.${format.extension}`)).toBe(true);
         expect(file.content.length).toBeGreaterThan(0);
       } else {
-        expect(() => produceExport(format.id, { movement: teaching, analysis, generatedAt: at })).toThrow(/tooth profiles/);
+        expect(() => produceExport(format.id, { movement: teaching, analysis, generatedAt: at })).toThrow(/B-rep/);
       }
     }
   });

@@ -156,7 +156,7 @@ export const EXPORT_FORMATS: readonly ExportFormat[] = [
     availability: {
       status: "NOT_AVAILABLE",
       reason:
-        "Needs a solid-modeling (B-rep) kernel and defined tooth profiles. Gears are pitch models with no tooth flank (REF-ENG §6), so an exact solid would be invented geometry.",
+        "Needs a solid-modeling (B-rep) kernel: gear and frame geometry here is a 2D outline extruded into a visualization mesh, not CAD-solid topology, so it cannot produce an exact STEP solid even where a gear has a defined tooth profile (INVOLUTE_PROFILE, WATCH_SPECIFIC_PROFILE). A PITCH_MODEL gear (the default) has no tooth flank at all (REF-ENG §6), so for it an exact solid would be invented geometry regardless.",
     },
     produce: null,
   },
