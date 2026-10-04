@@ -150,6 +150,20 @@ A single corroborating data point (0.01mm side shake for a 0.15mm
 pivot), not registered as its own citation — recorded because it agrees
 with SRC-0012's Jendritzki rule from an unconnected thread and poster.
 
+### FHS — NIHS standards catalog (SRC-0029, read) and the standards it names (SRC-0030, SRC-0031, both unretrieved)
+The FHS's own current catalog of available NIHS (Normes de l'Industrie
+Horlogère Suisse) standards names the exact primary standards most
+likely to hold acceptable side-shake/endshake clearance data: **NIHS
+04-04 "Ajustements radiaux et axiaux"** (radial and axial fits, with
+companion **NIHS 04-03 "Application des tolérances"**, SRC-0030), and,
+for jewel/bore dimensions specifically, **NIHSG 41-11 "Dimensions des
+pierres"** and **NIHS 94-10 (= SN ISO 1112)** (SRC-0031). All four would
+be Tier 1 primary standards — a real upgrade over SRC-0011/SRC-0012's
+Tier 6 forum testimony — but are paywalled; no secondary source quoting
+their actual values was found despite three targeted searches. BRG-006/
+BRG-007 remain informational advisories pending access to SRC-0030 or
+SRC-0031, or a secondary source that quotes them.
+
 ## Movement-specific sources
 
 Movement-specific measurements must live under:

@@ -167,13 +167,13 @@ export const ASSUMPTIONS = {
   },
   "ASM-0028": {
     summary:
-      "Endshake advisory thresholds (~0.05 mm for escapement shafts — escape wheel, pallet arbor, balance staff; ~0.10 mm for other pivoted shafts) are informal figures from forum testimony (SRC-0011), not a published standard; used only as a BRG-006 informational advisory, never a pass/fail limit. (Side shake has its own advisory, ASM-0029/BRG-007, sourced separately)",
+      "Endshake advisory thresholds (~0.05 mm for escapement shafts — escape wheel, pallet arbor, balance staff; ~0.10 mm for other pivoted shafts) are informal figures from forum testimony (SRC-0011), not a published standard; used only as a BRG-006 informational advisory, never a pass/fail limit. (Side shake has its own advisory, ASM-0029/BRG-007, sourced separately). The primary standard most likely to supersede this (NIHS 04-04 \"Ajustements radiaux et axiaux\" and its companion NIHS 04-03, SRC-0030) is now named but paywalled and unretrieved",
     scope: "Bearings / endshake advisory",
     status: "Active",
   },
   "ASM-0029": {
     summary:
-      "Side-shake advisory thresholds (0.01 mm diametral for a pivot up to 0.30 mm, 0.02 mm for a larger pivot) are an informal rule of thumb credited to Hans Jendritzki, from forum testimony (SRC-0012, corroborated by SRC-0013), not a published standard read directly; used only as a BRG-007 informational advisory, never a pass/fail limit",
+      "Side-shake advisory thresholds (0.01 mm diametral for a pivot up to 0.30 mm, 0.02 mm for a larger pivot) are an informal rule of thumb credited to Hans Jendritzki, from forum testimony (SRC-0012, corroborated by SRC-0013), not a published standard read directly; used only as a BRG-007 informational advisory, never a pass/fail limit. The primary standard most likely to supersede this (NIHS 04-04/04-03, SRC-0030; jewel-bore standards NIHSG 41-11/NIHS 94-10, SRC-0031) is now named but paywalled and unretrieved",
     scope: "Bearings / side-shake advisory",
     status: "Active",
   },

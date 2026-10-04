@@ -888,3 +888,102 @@
     already-shipped straight-line construction exactly in that case —
     see `hypocycloidPoint` in src/math/cycloidTooth.ts and
     src/math/cycloidTooth.test.ts.
+
+# Follow-up search for a published (not forum-sourced) side-shake/endshake
+# acceptability standard, to see if BRG-006/BRG-007 could move past
+# SRC-0011/SRC-0012's Tier 6 forum testimony. watchrepairtutorials.com
+# remains inaccessible (bot-challenge page). Dewey Clark's "Watch
+# Adjustment" article (historictimekeepers.com) was read in full and is
+# about positional adjustment/isochronism, not bearing clearances — adds
+# nothing beyond SRC-0011 (same author), not separately registered. A
+# nobswatchmaker.com blog post gives the same generic uncited figure
+# SRC-0011 already captures, weaker sourcing, not registered.
+#
+# The real find: the FHS's own current NIHS standards catalog names the
+# exact Swiss/ISO standards that almost certainly hold the acceptability
+# data. Unlike SRC-0011/SRC-0012, these would be Tier 1 primary standards
+# — but they are paywalled and their content was not obtained. Recorded
+# per the same pattern as SRC-0007/SRC-0008 (candidate citations, named
+# and unread, kept for the trail rather than hidden) rather than treated
+# as closing anything.
+
+- id: SRC-0029
+  title: "Normes disponibles (NIHS standards catalog)"
+  author: FHS (Fédération de l'industrie horlogère suisse)
+  year: 2026
+  type: standard_catalog
+  url: https://www.fhs.swiss/file/34/normes_disponibles.pdf
+  topics: [bearings, side-shake, endshake, jewels, standards-catalog]
+  claims_supported:
+    - "lists, as currently available (as of avril 2026): NIHS 04-04 'Ajustements radiaux et axiaux' (A/M 1971/2022, 2pp); NIHS 04-03 'Application des tolérances' (A/M 1971/2022, 4pp); NIHSG 41-11 'Horlogerie – Dimensions des pierres' (A/M 2018/2022, 8pp); NIHS 94-10 'Horlogerie – Pierres fonctionnelles et non fonctionnelles' = SN ISO 1112 (A/M 1965/2009, 4pp)"
+  claims_to_check: []
+  retrieved: true
+  accessed: "2026-10-04"
+  notes: >
+    Read 2026-10-04 (WebFetch returned a "cannot extract binary content"
+    message for this PDF but saved it locally; the Read tool then
+    extracted it directly, including the catalog's full standard list and
+    edition/page-count metadata). This is a catalog listing, not the
+    standards' own content — it establishes which standard numbers exist
+    and are current, nothing about their numeric values. Found while
+    searching for a primary (non-forum) citation for BRG-006/BRG-007;
+    see SRC-0030 and SRC-0031 for the specific standards it names.
+
+- id: SRC-0030
+  title: "NIHS 04-04: Ajustements radiaux et axiaux (Radial and axial fits), and NIHS 04-03: Application des tolérances"
+  author: FHS / NIHS (Normes de l'Industrie Horlogère Suisse)
+  year: 2022
+  type: standard
+  url: null
+  topics: [bearings, side-shake, endshake, tolerances]
+  claims_supported: []
+  claims_to_check:
+    - "the acceptable radial (side-shake) and axial (endshake) clearance ranges by pivot/bore size class, which would directly close BRG-006/BRG-007's current informal-advisory status"
+    - "whether NIHS 04-03's tolerance-grade system (a search snippet described grades 'TI 4 to TI 14', TI 4 covering dimensions ≤3mm at 3µm quality — an ISO-286-like system) is how NIHS 04-04's fits are expressed"
+  retrieved: false
+  accessed: null
+  notes: >
+    Named via SRC-0029 (the FHS's own current standards catalog) as the
+    standard most likely to hold the acceptability data this project
+    needs — "Ajustements radiaux et axiaux" (radial and axial fits) is
+    exactly bearing side-shake/endshake, by title. NIHS 04-03 is its
+    stated companion ("application of tolerances"). Both are current
+    (A/M 1971/2022) and short (2pp and 4pp respectively), but sold only
+    as individual PDFs or as part of a ~CHF 95 excerpt compilation via
+    fhs.swiss's shop or booksimonin.ch (WOSTEP founder M. Simonin's
+    publishing house) — paywalled, not accessed. Three follow-up web
+    searches for secondary citations of the actual values (search terms
+    covering the standard numbers directly, "cited table values", and
+    purchase price) found only further confirmation that the standards
+    exist and are purchasable, no quoted numeric content. This is a
+    genuine upgrade over SRC-0011/SRC-0012 in evidence *identification*
+    (an exact, current, numbered Swiss primary standard rather than "no
+    idea which standard") but not in evidence *content* — recorded here,
+    per the SRC-0007/SRC-0008 pattern, rather than silently left as a
+    generic "unknown standard exists somewhere" gap. Does not raise
+    BRG-006/BRG-007 above their current informational-advisory status;
+    closing this requires either purchasing the standard or finding a
+    secondary source that quotes its values.
+
+- id: SRC-0031
+  title: "NIHSG 41-11: Horlogerie – Dimensions des pierres, and NIHS 94-10 (= SN ISO 1112): Horlogerie – Pierres fonctionnelles et non fonctionnelles"
+  author: FHS / NIHS; NIHS 94-10 is identical to SN ISO 1112
+  year: 2022
+  type: standard
+  url: null
+  topics: [bearings, jewels, jewel-holes]
+  claims_supported: []
+  claims_to_check:
+    - "jewel (bore) dimensions and functional/non-functional jewel classification that would bear on jewel-hole-to-pivot clearance (the bore side of side-shake), as distinct from NIHS 04-04/04-03's own fit tolerances"
+  retrieved: false
+  accessed: null
+  notes: >
+    Named via SRC-0029, the same catalog search as SRC-0030. NIHSG 41-11
+    ("Dimensions des pierres", 8pp, A/M 2018/2022) is a jewel-dimension
+    standard; NIHS 94-10 (4pp, A/M 1965/2009) is explicitly cross-
+    referenced in the catalog as identical to the international standard
+    SN ISO 1112. Neither accessed — same paywall as SRC-0030. Recorded
+    as a second, more specific candidate for the jewel-bore side of the
+    side-shake question (SRC-0012/BRG-007 is about the pivot/bore
+    clearance generally; these standards may define the bore dimensions
+    themselves). Not used for anything; closes nothing yet.
