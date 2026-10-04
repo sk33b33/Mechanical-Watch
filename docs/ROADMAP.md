@@ -66,14 +66,56 @@ available source is scoped to stay a documented assumption, not
 implemented as if solved (CLAUDE.md: never silently raise a validation
 level).
 
-- 7.1 — **Partly done** (see `docs/STATUS.md`). Drop (ESC-106/107,
-  ASM-0036) is modeled: a wheel-side angle checked against a derived
-  geometric budget (half the tooth pitch, π/escapeTeeth, Playtner 1908,
-  SRC-0036) plus an informal 1-2° advisory, with the resulting tip-circle
-  clearance reported. Real tooth/pallet FACE geometry (equidistant vs.
-  circular pallets, club vs. ratchet teeth, convex/concave lift planes —
-  Playtner covers all of this too) remains unmodeled; a larger
-  undertaking, left open rather than attempted incompletely.
+- 7.1 — **Partly done, remainder scoped 2026-10-04** (see
+  `docs/STATUS.md`). Drop (ESC-106/107, ASM-0036) is modeled. The
+  remaining real tooth/pallet FACE geometry is scoped into six ordered
+  sub-items, ALL already sourced from Playtner 1908 (SRC-0036, read in
+  full) — the risk here is construction correctness, not source
+  availability (the one place in Phase 7 where that's true):
+  - 7.1.1 — Pallet type (EQUIDISTANT | CIRCULAR) and declared pallet
+    width (wheel-side angle). Foundational: fixes where the locking
+    circle(s) sit relative to the pallet center, needed before any real
+    face can be drawn. Equidistant: both lockings on one circle, biased
+    toward/away from centre. Circular: two locking circles (entry MP,
+    exit NO), pallet bisected by the 30°-style centre lines, equal lever
+    arms. Playtner's own worked example is equidistant.
+  - 7.1.2 — Tooth type (CLUB | RATCHET) and the tooth/pallet width split
+    within the existing per-beat wheel-angle budget (ASM-0036). Club:
+    lift split between tooth and pallet (Playtner's 15-tooth example:
+    4½° tooth, 6° pallet, from a 12° budget less 1½° drop); ratchet
+    (English): all lift on the (wider) pallet, tooth is a bare point.
+    Interacts with 7.1.1 (English wheels are usually paired with
+    circular pallets per Playtner).
+  - 7.1.3 — Real draw-angled locking faces, replacing `drawAngle`'s
+    current role as a bare validated number with an actual face
+    direction: pallet face inclined at the declared draw angle from the
+    radial line at the locking point; escape-tooth locking face at
+    (conventionally) double that, for point contact (Playtner: 12°
+    pallet / 24° tooth). Builds on 7.1.1/7.1.2's locking-point geometry.
+  - 7.1.4 — Full 2D outline construction for the pallet stones and
+    escape-wheel teeth, replacing the current placeholder shapes
+    (`generateEscapeWheelOutline`'s fixed trapezoid, `createForkGeometry`'s
+    plain stone boxes, both in `src/geometry/assemblyGeometry3d.ts`) with
+    real locking-face + lifting-face + back profiles. The capstone:
+    combines 7.1.1-7.1.3 into actual renderable/checkable geometry, by
+    far the largest single piece — same risk category that sank the
+    trochoidal-fillet attempt (SRC-0025/ASM-0031, not shipped when its
+    own verification didn't pass), so budget for a construction that may
+    not close cleanly on the first attempt.
+  - 7.1.5 — Fork and roller action (ruby pin, safety roller, guard pin,
+    crescent, horn) — REF-ENG §9's "balance interaction," currently
+    modeled only as an abstract `forkRatio` with no actual roller/pin
+    geometry at all. Mostly independent of 7.1.1-7.1.4; could ship
+    separately. Playtner devotes four chapters to this specifically.
+  - 7.1.6 — Center-distance refined for manufacturing clearance (pallet
+    arbor thickness, working stock) rather than the current pure
+    idealized tangent-circle construction (`tangentialCentreDistance`).
+    Smallest, lowest-priority item; a polish-level refinement in
+    Playtner's own "Center Distance" chapter.
+  Suggested order: 7.1.1 → 7.1.2 → 7.1.3 → 7.1.4, each independently
+  shippable and testable (same incremental pattern as the
+  WATCH_SPECIFIC_PROFILE gear work); 7.1.5 and 7.1.6 can run separately,
+  in any order, whenever picked up.
 - 7.2 — Impact and sliding-contact dynamics at unlock/impulse (REF-ENG
   §9: "a simple rigid gear mesh is not an adequate physical model").
   Candidate sources: SRC-0004/0005/0006 (registered, unused). Builds on

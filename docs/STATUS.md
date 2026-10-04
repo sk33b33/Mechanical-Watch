@@ -2,6 +2,34 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Scoped the rest of Phase 7.1 (real tooth/pallet face geometry)
+
+Broke the large remaining piece of 7.1 — real tooth/pallet face geometry,
+left open when drop shipped — into six ordered sub-items in
+`docs/ROADMAP.md` (7.1.1-7.1.6). No code changed; a planning pass, same
+category as the original top-level Phase 7 scoping.
+
+Unlike every other Phase 7 item so far, sourcing isn't the open question
+here: Playtner's 1908 book (SRC-0036, already read in full for the drop
+work) covers all of it — equidistant vs. circular pallets, club vs.
+ratchet teeth, draw as a real face angle, the full pallet-stone/tooth
+outline construction, and a separate four-chapter treatment of the
+fork-and-roller coupling (ruby pin, safety roller, guard pin, crescent,
+horn) that this codebase doesn't model at all yet (`forkRatio` is the
+only trace of balance interaction today). The open risk is construction
+correctness, not source availability — flagged explicitly against the
+one precedent where that risk materialized (the trochoidal fillet,
+SRC-0025/ASM-0031, not shipped when its own geometric verification
+didn't close).
+
+Suggested build order: 7.1.1 (pallet type + width) → 7.1.2 (tooth type +
+width split) → 7.1.3 (real draw-angled faces) → 7.1.4 (full 2D outline,
+the capstone — replaces the placeholder shapes in
+`src/geometry/assemblyGeometry3d.ts`), each independently shippable, same
+incremental pattern as the WATCH_SPECIFIC_PROFILE gear work (three
+separate passes). 7.1.5 (fork/roller) and 7.1.6 (center-distance
+manufacturing clearance) are smaller and can run separately.
+
 ## Phase 7.5: searched for a real mainspring torque curve; a genuine negative result
 
 Researched REF-ENG §11's "torque curve" and "bridle/slipping behaviour"
