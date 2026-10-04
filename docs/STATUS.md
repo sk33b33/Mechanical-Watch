@@ -2,6 +2,78 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Scoped Phase 7 (advanced escapement and balance simulation)
+
+`docs/ROADMAP.md`'s Phase 7 was a single unscoped line ("Only after the
+earlier layers are robust."). Broke it into six ordered items (7.1–7.6),
+each naming the REF-ENG §9/§10/§11 physical-model target it works toward,
+which current ASM-00xx simplification it would tighten or replace, and a
+realistic sourcing-risk assessment — per CLAUDE.md, a validation level
+can't be raised without evidence, so an item with no available source is
+scoped to stay a documented assumption rather than planned as if solved:
+
+- **7.1 Pallet/escape-wheel contact geometry** (lift, lock, draw, drop
+  faces) — replaces ASM-0025's tangential-locking-point abstraction with
+  real tooth/pallet-stone shapes. Standard lever-escapement geometry is
+  documented in recognized watchmaking texts; moderate sourcing risk.
+- **7.2 Impact and sliding-contact dynamics** at unlock/impulse — REF-ENG
+  §9 names this explicitly ("a simple rigid gear mesh is not an adequate
+  physical model"); SRC-0004/0005/0006 (peer-reviewed escapement
+  tribology/FEM papers, already registered but unused by any
+  implementation) are the candidate sources. Builds on 7.1; likely lands
+  at L3 idealized momentum/energy bookkeeping before true contact
+  mechanics, if ever.
+- **7.3 Amplitude-dependent rate (circular error)** — replaces ASM-0024's
+  "isochronous by construction" oscillator. Classical, well-documented
+  physics (Airy; the Grossmann/Phillips terminal-curve literature
+  SRC-0020 already touches); lowest sourcing risk of the set and the
+  recommended starting point.
+- **7.4 Sourced Q and escapement efficiency** — already flagged in this
+  file's "Next" section. A research task, same discipline as the
+  BRG-006/BRG-007/NIHS work below, not a geometry build.
+- **7.5 Nonlinear mainspring torque curve and bridle slip** — REF-ENG §11
+  calls for both; neither is modeled (ASM-0026 is a straight line between
+  two entered points). Movement-specific curves are usually proprietary;
+  research-risk, may stay a documented assumption.
+- **7.6 Positional and temperature effects** — REF-ENG §10's "Physical
+  model" also names these. Depends on 7.3 (no rate exists yet to
+  perturb). Highest research risk; typically measured per movement, not
+  looked up generically.
+
+Ordering: 7.1 before 7.2; 7.3 is independent and the suggested first
+pick; 7.4 and 7.5 can run in parallel as research; 7.6 depends on 7.3.
+No code changed — this is a planning pass, recorded in `docs/ROADMAP.md`.
+
+## Named the pending NIHS bearing-clearance standards, instead of an unqualified unknown
+
+Continued the side-shake/endshake acceptability research begun for
+BRG-006/BRG-007 (both still informational advisories off Tier 6 forum
+testimony, SRC-0011/SRC-0012). Checked three more leads and closed them
+without registering anything (Dewey Clark's "Watch Adjustment" article,
+read in full, is about positional adjustment/isochronism, not bearing
+clearances; a nobswatchmaker.com blog post repeats SRC-0011's own
+uncited figure; watchrepairtutorials.com remains bot-blocked).
+
+- Found the FHS's own current catalog of available NIHS (Normes de
+  l'Industrie Horlogère Suisse) standards. It names the exact Swiss
+  primary standards most likely to hold the acceptability data this
+  project needs: **NIHS 04-04 "Ajustements radiaux et axiaux"** (radial
+  and axial fits) and its companion **NIHS 04-03**, plus, for jewel/bore
+  dimensions, **NIHSG 41-11** and **NIHS 94-10** (= ISO 1112). All four
+  would be Tier 1 primary standards — a real upgrade over SRC-0011/
+  SRC-0012 — but are paywalled; three further targeted searches found no
+  secondary source quoting their actual values.
+- Registered the catalog itself (SRC-0029, actually read) and the named
+  standards as unretrieved candidates (SRC-0030, SRC-0031), the same
+  pattern already used for SRC-0007/SRC-0008. No number was invented:
+  BRG-006/BRG-007 and ASM-0028/ASM-0029 still describe informal figures,
+  now cross-referencing the specific standard that would supersede them
+  instead of an unqualified "unknown."
+- Updated SOURCES.yml, SOURCE_INDEX.md, TRACEABILITY.md,
+  ASSUMPTION_REGISTER.md and the `src/reference/assumptions.ts` mirror.
+  No equation, test, or validation rule changed; all 469 tests pass,
+  `tsc --noEmit` and `eslint` are clean.
+
 ## Section view caps extended to hands; keyless-works parts don't fit this approach
 
 Asked to close the keyless-works parts (stem, crown, pinions) next.

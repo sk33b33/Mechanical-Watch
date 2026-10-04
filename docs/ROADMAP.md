@@ -58,4 +58,32 @@
 - tolerance model
 
 ## Phase 7 — Advanced simulation
-Only after the earlier layers are robust.
+Only after the earlier layers are robust. Scoped 2026-10-04 (see
+`docs/STATUS.md`) into six ordered items, each targeting a physical
+model REF-ENG §9/§10/§11 already calls for and naming which current
+ASM-00xx simplification it would tighten or replace. An item with no
+available source is scoped to stay a documented assumption, not
+implemented as if solved (CLAUDE.md: never silently raise a validation
+level).
+
+- 7.1 — Pallet/escape-wheel contact geometry (lift, lock, draw, drop
+  faces), replacing ASM-0025's tangential-locking-point abstraction.
+  Moderate sourcing risk (standard lever-escapement geometry is in
+  recognized watchmaking texts).
+- 7.2 — Impact and sliding-contact dynamics at unlock/impulse (REF-ENG
+  §9: "a simple rigid gear mesh is not an adequate physical model").
+  Candidate sources: SRC-0004/0005/0006 (registered, unused). Builds on
+  7.1; likely L3 idealized bookkeeping before true contact mechanics.
+- 7.3 — Amplitude-dependent rate (circular error), replacing ASM-0024's
+  "isochronous by construction" oscillator. Lowest sourcing risk;
+  classical, documented physics. Suggested starting point.
+- 7.4 — Sourced Q and escapement efficiency (a research task, not a
+  geometry build — see the open item already in `docs/STATUS.md`).
+- 7.5 — Nonlinear mainspring torque curve and bridle slip (REF-ENG §11;
+  ASM-0026 is currently a straight line between two entered points).
+  Research-risk; movement-specific curves are usually proprietary.
+- 7.6 — Positional and temperature effects (REF-ENG §10's "Physical
+  model"). Depends on 7.3. Highest research risk.
+
+Order: 7.1 before 7.2; 7.3 independent (recommended first); 7.4/7.5 can
+run in parallel as research; 7.6 depends on 7.3.
