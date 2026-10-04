@@ -224,6 +224,30 @@ ESC-106/ESC-107 rules — only the drop piece of the chapter; the book's
 far larger treatment of pallet/tooth types and lifting-plane shapes is
 out of scope for this pass.
 
+## Mainspring torque curve and bridle slip (REF-ENG §11)
+
+### Roymech — Springs Spiral (SRC-0037, read)
+Mechanical-engineering reference for spiral/clock springs. Its spring-rate
+formula (k = M/θ, k = E·b·t³/12·L) treats the spring as a plain linear
+torsion spring — narrower than, not an improvement on, this project's own
+two-point-line model. No discussion of friction or barrel-wall contact.
+Its own formulas are images with no alt text; fetched and read as images
+directly to get the quoted values — a new variant of this project's
+"WebFetch can't extract this" workaround.
+
+### hourstriker.com and watchtime.com mainspring articles (SRC-0038, unread — both 403)
+Both sites blocked WebFetch and a direct `curl` alike. Recorded, per the
+SRC-0023 precedent, as unread search-engine snippets only: an "ideal peak
+estimate, not a full real-world torque curve" formula, and a ~1.3-1.5×
+bridle slip-torque ratio scoped (by other unread snippets) to automatic
+winding specifically — a mechanism this project doesn't model at all.
+Nothing here was used to implement anything.
+
+### US8950552B2 patent, background section (SRC-0039, read)
+Confirms, independently of SRC-0037, that real mainsprings have a
+non-constant torque curve — but gives no formula or shape, just states
+the problem. A third source landing on the same negative result.
+
 ## Movement-specific sources
 
 Movement-specific measurements must live under:

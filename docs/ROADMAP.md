@@ -90,9 +90,13 @@ level).
   Escapement efficiency only has a geometric-only upper bound (91%/88%
   by tooth count, SRC-0035) at two data points, not a general formula —
   not yet implementable as a rule; remains genuinely open.
-- 7.5 — Nonlinear mainspring torque curve and bridle slip (REF-ENG §11;
-  ASM-0026 is currently a straight line between two entered points).
-  Research-risk; movement-specific curves are usually proprietary.
+- 7.5 — **Researched, genuinely open** (see `docs/STATUS.md`). Three
+  independent sources (SRC-0037/0038/0039) confirm no accessible
+  closed-form "real" torque curve exists — standard spring theory is
+  itself linear (no improvement on ASM-0026's own two-point line); the
+  real nonlinearity needs measurement, not a formula. Bridle slip
+  (~1.3-1.5×, SRC-0038, unread/unverified) is scoped to automatic
+  winding, which this project doesn't model at all.
 - 7.6 — Positional and temperature effects (REF-ENG §10's "Physical
   model"). Depends on 7.3. Highest research risk.
 

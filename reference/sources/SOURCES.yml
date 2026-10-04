@@ -1167,3 +1167,97 @@
     and convex/concave lifting-plane shapes remains unmodeled and is
     explicitly out of scope here — a genuinely larger undertaking, left
     for a future Phase 7.1 pass rather than attempted incompletely now.
+
+# Phase 7.5 (docs/ROADMAP.md): nonlinear mainspring torque curve and
+# bridle/slipping behaviour (REF-ENG §11; ASM-0026 currently uses a
+# straight line between two entered torque values). Searched for a
+# closed-form "real" torque-vs-wind curve and for the bridle slip-torque
+# relationship. Neither closes with an implementable result this pass —
+# see ASM-0026's updated notes for the conclusion.
+
+- id: SRC-0037
+  title: "Springs Spiral (spiral/clock spring design formulae)"
+  author: Roy Beardmore (roymech.org)
+  year: null
+  type: specialist_reference
+  url: https://roymech.org/Useful_Tables/Springs/Springs_Spiral.html
+  topics: [mainspring, spiral-spring, torque-curve]
+  claims_supported:
+    - "spring rate k is defined... as the torque (Nm) per unit angular deflection (θ): k = M/θ" (i.e. M = kθ, an ideal linear torsion relation — the spiral/clock spring treated as a simple proportional spring, not a nonlinear one)
+    - "k = E.b.t³ / 12.L" (spring rate from Young's modulus E, strip width b, thickness t and strip length L)
+  claims_to_check: []
+  retrieved: true
+  accessed: "2026-10-04"
+  notes: >
+    Tier 5 (specialist mechanical-engineering reference site; generic
+    spring engineering, not horological — CLAUDE_REFERENCE_INSTRUCTIONS.md
+    rule 10's spirit applies: a generic spring-design formula does not by
+    itself prove a real mainspring behaves this way). The page's own
+    formulas are rendered as GIF images with no alt text, so WebFetch's
+    text extraction found only the surrounding prose; the images
+    themselves (`Spiral_spring_2.gif`, `Spiral_spring_4.gif`) were
+    fetched directly and read as images (not text) to get the actual
+    formulas quoted above — a new variant of this project's established
+    "WebFetch can't extract this, try another route" workaround, this
+    time for formulas embedded as images rather than scanned PDF pages.
+    Confirms, independently of the (unread, see SRC-0038) "ideal peak
+    estimate" formula found earlier in this search, that the standard
+    engineering treatment of a spiral/clock spring is a plain linear
+    torsion spring (M proportional to θ, zero torque at zero deflection)
+    — narrower than, and not an improvement on, this project's own
+    ASM-0026 model (a general two-point line with a nonzero let-down
+    intercept). No discussion of friction between coils or barrel-wall
+    contact anywhere on the page. Used only to help close the research
+    question (see ASM-0026's notes); nothing implemented from it.
+
+- id: SRC-0038
+  title: "Mainspring torque-curve and bridle slip-torque claims (both sources returned HTTP 403 — unread, recorded as search-engine snippets only)"
+  author: unknown (hourstriker.com "Mainspring: Engineering Architecture of Power Accumulation"; watchtime.com "Throwing a Curve: The How, What, When, Where and Why of Mainsprings")
+  year: null
+  type: specialist_reference
+  url: null
+  topics: [mainspring, torque-curve, bridle, slip-torque]
+  claims_supported:
+    - "T = E.eps.b.t² / 6 [...] this torque formula is an ideal peak estimate, not a full real-world watch torque curve" (per a search-engine synthesis of hourstriker.com; the explicit self-caveat that it does not match a real curve is itself the most load-bearing part of this claim)
+    - "Slip torque is set at roughly 1.3 to 1.5x the working torque" for a mainspring's slipping bridle (per a search-engine synthesis of watchtime.com)
+  claims_to_check:
+    - "the exact derivation and definition of 'working torque' in the slip-torque ratio, and whether either article cites a named engineer, manufacturer spec or technical paper for it"
+  retrieved: false
+  accessed: null
+  notes: >
+    Both hourstriker.com and watchtime.com returned HTTP 403 Forbidden to
+    both WebFetch and a direct `curl` with a browser user agent — a real
+    access block, not a tool bug (same category as watchrepairtutorials.com
+    and watchuseek.com elsewhere in this project). Per
+    CLAUDE_REFERENCE_INSTRUCTIONS.md ("claims must be read, not taken on a
+    snippet") and the SRC-0023 precedent, these claims are recorded as
+    unread search-engine syntheses only — Tier 7, below even ordinary
+    forum testimony — not used to implement anything. The bridle-slip
+    figure is also scoped narrowly by other (also-unread) search results
+    to automatic-winding barrels specifically ("most manual watches are
+    either a swiss tongue end, or a double brace anchored end[,] in
+    contrast with automatic watches that use slipping bridle systems");
+    this project has no automatic-winding (rotor) domain concept at all,
+    so even a verified version of this ratio would have nothing to attach
+    to yet. See ASM-0026's notes for the full conclusion.
+
+- id: SRC-0039
+  title: "Mainspring comprising supplementary energy accumulation curves (patent, background section)"
+  author: unknown assignee
+  year: null
+  type: patent
+  url: https://patents.google.com/patent/US8950552B2/en
+  topics: [mainspring, torque-curve]
+  claims_supported:
+    - "The problem raised by this configuration of current springs is that a constant torque is not provided throughout the letting down of said springs, which causes a variation in the amplitude of the balance detrimental to the precision of the timepiece movement."
+  claims_to_check: []
+  retrieved: true
+  accessed: "2026-10-04"
+  notes: >
+    Read directly (not blocked). A genuine industry source (patent prior
+    art) independently confirming that conventional mainsprings have a
+    non-constant torque curve — but, like SRC-0037, gives no formula, no
+    description of the curve's shape, and no discussion of friction or
+    coil-to-barrel contact as a cause. A third independent source landing
+    on the same negative result (no accessible closed-form "real" curve),
+    corroborating rather than extending the conclusion.

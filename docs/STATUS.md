@@ -2,6 +2,44 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 7.5: searched for a real mainspring torque curve; a genuine negative result
+
+Researched REF-ENG §11's "torque curve" and "bridle/slipping behaviour"
+for the mainspring (ASM-0026 currently uses a straight line between two
+entered torque values). No code changed this pass — a research-only
+conclusion, same category as the escapement-efficiency half of Phase 7.4.
+
+- **Torque curve.** Found three independent sources landing on the same
+  negative result. Roymech's spiral-spring reference (SRC-0037, read
+  directly — its formulas are images with no alt text, so fetched and
+  read as images, a new variant of the "WebFetch can't extract this"
+  workaround) gives the standard engineering treatment of a spiral/clock
+  spring: an *ideal linear* torsion relation, M = kθ — no narrower, in
+  fact, than this project's own two-point-line model, so not an
+  improvement path at all. A patent's background section (SRC-0039, read
+  directly) confirms real mainsprings have a non-constant torque curve
+  but gives no formula or shape, just states the problem. A third claim
+  (an "ideal peak estimate, not a full real-world curve" formula, SRC-0038)
+  could not be verified directly — both of its source sites
+  (hourstriker.com, watchtime.com) returned HTTP 403 to WebFetch and to a
+  direct `curl` alike, a real access block; recorded as an unread
+  search-engine snippet only, per the SRC-0023 precedent, not used for
+  anything. Conclusion: the real nonlinearity comes from coil friction
+  and barrel/arbor contact, which no accessible source formulizes — it
+  has to be measured, not computed, the same conclusion already reached
+  for circular error (ASM-0034, Phase 7.3).
+- **Bridle/slipping behaviour.** A cited ~1.3–1.5× slip-to-working-torque
+  ratio exists (via the same unread SRC-0038 snippets) but is scoped, by
+  other unread search results, to automatic-winding barrels specifically
+  — a mechanism this project's domain model doesn't have at all (no
+  rotor/automatic-winding concept exists). Implementing it now would have
+  nothing to attach to; left open.
+- Registered SRC-0037/0038/0039; updated ASM-0026's own notes in
+  `ASSUMPTION_REGISTER.md` and `src/reference/assumptions.ts` to record
+  the conclusion, so a future pass doesn't re-tread this same search.
+  `registers.test.ts`, the full unit suite (486), `tsc -b --noEmit` and
+  `eslint` all still pass — docs-only change, no build/e2e needed.
+
 ## Phase 7.1: real pallet geometry, starting with drop (ESC-106/107, ASM-0036)
 
 Started the moderate-risk geometry item from the Phase 7 scoping: real
