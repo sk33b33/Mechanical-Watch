@@ -201,6 +201,12 @@ export const ASSUMPTIONS = {
     scope: "Geometry / viewport",
     status: "Active",
   },
+  "ASM-0034": {
+    summary:
+      "Amplitude-dependent balance rate (\"circular error\"/isochronism error, REF-ENG §10) has an optional first-order (local linearization) correction: dailyRate(A) = dailyRate₀ + c·(A − A_ref), where A_ref is the balance's own declared `amplitude` and c (`isochronismCoefficient`, s/day per radian) is a declared/measured per-movement input, null by default. No universal value for c exists — a real spring's amplitude dependence comes from its own terminal-curve geometry (Phillips 1861, SRC-0033, cited via SRC-0032, Tier 1/2, which gives the qualitative phenomenon and Phillips' zero-error geometric conditions but no usable closed-form rate-vs-amplitude formula) — so c must be measured or sourced, never invented. Null (the default) leaves the balance isochronous by construction (ASM-0024, unchanged)",
+    scope: "Balance (simplified dynamic, L3)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

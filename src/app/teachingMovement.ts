@@ -279,6 +279,8 @@ export function createTeachingMovement(): Movement {
       hairspringStiffness: micronewtonMillimetresPerRadian(246.7),
       // A loss property: only measurement or a source can supply it, so it is left unknown.
       qualityFactor: null,
+      // Likewise only measurable/sourced per movement; left unknown (ASM-0034).
+      isochronismCoefficient: null,
     },
     pallets: palletGeometry,
     // Also a loss property, left unknown for the same reason; the amplitude stays the declared one.

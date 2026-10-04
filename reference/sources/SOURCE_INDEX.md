@@ -164,6 +164,25 @@ their actual values was found despite three targeted searches. BRG-006/
 BRG-007 remain informational advisories pending access to SRC-0030 or
 SRC-0031, or a secondary source that quotes them.
 
+## Balance rate vs. amplitude (isochronism / circular error)
+
+### Bowman — Determination of Very Small Changes in Rate..., J. Research NBS 1950 (SRC-0032, read)
+NIST/NBS research-journal paper describing a lab instrument for plotting
+isochronism curves; used here as a secondary citation of Phillips' 1861
+geometric zero-error conditions for a hairspring terminal curve, and as
+genuine evidence the phenomenon (rate varying with amplitude as the
+mainspring runs down) is real and significant — not as a quantitative
+rate-vs-amplitude formula, since it doesn't give one (its own figures are
+measured curves, not an equation). This project's `isochronismCoefficient`
+(ASM-0034) is a declared/measured per-movement input for exactly this
+reason: no general formula was found.
+
+### Phillips — Mémoire sur le spiral réglant..., 1861 (SRC-0033, unretrieved, cited via SRC-0032)
+The historical source of the hairspring terminal-curve (overcoil)
+isochronism theory. Not read directly — recorded because SRC-0032 quotes
+it, so the citation trail says so rather than implying this project read
+the 1861 memoir itself.
+
 ## Movement-specific sources
 
 Movement-specific measurements must live under:

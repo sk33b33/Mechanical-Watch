@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { degrees } from "@/units/angle";
 import { hertz } from "@/units/frequency";
 import { toRpm } from "@/units/angularVelocity";
 import {
@@ -12,7 +13,7 @@ import { minutesHandShaftId, setNominalTimeDrive, updateEscapement, type Movemen
 import { createTeachingMovement } from "@/app/teachingMovement";
 import { analyzeMovement } from "@/analysis/analyzeMovement";
 import { validateMovement } from "@/validation/validateMovement";
-import { dailyRateSeconds, escapeSpeedFromBalance, naturalFrequency, stiffnessForFrequency } from "./balance";
+import { dailyRateSeconds, escapeSpeedFromBalance, isochronismAdjustedRate, naturalFrequency, stiffnessForFrequency } from "./balance";
 import { summarizeBalance } from "./balanceSummary";
 import { nominalHandAngularVelocity } from "./timeDisplay";
 
@@ -50,6 +51,34 @@ describe("simplified dynamic balance (ASM-0024)", () => {
   it("daily rate: a balance fast by 1 part in 100 000 gains 0.864 s a day", () => {
     expect(dailyRateSeconds(hertz(2.5 * (1 + 1e-5)), hertz(2.5))).toBeCloseTo(0.864, 9);
     expect(dailyRateSeconds(hertz(2.5), hertz(2.5))).toBe(0);
+  });
+});
+
+describe("isochronism-adjusted rate (ASM-0034)", () => {
+  it("is unchanged when the coefficient is unknown (ASM-0024 baseline stands)", () => {
+    expect(isochronismAdjustedRate(-7, null, degrees(200), degrees(270))).toBe(-7);
+  });
+
+  it("adds zero at the reference amplitude itself", () => {
+    expect(isochronismAdjustedRate(-7, 2, degrees(270), degrees(270))).toBeCloseTo(-7, 12);
+  });
+
+  it("is linear in the amplitude deviation from the reference, in the declared units (s/day per radian)", () => {
+    const coefficient = 3; // s/day per radian
+    const reference = degrees(270);
+    const amplitude = degrees(260);
+    const expected = -7 + coefficient * (amplitude - reference);
+    expect(isochronismAdjustedRate(-7, coefficient, amplitude, reference)).toBeCloseTo(expected, 12);
+    // A lower amplitude than the reference: the adjustment has the sign of -coefficient.
+    expect(isochronismAdjustedRate(-7, coefficient, amplitude, reference)).toBeLessThan(-7);
+  });
+
+  it("a negative coefficient flips the sign of the adjustment", () => {
+    const reference = degrees(270);
+    const lower = degrees(260);
+    const higher = degrees(280);
+    expect(isochronismAdjustedRate(0, -1, lower, reference)).toBeGreaterThan(0);
+    expect(isochronismAdjustedRate(0, -1, higher, reference)).toBeLessThan(0);
   });
 });
 
@@ -99,5 +128,35 @@ describe("teaching movement governed by its balance", () => {
   it("BAL-001: an entered inertia must be positive", () => {
     const m = updateEscapement(movement, escapement.id, { balance: { ...escapement.balance, inertia: kilogramSquareMetres(-1) } });
     expect(validateMovement(m).some((i) => i.rule === "BAL-001" && i.id.includes("inertia"))).toBe(true);
+  });
+
+  it("BAL-001: an entered isochronism coefficient must be finite", () => {
+    const m = updateEscapement(movement, escapement.id, { balance: { ...escapement.balance, isochronismCoefficient: Number.NaN } });
+    expect(validateMovement(m).some((i) => i.rule === "BAL-001" && i.id.includes("isochronism-coefficient"))).toBe(true);
+  });
+
+  it("BAL-002: with no isochronism coefficient declared, says amplitude dependence is not declared (ASM-0034)", () => {
+    const info = validateMovement(movement).find((i) => i.rule === "BAL-002");
+    expect(info?.message).toContain("amplitude dependence is not declared (ASM-0034)");
+    expect(info?.references).not.toContain("ASM-0034");
+  });
+
+  it("BAL-002: a declared coefficient with no predicted amplitude says there is nothing to apply it to", () => {
+    const m = updateEscapement(movement, escapement.id, { balance: { ...escapement.balance, isochronismCoefficient: 2 } });
+    const info = validateMovement(m).find((i) => i.rule === "BAL-002");
+    expect(info?.message).toContain("isochronism coefficient is declared (ASM-0034), but no amplitude is predicted");
+    expect(info?.references).toContain("ASM-0034");
+  });
+
+  it("BAL-002: a declared coefficient with a predicted amplitude adjusts the reported rate", () => {
+    // Give the energy chain what it needs to predict an amplitude: Q and escapement efficiency.
+    const withLosses = updateEscapement(movement, escapement.id, {
+      escapementEfficiency: 0.4,
+      balance: { ...escapement.balance, isochronismCoefficient: 2, qualityFactor: 150 },
+    });
+    const info = validateMovement(withLosses).find((i) => i.rule === "BAL-002");
+    expect(info?.message).toContain("With the declared isochronism coefficient (ASM-0034) applied");
+    expect(info?.message).toMatch(/s\/day fully wound, [+-]?\d+\.\d s\/day let down/);
+    expect(info?.references).toContain("ASM-0034");
   });
 });

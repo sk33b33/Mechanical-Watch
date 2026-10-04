@@ -1,3 +1,4 @@
+import type { Angle } from "@/units/angle";
 import { hertz, type Frequency } from "@/units/frequency";
 import { radiansPerSecond, type AngularVelocity } from "@/units/angularVelocity";
 import { newtonMetresPerRadian, type MomentOfInertia, type TorsionalStiffness } from "@/units/rotational";
@@ -8,10 +9,12 @@ import { BEATS_PER_BALANCE_PERIOD, BEATS_PER_ESCAPE_TOOTH } from "./escapement";
  * SIMPLIFIED DYNAMIC balance model (L3, ASM-0024). The balance and
  * hairspring are a linear, undamped torsional oscillator:
  *   I θ'' = −k θ   ⇒   ω₀ = √(k / I),  f = ω₀ / 2π.
- * It is isochronous by construction: amplitude, escapement disturbance,
- * damping, position, temperature and the hairspring's own inertia and
- * geometry are not modeled, so it is not a complete regulator model
- * (reference/sources/04-balance-and-hairspring/README.md).
+ * It is isochronous by construction: escapement disturbance, damping,
+ * position, temperature and the hairspring's own inertia and geometry are
+ * not modeled, so it is not a complete regulator model (reference/sources/
+ * 04-balance-and-hairspring/README.md). Amplitude dependence ("circular
+ * error", REF-ENG §10) has an optional first-order correction, ASM-0034
+ * below — it stays unmodeled (isochronous) until a coefficient is declared.
  */
 
 const SECONDS_PER_DAY = 86_400;
@@ -51,4 +54,26 @@ export function escapeSpeedFromBalance(balanceFrequency: Frequency, escapeTeeth:
  */
 export function dailyRateSeconds(actual: Frequency, reference: Frequency): number {
   return (actual / reference - 1) * SECONDS_PER_DAY;
+}
+
+/**
+ * Daily rate adjusted for a declared isochronism coefficient (L3,
+ * ASM-0034): a first-order (local) linearization of the balance's true,
+ * generally nonlinear amplitude dependence ("circular error", REF-ENG §10)
+ * around its own declared reference amplitude (`Balance.amplitude`). A
+ * real spring's amplitude dependence comes from its own terminal-curve
+ * geometry (Phillips 1861, SRC-0033, cited via SRC-0032) and has no
+ * universal value — it must be measured or sourced per movement, never
+ * invented (CLAUDE_REFERENCE_INSTRUCTIONS.md rule 9). `isochronismCoefficient`
+ * is null when unmeasured/unsourced, in which case the isochronous baseline
+ * (ASM-0024, `baselineDailyRateSeconds` unchanged) stands.
+ */
+export function isochronismAdjustedRate(
+  baselineDailyRateSeconds: number,
+  isochronismCoefficient: number | null,
+  amplitude: Angle,
+  referenceAmplitude: Angle,
+): number {
+  if (isochronismCoefficient === null) return baselineDailyRateSeconds;
+  return baselineDailyRateSeconds + isochronismCoefficient * (amplitude - referenceAmplitude);
 }

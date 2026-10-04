@@ -74,9 +74,13 @@ level).
   §9: "a simple rigid gear mesh is not an adequate physical model").
   Candidate sources: SRC-0004/0005/0006 (registered, unused). Builds on
   7.1; likely L3 idealized bookkeeping before true contact mechanics.
-- 7.3 — Amplitude-dependent rate (circular error), replacing ASM-0024's
-  "isochronous by construction" oscillator. Lowest sourcing risk;
-  classical, documented physics. Suggested starting point.
+- 7.3 — **Done** (see `docs/STATUS.md`). Amplitude-dependent rate
+  (circular error), via a declared/measured isochronism coefficient
+  (ASM-0034) rather than a universal formula: no source found gives a
+  closed-form rate-vs-amplitude equation (Phillips 1861, SRC-0033, gives
+  zero-error *conditions* for an ideal spring, not a residual for a real
+  one), so the model is a first-order local linearization around the
+  declared amplitude, same pattern as Q/escapement efficiency.
 - 7.4 — Sourced Q and escapement efficiency (a research task, not a
   geometry build — see the open item already in `docs/STATUS.md`).
 - 7.5 — Nonlinear mainspring torque curve and bridle slip (REF-ENG §11;

@@ -72,6 +72,7 @@ CLAUDE_REFERENCE_INSTRUCTIONS.md rule 10); finding one remains open work.
 | Hairspring for a frequency (N·m/rad) | k = I (2π f)² | `stiffnessForFrequency` | inverse of the above | ASM-0024 | DERIVED | L3 | › property: the stiffness for a frequency gives that frequency back |
 | Escape speed when the balance governs (rad/s) | abs(ω) = 2π f / z (one tooth per balance period); sign from the train so the hands run forward | `escapeSpeedFromBalance`, `driveSeed` (BALANCE) | REF-ENG §9, §10 | ASM-0021, ASM-0024 | DERIVED | L3 | › the escape wheel advances one tooth per balance period; › runs the hands clockwise… |
 | Daily rate (s/day) | (f / f_nominal − 1) × 86 400; f_nominal from the escape arbor at nominal time | `dailyRateSeconds`, `summarizeBalance` | definition (train speed ∝ balance frequency) | ASM-0024 | DERIVED; not a rate-accuracy claim | L3 | › predicts about 7 s a day slow… |
+| Isochronism-adjusted daily rate (s/day) | dailyRate₀ + c·(A − A_ref), a first-order (local) linearization around the declared reference amplitude A_ref (`Balance.amplitude`) | `isochronismAdjustedRate` in `src/kinematics/balance.ts` | REF-ENG §10 | ASM-0034 | DERIVED (the linearization itself is elementary; c has no citable universal value — SRC-0032, Tier 1/2 NIST/NBS, confirms the phenomenon and cites Phillips' 1861 zero-error geometric conditions, SRC-0033, but gives no usable closed-form rate-vs-amplitude formula, so c is a declared/measured per-movement input); null c leaves ASM-0024's isochronous baseline unchanged | L3 | `balance.test.ts` › isochronism-adjusted rate |
 | Pallet span angle (rad) | φ = span × 2π / z | `spanAngle` in `src/kinematics/palletGeometry.ts` | REF-ENG §9 | ASM-0021, ASM-0025 | DERIVED | L1 | `palletGeometry.test.ts` |
 | Tangential locking distance (m) | escape-to-pallet axis = R_tip / cos(φ/2), for 0 < φ < π | `tangentialCentreDistance` | geometry of two tangents to a circle | ASM-0025 | DERIVED | L1 | `palletGeometry.test.ts` › property: tangents at the locking points meet at the pallet axis |
 | Lever impulse angle (rad) | lever − lock − run | `impulseAngle` | definition | ASM-0025 | DERIVED | L1 | `mainspringEnergy.test.ts` › pallet rules |
@@ -134,6 +135,8 @@ rev/min exist only at the UI boundary (`src/units/`).
 | Predicted amplitude below half the lift angle before let-down | SPR-003 warning with the stop wind and running reserve; error if even fully wound. The simulation stops a balance-governed train there. |
 | Balance inertia or stiffness empty | Stored as null (unknown); the model stays kinematic; a balance-governed drive reports BAL-001 and drives nothing. |
 | Balance inertia or stiffness ≤ 0 | BAL-001 error; no free frequency. |
+| Isochronism coefficient empty | Stored as null (unmodeled); the balance stays isochronous (ASM-0024). |
+| Isochronism coefficient non-finite | BAL-001 error. Any sign/magnitude is otherwise accepted — it is a rate-of-change, not a size. |
 | New escapement (all empty, no arbors chosen) | Kept empty; ESC-101 lists what is missing; nothing ticks or swings. |
 | Amplitude not above half the lift angle | ESC-101 error; no impulse window, so the display shows nothing ticking. |
 | Pallet arbor or balance staff gear-driven | ESC-102 error. |
@@ -204,8 +207,8 @@ rev/min exist only at the UI boundary (`src/units/`).
 | ESC-101 | error | L1 / L2 | one escapement, three distinct existing arbors, valid inputs, amplitude above half the lift angle (project addition) |
 | ESC-102 | error | L2 | pallet arbor and balance staff are not gear-driven (project addition) |
 | ESC-103 | error | L1 | escape wheel clears the pallet arbor, the balance and other gears at its height; the balance clears the pallet arbor (project addition) |
-| BAL-001 | error | L2 / L3 | entered inertia and stiffness positive; a balance-governed drive needs an escapement, escape wheel and both inputs (project addition) |
-| BAL-002 | info | L3 | free frequency, frequency needed for nominal time, stiffness for nominal, predicted daily rate, with limits (project addition) |
+| BAL-001 | error | L2 / L3 | entered inertia and stiffness positive, isochronism coefficient finite; a balance-governed drive needs an escapement, escape wheel and both inputs (project addition) |
+| BAL-002 | info | L3 | free frequency, frequency needed for nominal time, stiffness for nominal, predicted daily rate, with limits; isochronism-adjusted rate at the predicted amplitude when a coefficient is declared (project addition, ASM-0034) |
 | SPR-001 | error | L3 | mainspring data, Q and escapement efficiency within their valid ranges (project addition, ASM-0026) |
 | SPR-002 | info | L3 | reserve, escape torque (lossless bound when so), predicted amplitude or what it needs (project addition, ASM-0026) |
 | SPR-003 | warning / error | L3 | the balance stops before let-down (warning) or cannot unlock even fully wound (error) (project addition, ASM-0026) |

@@ -987,3 +987,64 @@
     side-shake question (SRC-0012/BRG-007 is about the pivot/bore
     clearance generally; these standards may define the bore dimensions
     themselves). Not used for anything; closes nothing yet.
+
+# Phase 7.3 (docs/ROADMAP.md): amplitude-dependent balance rate
+# ("circular error" / isochronism error, REF-ENG §10). Searched for a
+# citable formula relating a balance's rate to its oscillation amplitude.
+
+- id: SRC-0032
+  title: "Determination of Very Small Changes in Rate Over Intervals of Several Days in Mechanical Timepieces"
+  author: Horace A. Bowman
+  year: 1950
+  type: peer_reviewed
+  url: https://nvlpubs.nist.gov/nistpubs/jres/045/3/V45.N03.A05.pdf
+  topics: [balance, isochronism, circular-error]
+  claims_supported:
+    - "The balance assembly of a watch is a mechanical oscillator, and like most oscillators, its resonant frequency changes with variations in the amplitude of oscillations. The amount of frequency variation that the balance assembly experiences as the watch runs down is known as isochronism."
+    - "As long ago as 1861 Phillips stated the geometric conditions for the formation of a hairspring that would show no change in frequency of oscillation when the amplitude of oscillation is changed[:] 1. that the center of gravity of the terminal must fall on the radius that completes the first quadrant of the spring through which the curve passes, and 2. that it must be distant from the center of the spring by an amount that equals R²/L[,] where R is the connecting radius and L the length of the theoretical terminal."
+    - "The variations [between isochronism curves taken in different positions] are caused by frictional changes and gravitational effects that deform the hairspring from its truly isochronal configuration."
+  claims_to_check: []
+  retrieved: true
+  accessed: "2026-10-04"
+  notes: >
+    Journal of Research of the National Bureau of Standards, Vol. 45,
+    No. 3, Research Paper 2127 (September 1950). Tier 1/2 (a NIST/NBS
+    research-journal paper; this particular paper describes a lab
+    instrument rather than deriving new theory, so it is used here only
+    as a secondary citation of Phillips' result, qualitative description
+    and genuinely primary evidence that the phenomenon is real and
+    significant — not as a quantitative formula). PDF fetched via
+    WebFetch (which could not extract its text — binary/scanned-image
+    pages) but read directly from the locally saved file with the Read
+    tool, the same workaround used earlier in this project for other
+    PDFs. Its own Figures 7-8 are measured isochronism curves (rate vs.
+    hours from winding, and vs. watch position) for a real pocket watch,
+    not a formula — this is the central finding of this research pass:
+    no source found gives a general, usable closed-form rate-vs-amplitude
+    equation (only Phillips' geometric zero-error conditions for an ideal
+    terminal curve, which this project cannot apply without modeling the
+    spring's actual coil geometry — out of scope for this pass; see
+    ASM-0034's notes). The coefficient this project's own
+    `isochronismAdjustedRate` applies is therefore a declared/measured
+    per-movement input, not a value computed from this source.
+
+- id: SRC-0033
+  title: "Mémoire sur le spiral réglant des chronomètres et des montres"
+  author: Édouard Phillips
+  year: 1861
+  type: historical_primary
+  url: null
+  topics: [balance, isochronism, hairspring-geometry]
+  claims_supported:
+    - "geometric conditions on a hairspring's terminal (overcoil) curve for zero change in oscillation frequency with amplitude (cited via SRC-0032, not read directly)"
+  claims_to_check: []
+  retrieved: false
+  accessed: null
+  notes: >
+    Not accessed directly — cited here only as SRC-0032 (Bowman 1950)
+    quotes it, itself citing "M. Phillips, Mémoire sur le spiral réglant
+    des chronometers et des montres (1861)." Recorded per
+    CLAUDE_REFERENCE_INSTRUCTIONS.md (preserve the evidence trail) rather
+    than presenting SRC-0032's secondhand paraphrase as if this project
+    had read the primary 1861 memoir itself. If a copy is ever found, the
+    claim above should be checked against it directly.

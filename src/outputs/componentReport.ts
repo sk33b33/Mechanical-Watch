@@ -13,6 +13,7 @@ import type { Dial } from "@/domain/dial";
 import type { Escapement } from "@/domain/escapement";
 import { toBeatsPerHour } from "@/units/frequency";
 import { balanceFrequency, beatFrequency, beatsPerEscapeRevolution, impulseFraction } from "@/kinematics/escapement";
+import { isochronismAdjustedRate } from "@/kinematics/balance";
 import { summarizeBalance } from "@/kinematics/balanceSummary";
 import { summarizeEnergy } from "@/kinematics/energySummary";
 import { forkRatio, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance } from "@/kinematics/palletGeometry";
@@ -516,6 +517,7 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
       entered("Lift angle", angleText(b.liftAngle), b.liftAngle),
       entered("Balance inertia", b.inertia === null ? "unknown" : `${toMilligramSquareCentimetres(b.inertia).toFixed(3)} mg·cm²`, b.inertia),
       entered("Hairspring stiffness", b.hairspringStiffness === null ? "unknown" : `${toMicronewtonMillimetresPerRadian(b.hairspringStiffness).toFixed(3)} µN·mm/rad`, b.hairspringStiffness),
+      entered("Isochronism coefficient", b.isochronismCoefficient === null ? "unmodeled" : `${(b.isochronismCoefficient * (Math.PI / 180)).toFixed(3)} s/day per °`, b.isochronismCoefficient),
       ...palletParameters,
       ...energyParameters,
     ],
@@ -528,6 +530,17 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
       { label: "Balance frequency for nominal time", text: dyn.nominalFrequency === null ? "—" : `${dyn.nominalFrequency.toFixed(4)} Hz`, si: dyn.nominalFrequency, equation: "from the escape arbor's speed at nominal time", level: "L2_KINEMATIC", references: ["ASM-0021"] },
       { label: "Hairspring stiffness for nominal time", text: dyn.stiffnessForNominal === null ? "—" : `${toMicronewtonMillimetresPerRadian(dyn.stiffnessForNominal).toFixed(3)} µN·mm/rad`, si: dyn.stiffnessForNominal, equation: "k = I (2π f)²", level: "L3_SIMPLIFIED_DYNAMIC", references: ["ASM-0024"] },
       { label: movement.drive?.kind === "BALANCE" ? "Predicted daily rate (balance governs)" : "Daily rate if the balance governed", text: dyn.dailyRate === null ? "—" : `${dyn.dailyRate >= 0 ? "+" : ""}${dyn.dailyRate.toFixed(2)} s/day`, si: dyn.dailyRate, equation: "(f / f_nominal − 1) × 86 400", level: "L3_SIMPLIFIED_DYNAMIC", references: ["ASM-0024"] },
+      ...(b.isochronismCoefficient === null || dyn.dailyRate === null || en?.amplitudeFull == null || en.amplitudeLetDown === null ? [] : [{
+        label: "Isochronism-adjusted rate, fully wound → let down",
+        text: [
+          isochronismAdjustedRate(dyn.dailyRate, b.isochronismCoefficient, en.amplitudeFull, b.amplitude),
+          isochronismAdjustedRate(dyn.dailyRate, b.isochronismCoefficient, en.amplitudeLetDown, b.amplitude),
+        ].map((v) => `${v >= 0 ? "+" : ""}${v.toFixed(2)} s/day`).join(" → "),
+        si: isochronismAdjustedRate(dyn.dailyRate, b.isochronismCoefficient, en.amplitudeFull, b.amplitude),
+        equation: "dailyRate + c·(amplitude − declared amplitude)",
+        level: "L3_SIMPLIFIED_DYNAMIC" as const,
+        references: ["ASM-0034" as const],
+      }]),
       ...palletDerived,
       ...energyDerived,
       { label: "Rate accuracy", text: "not modeled; requires physical validation", si: null, level: "L2_KINEMATIC", references: ["REF-ENG §9", "REF-ENG §10"] },

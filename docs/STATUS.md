@@ -2,6 +2,59 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 7.3: amplitude-dependent balance rate (isochronism coefficient, ASM-0034)
+
+Started the lowest-risk item from the Phase 7 scoping pass: replacing
+ASM-0024's "isochronous by construction" balance with an optional
+correction for amplitude dependence ("circular error", REF-ENG §10).
+
+- **Research first.** Searched for a citable rate-vs-amplitude formula.
+  Found Horace Bowman's 1950 NIST/NBS paper (SRC-0032, Tier 1/2, a lab
+  instrument for plotting isochronism curves) — genuine evidence the
+  phenomenon is real, and a secondhand citation of Phillips' 1861
+  geometric conditions for a zero-error hairspring terminal curve
+  (SRC-0033, cited via SRC-0032, not read directly). Neither gives a
+  usable closed-form rate-vs-amplitude equation — Phillips' result is
+  conditions for an *ideal* overcoil, not a quantified residual for a
+  real spring, and Bowman's own figures are measured curves, not a
+  formula. So the honest scope is a **declared/measured coefficient**,
+  the same pattern already used for Q and escapement efficiency
+  (ASM-0026), not an invented universal constant.
+- **Model (ASM-0034).** `Balance` gains `isochronismCoefficient: number
+  | null` (s/day per radian, null = unmodeled). `isochronismAdjustedRate`
+  (`src/kinematics/balance.ts`) applies a first-order local linearization
+  around the balance's own declared `amplitude`: dailyRate(A) = dailyRate₀
+  + c·(A − A_ref). Deliberately linear, not a Duffing-style A² term:
+  no source here establishes that specific functional form for this
+  system, so the model doesn't claim more than "a declared local
+  sensitivity," valid near the reference amplitude.
+- **Where the varying amplitude comes from.** The existing energy chain
+  (ASM-0026) already predicts amplitude at full wind and at let-down
+  (`amplitudeFull`/`amplitudeLetDown`). Combining that with the new
+  coefficient gives a wind-dependent rate prediction — the same
+  phenomenon Bowman's isochronism curves measure (rate vs. hours from
+  winding) — without the two models (balance dynamics, energy chain)
+  becoming coupled: the combination happens at each call site that
+  already has both (validation, report, UI), not inside either summary.
+- **Validation.** BAL-001 rejects a non-finite coefficient (any sign or
+  magnitude is otherwise valid — it's a rate of change, not a size).
+  BAL-002's message now reports the isochronism-adjusted rate range when
+  both a coefficient and a predicted amplitude exist, names what's
+  missing when only the coefficient is declared, and says plainly when
+  amplitude dependence isn't declared at all.
+- **UI and outputs.** A new optional input (s/day per °, converted to
+  the internal s/day-per-radian at the UI boundary) in the balance
+  inspector; a "Predicted rate (full → let down)" row in the energy
+  section once both the coefficient and amplitude exist; a parameter and
+  a derived row in the component report; wording updated everywhere that
+  previously said amplitude effects are simply "not modeled."
+- **Persistence.** Schema 7 → 8: balances gain the new field, defaulted
+  to null (unmodeled) for older files.
+- New tests: `balance.test.ts` (isochronism-adjusted-rate unit tests,
+  plus BAL-001/BAL-002 cases through `createTeachingMovement()`). 477
+  unit tests pass (473 before); `tsc --noEmit` and `eslint` are clean;
+  production build succeeds; full Playwright e2e suite run.
+
 ## Scoped Phase 7 (advanced escapement and balance simulation)
 
 `docs/ROADMAP.md`'s Phase 7 was a single unscoped line ("Only after the

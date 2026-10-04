@@ -7,6 +7,8 @@ import type { MainspringLink, MainspringSpec } from "@/domain/coupling";
 import type { Escapement, PalletGeometry } from "@/domain/escapement";
 import { isValidToothCount } from "@/math/gearMath";
 import { forkRatio, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance } from "@/kinematics/palletGeometry";
+import { isochronismAdjustedRate } from "@/kinematics/balance";
+import { summarizeBalance } from "@/kinematics/balanceSummary";
 import { actionRow, formatMm, inputRow, parseRequired, readonlyRow, sectionHeader } from "./fields";
 import { positive, type Section } from "./common";
 
@@ -128,6 +130,23 @@ function palletRows(esc: Escapement, edit: (patch: Parameters<typeof updateEscap
   return out;
 }
 
+/** Rate at the predicted amplitude, with a declared isochronism coefficient applied (ASM-0034). Empty when none is declared. */
+function isochronismRow(store: AppStore, esc: Escapement, amplitudeFull: Angle | null, amplitudeLetDown: Angle | null): Section {
+  const coefficient = esc.balance.isochronismCoefficient;
+  if (coefficient === null) return [];
+  const baseline = summarizeBalance(store.movement, esc).dailyRate;
+  if (baseline === null || amplitudeFull === null || amplitudeLetDown === null) {
+    return [readonlyRow("Predicted rate (full → let down)", "needs the predicted amplitude above",
+      "An isochronism coefficient is declared (ASM-0034), but there is nothing to apply it to yet.")];
+  }
+  const reference = esc.balance.amplitude;
+  const full = isochronismAdjustedRate(baseline, coefficient, amplitudeFull, reference);
+  const letDown = isochronismAdjustedRate(baseline, coefficient, amplitudeLetDown, reference);
+  const fmt = (v: number): string => `${v >= 0 ? "+" : ""}${v.toFixed(1)} s/day`;
+  return [readonlyRow("Predicted rate (full → let down)", `${fmt(full)} → ${fmt(letDown)}`,
+    "Baseline daily rate + isochronism coefficient × (amplitude − declared amplitude) (ASM-0034). Model prediction only; requires physical validation.")];
+}
+
 function lossRows(
   store: AppStore,
   esc: Escapement,
@@ -168,6 +187,7 @@ function lossRows(
         : `${degreesText(energy.amplitudeFull)} → ${degreesText(energy.amplitudeLetDown)}`,
       "A = √(2 Q E_beat / (π k)). While predicted, it replaces the declared amplitude in the simulation display."),
     readonlyRow("Amplitude now (simulation)", store.goingTrainStopped ? "stopped (run down)" : amplitudeNow === null ? "declared value" : degreesText(amplitudeNow)),
+    ...isochronismRow(store, esc, energy?.amplitudeFull ?? null, energy?.amplitudeLetDown ?? null),
     readonlyRow("Stops below", energy?.stopWindTurns == null ? "—" : `${energy.stopWindTurns.toFixed(3)} turns of wind`,
       "Where the predicted amplitude falls to half the lift angle (SPR-003)."),
   ];

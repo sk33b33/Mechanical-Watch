@@ -56,6 +56,16 @@ export interface Balance {
    * only come from measurement or a source; null when unknown.
    */
   qualityFactor: number | null;
+  /**
+   * Declared/measured rate sensitivity to amplitude (s/day per radian of
+   * amplitude deviation from `amplitude` above), for a first-order
+   * isochronism-error correction (L3, ASM-0034). There is no universal
+   * value: a real spring's amplitude dependence ("circular error", REF-ENG
+   * §10) comes from its own terminal-curve geometry and must be measured or
+   * sourced per movement. Null when unknown; the balance then stays
+   * isochronous by construction (ASM-0024).
+   */
+  isochronismCoefficient: number | null;
 }
 
 /**
