@@ -109,6 +109,26 @@ describe("teaching movement energy chain", () => {
     const m = updateCouplingSpring(nominal, link.id, { ...spec, letDownTorque: newtonMillimetres(12) });
     expect(validateMovement(m).some((i) => i.rule === "SPR-001")).toBe(true);
   });
+
+  it("SPR-004: a Q within the informal 100-300 range (ASM-0035) draws no advisory", () => {
+    const m = withLosses(250, 0.35);
+    expect(validateMovement(m).some((i) => i.rule === "SPR-004")).toBe(false);
+  });
+
+  it("SPR-004: a Q outside the informal range is an info advisory, not an error", () => {
+    const tooLow = withLosses(20, 0.35);
+    const info = validateMovement(tooLow).find((i) => i.rule === "SPR-004");
+    expect(info?.severity).toBe("info");
+    expect(info?.message).toContain("100–300");
+    expect(info?.references).toContain("ASM-0035");
+
+    const tooHigh = withLosses(5000, 0.35);
+    expect(validateMovement(tooHigh).some((i) => i.rule === "SPR-004")).toBe(true);
+  });
+
+  it("SPR-004 does not fire when Q is unknown (already null in the teaching movement)", () => {
+    expect(validateMovement(nominal).some((i) => i.rule === "SPR-004")).toBe(false);
+  });
 });
 
 describe("pallet rules (ESC-104, ESC-105)", () => {

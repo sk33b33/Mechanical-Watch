@@ -207,6 +207,12 @@ export const ASSUMPTIONS = {
     scope: "Balance (simplified dynamic, L3)",
     status: "Active",
   },
+  "ASM-0035": {
+    summary:
+      "A balance quality factor Q entered outside roughly 100–300 (SRC-0034, Tier 6: Douglas Bateman's finding, cited secondhand by two independent writers, that Q — not escapement type — predicts a timekeeper's accuracy) is flagged as an informational advisory (SPR-004), never a pass/fail limit; this movement's own Q still can only come from measurement or a source (ASM-0026) and is never defaulted or inferred from the range. Escapement efficiency has no comparable advisory yet: the only figures found (SRC-0035) are geometric-only (91%/88% by tooth count, excluding friction/dynamic losses) and only two data points, not a general formula, so they do not yet translate into an implementable check",
+    scope: "Energy / amplitude (L3)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

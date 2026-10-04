@@ -9,7 +9,15 @@ import { issue, type Rule } from "./context";
 const inUnitInterval = (v: number): boolean => Number.isFinite(v) && v > 0 && v <= 1;
 const hours = (s: number): string => `${(s / 3600).toFixed(1)} h`;
 
-/** SPR-001…003: mainspring data and the simplified energy model (ASM-0026). */
+/**
+ * Informal range cited for a mechanical wristwatch balance's quality
+ * factor (ASM-0035, SRC-0034): ~100 for a small/lower-grade movement up to
+ * ~300 for a good one. Not a validated limit — SPR-004 is informational
+ * only, same treatment as the BRG-006/BRG-007 bearing-clearance advisories.
+ */
+const TYPICAL_WRISTWATCH_Q = { min: 100, max: 300 };
+
+/** SPR-001…004: mainspring data and the simplified energy model (ASM-0026). */
 export const springRules: Rule = ({ movement, train }) => {
   const issues: ValidationIssue[] = [];
 
@@ -33,6 +41,13 @@ export const springRules: Rule = ({ movement, train }) => {
     const q = esc.balance.qualityFactor;
     if (q !== null && !(Number.isFinite(q) && q > 0)) {
       issues.push(issue("SPR-001", "quality-factor", "error", "L3_SIMPLIFIED_DYNAMIC", [esc.id], `${esc.name}: the balance quality factor must be positive.`, ["ASM-0026"]));
+    }
+    if (q !== null && Number.isFinite(q) && q > 0 && (q < TYPICAL_WRISTWATCH_Q.min || q > TYPICAL_WRISTWATCH_Q.max)) {
+      issues.push(
+        issue("SPR-004", "quality-factor-advisory", "info", "L3_SIMPLIFIED_DYNAMIC", [esc.id],
+          `${esc.name}: Q = ${q.toFixed(1)} is outside the range typically cited for a mechanical wristwatch balance (${String(TYPICAL_WRISTWATCH_Q.min)}–${String(TYPICAL_WRISTWATCH_Q.max)}, ASM-0035). An informal reference figure, not a validated limit — this movement's own Q can only come from measurement or a source.`,
+          ["ASM-0035"]),
+      );
     }
   }
 

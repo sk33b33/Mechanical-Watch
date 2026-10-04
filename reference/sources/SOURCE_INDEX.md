@@ -183,6 +183,29 @@ isochronism theory. Not read directly — recorded because SRC-0032 quotes
 it, so the citation trail says so rather than implying this project read
 the 1861 memoir itself.
 
+## Balance quality factor Q and escapement efficiency (ASM-0026)
+
+### Douglas Bateman, via Jack Forster and watchprosite.com (SRC-0034, read, secondhand)
+Two independent professional watch writers credit Douglas Bateman with a
+1970s finding that Q, not escapement type, is the dominant predictor of
+a timekeeper's accuracy, and both independently cite "~300" for a good
+mechanical wristwatch balance (a third source gives a broader "~100 to
+300" range across grades). Bateman's own paper was not located or read —
+Tier 6, like SRC-0011/SRC-0012. Used for the SPR-004 informational
+advisory (ASM-0035) only; never applied to any specific movement's own Q.
+
+### SJX — The Geometric Efficiency of Escapements, 2024 (SRC-0035, read)
+Derives 91% (15-tooth) and 88% (20-tooth) Swiss lever escapement
+*geometric* efficiency from impulse-angle data in Defossez's "Théorie
+générale de l'horlogerie" (corroborated by Daniels' "Watchmaking") and
+Vermot & Dordor's "Mécanique & Construction" — real, named, recognized
+horological references. Explicitly geometric-only (excludes friction and
+dynamic losses), so it bounds but doesn't supply this project's
+`escapementEfficiency` (the full fraction reaching the balance). Not
+implemented as a rule: only two data points were obtained, not the
+general formula, so no accurate bound for an arbitrary tooth count can
+yet be computed. A genuine partial finding, recorded rather than dropped.
+
 ## Movement-specific sources
 
 Movement-specific measurements must live under:

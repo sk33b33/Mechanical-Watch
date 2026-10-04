@@ -81,8 +81,11 @@ level).
   zero-error *conditions* for an ideal spring, not a residual for a real
   one), so the model is a first-order local linearization around the
   declared amplitude, same pattern as Q/escapement efficiency.
-- 7.4 — Sourced Q and escapement efficiency (a research task, not a
-  geometry build — see the open item already in `docs/STATUS.md`).
+- 7.4 — **Partly done** (see `docs/STATUS.md`). Q has an informal
+  ~100-300 advisory (SPR-004, ASM-0035, SRC-0034, Tier 6/secondhand).
+  Escapement efficiency only has a geometric-only upper bound (91%/88%
+  by tooth count, SRC-0035) at two data points, not a general formula —
+  not yet implementable as a rule; remains genuinely open.
 - 7.5 — Nonlinear mainspring torque curve and bridle slip (REF-ENG §11;
   ASM-0026 is currently a straight line between two entered points).
   Research-risk; movement-specific curves are usually proprietary.

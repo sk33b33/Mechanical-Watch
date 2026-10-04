@@ -1048,3 +1048,78 @@
     than presenting SRC-0032's secondhand paraphrase as if this project
     had read the primary 1861 memoir itself. If a copy is ever found, the
     claim above should be checked against it directly.
+
+# Phase 7.4 (docs/ROADMAP.md): sourced values for the balance quality
+# factor Q and escapement efficiency (ASM-0026), both currently
+# user-entered unknowns with no cited typical range.
+
+- id: SRC-0034
+  title: "Douglas Bateman's quality-factor (Q) comparison across timekeepers (cited secondhand — see notes)"
+  author: Douglas Bateman (primary work unread; cited via Jack Forster and watchprosite.com/DonCorson)
+  year: null
+  type: forum_discussion
+  url: null
+  topics: [balance, quality-factor, isochronism]
+  claims_supported:
+    - "a good mechanical wrist watch has a Q of about 300"
+    - "Bateman... wrote an article [in the 1970s]... in which he made a graph of all kinds of time measuring instruments and plotted the Q of the system against the rate accuracy the system provided... the data points all fell pretty well on a straight line, suggesting strongly that the accuracy provided by a timekeeper depends strongly on the Q of the system and does not depend that much on the type of escapement or other factors"
+    - "modern watch balances [have Q] around 100 to 300... a small size wrist watch typically has a Q of about 100... a good quality pocket watch balance can have a Q of 200-250"
+  claims_to_check: []
+  retrieved: true
+  accessed: "2026-10-04"
+  notes: >
+    Douglas Bateman is a real, named horological researcher credited
+    (independently, by two different professional watch writers — Jack
+    Forster, jackforster.substack.com, "And Now, A Word On Quality"; and
+    watchprosite.com user DonCorson, "Measuring Q, the Quality Factor")
+    with popularizing Q as a cross-escapement-type accuracy predictor in
+    horology, reportedly via a 1970s article (title, journal and exact
+    year not found by either secondary source, and his original work was
+    not located or read directly — this remains a Tier 6 secondhand
+    citation, like SRC-0011/SRC-0012, not a primary source). Both
+    secondary sources independently give the same "~300" figure for a
+    good mechanical wristwatch; a third, earlier search additionally
+    corroborated a broader "~100 to 300" range across watch grades/sizes
+    (unattributed page, not separately registered). Used for the SPR-004
+    informational advisory (ASM-0035) only — never a pass/fail limit, and
+    never applied to populate any specific movement's (including the
+    teaching movement's) actual Q, which `teachingMovement.ts` already
+    deliberately leaves unknown, consistent with ASM-0026 ("a loss
+    property that can only come from measurement or a source").
+
+- id: SRC-0035
+  title: "Insight: The Geometric Efficiency of Escapements"
+  author: SJX (Su Jia Xian / watchesbysjx.com)
+  year: 2024
+  type: specialist_reference
+  url: https://watchesbysjx.com/2024/08/geometric-efficiency-escapements.html
+  topics: [escapement, efficiency]
+  claims_supported:
+    - "the 15-tooth Swiss lever has a geometric efficiency of 91%... accounts for a 9% loss of available energy, outside of frictional or dynamic losses [citing equal 11° impulse angles, from Théorie générale de l'horlogerie by L. Defossez, corroborated by George Daniels' Watchmaking]"
+    - "the 20-tooth Swiss lever has [an] 88% geometric efficiency... a 12% loss of available energy [citing equal entry/exit impulse angles of 8°, from Mécanique & Construction by Michel Vermot and Sébastien Dordor]"
+  claims_to_check:
+    - "the article's own geometric-efficiency formula (referenced as 'our formula' but not quoted in full in what was fetched) and whether it generalizes to an arbitrary escape-wheel tooth count, which would be needed before this could become a general validation rule rather than two fixed data points"
+  retrieved: true
+  accessed: "2026-10-04"
+  notes: >
+    Tier 5 (specialist/practitioner technical page, like SRC-0026), but
+    its own figures trace to two recognized horological technical
+    references cited by name and corroborating each other (Defossez's
+    "Théorie générale de l'horlogerie", a classic comprehensive French
+    horology treatise; Daniels' "Watchmaking", the standard modern
+    reference; Vermot & Dordor's "Mécanique & Construction") —
+    comparable in tier to SRC-0026's use of BS 978/NIHS 26702 secondary
+    derivations. Important scope limit, not glossed over: this is
+    GEOMETRIC efficiency only (the share of available impulse angle
+    actually used, from tooth-pitch and impulse-angle geometry) — it
+    explicitly excludes frictional and dynamic losses, so it is an upper
+    bound on, not a value for, this project's `escapementEfficiency`
+    (defined as the fraction of the escape wheel's energy per beat that
+    reaches the balance, ASM-0026 — the full, not geometric-only,
+    figure). No total-efficiency source was found this pass. Not yet
+    implemented as a validation rule: only two tooth-count data points
+    (15→91%, 20→88%) were obtained, not the general formula, so an
+    accurate bound for an arbitrary tooth count cannot yet be computed
+    without risking a wrong interpolation/extrapolation. Recorded as a
+    genuine partial finding per CLAUDE_REFERENCE_INSTRUCTIONS.md rule 12
+    rather than silently dropped for not fully closing the gap.

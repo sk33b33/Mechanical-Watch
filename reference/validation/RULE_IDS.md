@@ -82,6 +82,7 @@ BAL-002 The simplified dynamic balance model reports its free frequency, the fre
 SPR-001 Mainspring data must be valid: positive usable turns and torques, fully-wound torque not below let-down torque, efficiencies in (0, 1], a positive balance quality factor.
 SPR-002 The simplified energy model reports power reserve, escape-wheel torque, energy per beat and predicted amplitude, with its assumptions.
 SPR-003 The predicted amplitude must exceed half the lift angle while the spring is wound, or the balance cannot unlock the escapement.
+SPR-004 An entered balance quality factor Q outside the informally cited range for a mechanical wristwatch is an advisory, not an error (REF-ENG §10, ASM-0035).
 
 TOL-001 A declared tolerance must apply to an existing dimension once, with finite limits, lower ≤ upper, and a positive lower limit for a size.
 TOL-002 A clearance or gear-mesh centre distance that is positive at nominal should stay positive at its worst-case declared tolerance limits.

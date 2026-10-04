@@ -2,6 +2,48 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 7.4: sourced ranges for balance Q (SPR-004); escapement efficiency stays open
+
+Continued the energy-model research named in this file's own "Next"
+section: look for real values for the balance quality factor Q and
+escapement efficiency (ASM-0026), both currently user-entered unknowns
+with no cited typical range.
+
+- **Q: found a usable, if secondhand, source.** Two independent
+  professional watch writers (Jack Forster; watchprosite.com) credit
+  Douglas Bateman with a 1970s finding that Q — not escapement type —
+  is the dominant predictor of a timekeeper's accuracy, and both
+  independently cite "~300" for a good mechanical wristwatch balance,
+  consistent with a third source's broader "~100 to 300" range across
+  grades. Bateman's own paper wasn't located or read (Tier 6, same
+  confidence as SRC-0011/SRC-0012). Added SPR-004 (`springRules.ts`,
+  ASM-0035): an info-only advisory when an entered Q falls outside
+  ~100–300, never a pass/fail limit and never used to default or infer
+  any movement's own Q — the teaching movement's Q stays null, exactly
+  as `teachingMovement.ts` already deliberately left it.
+- **Escapement efficiency: a real partial finding, not yet usable.**
+  Found a 2024 watchesbysjx.com article deriving Swiss lever escapement
+  *geometric* efficiency (91% at 15 teeth, 88% at 20 teeth) from
+  impulse-angle data in two recognized horological references (Defossez's
+  "Théorie générale de l'horlogerie", corroborated by Daniels'
+  "Watchmaking"; Vermot & Dordor's "Mécanique & Construction"). This is a
+  genuine upper bound on this project's `escapementEfficiency` (defined
+  as the full fraction of energy reaching the balance, friction and
+  dynamic losses included) — not a value for it, since geometric
+  efficiency explicitly excludes those other loss categories. Not
+  implemented: only two tooth-count data points were obtained, not the
+  underlying general formula, so no accurate bound for an arbitrary
+  tooth count can be computed without risking a wrong
+  interpolation/extrapolation. Recorded (SRC-0035) rather than dropped,
+  per the project's rule to preserve partial evidence.
+- Registered SRC-0034/SRC-0035, ASM-0035, SPR-004 in SOURCES.yml,
+  SOURCE_INDEX.md, ASSUMPTION_REGISTER.md, RULE_IDS.md and their
+  `src/reference/` mirrors. New tests in `mainspringEnergy.test.ts`
+  (SPR-004 fires outside the range, not inside, not when Q is unknown).
+  480 unit tests pass (477 before); `tsc --noEmit` and `eslint` are
+  clean; production build succeeds; e2e suite run (no UI changed — the
+  advisory renders through the existing generic validation panel).
+
 ## Phase 7.3: amplitude-dependent balance rate (isochronism coefficient, ASM-0034)
 
 Started the lowest-risk item from the Phase 7 scoping pass: replacing

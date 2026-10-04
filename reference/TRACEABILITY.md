@@ -132,6 +132,7 @@ rev/min exist only at the UI boundary (`src/units/`).
 | Mainspring data empty, turns ≤ 0, torques ≤ 0, let-down > fully wound, efficiency outside (0, 1] | SPR-001 error; no energy chain; the wind is not tracked. |
 | Q or escapement efficiency unknown | Amplitude not predicted; SPR-002 names what is missing; the declared amplitude is shown. |
 | Q ≤ 0 or efficiency outside (0, 1] | SPR-001 error. |
+| Q outside roughly 100–300 | SPR-004 info advisory (ASM-0035); never blocks or changes the model. |
 | Predicted amplitude below half the lift angle before let-down | SPR-003 warning with the stop wind and running reserve; error if even fully wound. The simulation stops a balance-governed train there. |
 | Balance inertia or stiffness empty | Stored as null (unknown); the model stays kinematic; a balance-governed drive reports BAL-001 and drives nothing. |
 | Balance inertia or stiffness ≤ 0 | BAL-001 error; no free frequency. |
@@ -212,6 +213,7 @@ rev/min exist only at the UI boundary (`src/units/`).
 | SPR-001 | error | L3 | mainspring data, Q and escapement efficiency within their valid ranges (project addition, ASM-0026) |
 | SPR-002 | info | L3 | reserve, escape torque (lossless bound when so), predicted amplitude or what it needs (project addition, ASM-0026) |
 | SPR-003 | warning / error | L3 | the balance stops before let-down (warning) or cannot unlock even fully wound (error) (project addition, ASM-0026) |
+| SPR-004 | info | L3 | entered Q outside ~100–300, an informal reference range for a mechanical wristwatch balance (project addition, ASM-0035, SRC-0034) |
 | TOL-001 | error / warning | L1 | tolerance definition: target exists, one per dimension, finite limits, lower ≤ upper, positive size limit (project addition) |
 | TOL-002 | warning | L1 | a nominally positive side shake, endshake or gear-mesh centre distance that can close within declared tolerances (project addition) |
 | MFG-001 | info | L1 | summary whenever tolerances exist: declared intent, untoleranced dimensions are nominal. Also stated in every output. |
