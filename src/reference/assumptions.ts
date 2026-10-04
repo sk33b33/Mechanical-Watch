@@ -213,6 +213,12 @@ export const ASSUMPTIONS = {
     scope: "Energy / amplitude (L3)",
     status: "Active",
   },
+  "ASM-0036": {
+    summary:
+      "Pallet geometry (ASM-0025) gains a declared drop angle (`PalletGeometry.dropAngle`), measured at the escape wheel's own axis — distinct from the lever-side lock/draw/run angles. For two beats per tooth (ASM-0021), each beat's wheel-angle budget (tooth width + pallet width + drop) is half the tooth pitch, π/escapeTeeth (`wheelAngleBudgetPerBeat`); drop must be positive and strictly less than that budget, since the tooth and pallet still need a positive share of it (ESC-106, a derived geometric necessity, not just a cited convention). An entered drop outside the informally cited 1–2° club-tooth range (SRC-0036, Tier 4, Playtner 1908) is a separate, non-blocking advisory (ESC-107), which also reports the resulting linear clearance at the tip circle (arc length = radius × angle, `dropClearance`). Still unmodeled: the actual tooth and pallet FACE shapes, equidistant-vs-circular pallet type, club-vs-ratchet tooth type, and convex/concave lifting planes — SRC-0036 covers these too, but they are out of scope for this pass",
+    scope: "Escapement geometry",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

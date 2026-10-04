@@ -61,8 +61,8 @@ describe("time display definitions (ASM-0014)", () => {
 
 describe("teaching movement at nominal time", () => {
   it("validates with no errors or warnings", () => {
-    // Info only: bearing clearances not judged, the prescribed drive, and the escapement's declared model level.
-    const info = ["BRG-005", "SIM-003", "ESC-001", "ESC-002", "BAL-002", "SPR-002"];
+    // Info only: bearing clearances not judged, the prescribed drive, the escapement's declared model level, and the drop clearance (ASM-0036).
+    const info = ["BRG-005", "SIM-003", "ESC-001", "ESC-002", "ESC-107", "BAL-002", "SPR-002"];
     expect(issuesOf(movement).filter((id) => !info.some((rule) => id.startsWith(rule)))).toEqual([]);
   });
 

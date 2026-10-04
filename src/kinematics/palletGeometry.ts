@@ -51,6 +51,25 @@ export function impulseAngle(leverAngle: Angle, lockAngle: Angle, runAngle: Angl
   return radians(leverAngle - lockAngle - runAngle);
 }
 
+/**
+ * Wheel-angle budget for one beat (ASM-0036, SRC-0036): two beats per
+ * tooth (ASM-0021) means each beat's tooth width, pallet width and drop
+ * together span half the tooth pitch, π/escapeTeeth.
+ */
+export function wheelAngleBudgetPerBeat(escapeTeeth: number): Angle {
+  assertValidToothCount(escapeTeeth);
+  return radians(Math.PI / escapeTeeth);
+}
+
+/**
+ * Linear clearance a declared angular drop gives at the escape wheel's tip
+ * circle (ASM-0036, SRC-0036): arc length = radius × angle. Null when the
+ * tip radius is not positive.
+ */
+export function dropClearance(tipRadius: Length, dropAngle: Angle): Length | null {
+  return tipRadius > 0 ? metres(tipRadius * dropAngle) : null;
+}
+
 /** Balance lift per unit of lever swing: the fork-to-roller ratio implied by the two declared angles. */
 export function forkRatio(balanceLift: Angle, leverAngle: Angle): number | null {
   return leverAngle > 0 && balanceLift > 0 ? balanceLift / leverAngle : null;

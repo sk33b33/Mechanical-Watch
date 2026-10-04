@@ -206,6 +206,24 @@ implemented as a rule: only two data points were obtained, not the
 general formula, so no accurate bound for an arbitrary tooth count can
 yet be computed. A genuine partial finding, recorded rather than dropped.
 
+## Lever escapement geometry (drop, lock, draw, run, lift)
+
+### Playtner — An Analysis of the Lever Escapement, 1908 (SRC-0036, read)
+Tier 4, a recognized book-length primary watchmaking text on lever-
+escapement geometry specifically, freely available via Project Gutenberg.
+Gives, with worked examples: drop is 1½° (club tooth) to 2° (ratchet
+tooth), converted to a linear tip-circle clearance by arc length (radius
+× angle); for two beats per tooth, each beat's wheel-angle budget (tooth
+width + pallet width + drop, all measured at the escape wheel's own
+axis) is half the tooth pitch (12° for a 15-tooth wheel); drop, lock,
+draw and lift are all measured in different angle frames (wheel-center
+vs. pallet-center). Also corroborates this project's existing
+teaching-movement lock (2°) and draw (12°) angles as the right order of
+magnitude. Used for ASM-0036 (`PalletGeometry.dropAngle`) and the
+ESC-106/ESC-107 rules — only the drop piece of the chapter; the book's
+far larger treatment of pallet/tooth types and lifting-plane shapes is
+out of scope for this pass.
+
 ## Movement-specific sources
 
 Movement-specific measurements must live under:

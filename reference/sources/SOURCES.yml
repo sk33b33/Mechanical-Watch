@@ -1123,3 +1123,47 @@
     without risking a wrong interpolation/extrapolation. Recorded as a
     genuine partial finding per CLAUDE_REFERENCE_INSTRUCTIONS.md rule 12
     rather than silently dropped for not fully closing the gap.
+
+# Phase 7.1 (docs/ROADMAP.md): real pallet/escape-wheel contact geometry,
+# starting with drop — the escape wheel's free rotation between one
+# pallet's tooth releasing and the next landing, entirely unmodeled before
+# this (ASM-0023's own list: "locking, draw, drop, impact, sliding and
+# banking geometry are not modeled").
+
+- id: SRC-0036
+  title: "An Analysis of the Lever Escapement"
+  author: H. R. Playtner
+  year: 1908
+  type: watchmaking_reference
+  url: https://gutenberg.org/files/21978/21978-h/21978-h.htm
+  topics: [escapement, lever-escapement, drop, lock, draw, run, lift]
+  claims_supported:
+    - "Authorities on the subject allow 1½° drop for the club [tooth] and 2° for the ratchet tooth."
+    - "Supposing we have a wheel with a primitive diameter of 7.5 mm., what is the amount of drop, allowing 1½° by angular measurement? 7.5 × 3.1416 ÷ 360 × 1.5 = .0983 mm." (angular drop converted to a linear clearance at the tip circle: arc length = radius × angle)
+    - "the interval from tooth to tooth is 360÷15=24°; divided by 2 pallets = 24÷2 = 12° for width of tooth, pallet and drop" — i.e. for two beats per tooth, each beat's wheel-angle budget (tooth width + pallet width + drop, all measured at the escape wheel's own axis) is half the tooth pitch; worked as 12° = 4½° (tooth) + 6° (pallet) + 1½° (drop) for a 15-tooth wheel
+    - "it is well to know that the angles for width of teeth, pallets and drop are measured from the wheel center, while the lifting and locking angles are struck from the pallet center" (drop is a wheel-side angle, distinct from the lever-side lock/run/lift angles already in this codebase's PalletGeometry)
+    - "1½° is the angle generally allowed for the lock" (corroborates this project's existing teaching-movement lock angle, 2°, as the right order of magnitude, not identical)
+    - "The draw... 12° on each [pallet]... the angle on the tooth is made just twice the amount, namely 24°" (corroborates the existing teaching-movement draw angle, 12°)
+  claims_to_check: []
+  retrieved: true
+  accessed: "2026-10-04"
+  notes: >
+    Tier 4 (a recognized, book-length, primary watchmaking text devoted
+    specifically to lever-escapement geometry — stronger than a derived
+    secondary source like SRC-0026/SRC-0035), freely available via Project
+    Gutenberg (public domain, 1908). Read directly (fetched the raw HTML
+    with curl and read it with the Read tool — WebFetch's own isolated
+    summarizer compressed the chapters too aggressively to extract the
+    worked formulas faithfully, the same kind of lossy-extraction issue
+    this project has hit with scanned-image PDFs, but for a different
+    reason: an HTML page is not saved locally by WebFetch the way a
+    binary PDF is, so the curl-then-Read workaround was used instead).
+    Used for ASM-0036 (`PalletGeometry.dropAngle`, `wheelAngleBudgetPerBeat`,
+    `dropClearance` in `src/kinematics/palletGeometry.ts`) and the ESC-106
+    (hard geometric budget, derived — not just cited) / ESC-107 (informal
+    1-2° advisory, cited) validation rules. Only the DROP piece of this
+    chapter's material is used this pass; the book's much larger treatment
+    of equidistant-vs-circular pallet types, club-vs-ratchet tooth types,
+    and convex/concave lifting-plane shapes remains unmodeled and is
+    explicitly out of scope here — a genuinely larger undertaking, left
+    for a future Phase 7.1 pass rather than attempted incompletely now.

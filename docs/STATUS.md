@@ -2,6 +2,80 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 7.1: real pallet geometry, starting with drop (ESC-106/107, ASM-0036)
+
+Started the moderate-risk geometry item from the Phase 7 scoping: real
+pallet/escape-wheel contact geometry (ASM-0023's own list names "drop,
+impact, sliding and banking geometry" as entirely unmodeled).
+
+- **Research first, same discipline as the other Phase 7 passes.** Found
+  H. R. Playtner's "An Analysis of the Lever Escapement" (1908) — a
+  full, recognized, book-length watchmaking text devoted specifically to
+  lever-escapement geometry, freely available via Project Gutenberg
+  (Tier 4, stronger sourcing than most of this project's recent
+  horological finds). WebFetch's own isolated summarizer compressed the
+  chapters too aggressively to extract the worked formulas faithfully
+  (a similar lossy-extraction problem to scanned PDFs, but for a
+  different reason — HTML isn't saved locally by WebFetch the way a
+  binary PDF is), so fetched the raw HTML with curl and read it with the
+  Read tool instead — a new, reusable workaround for this kind of case.
+- **What the book actually gives.** With two beats per tooth (ASM-0021,
+  already in this codebase), each beat's wheel-angle budget — tooth
+  width + pallet width + drop, all measured at the escape wheel's own
+  axis, not the lever's — is exactly half the tooth pitch. Worked 15-tooth
+  example: 12° = 4½° (tooth) + 6° (pallet) + 1½° (drop). This gives a
+  genuine, derivable geometric necessity (drop must be positive and
+  strictly less than that budget) independent of any cited "typical"
+  range — not just an empirical rule of thumb like the BRG-006/007/
+  SPR-004 advisories. The book separately cites 1–2° as the typical
+  club-tooth range, used as a non-blocking advisory on top of that hard
+  constraint. It also corroborates this project's existing teaching-
+  movement lock (2°) and draw (12°) angles as the right order of magnitude.
+- **Scope, stated plainly.** Only drop is added this pass. The book's
+  much larger treatment of equidistant-vs-circular pallet types,
+  club-vs-ratchet tooth types, and convex/concave lifting-plane shapes —
+  real tooth and pallet FACE geometry — remains unmodeled, left for a
+  future Phase 7.1 pass rather than attempted incompletely now.
+- **Model (ASM-0036).** `PalletGeometry` gains `dropAngle: Angle`
+  (wheel-side, required — unlike Q/efficiency this isn't a loss property
+  with no default state, so it follows the same NaN-until-filled
+  convention as lock/draw/run). New pure functions in
+  `src/kinematics/palletGeometry.ts`: `wheelAngleBudgetPerBeat`
+  (π/escapeTeeth) and `dropClearance` (arc length = tip radius × drop
+  angle) — both checked against Playtner's own worked numbers in tests,
+  not just the formulas in the abstract.
+- **Validation.** ESC-106 (error): drop must be positive and under the
+  budget — a derived necessity, not a cited convention. ESC-107 (info):
+  drop outside 1–2° is a non-blocking advisory, and the resulting linear
+  clearance at the tip circle is always reported once drop is valid.
+  ESC-002's "not modeled" message now says so conditionally — drop is
+  modeled when declared.
+- **UI and outputs.** A new "Drop (°, wheel-side)" input in the pallet
+  geometry section, plus readonly rows for the wheel-angle budget and
+  the resulting clearance; parameter/derived rows in the component
+  report. The teaching movement's drop is set to 1.5°, Playtner's own
+  15-tooth worked value (its escape wheel also has 15 teeth) — grounded,
+  not guessed, consistent with how its other illustrative values work
+  (ASM-0009).
+- **Persistence.** Schema 8 → 9: pallet geometry, where already given,
+  gains an empty (NaN) drop angle to fill in. (Also backfilled the
+  missing schema-7→8 row in `TRACEABILITY.md`'s migration table, a gap
+  from the isochronism-coefficient pass.)
+- **Verified in a real browser, not just asserted.** Loaded the teaching
+  movement, confirmed the Drop field shows 1.5°, the wheel-angle budget
+  reads 12.00°, and the clearance reads 0.0602 mm (2.3 mm tip radius ×
+  1.5° in radians) — then set drop to 15° and confirmed ESC-106 fires in
+  the validation panel, the field turns red, and the header's declared-
+  level banner flips to "NOT SATISFIED". Screenshotted both states.
+- New tests in `palletGeometry.test.ts` (both new functions, checked
+  against Playtner's own worked numbers) and `mainspringEnergy.test.ts`
+  (ESC-106/107 cases through `createTeachingMovement()`). Two existing
+  exact-issue-list tests (`escapementRules.test.ts`,
+  `movementKinematics.test.ts`) updated for the new, correct ESC-107 info
+  row the teaching movement now legitimately produces. 486 unit tests
+  pass (480 before); `tsc -b --noEmit` and `eslint` are clean; production
+  build succeeds; full e2e suite run.
+
 ## Phase 7.4: sourced ranges for balance Q (SPR-004); escapement efficiency stays open
 
 Continued the energy-model research named in this file's own "Next"

@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { degrees, toDegrees } from "@/units/angle";
 import { metres, millimetres as mm, toMillimetres } from "@/units/length";
-import { forkRatio, impulseAngle, isHalfToothSpan, lockingPoints, spanAngle, tangentialCentreDistance } from "./palletGeometry";
+import {
+  dropClearance,
+  forkRatio,
+  impulseAngle,
+  isHalfToothSpan,
+  lockingPoints,
+  spanAngle,
+  tangentialCentreDistance,
+  wheelAngleBudgetPerBeat,
+} from "./palletGeometry";
 
 describe("pallet geometry (ASM-0025)", () => {
   it("span angle: pitches × 360°/z", () => {
@@ -47,5 +56,19 @@ describe("pallet geometry (ASM-0025)", () => {
     expect(toDegrees(impulseAngle(degrees(10), degrees(2), degrees(0.5)))).toBeCloseTo(7.5, 12);
     expect(forkRatio(degrees(50), degrees(10))).toBeCloseTo(5, 12);
     expect(forkRatio(degrees(50), degrees(0))).toBeNull();
+  });
+
+  it("wheel-angle budget per beat is half the tooth pitch, π/z (ASM-0021, ASM-0036)", () => {
+    // Playtner's own 15-tooth worked example: 180/15 = 12°.
+    expect(toDegrees(wheelAngleBudgetPerBeat(15))).toBeCloseTo(12, 12);
+    expect(toDegrees(wheelAngleBudgetPerBeat(20))).toBeCloseTo(9, 12);
+  });
+
+  it("drop clearance is the arc length at the tip circle (ASM-0036, SRC-0036)", () => {
+    // Playtner's own worked example: 7.5 mm primitive diameter (3.75 mm radius), 1.5° drop ⇒ 0.0983 mm.
+    const clearance = dropClearance(mm(3.75), degrees(1.5)) ?? mm(Number.NaN);
+    expect(toMillimetres(clearance)).toBeCloseTo(0.0983, 3);
+    expect(dropClearance(mm(0), degrees(1.5))).toBeNull();
+    expect(dropClearance(mm(-1), degrees(1.5))).toBeNull();
   });
 });

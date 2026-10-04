@@ -162,3 +162,34 @@ describe("pallet rules (ESC-104, ESC-105)", () => {
     expect(found).toContain("ESC-105:warning:no-draw");
   });
 });
+
+describe("drop (ESC-106, ESC-107, ASM-0036)", () => {
+  const teaching = createTeachingMovement();
+  const esc = Object.values(teaching.escapements)[0];
+  const pallets = esc?.pallets;
+  if (esc === undefined || pallets == null) throw new Error("teaching movement lacks pallets");
+  const dropRules = (m: Movement): string[] =>
+    validateMovement(m).filter((i) => i.rule === "ESC-106" || i.rule === "ESC-107").map((i) => `${i.rule}:${i.severity}:${i.id.split(":")[1] ?? ""}`);
+
+  it("the teaching movement's 1.5° drop (Playtner's own 15-tooth example) only reports the clearance", () => {
+    expect(dropRules(teaching)).toEqual(["ESC-107:info:drop-clearance"]);
+  });
+
+  it("drop must be positive", () => {
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, dropAngle: degrees(0) } });
+    expect(dropRules(m)).toContain("ESC-106:error:drop-budget");
+  });
+
+  it("drop must stay under the one-beat wheel-angle budget (180°/15 teeth = 12°)", () => {
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, dropAngle: degrees(12) } });
+    expect(dropRules(m)).toContain("ESC-106:error:drop-budget");
+  });
+
+  it("drop outside the informal 1-2° club-tooth range is an advisory, not an error", () => {
+    const tooSmall = updateEscapement(teaching, esc.id, { pallets: { ...pallets, dropAngle: degrees(0.5) } });
+    const found = dropRules(tooSmall);
+    expect(found).toContain("ESC-107:info:drop-advisory");
+    expect(found).toContain("ESC-107:info:drop-clearance");
+    expect(found.every((r) => !r.startsWith("ESC-106"))).toBe(true);
+  });
+});

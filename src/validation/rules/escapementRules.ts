@@ -6,7 +6,7 @@ import { toBeatsPerHour } from "@/units/frequency";
 import type { EntityId } from "@/domain/ids";
 import { gearZRange, zOverlaps } from "@/assembly/assemblyGeometry";
 import { balanceFrequency, beatFrequency, impulseFraction } from "@/kinematics/escapement";
-import { impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance } from "@/kinematics/palletGeometry";
+import { dropClearance, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import type { Length } from "@/units/length";
 import type { ValidationIssue } from "../validationIssue";
@@ -134,6 +134,7 @@ export const escapementRules: Rule = ({ movement, placement, train }) => {
 
     // ESC-104 / ESC-105: simplified pallet geometry (ASM-0025), when given.
     const pg = esc.pallets;
+    let dropDeclared = false;
     if (pg !== null) {
       const tipRadius = w.tipDiameter / 2;
       if (!isHalfToothSpan(pg.spanTeeth)) {
@@ -179,6 +180,36 @@ export const escapementRules: Rule = ({ movement, placement, train }) => {
             ["ASM-0025"]),
         );
       }
+
+      // ESC-106 / ESC-107: drop (ASM-0036, SRC-0036), when a tooth count is known.
+      if (isValidToothCount(w.toothCount)) {
+        const budget = wheelAngleBudgetPerBeat(w.toothCount);
+        const dropValid = positive(pg.dropAngle) && pg.dropAngle < budget;
+        dropDeclared = dropValid;
+        if (!dropValid) {
+          issues.push(
+            issue("ESC-106", "drop-budget", "error", "L1_GEOMETRIC", [esc.id],
+              `${esc.name}: drop (${toDegrees(pg.dropAngle).toFixed(2)}°) must be positive and less than the wheel-angle budget for one beat (${toDegrees(budget).toFixed(2)}° = half the tooth pitch, ASM-0021) — the tooth and pallet still need some of that budget for their own width.`,
+              ["ASM-0021", "ASM-0036"]),
+          );
+        } else {
+          if (toDegrees(pg.dropAngle) < 1 || toDegrees(pg.dropAngle) > 2) {
+            issues.push(
+              issue("ESC-107", "drop-advisory", "info", "L1_GEOMETRIC", [esc.id],
+                `${esc.name}: drop (${toDegrees(pg.dropAngle).toFixed(2)}°) is outside the range typically cited for a club-tooth escapement (1–2°, ASM-0036, SRC-0036). An informal reference figure, not a validated limit.`,
+                ["ASM-0036"]),
+            );
+          }
+          const clearance = positive(tipRadius) ? dropClearance(tipRadius as Length, pg.dropAngle) : null;
+          if (clearance !== null) {
+            issues.push(
+              issue("ESC-107", "drop-clearance", "info", "L1_GEOMETRIC", [esc.id],
+                `${esc.name}: drop gives ${mm(clearance)} of clearance at the tip circle (arc length = radius × angle, ASM-0036).`,
+                ["ASM-0036"]),
+            );
+          }
+        }
+      }
     }
 
     // ESC-001 / ESC-002: the declared model and what it does not claim.
@@ -194,8 +225,8 @@ export const escapementRules: Rule = ({ movement, placement, train }) => {
         `${esc.name}: SIMPLIFIED ESCAPEMENT MODEL (Swiss lever, kinematic).${rate}`,
         ["REF-ENG §9", "ASM-0021", "ASM-0022"]),
       issue("ESC-002", "no-contact-claim", "info", "L2_KINEMATIC", [esc.id],
-        `${esc.name}: drop, impact, sliding contact and the tooth and pallet faces are not modeled. Locking geometry (ASM-0025), balance dynamics (ASM-0024) and the energy chain (ASM-0026) are simplified models used only when their inputs are entered; nothing here predicts rate accuracy. Requires physical validation.`,
-        ["REF-ENG §9", "REF-ENG §10", "ASM-0023", "ASM-0025", "ASM-0026"]),
+        `${esc.name}: ${dropDeclared ? "drop is declared as a wheel-side angle (ASM-0036), but " : "drop, "}impact, sliding contact and the tooth and pallet faces are not modeled. Locking geometry (ASM-0025), balance dynamics (ASM-0024) and the energy chain (ASM-0026) are simplified models used only when their inputs are entered; nothing here predicts rate accuracy. Requires physical validation.`,
+        dropDeclared ? ["REF-ENG §9", "REF-ENG §10", "ASM-0023", "ASM-0025", "ASM-0026", "ASM-0036"] : ["REF-ENG §9", "REF-ENG §10", "ASM-0023", "ASM-0025", "ASM-0026"]),
     );
   }
   return issues;

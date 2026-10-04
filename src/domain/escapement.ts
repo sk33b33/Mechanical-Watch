@@ -83,6 +83,16 @@ export interface PalletGeometry {
   drawAngle: Angle;
   /** Lever rotation from full lock to the banking. */
   runAngle: Angle;
+  /**
+   * Escape-wheel-side free rotation between one pallet's tooth releasing
+   * and the next tooth landing on the other pallet's locking face (ASM-0036,
+   * SRC-0036). Unlike lock/draw/run (lever-side), drop is measured at the
+   * escape wheel's own axis: two beats per tooth (ASM-0021) gives each beat
+   * a wheel-angle budget of half the tooth pitch (π / escapeTeeth), shared
+   * between the tooth's own width, the pallet's width and drop — so drop
+   * must be positive and strictly less than that budget (ESC-106).
+   */
+  dropAngle: Angle;
 }
 
 export interface Escapement {

@@ -66,10 +66,14 @@ available source is scoped to stay a documented assumption, not
 implemented as if solved (CLAUDE.md: never silently raise a validation
 level).
 
-- 7.1 — Pallet/escape-wheel contact geometry (lift, lock, draw, drop
-  faces), replacing ASM-0025's tangential-locking-point abstraction.
-  Moderate sourcing risk (standard lever-escapement geometry is in
-  recognized watchmaking texts).
+- 7.1 — **Partly done** (see `docs/STATUS.md`). Drop (ESC-106/107,
+  ASM-0036) is modeled: a wheel-side angle checked against a derived
+  geometric budget (half the tooth pitch, π/escapeTeeth, Playtner 1908,
+  SRC-0036) plus an informal 1-2° advisory, with the resulting tip-circle
+  clearance reported. Real tooth/pallet FACE geometry (equidistant vs.
+  circular pallets, club vs. ratchet teeth, convex/concave lift planes —
+  Playtner covers all of this too) remains unmodeled; a larger
+  undertaking, left open rather than attempted incompletely.
 - 7.2 — Impact and sliding-contact dynamics at unlock/impulse (REF-ENG
   §9: "a simple rigid gear mesh is not an adequate physical model").
   Candidate sources: SRC-0004/0005/0006 (registered, unused). Builds on

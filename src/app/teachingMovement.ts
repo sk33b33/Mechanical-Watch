@@ -255,7 +255,9 @@ export function createTeachingMovement(): Movement {
   // escape-to-pallet distance at R / cos(φ/2).
   const escapeTeeth = 15;
   const escapeTipRadius = mm(2.3);
-  const palletGeometry = { spanTeeth: 3.5, lockAngle: degrees(2), drawAngle: degrees(12), runAngle: degrees(0.5) };
+  // dropAngle: Playtner's own 15-tooth worked example (SRC-0036, ASM-0036) — within the
+  // 12° wheel-angle budget per beat (180°/15 teeth), same tooth count as this movement.
+  const palletGeometry = { spanTeeth: 3.5, lockAngle: degrees(2), drawAngle: degrees(12), runAngle: degrees(0.5), dropAngle: degrees(1.5) };
   const escapeToPallet = tangentialCentreDistance(escapeTipRadius, spanAngle(escapeTeeth, palletGeometry.spanTeeth)) ?? mm(Number.NaN);
   const palletToBalance = mm(3.5);
   const palletAt = { x: escapeAt.x + escapeToPallet * Math.cos(layoutDirection), y: escapeAt.y + escapeToPallet * Math.sin(layoutDirection) };

@@ -38,7 +38,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 8;
+export const DESIGN_SCHEMA_VERSION = 9;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -137,6 +137,18 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
       ]),
     );
     return { ...doc, schemaVersion: 8, movement: { ...movement, escapements } };
+  },
+  /** v8 → v9: pallet geometry, where given, gains an empty (NaN) drop angle (ASM-0036) to fill in. */
+  8: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.escapements)) return doc;
+    const escapements = Object.fromEntries(
+      Object.entries(movement.escapements).map(([id, e]) => [
+        id,
+        isRecord(e) && isRecord(e.pallets) ? { ...e, pallets: { ...e.pallets, dropAngle: Number.NaN } } : e,
+      ]),
+    );
+    return { ...doc, schemaVersion: 9, movement: { ...movement, escapements } };
   },
 };
 
@@ -407,6 +419,7 @@ const pallets: Decoder<PalletGeometry> = (value, path) => {
     lockAngle: field(o, "lockAngle", angle, path),
     drawAngle: field(o, "drawAngle", angle, path),
     runAngle: field(o, "runAngle", angle, path),
+    dropAngle: field(o, "dropAngle", angle, path),
   };
 };
 

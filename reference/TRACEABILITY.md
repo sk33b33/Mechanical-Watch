@@ -77,6 +77,8 @@ CLAUDE_REFERENCE_INSTRUCTIONS.md rule 10); finding one remains open work.
 | Tangential locking distance (m) | escape-to-pallet axis = R_tip / cos(φ/2), for 0 < φ < π | `tangentialCentreDistance` | geometry of two tangents to a circle | ASM-0025 | DERIVED | L1 | `palletGeometry.test.ts` › property: tangents at the locking points meet at the pallet axis |
 | Lever impulse angle (rad) | lever − lock − run | `impulseAngle` | definition | ASM-0025 | DERIVED | L1 | `mainspringEnergy.test.ts` › pallet rules |
 | Fork ratio | lift angle / lever angle | `forkRatio` | definition | ASM-0025 | DERIVED | L1 | `palletGeometry.test.ts` |
+| Wheel-angle budget per beat (rad) | π / escapeTeeth (half the tooth pitch) | `wheelAngleBudgetPerBeat` in `src/kinematics/palletGeometry.ts` | REF-ENG §9 | ASM-0021, ASM-0036 | DERIVED; VERIFIED_TEXT (SRC-0036, Playtner, worked 15-tooth example: 12° budget = 4½° tooth + 6° pallet + 1½° drop) | L1 | `palletGeometry.test.ts` › wheel-angle budget per beat |
+| Drop clearance at tip circle (m) | tip radius × drop angle (arc length) | `dropClearance` in `src/kinematics/palletGeometry.ts` | REF-ENG §9 | ASM-0036 | DERIVED; VERIFIED_TEXT (SRC-0036, Playtner's own worked example: 7.5mm primitive diameter, 1.5° drop ⇒ 0.0983mm) | L1 | `palletGeometry.test.ts` › drop clearance |
 | Spring torque at a wind (N·m) | T_letdown + (T_full − T_letdown) × w / turns, w clamped to [0, turns] | `springTorque` in `src/kinematics/mainspringEnergy.ts` | REF-ENG §11 | ASM-0026 | DERIVED from entered values | L3 | `mainspringEnergy.test.ts` › linear in wind |
 | Power reserve (s) | turns / (abs(ω_drum) / 2π) | `powerReserveSeconds` | definition | ASM-0026 | DERIVED | L2 | › 6.5 turns at one drum turn per 6 h is 39 h |
 | Escape wheel torque (N·m) | T_drum × abs(ω_drum / ω_escape) × η_train (η = 1, the lossless bound, when not configured) | `escapeTorque` | conservation of power | ASM-0002, ASM-0026 | DERIVED; upper bound without η | L3 | › escape torque conserves power |
@@ -125,10 +127,14 @@ rev/min exist only at the UI boundary (`src/units/`).
 | Schema-4 file | Migrated to schema 5 on open (no escapement). |
 | Schema-5 file | Migrated to schema 6 on open (balance inertia and stiffness unknown). |
 | Schema-6 file | Migrated to schema 7 on open (no pallet geometry; escapement efficiency, Q and mainspring data unknown). |
-| New pallet geometry (all empty) | Kept NaN; ESC-104 span error and ESC-105 errors until entered. No default angles. |
+| Schema-7 file | Migrated to schema 8 on open (balance isochronism coefficient unknown, ASM-0034). |
+| Schema-8 file | Migrated to schema 9 on open (pallet geometry, where given, gains an empty drop angle to fill in, ASM-0036). |
+| New pallet geometry (all empty) | Kept NaN; ESC-104 span error, ESC-105 and ESC-106 errors until entered. No default angles. |
 | Pallet span not k + ½ teeth, or ≥ 180° | ESC-104 error; locking distance not derived; symbolic fork arms shown. |
 | Lock + run ≥ lever angle; lock ≤ 0; run < 0 | ESC-105 error. |
 | Draw ≤ 0 | ESC-105 warning (nothing pulls the lever onto its banking). |
+| Drop ≤ 0, or ≥ the one-beat wheel-angle budget | ESC-106 error; no clearance derived. |
+| Drop outside the informal 1–2° club-tooth range (but within budget) | ESC-107 info advisory (ASM-0036); never blocks. |
 | Mainspring data empty, turns ≤ 0, torques ≤ 0, let-down > fully wound, efficiency outside (0, 1] | SPR-001 error; no energy chain; the wind is not tracked. |
 | Q or escapement efficiency unknown | Amplitude not predicted; SPR-002 names what is missing; the declared amplitude is shown. |
 | Q ≤ 0 or efficiency outside (0, 1] | SPR-001 error. |
@@ -202,9 +208,11 @@ rev/min exist only at the UI boundary (`src/units/`).
 | DIAL-002 | error | L1 | the dial is below everything it covers (project addition) |
 | DIAL-003 | error | L1 | every hand arbor is over the dial (project addition) |
 | ESC-001 | info | L2 | declares the SIMPLIFIED ESCAPEMENT MODEL and the derived beat rate |
-| ESC-002 | info | L2 | states what the simplified model does not claim (contact, drop, faces, rate accuracy) and which parts are simplified models |
+| ESC-002 | info | L2 | states what the simplified model does not claim (impact, sliding contact, faces, rate accuracy, and drop unless ESC-106/107 declare it) and which parts are simplified models |
 | ESC-104 | error | L1 | pallet span is k + ½ teeth and under 180°; pallet arbor at the tangential locking distance (project addition, ASM-0025) |
 | ESC-105 | error / warning | L1 | lock positive, run not negative, lock + run leave impulse; draw positive (warning) (project addition, ASM-0025) |
+| ESC-106 | error | L1 | drop (wheel-side) positive and under the one-beat wheel-angle budget, π/escapeTeeth (project addition, ASM-0021, ASM-0036) |
+| ESC-107 | info | L1 | drop outside the informally cited 1–2° club-tooth range; reports the resulting tip-circle clearance (project addition, ASM-0036, SRC-0036) |
 | ESC-101 | error | L1 / L2 | one escapement, three distinct existing arbors, valid inputs, amplitude above half the lift angle (project addition) |
 | ESC-102 | error | L2 | pallet arbor and balance staff are not gear-driven (project addition) |
 | ESC-103 | error | L1 | escape wheel clears the pallet arbor, the balance and other gears at its height; the balance clears the pallet arbor (project addition) |
