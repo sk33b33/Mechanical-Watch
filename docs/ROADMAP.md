@@ -122,7 +122,52 @@ level).
     crescent, horn) — REF-ENG §9's "balance interaction," currently
     modeled only as an abstract `forkRatio` with no actual roller/pin
     geometry at all. Mostly independent of 7.1.1-7.1.4; could ship
-    separately. Playtner devotes four chapters to this specifically.
+    separately. Playtner devotes four chapters to this specifically
+    ("The Fork and Roller Action", "The Safety Action", "The Crescent",
+    "The Horn") — more raw material than 7.1.1-7.1.4 combined, so
+    scoped into its own sub-items, same pattern as 7.1 itself:
+    - 7.1.5.1 — Impulse radius (declared, mm: balance staff to ruby
+      pin) and the real fork acting length, derived via Playtner's own
+      stated law ("the angles are in the inverse ratio to the radii"):
+      `forkActingLength = impulseRadius × forkRatio`. Turns the
+      existing `forkRatio` from a bare dimensionless number into an
+      actual lever-arm length, and replaces the viewport's current
+      cosmetic `leverLength = toBalance * 0.85` guess with a derived
+      value. Lowest risk, most directly answers "no actual roller/pin
+      geometry at all" — recommended first.
+    - 7.1.5.2 — Ruby pin width and slot freedom. Playtner's own cited
+      figures (freedom 1-1.25° at the acting edge, 0.25-0.5° shake in
+      the slot, a suggested width of half the fork's angular motion —
+      "we would choose", not a strict rule) as declared/derived values
+      with advisories, same genre as ESC-107/108.
+    - 7.1.5.3 — Roller and guard-point/dart freedom (1.25° cited).
+      Single vs. double roller is a real domain distinction Playtner
+      draws (double roller trades a larger safety roller for a smaller,
+      more secure one) — may need its own `rollerKind` field, same
+      pattern as `toothKind`/`PalletKind`.
+    - 7.1.5.4 — Crescent angular opening: a genuine geometric
+      construction (the guard point's circular path around the pallet
+      axis intersecting the roller circle around the balance axis),
+      analogous to the existing `tangentialCentreDistance`/
+      `lockingPoints` pallet-locking construction. Needs the source's
+      own figures (Fig. 14, Fig. 24) fetched and viewed first, the same
+      diligence as 7.1.3/7.1.4's fig05/fig28 — this geometry has
+      multiple interacting circles and letters that are hard to get
+      right from text alone.
+    - 7.1.5.5 — Horn length and freedom: a similar circle-intersection
+      construction along the pallet-to-ruby-pin line; freedom 0.25-0.5°
+      more than the guard-point freedom (cited, relational).
+    - 7.1.5.6 — Visual 2D/3D construction for the ruby pin, roller(s),
+      crescent and horn shapes, replacing the current symbolic fork bar
+      and plain stone-style placeholders — the capstone for this area,
+      same role 7.1.4 played for pallets/teeth. By far the largest
+      single piece here; likely the highest-risk item in the whole of
+      7.1.5, same caution as 7.1.4's own risk flag.
+    Suggested order: 7.1.5.1 → 7.1.5.2 → 7.1.5.3 → 7.1.5.4 → 7.1.5.5 →
+    7.1.5.6, each independently shippable; 7.1.5.1-3 are low-risk
+    declared/derived scalars, 7.1.5.4-5 are real geometric
+    constructions needing source figures first, 7.1.5.6 is the visual
+    capstone.
   - 7.1.6 — Center-distance refined for manufacturing clearance (pallet
     arbor thickness, working stock) rather than the current pure
     idealized tangent-circle construction (`tangentialCentreDistance`).
