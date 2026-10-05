@@ -38,7 +38,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 9;
+export const DESIGN_SCHEMA_VERSION = 10;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -149,6 +149,22 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
       ]),
     );
     return { ...doc, schemaVersion: 9, movement: { ...movement, escapements } };
+  },
+  /**
+   * v9 → v10: pallet geometry, where given, gains EQUIDISTANT (the only
+   * implemented kind, and what the existing tangential-locking math already
+   * builds, ASM-0037) and an empty (NaN) width angle to fill in.
+   */
+  9: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.escapements)) return doc;
+    const escapements = Object.fromEntries(
+      Object.entries(movement.escapements).map(([id, e]) => [
+        id,
+        isRecord(e) && isRecord(e.pallets) ? { ...e, pallets: { ...e.pallets, kind: "EQUIDISTANT", widthAngle: Number.NaN } } : e,
+      ]),
+    );
+    return { ...doc, schemaVersion: 10, movement: { ...movement, escapements } };
   },
 };
 
@@ -416,10 +432,12 @@ const pallets: Decoder<PalletGeometry> = (value, path) => {
   const o = object(value, path);
   return {
     spanTeeth: field(o, "spanTeeth", number, path),
+    kind: field(o, "kind", oneOf(["EQUIDISTANT", "CIRCULAR"]), path),
     lockAngle: field(o, "lockAngle", angle, path),
     drawAngle: field(o, "drawAngle", angle, path),
     runAngle: field(o, "runAngle", angle, path),
     dropAngle: field(o, "dropAngle", angle, path),
+    widthAngle: field(o, "widthAngle", angle, path),
   };
 };
 

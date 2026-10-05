@@ -72,13 +72,14 @@ level).
   sub-items, ALL already sourced from Playtner 1908 (SRC-0036, read in
   full) — the risk here is construction correctness, not source
   availability (the one place in Phase 7 where that's true):
-  - 7.1.1 — Pallet type (EQUIDISTANT | CIRCULAR) and declared pallet
-    width (wheel-side angle). Foundational: fixes where the locking
-    circle(s) sit relative to the pallet center, needed before any real
-    face can be drawn. Equidistant: both lockings on one circle, biased
-    toward/away from centre. Circular: two locking circles (entry MP,
-    exit NO), pallet bisected by the 30°-style centre lines, equal lever
-    arms. Playtner's own worked example is equidistant.
+  - 7.1.1 — **Done** (see `docs/STATUS.md`). Pallet type (EQUIDISTANT |
+    CIRCULAR, ASM-0037) and declared pallet width. The project's existing
+    tangential-locking math turned out to already *be* the equidistant
+    construction (Playtner's own identification); CIRCULAR is a visible,
+    disabled stub (no closed-form locking offset in the source). Pallet
+    width completes the tooth/pallet/drop wheel-angle partition ASM-0036
+    started: escape-tooth width is now derived (`toothWidthAngle`), not
+    missing, and ESC-106/107 check and report the full partition.
   - 7.1.2 — Tooth type (CLUB | RATCHET) and the tooth/pallet width split
     within the existing per-beat wheel-angle budget (ASM-0036). Club:
     lift split between tooth and pallet (Playtner's 15-tooth example:

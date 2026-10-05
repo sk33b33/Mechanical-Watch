@@ -217,12 +217,19 @@ tooth), converted to a linear tip-circle clearance by arc length (radius
 width + pallet width + drop, all measured at the escape wheel's own
 axis) is half the tooth pitch (12° for a 15-tooth wheel); drop, lock,
 draw and lift are all measured in different angle frames (wheel-center
-vs. pallet-center). Also corroborates this project's existing
+vs. pallet-center); the equidistant pallet construction is exactly the
+tangent-intersection ("tangential") construction this codebase's
+`tangentialCentreDistance`/`lockingPoints` already build, while the
+circular pallet construction (equal lifting lever arms, two locking
+circles) locks off the tangent by a pallet-width-dependent amount with
+no closed-form offset given. Also corroborates this project's existing
 teaching-movement lock (2°) and draw (12°) angles as the right order of
-magnitude. Used for ASM-0036 (`PalletGeometry.dropAngle`) and the
-ESC-106/ESC-107 rules — only the drop piece of the chapter; the book's
-far larger treatment of pallet/tooth types and lifting-plane shapes is
-out of scope for this pass.
+magnitude. Used for ASM-0036 (`PalletGeometry.dropAngle`), ASM-0037
+(`PalletGeometry.kind`/`widthAngle`, `toothWidthAngle`) and the
+ESC-106/ESC-107 rules; CIRCULAR is named but not implemented (no
+closed-form locking offset available). The book's remaining treatment of
+club-vs-ratchet tooth types and lifting-plane shapes is out of scope for
+this pass.
 
 ## Mainspring torque curve and bridle slip (REF-ENG §11)
 

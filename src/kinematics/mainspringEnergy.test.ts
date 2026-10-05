@@ -163,7 +163,7 @@ describe("pallet rules (ESC-104, ESC-105)", () => {
   });
 });
 
-describe("drop (ESC-106, ESC-107, ASM-0036)", () => {
+describe("drop and pallet width (ESC-106, ESC-107, ASM-0036, ASM-0037)", () => {
   const teaching = createTeachingMovement();
   const esc = Object.values(teaching.escapements)[0];
   const pallets = esc?.pallets;
@@ -171,8 +171,10 @@ describe("drop (ESC-106, ESC-107, ASM-0036)", () => {
   const dropRules = (m: Movement): string[] =>
     validateMovement(m).filter((i) => i.rule === "ESC-106" || i.rule === "ESC-107").map((i) => `${i.rule}:${i.severity}:${i.id.split(":")[1] ?? ""}`);
 
-  it("the teaching movement's 1.5° drop (Playtner's own 15-tooth example) only reports the clearance", () => {
-    expect(dropRules(teaching)).toEqual(["ESC-107:info:drop-clearance"]);
+  it("the teaching movement's Playtner 15-tooth example (1.5° drop, 6° pallet) reports the clearance and the derived 4.5° tooth width", () => {
+    expect(dropRules(teaching)).toEqual(["ESC-107:info:drop-clearance", "ESC-107:info:tooth-width"]);
+    const info = validateMovement(teaching).find((i) => i.rule === "ESC-107" && i.id.includes("tooth-width"));
+    expect(info?.message).toContain("4.50°");
   });
 
   it("drop must be positive", () => {
@@ -191,5 +193,18 @@ describe("drop (ESC-106, ESC-107, ASM-0036)", () => {
     expect(found).toContain("ESC-107:info:drop-advisory");
     expect(found).toContain("ESC-107:info:drop-clearance");
     expect(found.every((r) => !r.startsWith("ESC-106"))).toBe(true);
+  });
+
+  it("pallet width must be positive", () => {
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, widthAngle: degrees(0) } });
+    expect(dropRules(m)).toContain("ESC-106:error:pallet-width");
+  });
+
+  it("pallet width plus drop must leave room for the tooth within the budget", () => {
+    // 11° pallet + 1.5° drop = 12.5° > the 12° budget, leaving a negative tooth width.
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, widthAngle: degrees(11) } });
+    const found = dropRules(m);
+    expect(found).toContain("ESC-106:error:tooth-width-budget");
+    expect(found.every((r) => !r.startsWith("ESC-107"))).toBe(true);
   });
 });

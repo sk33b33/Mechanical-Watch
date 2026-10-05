@@ -2,6 +2,62 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 7.1.1: pallet type and width (ESC-106/107 extended, ASM-0037)
+
+Started the first of the six 7.1 sub-items scoped last pass: pallet type
+(equidistant/circular) and a declared pallet width.
+
+- **The existing model was already equidistant.** Re-reading Playtner
+  (SRC-0036, already read in full for drop) showed the project's current
+  tangential-locking construction (`tangentialCentreDistance`/
+  `lockingPoints`) *is* the equidistant pallet — Playtner's own words:
+  "the equidistant pallet... also called the tangential escapement, on
+  account of the unlocking taking place on the intersection of
+  tangent[s]". So this pass didn't need to rebuild the locking-point
+  math, just make the choice explicit and add what was genuinely
+  missing: a declared pallet width.
+- **Circular pallets stay an honest stub.** The circular construction
+  (equal lifting lever arms, two locking circles) locks off the tangent
+  by an amount Playtner states only grows/shrinks with pallet width — no
+  closed-form offset is given. Added `PalletGeometry.kind` (EQUIDISTANT |
+  CIRCULAR) with CIRCULAR visible but disabled in the UI (same pattern as
+  `MANUFACTURING_VALIDATED_PROFILE`), rather than guessing a formula not
+  actually in the source.
+- **The tooth/pallet/drop partition is now complete.** Drop (ASM-0036)
+  already established the per-beat wheel-angle budget
+  (`wheelAngleBudgetPerBeat`, π/escapeTeeth). Adding declared pallet
+  width (`widthAngle`, ASM-0037) lets the escape tooth's own width be
+  *derived*, not guessed, as the remainder (`toothWidthAngle` = budget −
+  width − drop) — directly Playtner's own 15-tooth worked numbers (12° =
+  4½° tooth + 6° pallet + 1½° drop), now fully reproduced rather than
+  only partially.
+- **Validation (ESC-106 extended, not a new rule).** Pallet width must
+  be positive; together with drop it must leave a positive tooth width
+  within the budget — a derived geometric necessity, same tier as drop's
+  own check. ESC-107 now also reports the derived tooth width as info.
+- **UI and outputs.** A "Pallet type" selector (circular disabled, with
+  an explanatory tooltip) and a "Pallet width" input in the pallet
+  geometry section; a derived "Escape-tooth width" readonly row;
+  matching parameter/derived rows in the component report. Teaching
+  movement set to Playtner's own 15-tooth values (equidistant, 6° pallet
+  width) — grounded, not guessed, same tooth count as the book's example.
+- **Persistence.** Schema 9 → 10: pallet geometry, where already given,
+  gains `kind: "EQUIDISTANT"` (the only implemented, and already-correct,
+  behavior) and an empty width to fill in.
+- **Verified live in a real browser**, not just asserted: the pallet
+  type selector, declared width (6°), and derived tooth width (4.50°)
+  all render correctly; setting width to 11° (over budget with the
+  existing 1.5° drop) correctly fires ESC-106 without flagging the width
+  field itself invalid (it's still positive on its own — the *combined*
+  constraint is what fails); setting it to 0° correctly fires the
+  separate positivity check and does flag the field.
+- New tests in `palletGeometry.test.ts` (checked against Playtner's own
+  numbers) and `mainspringEnergy.test.ts` (ESC-106 pallet-width and
+  tooth-width-budget cases). Two existing exact-issue-list tests updated
+  for the new, correct ESC-107 info row. 489 unit tests pass (486
+  before); `tsc -b --noEmit` and `eslint` are clean; production build
+  succeeds; full e2e suite run.
+
 ## Scoped the rest of Phase 7.1 (real tooth/pallet face geometry)
 
 Broke the large remaining piece of 7.1 — real tooth/pallet face geometry,

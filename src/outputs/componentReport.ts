@@ -16,7 +16,7 @@ import { balanceFrequency, beatFrequency, beatsPerEscapeRevolution, impulseFract
 import { isochronismAdjustedRate } from "@/kinematics/balance";
 import { summarizeBalance } from "@/kinematics/balanceSummary";
 import { summarizeEnergy } from "@/kinematics/energySummary";
-import { dropClearance, forkRatio, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
+import { dropClearance, forkRatio, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
 import { toNewtonMillimetres } from "@/units/torque";
 import { toMicrojoules } from "@/units/energy";
 import { toMicronewtonMillimetresPerRadian, toMilligramSquareCentimetres } from "@/units/rotational";
@@ -464,20 +464,26 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
     ? [entered("Pallet geometry", "not specified (locking not checked)")]
     : [
         entered("Pallet span", Number.isFinite(pg.spanTeeth) ? `${String(pg.spanTeeth)} teeth` : "not set", pg.spanTeeth),
+        entered("Pallet type", pg.kind === "EQUIDISTANT" ? "Equidistant" : "Circular"),
         entered("Lock angle", angleText(pg.lockAngle), pg.lockAngle),
         entered("Draw angle", angleText(pg.drawAngle), pg.drawAngle),
         entered("Run angle", angleText(pg.runAngle), pg.runAngle),
         entered("Drop angle (wheel-side)", angleText(pg.dropAngle), pg.dropAngle),
+        entered("Pallet width (wheel-side)", angleText(pg.widthAngle), pg.widthAngle),
       ];
   const budget = teethValid ? wheelAngleBudgetPerBeat(w.toothCount) : null;
+  const tooth = pg !== null && teethValid ? toothWidthAngle(w.toothCount, pg.widthAngle, pg.dropAngle) : null;
   const dropValid = pg !== null && budget !== null && Number.isFinite(pg.dropAngle) && pg.dropAngle > 0 && pg.dropAngle < budget;
-  const clearance = pg !== null && dropValid ? dropClearance((w.tipDiameter / 2) as Length, pg.dropAngle) : null;
+  const widthValid = pg !== null && Number.isFinite(pg.widthAngle) && pg.widthAngle > 0;
+  const partitionValid = dropValid && widthValid && tooth !== null && tooth > 0;
+  const clearance = pg !== null && partitionValid ? dropClearance((w.tipDiameter / 2) as Length, pg.dropAngle) : null;
   const palletDerived: ReportValue[] = pg === null ? [] : [
     { label: "Pallet span angle", text: span === null ? "—" : `${toDegrees(span).toFixed(2)}°`, si: span, equation: "span × 2π / z", level: "L1_GEOMETRIC", references: ["ASM-0025"] },
     { label: "Pallet arbor distance for tangential locking", text: needed === null ? "—" : mmText(needed), si: needed, equation: "R_tip / cos(span angle / 2)", level: "L1_GEOMETRIC", references: ["ASM-0025"] },
     { label: "Lever impulse angle", text: impulse === null || !Number.isFinite(impulse) ? "—" : `${toDegrees(impulse).toFixed(2)}°`, si: impulse !== null && Number.isFinite(impulse) ? impulse : null, equation: "lever − lock − run", level: "L1_GEOMETRIC", references: ["ASM-0025"] },
     { label: "Fork ratio", text: ratio === null ? "—" : ratio.toFixed(3), si: ratio, equation: "lift angle / lever angle", level: "L1_GEOMETRIC", references: ["ASM-0025"] },
     { label: "Wheel-angle budget per beat", text: budget === null ? "—" : `${toDegrees(budget).toFixed(2)}°`, si: budget, equation: "π / escapeTeeth", level: "L1_GEOMETRIC", references: ["ASM-0021", "ASM-0036"] },
+    { label: "Escape-tooth width (derived)", text: tooth === null ? "—" : `${toDegrees(tooth).toFixed(2)}°`, si: tooth, equation: "budget − pallet width − drop", level: "L1_GEOMETRIC", references: ["ASM-0037"] },
     { label: "Drop clearance at tip circle", text: clearance === null ? "—" : mmText(clearance), si: clearance, equation: "tip radius × drop angle", level: "L1_GEOMETRIC", references: ["ASM-0036"] },
   ];
   const energy = summarizeEnergy(movement, analysis.train);

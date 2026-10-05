@@ -6,7 +6,7 @@ import { toBeatsPerHour } from "@/units/frequency";
 import type { EntityId } from "@/domain/ids";
 import { gearZRange, zOverlaps } from "@/assembly/assemblyGeometry";
 import { balanceFrequency, beatFrequency, impulseFraction } from "@/kinematics/escapement";
-import { dropClearance, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
+import { dropClearance, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import type { Length } from "@/units/length";
 import type { ValidationIssue } from "../validationIssue";
@@ -184,15 +184,32 @@ export const escapementRules: Rule = ({ movement, placement, train }) => {
       // ESC-106 / ESC-107: drop (ASM-0036, SRC-0036), when a tooth count is known.
       if (isValidToothCount(w.toothCount)) {
         const budget = wheelAngleBudgetPerBeat(w.toothCount);
-        const dropValid = positive(pg.dropAngle) && pg.dropAngle < budget;
-        dropDeclared = dropValid;
-        if (!dropValid) {
+        const dropInBudget = positive(pg.dropAngle) && pg.dropAngle < budget;
+        const widthPositive = positive(pg.widthAngle);
+        const tooth = toothWidthAngle(w.toothCount, pg.widthAngle, pg.dropAngle);
+        const partitionValid = dropInBudget && widthPositive && tooth > 0;
+        dropDeclared = partitionValid;
+        if (!dropInBudget) {
           issues.push(
             issue("ESC-106", "drop-budget", "error", "L1_GEOMETRIC", [esc.id],
               `${esc.name}: drop (${toDegrees(pg.dropAngle).toFixed(2)}°) must be positive and less than the wheel-angle budget for one beat (${toDegrees(budget).toFixed(2)}° = half the tooth pitch, ASM-0021) — the tooth and pallet still need some of that budget for their own width.`,
               ["ASM-0021", "ASM-0036"]),
           );
-        } else {
+        }
+        if (!widthPositive) {
+          issues.push(
+            issue("ESC-106", "pallet-width", "error", "L1_GEOMETRIC", [esc.id],
+              `${esc.name}: pallet width (${toDegrees(pg.widthAngle).toFixed(2)}°) must be positive (ASM-0037).`,
+              ["ASM-0037"]),
+          );
+        } else if (dropInBudget && tooth <= 0) {
+          issues.push(
+            issue("ESC-106", "tooth-width-budget", "error", "L1_GEOMETRIC", [esc.id],
+              `${esc.name}: pallet width (${toDegrees(pg.widthAngle).toFixed(2)}°) plus drop (${toDegrees(pg.dropAngle).toFixed(2)}°) leaves no room for the tooth's own width within the ${toDegrees(budget).toFixed(2)}° per-beat budget (ASM-0021, ASM-0037).`,
+              ["ASM-0021", "ASM-0037"]),
+          );
+        }
+        if (partitionValid) {
           if (toDegrees(pg.dropAngle) < 1 || toDegrees(pg.dropAngle) > 2) {
             issues.push(
               issue("ESC-107", "drop-advisory", "info", "L1_GEOMETRIC", [esc.id],
@@ -208,6 +225,11 @@ export const escapementRules: Rule = ({ movement, placement, train }) => {
                 ["ASM-0036"]),
             );
           }
+          issues.push(
+            issue("ESC-107", "tooth-width", "info", "L1_GEOMETRIC", [esc.id],
+              `${esc.name}: escape-tooth width is ${toDegrees(tooth).toFixed(2)}° (the per-beat budget less the pallet's own width and drop, ASM-0037).`,
+              ["ASM-0037"]),
+          );
         }
       }
     }

@@ -6,10 +6,10 @@ import { updateCouplingSpring, updateEscapement } from "@/domain/movement";
 import type { MainspringLink, MainspringSpec } from "@/domain/coupling";
 import type { Escapement, PalletGeometry } from "@/domain/escapement";
 import { isValidToothCount } from "@/math/gearMath";
-import { dropClearance, forkRatio, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
+import { dropClearance, forkRatio, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
 import { isochronismAdjustedRate } from "@/kinematics/balance";
 import { summarizeBalance } from "@/kinematics/balanceSummary";
-import { actionRow, formatMm, inputRow, parseRequired, readonlyRow, sectionHeader } from "./fields";
+import { actionRow, formatMm, inputRow, parseRequired, readonlyRow, sectionHeader, selectRow } from "./fields";
 import { positive, type Section } from "./common";
 
 const ENERGY_MODEL_TITLE =
@@ -91,15 +91,15 @@ function palletRows(esc: Escapement, edit: (patch: Parameters<typeof updateEscap
   if (pg === null) {
     out.push(
       readonlyRow("Pallets", "not specified", "The locking geometry is not checked until it is entered (ESC-104…107)."),
-      actionRow("Enter pallet geometry", "Adds empty span, lock, draw, run and drop fields to fill from a design or source.", () => {
+      actionRow("Enter pallet geometry", "Adds empty span, lock, draw, run, drop and width fields to fill from a design or source.", () => {
         const empty = degrees(Number.NaN);
-        edit({ pallets: { spanTeeth: Number.NaN, lockAngle: empty, drawAngle: empty, runAngle: empty, dropAngle: empty } });
+        edit({ pallets: { spanTeeth: Number.NaN, kind: "EQUIDISTANT", lockAngle: empty, drawAngle: empty, runAngle: empty, dropAngle: empty, widthAngle: empty } });
       }),
     );
     return out;
   }
   const patch = (p: Partial<PalletGeometry>): void => { edit({ pallets: { ...pg, ...p } }); };
-  const angle = (label: string, value: Angle, key: "lockAngle" | "drawAngle" | "runAngle" | "dropAngle", invalid: boolean, title: string): HTMLDivElement =>
+  const angle = (label: string, value: Angle, key: "lockAngle" | "drawAngle" | "runAngle" | "dropAngle" | "widthAngle", invalid: boolean, title: string): HTMLDivElement =>
     inputRow({
       label, value: optionalText(value, toDegrees), step: "0.1", invalid, title,
       onCommit: (raw) => { patch({ [key]: degrees(parseRequired(raw)) }); },
@@ -111,26 +111,37 @@ function palletRows(esc: Escapement, edit: (patch: Parameters<typeof updateEscap
   const ratio = forkRatio(esc.balance.liftAngle, esc.leverAngle);
   const runValid = Number.isFinite(pg.runAngle) && pg.runAngle >= 0;
   const budget = isValidToothCount(w.toothCount) ? wheelAngleBudgetPerBeat(w.toothCount) : null;
-  const dropValid = budget !== null && positive(pg.dropAngle) && pg.dropAngle < budget;
-  const clearance = dropValid ? dropClearance((w.tipDiameter / 2) as typeof w.tipDiameter, pg.dropAngle) : null;
+  const dropInBudget = budget !== null && positive(pg.dropAngle) && pg.dropAngle < budget;
+  const widthValid = positive(pg.widthAngle);
+  const tooth = isValidToothCount(w.toothCount) ? toothWidthAngle(w.toothCount, pg.widthAngle, pg.dropAngle) : null;
+  const partitionValid = dropInBudget && widthValid && tooth !== null && tooth > 0;
+  const clearance = partitionValid ? dropClearance((w.tipDiameter / 2) as typeof w.tipDiameter, pg.dropAngle) : null;
   out.push(
     readonlyRow("Model", "SIMPLIFIED PALLET GEOMETRY (L1)",
-      "Tangential locking on the tip circle, (k+½)-pitch span, lever = lock + impulse + run (ASM-0025); drop is a declared wheel-side angle (ASM-0036). Tooth and pallet faces, impact, sliding contact and recoil are not modeled."),
+      "Tangential locking on the tip circle, (k+½)-pitch span, lever = lock + impulse + run (ASM-0025); drop and pallet width are declared wheel-side angles (ASM-0036, ASM-0037). Tooth and pallet FACE shapes, impact, sliding contact and recoil are not modeled."),
     inputRow({
       label: "Span (teeth)", value: optionalText(pg.spanTeeth), step: "0.5", invalid: !isHalfToothSpan(pg.spanTeeth),
       title: "Pitches between the entry and exit locking points: a whole number plus a half for two beats per tooth (ESC-104).",
       onCommit: (raw) => { patch({ spanTeeth: parseRequired(raw) }); },
     }),
+    selectRow("Pallet type", pg.kind, [
+      { value: "EQUIDISTANT", label: "Equidistant" },
+      { value: "CIRCULAR", label: "Circular", disabled: true, title: "Not implemented yet (ASM-0037): no closed-form locking-point offset has been derived." },
+    ], (value) => { patch({ kind: value as PalletGeometry["kind"] }); },
+      "Which locking-point construction (ASM-0037, SRC-0036). This codebase's existing tangential-locking math already builds the equidistant case."),
     angle("Lock (°)", pg.lockAngle, "lockAngle", !positive(pg.lockAngle), "Lever rotation needed to unlock."),
     angle("Draw (°)", pg.drawAngle, "drawAngle", !positive(pg.drawAngle), "Angle of the locking face that pulls the lever onto its banking. Must be positive; whether it overcomes friction is not checked."),
     angle("Run (°)", pg.runAngle, "runAngle", !runValid, "Lever rotation from full lock to the banking."),
-    angle("Drop (°, wheel-side)", pg.dropAngle, "dropAngle", !dropValid,
+    angle("Drop (°, wheel-side)", pg.dropAngle, "dropAngle", !dropInBudget,
       "Escape wheel's free rotation between one pallet's tooth releasing and the next landing (ASM-0036). Measured at the wheel's own axis, not the lever's. Must be positive and under the one-beat wheel-angle budget (ESC-106)."),
+    angle("Pallet width (°, wheel-side)", pg.widthAngle, "widthAngle", !widthValid,
+      "Escape wheel's own angle for the pallet's acting face (ASM-0037), the same frame as drop. Must be positive and leave room for the tooth within the per-beat budget (ESC-106)."),
     readonlyRow("Span angle", degreesText(span), "Span × 360° / escape teeth."),
     readonlyRow("Pallet arbor distance needed", needed === null ? "—" : formatMm(needed), "R / cos(span/2): where the tangents at the two locking points meet."),
     readonlyRow("Impulse (lever)", Number.isFinite(impulse) ? `${toDegrees(impulse).toFixed(2)}°` : "—", "Lever angle − lock − run."),
     readonlyRow("Fork ratio (lift ÷ lever)", ratio === null ? "—" : ratio.toFixed(3), "Balance lift per unit of lever swing implied by the two declared angles."),
     readonlyRow("Wheel-angle budget per beat", budget === null ? "—" : `${toDegrees(budget).toFixed(2)}°`, "Half the tooth pitch, π/escapeTeeth (ASM-0021, ASM-0036): shared by the tooth's width, the pallet's width and drop."),
+    readonlyRow("Escape-tooth width (derived)", tooth === null ? "—" : `${toDegrees(tooth).toFixed(2)}°`, "Budget − pallet width − drop (ASM-0037)."),
     readonlyRow("Drop clearance at tip circle", clearance === null ? "—" : formatMm(clearance), "Arc length = tip radius × drop angle (ASM-0036)."),
     actionRow("Clear pallet geometry", "Stops checking the locking geometry. Undo with Ctrl+Z.", () => { edit({ pallets: null }); }, true),
   );

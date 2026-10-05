@@ -74,8 +74,8 @@ ESC-101 At most one escapement; its arbors must exist and be distinct, the escap
 ESC-102 The pallet arbor and balance staff oscillate under the escapement and must not be gear-driven.
 ESC-104 Pallet geometry: the locking points must be a whole number of pitches plus a half apart, under 180°, and the pallet arbor at the tangential-locking distance from the escape axis.
 ESC-105 Lever angles: lock positive, run not negative, impulse (lever − lock − run) positive, and draw positive.
-ESC-106 Drop (wheel-side, ASM-0036) must be positive and less than the wheel-angle budget for one beat (half the tooth pitch, ASM-0021).
-ESC-107 Drop outside the informally cited club-tooth range is an advisory; the resulting tip-circle clearance is reported (ASM-0036, SRC-0036).
+ESC-106 Drop and pallet width (wheel-side, ASM-0036/0037) must each be positive, and together leave a positive derived tooth width within the wheel-angle budget for one beat (half the tooth pitch, ASM-0021).
+ESC-107 Drop outside the informally cited club-tooth range is an advisory; the resulting tip-circle clearance and the derived tooth width are reported (ASM-0036, ASM-0037, SRC-0036).
 ESC-103 The escape wheel must clear the pallet arbor and balance staff, and the balance must clear the pallet arbor.
 
 BAL-001 A balance-governed drive needs an escapement with a valid escape wheel and a positive balance inertia and hairspring stiffness; entered inertia and stiffness must be positive.

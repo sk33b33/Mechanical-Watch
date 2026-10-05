@@ -70,6 +70,19 @@ export function dropClearance(tipRadius: Length, dropAngle: Angle): Length | nul
   return tipRadius > 0 ? metres(tipRadius * dropAngle) : null;
 }
 
+/**
+ * Escape-tooth width (wheel-side), the remainder of the per-beat wheel-angle
+ * budget after the pallet's own width and drop (ASM-0037, SRC-0036: "12°
+ * for width of tooth, pallet and drop; drop is to be 1½°, the tooth is to
+ * be ¾ the width of the pallet, making a tooth of a width of 4½° and a
+ * pallet of 6°" — i.e. budget = toothWidth + palletWidth + drop). Can be
+ * zero or negative for an over-budget declaration; validity is ESC-106's
+ * job, not this function's.
+ */
+export function toothWidthAngle(escapeTeeth: number, palletWidthAngle: Angle, dropAngle: Angle): Angle {
+  return radians(wheelAngleBudgetPerBeat(escapeTeeth) - palletWidthAngle - dropAngle);
+}
+
 /** Balance lift per unit of lever swing: the fork-to-roller ratio implied by the two declared angles. */
 export function forkRatio(balanceLift: Angle, leverAngle: Angle): number | null {
   return leverAngle > 0 && balanceLift > 0 ? balanceLift / leverAngle : null;

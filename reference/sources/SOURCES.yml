@@ -1144,6 +1144,9 @@
     - "it is well to know that the angles for width of teeth, pallets and drop are measured from the wheel center, while the lifting and locking angles are struck from the pallet center" (drop is a wheel-side angle, distinct from the lever-side lock/run/lift angles already in this codebase's PalletGeometry)
     - "1½° is the angle generally allowed for the lock" (corroborates this project's existing teaching-movement lock angle, 2°, as the right order of magnitude, not identical)
     - "The draw... 12° on each [pallet]... the angle on the tooth is made just twice the amount, namely 24°" (corroborates the existing teaching-movement draw angle, 12°)
+    - "AC and AD... are tangents to the primitive circle GH. ABE and ABF are angles of 30° each... The locking circle MN is struck from the pallet center A; the interangles being equal, consequently the pallets must be equidistant... called the tangential escapement, on account of the unlocking taking place on the intersection of tangent AC with EB, and FB with AD" — identifies the equidistant pallet construction with the tangent-intersection ("tangential") construction this codebase's `tangentialCentreDistance`/`lockingPoints` already build
+    - "The circular pallet is sometimes appropriately called 'the pallet with equal lifts,' as the lever arms AMO and ANP... are equal lengths... the pallets are bisected by the 30° lines EB and FB, one-half their width being placed on each side of these lines. In this pallet we have two locking circles, MP for the engaging pallet, and NO for the disengaging pallet" — the circular construction, locking off the tangent by an amount that grows with pallet width ("the narrower the circular pallet is made, the nearer to the tangent will the unlocking be performed") but with no closed-form offset stated
+    - "Place the center of the protractor at B and draw the angle of width of pallets of 6°; IBE being for the engaging and JBF for the disengaging pallet. In the equidistant pallet IB is drawn on the side towards the center, while JB is drawn further from the center. If we were drawing a circular pallet, one-half the width of pallets would be placed on each side of EB and FB" (the worked 15-tooth specification's own pallet-width construction, 6°, matching the tooth/pallet/drop partition above)
   claims_to_check: []
   retrieved: true
   accessed: "2026-10-04"
@@ -1159,14 +1162,19 @@
     reason: an HTML page is not saved locally by WebFetch the way a
     binary PDF is, so the curl-then-Read workaround was used instead).
     Used for ASM-0036 (`PalletGeometry.dropAngle`, `wheelAngleBudgetPerBeat`,
-    `dropClearance` in `src/kinematics/palletGeometry.ts`) and the ESC-106
+    `dropClearance` in `src/kinematics/palletGeometry.ts`), ASM-0037
+    (`PalletGeometry.kind`, `widthAngle`, `toothWidthAngle`) and the ESC-106
     (hard geometric budget, derived — not just cited) / ESC-107 (informal
-    1-2° advisory, cited) validation rules. Only the DROP piece of this
-    chapter's material is used this pass; the book's much larger treatment
-    of equidistant-vs-circular pallet types, club-vs-ratchet tooth types,
-    and convex/concave lifting-plane shapes remains unmodeled and is
-    explicitly out of scope here — a genuinely larger undertaking, left
-    for a future Phase 7.1 pass rather than attempted incompletely now.
+    1-2° advisory, derived tooth width, cited) validation rules. Two pieces
+    of this chapter's material are used across these two assumptions (drop;
+    pallet type and width); the book's larger remaining treatment of
+    club-vs-ratchet tooth types and convex/concave lifting-plane shapes
+    remains unmodeled and is explicitly out of scope here — a genuinely
+    larger undertaking, left for a future Phase 7.1 pass rather than
+    attempted incompletely now. The CIRCULAR pallet type is named in the
+    domain model (ASM-0037) but not implemented: this source states only
+    that its locking offset from the tangent shrinks with pallet width, not
+    a closed-form formula for it.
 
 # Phase 7.5 (docs/ROADMAP.md): nonlinear mainspring torque curve and
 # bridle/slipping behaviour (REF-ENG §11; ASM-0026 currently uses a

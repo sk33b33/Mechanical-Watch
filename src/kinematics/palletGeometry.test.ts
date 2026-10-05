@@ -9,6 +9,7 @@ import {
   lockingPoints,
   spanAngle,
   tangentialCentreDistance,
+  toothWidthAngle,
   wheelAngleBudgetPerBeat,
 } from "./palletGeometry";
 
@@ -70,5 +71,12 @@ describe("pallet geometry (ASM-0025)", () => {
     expect(toMillimetres(clearance)).toBeCloseTo(0.0983, 3);
     expect(dropClearance(mm(0), degrees(1.5))).toBeNull();
     expect(dropClearance(mm(-1), degrees(1.5))).toBeNull();
+  });
+
+  it("tooth width is the budget remainder after pallet width and drop (ASM-0037, SRC-0036)", () => {
+    // Playtner's own 15-tooth worked example: 12° budget − 6° pallet − 1.5° drop = 4.5° tooth.
+    expect(toDegrees(toothWidthAngle(15, degrees(6), degrees(1.5)))).toBeCloseTo(4.5, 12);
+    // Can go negative when over budget — validity is ESC-106's job, not this function's.
+    expect(toDegrees(toothWidthAngle(15, degrees(11), degrees(1.5)))).toBeCloseTo(-0.5, 12);
   });
 });

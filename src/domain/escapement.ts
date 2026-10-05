@@ -69,6 +69,19 @@ export interface Balance {
 }
 
 /**
+ * Which of the two classical constructions places the locking points
+ * (ASM-0037, SRC-0036 "Equidistant vs. Circular"). EQUIDISTANT: both
+ * lockings lie on one locking circle struck from the pallet centre,
+ * unlocking exactly on the tangent to the escape wheel's tip circle (this
+ * is what `tangentialCentreDistance`/`lockingPoints` already construct —
+ * also called the "tangential" escapement). CIRCULAR: two separate locking
+ * circles giving equal lifting lever arms on both pallets, but unlocking
+ * off the tangent by an amount that depends on the pallet width — not yet
+ * implemented (no closed-form offset has been derived from SRC-0036 yet).
+ */
+export type PalletKind = "EQUIDISTANT" | "CIRCULAR";
+
+/**
  * Simplified pallet geometry (ASM-0025), optional. The pallets lock on the
  * escape wheel's tip circle at two points `spanTeeth` pitches apart,
  * placed for tangential locking. The lever's total swing between bankings
@@ -77,6 +90,8 @@ export interface Balance {
 export interface PalletGeometry {
   /** Pitches between the entry and exit locking points; k + ½ for two beats per tooth (ASM-0021). */
   spanTeeth: number;
+  /** Which locking-point construction (ASM-0037). Only EQUIDISTANT is implemented. */
+  kind: PalletKind;
   /** Lever rotation needed to unlock. */
   lockAngle: Angle;
   /** Angle of the locking face that pulls the lever onto its banking; must be positive. */
@@ -93,6 +108,13 @@ export interface PalletGeometry {
    * must be positive and strictly less than that budget (ESC-106).
    */
   dropAngle: Angle;
+  /**
+   * Escape-wheel-side width of the pallet's acting face (ASM-0037, SRC-0036),
+   * the same angle frame as `dropAngle`. Together with drop it determines
+   * the escape tooth's own width as the remainder of the per-beat wheel-angle
+   * budget (`toothWidthAngle`); both must be positive (ESC-106).
+   */
+  widthAngle: Angle;
 }
 
 export interface Escapement {
