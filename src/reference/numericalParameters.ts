@@ -8,6 +8,8 @@ import type { AssumptionId } from "./assumptions";
 export const NUMERICAL_PARAMETERS = {
   /** Absolute tolerance when comparing a placed centre distance to the ideal one, in metres. */
   centreDistanceToleranceMetres: 1e-9,
+  /** Absolute tolerance when checking a derived angle against a zero boundary (e.g. a ratchet tooth's derived width, ASM-0038), in radians. */
+  angleZeroToleranceRadians: 1e-9,
   /** Relative tolerance when two solver paths are compared for the same shaft. */
   solverRelativeTolerance: 1e-6,
   /** Fixed simulation timestep, in seconds (SIM-002). */

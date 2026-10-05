@@ -272,7 +272,8 @@ export function createTeachingMovement(): Movement {
     name: "Escapement",
     escapeArborShaftId: escape.id,
     // Below the escape pinion (2.95–3.45 mm) and clear of the fourth pinion in plan.
-    escapeWheel: { toothCount: escapeTeeth, tipDiameter: mm(escapeTipRadius * 2000), thickness: mm(0.15), zCentre: mm(2.4) },
+    // toothKind: Playtner's own 15-tooth specification is explicitly "the wheel teeth of the 'club' form" (SRC-0036, ASM-0038).
+    escapeWheel: { toothCount: escapeTeeth, toothKind: "CLUB", tipDiameter: mm(escapeTipRadius * 2000), thickness: mm(0.15), zCentre: mm(2.4) },
     palletArborShaftId: palletArbor.id,
     leverAngle: degrees(10),
     balanceShaftId: balanceStaff.id,

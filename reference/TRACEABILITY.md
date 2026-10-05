@@ -131,14 +131,17 @@ rev/min exist only at the UI boundary (`src/units/`).
 | Schema-7 file | Migrated to schema 8 on open (balance isochronism coefficient unknown, ASM-0034). |
 | Schema-8 file | Migrated to schema 9 on open (pallet geometry, where given, gains an empty drop angle to fill in, ASM-0036). |
 | Schema-9 file | Migrated to schema 10 on open (pallet geometry, where given, gains EQUIDISTANT — the only implemented kind — and an empty width angle to fill in, ASM-0037). |
+| Schema-10 file | Migrated to schema 11 on open (escape wheels gain CLUB — the only tooth kind previously assumed — ASM-0038). |
 | New pallet geometry (all empty) | Kept NaN; defaults to EQUIDISTANT (ASM-0037, the only implemented kind); ESC-104 span error, ESC-105 and ESC-106 errors until entered. No default angles. |
 | Pallet span not k + ½ teeth, or ≥ 180° | ESC-104 error; locking distance not derived; symbolic fork arms shown. |
 | Lock + run ≥ lever angle; lock ≤ 0; run < 0 | ESC-105 error. |
 | Draw ≤ 0 | ESC-105 warning (nothing pulls the lever onto its banking). |
 | Drop ≤ 0, or ≥ the one-beat wheel-angle budget | ESC-106 error; no clearance derived. |
 | Pallet width ≤ 0 | ESC-106 error. |
-| Pallet width + drop ≥ the one-beat wheel-angle budget (negative derived tooth width) | ESC-106 error; no clearance or tooth-width figure derived. |
-| Drop outside the informal 1–2° club-tooth range (but within budget) | ESC-107 info advisory (ASM-0036); never blocks. |
+| Pallet width + drop ≥ the one-beat wheel-angle budget (negative derived tooth width, club tooth) | ESC-106 error; no clearance or tooth-width figure derived. |
+| Pallet width + drop = the one-beat wheel-angle budget exactly (zero derived tooth width), ratchet tooth | Valid, not an error (ASM-0038 — the tooth is a bare point, the entire lift is on the pallet); clearance and tooth-width figure (0°) are still derived. A club tooth at the same values is still an ESC-106 error. |
+| Pallet width + drop > the one-beat wheel-angle budget (negative derived tooth width), ratchet tooth | ESC-106 error; no clearance or tooth-width figure derived. |
+| Drop outside the type-specific informal range (1.5° club / 2° ratchet, but within budget) | ESC-107 info advisory (ASM-0036, ASM-0038); never blocks. |
 | Mainspring data empty, turns ≤ 0, torques ≤ 0, let-down > fully wound, efficiency outside (0, 1] | SPR-001 error; no energy chain; the wind is not tracked. |
 | Q or escapement efficiency unknown | Amplitude not predicted; SPR-002 names what is missing; the declared amplitude is shown. |
 | Q ≤ 0 or efficiency outside (0, 1] | SPR-001 error. |
@@ -215,8 +218,8 @@ rev/min exist only at the UI boundary (`src/units/`).
 | ESC-002 | info | L2 | states what the simplified model does not claim (impact, sliding contact, faces, rate accuracy, and drop unless ESC-106/107 declare it) and which parts are simplified models |
 | ESC-104 | error | L1 | pallet span is k + ½ teeth and under 180°; pallet arbor at the tangential locking distance (project addition, ASM-0025) |
 | ESC-105 | error / warning | L1 | lock positive, run not negative, lock + run leave impulse; draw positive (warning) (project addition, ASM-0025) |
-| ESC-106 | error | L1 | drop and pallet width (wheel-side) each positive, and together leaving a positive derived tooth width within the one-beat wheel-angle budget, π/escapeTeeth (project addition, ASM-0021, ASM-0036, ASM-0037) |
-| ESC-107 | info | L1 | drop outside the informally cited 1–2° club-tooth range; reports the resulting tip-circle clearance and the derived tooth width (project addition, ASM-0036, ASM-0037, SRC-0036) |
+| ESC-106 | error | L1 | drop and pallet width (wheel-side) each positive, and together leaving a derived tooth width within the one-beat wheel-angle budget, π/escapeTeeth, that is positive for a club tooth or non-negative for a ratchet tooth (project addition, ASM-0021, ASM-0036, ASM-0037, ASM-0038) |
+| ESC-107 | info | L1 | drop outside the type-specific informally cited range (1.5° club / 2° ratchet); reports the resulting tip-circle clearance and the derived tooth width (project addition, ASM-0036, ASM-0037, ASM-0038, SRC-0036) |
 | ESC-101 | error | L1 / L2 | one escapement, three distinct existing arbors, valid inputs, amplitude above half the lift angle (project addition) |
 | ESC-102 | error | L2 | pallet arbor and balance staff are not gear-driven (project addition) |
 | ESC-103 | error | L1 | escape wheel clears the pallet arbor, the balance and other gears at its height; the balance clears the pallet arbor (project addition) |

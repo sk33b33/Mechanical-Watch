@@ -17,6 +17,7 @@ import { isochronismAdjustedRate } from "@/kinematics/balance";
 import { summarizeBalance } from "@/kinematics/balanceSummary";
 import { summarizeEnergy } from "@/kinematics/energySummary";
 import { dropClearance, forkRatio, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
+import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import { toNewtonMillimetres } from "@/units/torque";
 import { toMicrojoules } from "@/units/energy";
 import { toMicronewtonMillimetresPerRadian, toMilligramSquareCentimetres } from "@/units/rotational";
@@ -475,7 +476,8 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
   const tooth = pg !== null && teethValid ? toothWidthAngle(w.toothCount, pg.widthAngle, pg.dropAngle) : null;
   const dropValid = pg !== null && budget !== null && Number.isFinite(pg.dropAngle) && pg.dropAngle > 0 && pg.dropAngle < budget;
   const widthValid = pg !== null && Number.isFinite(pg.widthAngle) && pg.widthAngle > 0;
-  const partitionValid = dropValid && widthValid && tooth !== null && tooth > 0;
+  const toothValid = tooth !== null && (w.toothKind === "RATCHET" ? tooth >= -NUMERICAL_PARAMETERS.angleZeroToleranceRadians : tooth > 0);
+  const partitionValid = dropValid && widthValid && toothValid;
   const clearance = pg !== null && partitionValid ? dropClearance((w.tipDiameter / 2) as Length, pg.dropAngle) : null;
   const palletDerived: ReportValue[] = pg === null ? [] : [
     { label: "Pallet span angle", text: span === null ? "—" : `${toDegrees(span).toFixed(2)}°`, si: span, equation: "span × 2π / z", level: "L1_GEOMETRIC", references: ["ASM-0025"] },
@@ -516,6 +518,7 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
     parameters: [
       entered("Escape arbor", shaftName(esc.escapeArborShaftId)),
       entered("Escape wheel teeth", Number.isFinite(w.toothCount) ? String(w.toothCount) : "not set", w.toothCount),
+      entered("Escape tooth kind", w.toothKind === "RATCHET" ? "Ratchet (English)" : "Club"),
       lengthParam("Escape wheel tip Ø", w.tipDiameter),
       lengthParam("Escape wheel thickness", w.thickness),
       lengthParam("Escape wheel mid-plane", w.zCentre),

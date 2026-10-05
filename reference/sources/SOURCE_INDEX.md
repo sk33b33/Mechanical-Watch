@@ -225,11 +225,15 @@ circles) locks off the tangent by a pallet-width-dependent amount with
 no closed-form offset given. Also corroborates this project's existing
 teaching-movement lock (2°) and draw (12°) angles as the right order of
 magnitude. Used for ASM-0036 (`PalletGeometry.dropAngle`), ASM-0037
-(`PalletGeometry.kind`/`widthAngle`, `toothWidthAngle`) and the
-ESC-106/ESC-107 rules; CIRCULAR is named but not implemented (no
-closed-form locking offset available). The book's remaining treatment of
-club-vs-ratchet tooth types and lifting-plane shapes is out of scope for
-this pass.
+(`PalletGeometry.kind`/`widthAngle`, `toothWidthAngle`) and ASM-0038
+(`EscapeWheel.toothKind`, CLUB | RATCHET — CLUB has its own impulse face
+so the derived tooth width must stay positive, RATCHET is "a metal point
+passing over a jeweled plane" with the entire lift on the pallet so the
+tooth width may be exactly zero; the drop advisory also splits by type,
+1.5° club / 2° ratchet) and the ESC-106/ESC-107 rules; CIRCULAR is named
+but not implemented (no closed-form locking offset available). The
+book's remaining treatment of the actual tooth/pallet face shapes and
+convex/concave lifting planes is out of scope for this pass.
 
 ## Mainspring torque curve and bridle slip (REF-ENG §11)
 

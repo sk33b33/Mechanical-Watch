@@ -65,6 +65,11 @@ export function escapementSection(store: AppStore, esc: Escapement): Section {
       label: "Escape teeth", value: Number.isFinite(w.toothCount) ? String(w.toothCount) : "", step: "1", invalid: !isValidToothCount(w.toothCount),
       onCommit: (raw) => { setWheel({ toothCount: parseRequired(raw) }); },
     }),
+    selectRow("Tooth kind", w.toothKind, [
+      { value: "CLUB", label: "Club" },
+      { value: "RATCHET", label: "Ratchet (English)" },
+    ], (value) => { setWheel({ toothKind: value as Escapement["escapeWheel"]["toothKind"] }); },
+      "Tooth form (ASM-0038, SRC-0036). Club: the tooth has its own impulse face, so the derived tooth width must stay positive. Ratchet: a bare point, the entire lift is on the pallet, so the derived tooth width may be exactly zero."),
     length("Tip Ø (mm)", w.tipDiameter, (v) => { setWheel({ tipDiameter: v }); }),
     length("Thickness (mm)", w.thickness, (v) => { setWheel({ thickness: v }); }),
     length("Mid-plane height (mm)", w.zCentre, (v) => { setWheel({ zCentre: v }); }, false),

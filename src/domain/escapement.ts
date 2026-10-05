@@ -27,8 +27,21 @@ export type EscapementId = EntityId<"escapement">;
  * and bearings), but they oscillate: they must not be gear-driven
  * (ESC-102). The escape wheel is not a gear and has no module.
  */
+/**
+ * Which escape-tooth form (ASM-0038, SRC-0036 "The Lift" / "Specifications
+ * for Lever Escapement"). CLUB: the tooth has its own impulse face, lift
+ * shared between tooth and pallet (Playtner's own worked example, "wheel
+ * teeth of the 'club' form"); the derived `toothWidthAngle` must be
+ * positive. RATCHET (English): "a metal point passing over a jeweled
+ * plane" — the entire lift is on the (wider) pallet, so the tooth is
+ * effectively a bare point and `toothWidthAngle` may be zero.
+ */
+export type ToothKind = "CLUB" | "RATCHET";
+
 export interface EscapeWheel {
   toothCount: number;
+  /** Tooth form (ASM-0038). Changes what counts as a valid tooth/pallet/drop partition (ESC-106). */
+  toothKind: ToothKind;
   tipDiameter: Length;
   thickness: Length;
   zCentre: Length;

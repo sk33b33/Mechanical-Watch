@@ -38,7 +38,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 10;
+export const DESIGN_SCHEMA_VERSION = 11;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -165,6 +165,22 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
       ]),
     );
     return { ...doc, schemaVersion: 10, movement: { ...movement, escapements } };
+  },
+  /**
+   * v10 → v11: escape wheels gain CLUB (the only form previously assumed —
+   * a positive derived tooth width was already required, ASM-0036/0037 —
+   * and Playtner's own worked example uses it, ASM-0038).
+   */
+  10: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.escapements)) return doc;
+    const escapements = Object.fromEntries(
+      Object.entries(movement.escapements).map(([id, e]) => [
+        id,
+        isRecord(e) && isRecord(e.escapeWheel) ? { ...e, escapeWheel: { ...e.escapeWheel, toothKind: "CLUB" } } : e,
+      ]),
+    );
+    return { ...doc, schemaVersion: 11, movement: { ...movement, escapements } };
   },
 };
 
@@ -456,6 +472,7 @@ const escapement: Decoder<Escapement> = (value, path) => {
     escapeArborShaftId: field(o, "escapeArborShaftId", id<Shaft["id"]>(), path),
     escapeWheel: {
       toothCount: field(wheel, "toothCount", number, wp),
+      toothKind: field(wheel, "toothKind", oneOf(["CLUB", "RATCHET"]), wp),
       tipDiameter: field(wheel, "tipDiameter", length, wp),
       thickness: field(wheel, "thickness", length, wp),
       zCentre: field(wheel, "zCentre", length, wp),

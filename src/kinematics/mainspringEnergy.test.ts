@@ -207,4 +207,42 @@ describe("drop and pallet width (ESC-106, ESC-107, ASM-0036, ASM-0037)", () => {
     expect(found).toContain("ESC-106:error:tooth-width-budget");
     expect(found.every((r) => !r.startsWith("ESC-107"))).toBe(true);
   });
+
+  it("a ratchet tooth (ASM-0038) allows the derived tooth width to be exactly zero, unlike club", () => {
+    // 10.5° pallet + 1.5° drop = 12° budget exactly, leaving zero tooth width.
+    const club = updateEscapement(teaching, esc.id, { pallets: { ...pallets, widthAngle: degrees(10.5) } });
+    expect(dropRules(club)).toContain("ESC-106:error:tooth-width-budget");
+
+    const ratchet = updateEscapement(club, esc.id, { escapeWheel: { ...esc.escapeWheel, toothKind: "RATCHET" } });
+    const found = dropRules(ratchet);
+    expect(found.every((r) => !r.startsWith("ESC-106"))).toBe(true);
+    const info = validateMovement(ratchet).find((i) => i.rule === "ESC-107" && i.id.includes("tooth-width"));
+    expect(info?.message).toContain("0.00°");
+  });
+
+  it("a ratchet tooth still requires the derived tooth width to be non-negative", () => {
+    // 11° pallet + 1.5° drop = 12.5° > the 12° budget, leaving a negative tooth width even for a ratchet tooth.
+    const m = updateEscapement(teaching, esc.id, {
+      pallets: { ...pallets, widthAngle: degrees(11) },
+      escapeWheel: { ...esc.escapeWheel, toothKind: "RATCHET" },
+    });
+    const found = dropRules(m);
+    expect(found).toContain("ESC-106:error:tooth-width-budget");
+    const err = validateMovement(m).find((i) => i.rule === "ESC-106" && i.id.includes("tooth-width-budget"));
+    expect(err?.message).toContain("ratchet");
+    expect(err?.message).toContain("non-negative");
+  });
+
+  it("the drop advisory cites the type-specific figure (1.5° club, 2° ratchet)", () => {
+    const club = updateEscapement(teaching, esc.id, { pallets: { ...pallets, dropAngle: degrees(0.5) } });
+    const clubInfo = validateMovement(club).find((i) => i.rule === "ESC-107" && i.id.includes("drop-advisory"));
+    expect(clubInfo?.message).toContain("club-tooth escapement (1.5°");
+
+    const ratchet = updateEscapement(teaching, esc.id, {
+      pallets: { ...pallets, dropAngle: degrees(0.5) },
+      escapeWheel: { ...esc.escapeWheel, toothKind: "RATCHET" },
+    });
+    const ratchetInfo = validateMovement(ratchet).find((i) => i.rule === "ESC-107" && i.id.includes("drop-advisory"));
+    expect(ratchetInfo?.message).toContain("ratchet-tooth escapement (2°");
+  });
 });

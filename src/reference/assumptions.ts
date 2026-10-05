@@ -225,6 +225,12 @@ export const ASSUMPTIONS = {
     scope: "Escapement geometry",
     status: "Active",
   },
+  "ASM-0038": {
+    summary:
+      "EscapeWheel.toothKind (CLUB | RATCHET): CLUB has its own impulse face, so the derived tooth width must stay positive; RATCHET puts the entire lift on the pallet, so the tooth is a bare point and tooth width may be exactly zero. The drop advisory also becomes type-specific (1.5 degrees club / 2 degrees ratchet, Playtner)",
+    scope: "Escapement geometry",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

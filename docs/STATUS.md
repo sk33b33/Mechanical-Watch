@@ -2,6 +2,64 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 7.1.2: tooth type, club/ratchet (ESC-106/107 extended, ASM-0038)
+
+Second of the six 7.1 sub-items: which escape-tooth form (club or
+ratchet), the piece of Playtner (SRC-0036) immediately next to drop and
+pallet width (ASM-0036/0037) already implemented.
+
+- **`EscapeWheel.toothKind` (CLUB | RATCHET), a required field.** CLUB
+  (Playtner's own worked 15-tooth specification, "the wheel teeth of the
+  'club' form") has its own impulse face sharing the lift with the
+  pallet, so the derived tooth width must stay strictly positive,
+  unchanged from the existing ESC-106 rule. RATCHET (the older English
+  form, "a metal point passing over a jeweled plane", "the entire
+  lifting angle is on the pallets") puts the whole lift on the pallet,
+  so the tooth is a bare point and the derived tooth width may be
+  exactly zero — ESC-106 relaxes `> 0` to `>= 0` only for this case.
+  Both options are fully enabled in the UI (unlike CIRCULAR, which
+  stays a disabled stub): the ratchet case has real, implemented
+  validation consequences, not just a named gap.
+- **Drop advisory becomes type-specific.** ESC-107's informal drop
+  figure now cites the type's own value — Playtner: "Authorities on
+  the subject allow 1½° drop for the club and 2° for the ratchet
+  tooth" — instead of a generic club-only wording. The underlying 1–2°
+  advisory band is unchanged (no separate per-type band is sourced).
+- **A genuine floating-point edge found and fixed.** A ratchet
+  configuration whose tooth width is mathematically exactly zero (e.g.
+  10.5° pallet + 1.5° drop against a 12° budget) can round to a tiny
+  negative double through the degree→radian arithmetic, which would
+  wrongly fail the new `>= 0` check. Added
+  `NUMERICAL_PARAMETERS.angleZeroToleranceRadians` (1e-9 rad), the same
+  kind of absolute floating-point tolerance already used for centre
+  distances, and used it in all three places that now derive
+  tooth-width validity: `escapementRules.ts` (ESC-106/107),
+  `energySection.ts` (the live inspector's own readonly rows — this one
+  had the stale, non-toothKind-aware `tooth > 0` check too, not just
+  the component report) and `componentReport.ts`.
+- **UI and outputs.** A "Tooth kind" selector next to "Escape teeth" in
+  the Escape wheel section; an "Escape tooth kind" parameter row in the
+  component report; messages throughout name which kind is in play.
+  Teaching movement kept at CLUB (Playtner's own worked specification).
+- **Persistence.** Schema 10 → 11: every escape wheel gains
+  `toothKind: "CLUB"` (the only form previously assumed, and what every
+  existing design already implicitly was).
+- **Verified live in a real browser**: the tooth-kind selector defaults
+  to Club with the teaching movement's 4.50° derived tooth width;
+  setting pallet width to 10.5° (exactly exhausting the 12° budget with
+  the existing 1.5° drop) correctly fires ESC-106 for Club; switching
+  to Ratchet at the same values clears the error and shows a derived
+  0.00° tooth width; switching back to Club re-fires it.
+- New tests in `mainspringEnergy.test.ts` (ratchet allows zero tooth
+  width where club doesn't; ratchet still rejects a genuinely negative
+  tooth width; the type-specific drop-advisory wording). Registered
+  ASM-0038 in `ASSUMPTION_REGISTER.md`/`assumptions.ts`, extended
+  SRC-0036's `claims_supported` and notes in `SOURCES.yml`/
+  `SOURCE_INDEX.md`, and updated `RULE_IDS.md`/`TRACEABILITY.md` for
+  the now type-aware ESC-106/107. 492 unit tests pass (489 before);
+  `tsc -b --noEmit` and `eslint` are clean; production build succeeds;
+  full e2e suite run.
+
 ## Phase 7.1.1: pallet type and width (ESC-106/107 extended, ASM-0037)
 
 Started the first of the six 7.1 sub-items scoped last pass: pallet type

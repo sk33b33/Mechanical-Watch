@@ -9,6 +9,7 @@ import { isValidToothCount } from "@/math/gearMath";
 import { dropClearance, forkRatio, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
 import { isochronismAdjustedRate } from "@/kinematics/balance";
 import { summarizeBalance } from "@/kinematics/balanceSummary";
+import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import { actionRow, formatMm, inputRow, parseRequired, readonlyRow, sectionHeader, selectRow } from "./fields";
 import { positive, type Section } from "./common";
 
@@ -114,7 +115,8 @@ function palletRows(esc: Escapement, edit: (patch: Parameters<typeof updateEscap
   const dropInBudget = budget !== null && positive(pg.dropAngle) && pg.dropAngle < budget;
   const widthValid = positive(pg.widthAngle);
   const tooth = isValidToothCount(w.toothCount) ? toothWidthAngle(w.toothCount, pg.widthAngle, pg.dropAngle) : null;
-  const partitionValid = dropInBudget && widthValid && tooth !== null && tooth > 0;
+  const toothValid = tooth !== null && (w.toothKind === "RATCHET" ? tooth >= -NUMERICAL_PARAMETERS.angleZeroToleranceRadians : tooth > 0);
+  const partitionValid = dropInBudget && widthValid && toothValid;
   const clearance = partitionValid ? dropClearance((w.tipDiameter / 2) as typeof w.tipDiameter, pg.dropAngle) : null;
   out.push(
     readonlyRow("Model", "SIMPLIFIED PALLET GEOMETRY (L1)",
@@ -141,7 +143,8 @@ function palletRows(esc: Escapement, edit: (patch: Parameters<typeof updateEscap
     readonlyRow("Impulse (lever)", Number.isFinite(impulse) ? `${toDegrees(impulse).toFixed(2)}°` : "—", "Lever angle − lock − run."),
     readonlyRow("Fork ratio (lift ÷ lever)", ratio === null ? "—" : ratio.toFixed(3), "Balance lift per unit of lever swing implied by the two declared angles."),
     readonlyRow("Wheel-angle budget per beat", budget === null ? "—" : `${toDegrees(budget).toFixed(2)}°`, "Half the tooth pitch, π/escapeTeeth (ASM-0021, ASM-0036): shared by the tooth's width, the pallet's width and drop."),
-    readonlyRow("Escape-tooth width (derived)", tooth === null ? "—" : `${toDegrees(tooth).toFixed(2)}°`, "Budget − pallet width − drop (ASM-0037)."),
+    readonlyRow("Escape-tooth width (derived)", tooth === null ? "—" : `${toDegrees(tooth).toFixed(2)}°`,
+      "Budget − pallet width − drop (ASM-0037). Must be positive for a club tooth, or may be zero for a ratchet tooth (ASM-0038)."),
     readonlyRow("Drop clearance at tip circle", clearance === null ? "—" : formatMm(clearance), "Arc length = tip radius × drop angle (ASM-0036)."),
     actionRow("Clear pallet geometry", "Stops checking the locking geometry. Undo with Ctrl+Z.", () => { edit({ pallets: null }); }, true),
   );

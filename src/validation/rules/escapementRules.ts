@@ -181,13 +181,17 @@ export const escapementRules: Rule = ({ movement, placement, train }) => {
         );
       }
 
-      // ESC-106 / ESC-107: drop (ASM-0036, SRC-0036), when a tooth count is known.
+      // ESC-106 / ESC-107: drop (ASM-0036, SRC-0036) and the tooth/pallet partition (ASM-0037, ASM-0038), when a tooth count is known.
       if (isValidToothCount(w.toothCount)) {
         const budget = wheelAngleBudgetPerBeat(w.toothCount);
         const dropInBudget = positive(pg.dropAngle) && pg.dropAngle < budget;
         const widthPositive = positive(pg.widthAngle);
         const tooth = toothWidthAngle(w.toothCount, pg.widthAngle, pg.dropAngle);
-        const partitionValid = dropInBudget && widthPositive && tooth > 0;
+        // CLUB has its own impulse face (tooth width must be positive); RATCHET is a bare point —
+        // "the entire lifting angle is on the pallets" (SRC-0036) — so exactly zero is valid (within
+        // floating-point noise from the angle arithmetic, NUMERICAL_PARAMETERS.angleZeroToleranceRadians).
+        const toothValid = w.toothKind === "RATCHET" ? tooth >= -NUMERICAL_PARAMETERS.angleZeroToleranceRadians : tooth > 0;
+        const partitionValid = dropInBudget && widthPositive && toothValid;
         dropDeclared = partitionValid;
         if (!dropInBudget) {
           issues.push(
@@ -202,19 +206,20 @@ export const escapementRules: Rule = ({ movement, placement, train }) => {
               `${esc.name}: pallet width (${toDegrees(pg.widthAngle).toFixed(2)}°) must be positive (ASM-0037).`,
               ["ASM-0037"]),
           );
-        } else if (dropInBudget && tooth <= 0) {
+        } else if (dropInBudget && !toothValid) {
           issues.push(
             issue("ESC-106", "tooth-width-budget", "error", "L1_GEOMETRIC", [esc.id],
-              `${esc.name}: pallet width (${toDegrees(pg.widthAngle).toFixed(2)}°) plus drop (${toDegrees(pg.dropAngle).toFixed(2)}°) leaves no room for the tooth's own width within the ${toDegrees(budget).toFixed(2)}° per-beat budget (ASM-0021, ASM-0037).`,
-              ["ASM-0021", "ASM-0037"]),
+              `${esc.name}: pallet width (${toDegrees(pg.widthAngle).toFixed(2)}°) plus drop (${toDegrees(pg.dropAngle).toFixed(2)}°) leaves no room for the tooth's own width within the ${toDegrees(budget).toFixed(2)}° per-beat budget (ASM-0021, ASM-0037) — a ${w.toothKind === "RATCHET" ? "ratchet" : "club"} tooth needs it to be ${w.toothKind === "RATCHET" ? "non-negative" : "positive"}.`,
+              ["ASM-0021", "ASM-0037", "ASM-0038"]),
           );
         }
         if (partitionValid) {
+          const typicalDrop = w.toothKind === "RATCHET" ? 2 : 1.5;
           if (toDegrees(pg.dropAngle) < 1 || toDegrees(pg.dropAngle) > 2) {
             issues.push(
               issue("ESC-107", "drop-advisory", "info", "L1_GEOMETRIC", [esc.id],
-                `${esc.name}: drop (${toDegrees(pg.dropAngle).toFixed(2)}°) is outside the range typically cited for a club-tooth escapement (1–2°, ASM-0036, SRC-0036). An informal reference figure, not a validated limit.`,
-                ["ASM-0036"]),
+                `${esc.name}: drop (${toDegrees(pg.dropAngle).toFixed(2)}°) is outside the figure typically cited for a ${w.toothKind === "RATCHET" ? "ratchet" : "club"}-tooth escapement (${String(typicalDrop)}°, ASM-0036, ASM-0038, SRC-0036). An informal reference figure, not a validated limit.`,
+                ["ASM-0036", "ASM-0038"]),
             );
           }
           const clearance = positive(tipRadius) ? dropClearance(tipRadius as Length, pg.dropAngle) : null;

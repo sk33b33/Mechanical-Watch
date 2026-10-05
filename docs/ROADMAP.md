@@ -80,13 +80,19 @@ level).
     width completes the tooth/pallet/drop wheel-angle partition ASM-0036
     started: escape-tooth width is now derived (`toothWidthAngle`), not
     missing, and ESC-106/107 check and report the full partition.
-  - 7.1.2 — Tooth type (CLUB | RATCHET) and the tooth/pallet width split
-    within the existing per-beat wheel-angle budget (ASM-0036). Club:
-    lift split between tooth and pallet (Playtner's 15-tooth example:
-    4½° tooth, 6° pallet, from a 12° budget less 1½° drop); ratchet
-    (English): all lift on the (wider) pallet, tooth is a bare point.
-    Interacts with 7.1.1 (English wheels are usually paired with
-    circular pallets per Playtner).
+  - 7.1.2 — **Done** (see `docs/STATUS.md`). Tooth type (CLUB | RATCHET,
+    ASM-0038) and the tooth/pallet width split within the existing
+    per-beat wheel-angle budget (ASM-0036). Club: lift split between
+    tooth and pallet (Playtner's 15-tooth example: 4½° tooth, 6°
+    pallet, from a 12° budget less 1½° drop), tooth width must stay
+    positive; ratchet (English): all lift on the (wider) pallet, tooth
+    is a bare point, so tooth width may be exactly zero (ESC-106
+    relaxed for this case only). Drop advisory (ESC-107) now cites the
+    type-specific figure (1.5° club / 2° ratchet). Note: 7.1.1's
+    English-wheels-usually-paired-with-circular-pallets observation
+    from Playtner is not itself enforced — CIRCULAR pallets remain an
+    unimplemented stub, so a RATCHET + EQUIDISTANT combination is
+    accepted without a cross-check; not a gap this pass closes.
   - 7.1.3 — Real draw-angled locking faces, replacing `drawAngle`'s
     current role as a bare validated number with an actual face
     direction: pallet face inclined at the declared draw angle from the
