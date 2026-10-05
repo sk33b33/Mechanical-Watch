@@ -3,6 +3,7 @@ import { degrees, toDegrees } from "@/units/angle";
 import { metres, millimetres as mm, toMillimetres } from "@/units/length";
 import {
   dropClearance,
+  forkActingLength,
   forkRatio,
   impulseAngle,
   isHalfToothSpan,
@@ -85,5 +86,16 @@ describe("pallet geometry (ASM-0025)", () => {
     // Playtner's own worked example: 12° pallet draw, 24° tooth locking face.
     expect(toDegrees(toothDrawAngle(degrees(12)))).toBeCloseTo(24, 12);
     expect(toDegrees(toothDrawAngle(degrees(10)))).toBeCloseTo(20, 12);
+  });
+
+  it("fork acting length = impulse radius × fork ratio, the inverse-ratio law (ASM-0041, SRC-0036)", () => {
+    // Playtner's own cited 5:1 proportion (lift 50° / lever 10°) and his own 4.5 mm fork-length example.
+    const ratio = forkRatio(degrees(50), degrees(10)) ?? Number.NaN;
+    expect(ratio).toBeCloseTo(5, 12);
+    const length = forkActingLength(mm(0.9), ratio) ?? mm(Number.NaN);
+    expect(toMillimetres(length)).toBeCloseTo(4.5, 12);
+    expect(forkActingLength(mm(0.9), null)).toBeNull();
+    expect(forkActingLength(mm(0), ratio)).toBeNull();
+    expect(forkActingLength(mm(-1), ratio)).toBeNull();
   });
 });

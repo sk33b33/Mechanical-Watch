@@ -8,6 +8,7 @@ import type { Escapement } from "@/domain/escapement";
 import type { ShaftId } from "@/domain/shaft";
 import { isValidToothCount } from "@/math/gearMath";
 import { balanceFrequency, beatFrequency, beatsPerEscapeRevolution, impulseFraction } from "@/kinematics/escapement";
+import { forkActingLength, forkRatio } from "@/kinematics/palletGeometry";
 import { summarizeBalance } from "@/kinematics/balanceSummary";
 import {
   micronewtonMillimetresPerRadian,
@@ -15,7 +16,7 @@ import {
   toMicronewtonMillimetresPerRadian,
   toMilligramSquareCentimetres,
 } from "@/units/rotational";
-import { inputRow, mmText, parseRequired, readonlyRow, sectionHeader, selectRow, textRow } from "./fields";
+import { formatMm, inputRow, mmText, parseRequired, readonlyRow, sectionHeader, selectRow, textRow } from "./fields";
 import { deleteRow, positive, type Section } from "./common";
 import { palletAndEnergyRows } from "./energySection";
 
@@ -52,6 +53,7 @@ export function escapementSection(store: AppStore, esc: Escapement): Section {
   const beats = omega !== undefined && omega !== 0 && isValidToothCount(w.toothCount) ? beatFrequency(omega, w.toothCount) : null;
   const fraction = impulseFraction(b.amplitude, b.liftAngle);
   const balance = summarizeBalance(movement, esc);
+  const forkLength = b.impulseRadius === null ? null : forkActingLength(b.impulseRadius, forkRatio(b.liftAngle, esc.leverAngle));
   const optionalRow = (label: string, text: string, value: number | null, onCommit: (raw: string) => void, title: string): HTMLDivElement =>
     inputRow({ label, value: text, step: "0.1", placeholder: "unknown", invalid: value !== null && !positive(value), title, onCommit });
 
@@ -85,6 +87,11 @@ export function escapementSection(store: AppStore, esc: Escapement): Section {
       "Declared peak swing either side of the dead point (ASM-0022). Used unless the energy model below can predict it from the mainspring, Q and escapement efficiency (ASM-0026)."),
     angle("Lift angle (°)", b.liftAngle, (v) => { setBalance({ liftAngle: v }); },
       "Balance angle over which the escapement acts; sets the impulse window (ASM-0023)."),
+    optionalRow("Impulse radius (mm)", b.impulseRadius === null ? "" : mmText(b.impulseRadius), b.impulseRadius,
+      (raw) => { setBalance({ impulseRadius: raw.trim() === "" ? null : millimetres(parseRequired(raw)) }); },
+      "Distance from the balance staff to the ruby pin's face (ASM-0041). Entered, not derived from roller geometry. Empty = unknown."),
+    readonlyRow("Fork acting length (derived)", forkLength === null ? "—" : formatMm(forkLength),
+      "Pallet centre to ruby-pin contact = impulse radius × (lift angle ÷ lever angle), Playtner's own inverse-ratio law (ASM-0041, ESC-109)."),
     sectionHeader("Balance dynamics (L3 simplified, optional)"),
     optionalRow("Inertia (mg·cm²)", b.inertia === null ? "" : String(toMilligramSquareCentimetres(b.inertia)), b.inertia,
       (raw) => { setBalance({ inertia: raw.trim() === "" ? null : milligramSquareCentimetres(Number(raw)) }); },

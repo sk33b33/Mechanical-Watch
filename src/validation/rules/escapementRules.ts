@@ -6,7 +6,7 @@ import { toBeatsPerHour } from "@/units/frequency";
 import type { EntityId } from "@/domain/ids";
 import { gearZRange, zOverlaps } from "@/assembly/assemblyGeometry";
 import { balanceFrequency, beatFrequency, impulseFraction } from "@/kinematics/escapement";
-import { dropClearance, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
+import { dropClearance, forkActingLength, forkRatio, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import type { Length } from "@/units/length";
 import type { ValidationIssue } from "../validationIssue";
@@ -249,6 +249,25 @@ export const escapementRules: Rule = ({ movement, placement, train }) => {
             issue("ESC-107", "tooth-width", "info", "L1_GEOMETRIC", [esc.id],
               `${esc.name}: escape-tooth width is ${toDegrees(tooth).toFixed(2)}° (the per-beat budget less the pallet's own width and drop, ASM-0037).`,
               ["ASM-0037"]),
+          );
+        }
+      }
+    }
+
+    // ESC-109: impulse radius (optional) and the derived fork acting length (ASM-0041, SRC-0036 "The Fork and Roller Action").
+    if (b.impulseRadius !== null) {
+      if (!(Number.isFinite(b.impulseRadius) && b.impulseRadius > 0)) {
+        issues.push(
+          issue("ESC-109", "impulse-radius", "error", "L1_GEOMETRIC", [esc.id],
+            `${esc.name}: the impulse radius must be positive, or left empty (unknown).`, ["ASM-0041"]),
+        );
+      } else {
+        const length = forkActingLength(b.impulseRadius, forkRatio(b.liftAngle, esc.leverAngle));
+        if (length !== null) {
+          issues.push(
+            issue("ESC-109", "fork-acting-length", "info", "L1_GEOMETRIC", [esc.id],
+              `${esc.name}: fork acting length (pallet centre to ruby-pin contact) is ${mm(length)}, derived from the impulse radius and the balance-lift/lever-angle ratio (ASM-0041, SRC-0036: "the angles are in the inverse ratio to the radii").`,
+              ["ASM-0041"]),
           );
         }
       }

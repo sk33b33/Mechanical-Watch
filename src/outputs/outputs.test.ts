@@ -41,7 +41,8 @@ describe("bill of materials", () => {
       ["Escapement", "Escape wheel", "Pallet fork", "Pallet stones", "Balance", "Hairspring", "Roller and impulse pin"],
     );
     expect(escapementRows.find((r) => r.name === "Hairspring")?.specification).toBe("stiffness 246.70 µN·mm/rad (entered)");
-    expect(escapementRows.find((r) => r.name === "Roller and impulse pin")?.specification).toBe("not modeled");
+    expect(escapementRows.find((r) => r.name === "Roller and impulse pin")?.specification).toBe("impulse radius 0.900 mm (entered)");
+    expect(escapementRows.find((r) => r.name === "Roller and impulse pin")?.notes).toContain("fork acting length 4.500 mm");
     expect(others).toHaveLength(count(teaching.frames) + count(teaching.shafts) + count(teaching.gears) + count(teaching.jewels) + count(teaching.dials));
     expect(new Set(others.map((r) => r.entityId)).size).toBe(others.length);
     expect(new Set(bom.map((r) => r.item)).size).toBe(bom.length);

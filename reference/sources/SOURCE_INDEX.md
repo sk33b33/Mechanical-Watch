@@ -251,6 +251,23 @@ tooth/pallet FACE contact geometry itself, the real/primitive-circle
 correction, the engaging/disengaging asymmetry and the locked-vs-
 unlocked position correction is out of scope for this pass.
 
+Now also used for ASM-0041, the first piece of this book's separate
+"Fork and Roller Action" chapter: `Balance.impulseRadius` ("the ruby
+pin, or strictly speaking, the 'impulse radius,' is a lever arm, whose
+length is measured from the center of the balance staff to the face of
+the ruby pin"), entered directly like `inertia`/`hairspringStiffness`.
+The fork's real acting length is derived, not declared
+(`forkActingLength`, ESC-109), via Playtner's own stated law — "the
+angles are in the inverse ratio to the radii" — and a worked example,
+"the acting length of fork = 4.5 mm", divided by the teaching
+movement's own cited 5:1 impulse/lever-angle proportion ("some might
+use a proportion of... even 5 to 1") to choose its 0.9 mm impulse
+radius. The rest of this chapter, "The Safety Action", "The Crescent"
+and "The Horn" — ruby pin width/freedom/shake, single vs. double
+roller, guard-point/dart freedom, the crescent's angular opening, the
+horn's length and freedom — remains unmodeled, scoped as Phase 7.1.5's
+later sub-items (`docs/ROADMAP.md`).
+
 ## Mainspring torque curve and bridle slip (REF-ENG §11)
 
 ### Roymech — Springs Spiral (SRC-0037, read)

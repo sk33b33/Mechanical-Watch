@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { degrees, toDegrees } from "@/units/angle";
-import { metres } from "@/units/length";
+import { metres, millimetres } from "@/units/length";
 import { joules } from "@/units/energy";
 import { newtonMillimetres, toNewtonMillimetres } from "@/units/torque";
 import { newtonMetresPerRadian } from "@/units/rotational";
@@ -275,5 +275,32 @@ describe("escape-tooth locking face, derived from draw (ESC-108, ASM-0039)", () 
     // 15° draw -> 30° derived tooth face, above the 28° ceiling.
     const tooMuch = updateEscapement(teaching, esc.id, { pallets: { ...pallets, drawAngle: degrees(15) } });
     expect(drawRules(tooMuch)).toEqual(["ESC-108:info:tooth-draw", "ESC-108:info:tooth-draw-advisory"]);
+  });
+});
+
+describe("impulse radius and the derived fork acting length (ESC-109, ASM-0041)", () => {
+  const teaching = createTeachingMovement();
+  const esc = Object.values(teaching.escapements)[0];
+  if (esc === undefined) throw new Error("teaching movement lacks an escapement");
+  const forkRules = (m: Movement): string[] =>
+    validateMovement(m).filter((i) => i.rule === "ESC-109").map((i) => `${i.rule}:${i.severity}:${i.id.split(":")[1] ?? ""}`);
+
+  it("the teaching movement's 0.9mm impulse radius derives a 4.5mm fork acting length (Playtner's own worked example)", () => {
+    expect(forkRules(teaching)).toEqual(["ESC-109:info:fork-acting-length"]);
+    const info = validateMovement(teaching).find((i) => i.rule === "ESC-109" && i.id.includes("fork-acting-length"));
+    expect(info?.message).toContain("4.5000 mm");
+  });
+
+  it("nothing is derived without an entered impulse radius", () => {
+    const m = updateEscapement(teaching, esc.id, { balance: { ...esc.balance, impulseRadius: null } });
+    expect(forkRules(m)).toEqual([]);
+  });
+
+  it("a non-positive impulse radius is an error", () => {
+    const zero = updateEscapement(teaching, esc.id, { balance: { ...esc.balance, impulseRadius: millimetres(0) } });
+    expect(forkRules(zero)).toEqual(["ESC-109:error:impulse-radius"]);
+
+    const negative = updateEscapement(teaching, esc.id, { balance: { ...esc.balance, impulseRadius: millimetres(-0.5) } });
+    expect(forkRules(negative)).toEqual(["ESC-109:error:impulse-radius"]);
   });
 });

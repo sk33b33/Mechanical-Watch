@@ -2,6 +2,67 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 7.1.5.1: impulse radius and the derived fork acting length (ESC-109, ASM-0041)
+
+First of 7.1.5's six sub-items (scoped last pass): gives the existing
+`forkRatio` — previously an abstract dimensionless number with no
+physical length attached — real geometric content, the first piece of
+SRC-0036's separate "Fork and Roller Action" chapter used in this
+project.
+
+- **`Balance.impulseRadius` (declared, optional mm).** Playtner: "the
+  ruby pin, or strictly speaking, the 'impulse radius,' is a lever arm,
+  whose length is measured from the center of the balance staff to the
+  face of the ruby pin." Entered directly, same pattern as
+  `inertia`/`hairspringStiffness`: no roller or ruby-pin geometry is
+  used to derive it.
+- **`forkActingLength` (derived, new function in `palletGeometry.ts`).**
+  Playtner's own stated law: "the angles are in the inverse ratio to
+  the radii" — impulse angle × impulse radius ≈ lever angle × fork
+  acting length, so `forkActingLength = impulseRadius × forkRatio`.
+  Turns the fork's real acting length (pallet centre to ruby-pin
+  contact) from nothing into a genuine derived quantity.
+- **ESC-109 (new rule).** Impulse radius, when entered, must be
+  positive (error otherwise); the derived fork acting length is then
+  reported as info.
+- **Teaching movement value, fully sourced, not invented.** Its own
+  lift/lever angles (50°/10°) already matched Playtner's own cited
+  "5 to 1" proportion exactly. Chose `impulseRadius = 0.9 mm` so the
+  derived fork acting length lands on Playtner's own worked example —
+  "the acting length of fork = 4.5 mm" (used in his ruby-pin-shake
+  calculation) — since 4.5 mm ÷ 5 = 0.9 mm.
+- **Deliberately not touched: the viewport's visual fork-bar length.**
+  The 3D viewport still draws the fork bar using the actual placed
+  pallet-to-balance distance (`toBalance * 0.85`, a cosmetic
+  placeholder), not the newly-derived `forkActingLength`. These are
+  different quantities — the declared/derived theoretical ruby-pin
+  contact radius versus the real placed geometry — and mixing them
+  could visually break the drawing (the bar not reaching the balance)
+  if a user's declared impulse radius doesn't closely match their
+  actual placement. That reconciliation, along with the real ruby-pin/
+  roller/crescent/horn shapes, is deferred to 7.1.5.6, the visual
+  capstone for this sub-area (same role 7.1.4 played for pallets/teeth).
+- **UI and outputs.** An "Impulse radius (mm)" optional input next to
+  "Lift angle" in the Balance section; a readonly "Fork acting length
+  (derived)" row; matching parameter/derived rows in the component
+  report; the BOM's "Roller and impulse pin" row (previously a bare
+  "not modeled" placeholder) now reports the entered impulse radius and
+  derived fork acting length.
+- **A real formatting bug caught by live-browser verification**, not
+  just unit tests: the first version of the new readonly row used
+  `fields.ts`'s `mmText` (a bare digit string meant for editable input
+  values, e.g. "4.5") instead of `formatMm` (the readonly-display
+  formatter used everywhere else for a derived length, e.g.
+  "4.5000 mm") — caught by screenshotting the rendered inspector panel
+  and noticing the row read "4.5" with no unit, not by the unit tests
+  (which check the validation message text, not the UI's own
+  formatting choice). Fixed before commit.
+- New tests cover `forkActingLength` against Playtner's own 5:1/4.5mm
+  worked numbers, ESC-109's positive-or-error and derive-or-nothing
+  behavior, and the BOM/component-report rows. Verified live in a real
+  browser. 508 unit tests pass (504 before); `tsc -b --noEmit` and
+  `eslint` are clean; production build succeeds; full e2e suite run.
+
 ## Phase 7.1.4: real 2D outlines for escape teeth and pallet stones (ASM-0040)
 
 The capstone of the six 7.1 sub-items: replacing the escape wheel's and

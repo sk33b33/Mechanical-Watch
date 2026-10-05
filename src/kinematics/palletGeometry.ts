@@ -89,6 +89,22 @@ export function forkRatio(balanceLift: Angle, leverAngle: Angle): number | null 
 }
 
 /**
+ * The fork's real acting length (pallet centre to the ruby-pin contact),
+ * derived from the declared impulse radius via Playtner's own stated law
+ * (ASM-0041, SRC-0036 "The Fork and Roller Action": "the angles are in
+ * the inverse ratio to the radii. In other words, the shorter the
+ * radius, the greater is the angle" — i.e. impulse angle × impulse
+ * radius ≈ lever angle × fork acting length, treating the brief contact
+ * as a shared linear displacement at the point of contact). `ratio` is
+ * the already-computed `forkRatio` (balance lift ÷ lever angle); null
+ * when the ratio is null (ESC-105's own lever/lift preconditions) or the
+ * impulse radius is not positive.
+ */
+export function forkActingLength(impulseRadius: Length, ratio: number | null): Length | null {
+  return ratio !== null && impulseRadius > 0 ? metres(impulseRadius * ratio) : null;
+}
+
+/**
  * The escape tooth's own locking face, derived from the declared pallet
  * draw (ASM-0039, SRC-0036 "The Draw"): "it is certainly necessary that
  * the point of the tooth alone should touch the pallet. From this it

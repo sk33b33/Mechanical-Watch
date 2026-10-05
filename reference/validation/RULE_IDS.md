@@ -78,6 +78,7 @@ ESC-106 Drop and pallet width (wheel-side, ASM-0036/0037) must each be positive,
 ESC-107 Drop outside the type-specific informally cited range (1.5° club / 2° ratchet, ASM-0038) is an advisory; the resulting tip-circle clearance and the derived tooth width are reported (ASM-0036, ASM-0037, SRC-0036).
 ESC-103 The escape wheel must clear the pallet arbor and balance staff, and the balance must clear the pallet arbor.
 ESC-108 When draw is positive, the escape-tooth locking face is derived as conventionally double the pallet's draw (ASM-0039); outside the practically cited 20°-28° range is an advisory.
+ESC-109 Impulse radius, when entered, must be positive; the fork's real acting length is then derived from it via the balance-lift/lever-angle ratio (ASM-0041).
 
 BAL-001 A balance-governed drive needs an escapement with a valid escape wheel and a positive balance inertia and hairspring stiffness; entered inertia and stiffness must be positive.
 BAL-002 The simplified dynamic balance model reports its free frequency, the frequency nominal time needs, and the predicted daily rate, with its assumptions.

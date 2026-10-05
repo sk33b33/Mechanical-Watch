@@ -126,15 +126,18 @@ level).
     ("The Fork and Roller Action", "The Safety Action", "The Crescent",
     "The Horn") — more raw material than 7.1.1-7.1.4 combined, so
     scoped into its own sub-items, same pattern as 7.1 itself:
-    - 7.1.5.1 — Impulse radius (declared, mm: balance staff to ruby
-      pin) and the real fork acting length, derived via Playtner's own
-      stated law ("the angles are in the inverse ratio to the radii"):
-      `forkActingLength = impulseRadius × forkRatio`. Turns the
-      existing `forkRatio` from a bare dimensionless number into an
-      actual lever-arm length, and replaces the viewport's current
-      cosmetic `leverLength = toBalance * 0.85` guess with a derived
-      value. Lowest risk, most directly answers "no actual roller/pin
-      geometry at all" — recommended first.
+    - 7.1.5.1 — **Done** (see `docs/STATUS.md`). Impulse radius
+      (declared, mm: balance staff to ruby pin) and the real fork
+      acting length, derived via Playtner's own stated law ("the
+      angles are in the inverse ratio to the radii"):
+      `forkActingLength = impulseRadius × forkRatio` (ASM-0041,
+      ESC-109). Turns the existing `forkRatio` from a bare dimensionless
+      number into an actual lever-arm length. Note: does NOT touch the
+      viewport's cosmetic `leverLength = toBalance * 0.85` fork-bar
+      length as originally envisioned here — that's a different
+      quantity (real placed geometry vs. declared/derived theoretical
+      radius) and reconciling them without risking a visually broken
+      drawing needs the real ruby-pin/roller shapes, left to 7.1.5.6.
     - 7.1.5.2 — Ruby pin width and slot freedom. Playtner's own cited
       figures (freedom 1-1.25° at the acting edge, 0.25-0.5° shake in
       the slot, a suggested width of half the fork's angular motion —

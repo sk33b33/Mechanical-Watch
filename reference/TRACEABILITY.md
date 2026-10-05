@@ -77,6 +77,7 @@ CLAUDE_REFERENCE_INSTRUCTIONS.md rule 10); finding one remains open work.
 | Tangential locking distance (m) | escape-to-pallet axis = R_tip / cos(φ/2), for 0 < φ < π | `tangentialCentreDistance` | geometry of two tangents to a circle | ASM-0025 | DERIVED | L1 | `palletGeometry.test.ts` › property: tangents at the locking points meet at the pallet axis |
 | Lever impulse angle (rad) | lever − lock − run | `impulseAngle` | definition | ASM-0025 | DERIVED | L1 | `mainspringEnergy.test.ts` › pallet rules |
 | Fork ratio | lift angle / lever angle | `forkRatio` | definition | ASM-0025 | DERIVED | L1 | `palletGeometry.test.ts` |
+| Fork acting length (m) | impulse radius × fork ratio | `forkActingLength` in `src/kinematics/palletGeometry.ts` | REF-ENG §9 | ASM-0041 | DERIVED; VERIFIED_TEXT (SRC-0036, Playtner's own 5:1 proportion and 4.5mm fork-length worked example) | L1 | `palletGeometry.test.ts` › fork acting length |
 | Wheel-angle budget per beat (rad) | π / escapeTeeth (half the tooth pitch) | `wheelAngleBudgetPerBeat` in `src/kinematics/palletGeometry.ts` | REF-ENG §9 | ASM-0021, ASM-0036 | DERIVED; VERIFIED_TEXT (SRC-0036, Playtner, worked 15-tooth example: 12° budget = 4½° tooth + 6° pallet + 1½° drop) | L1 | `palletGeometry.test.ts` › wheel-angle budget per beat |
 | Drop clearance at tip circle (m) | tip radius × drop angle (arc length) | `dropClearance` in `src/kinematics/palletGeometry.ts` | REF-ENG §9 | ASM-0036 | DERIVED; VERIFIED_TEXT (SRC-0036, Playtner's own worked example: 7.5mm primitive diameter, 1.5° drop ⇒ 0.0983mm) | L1 | `palletGeometry.test.ts` › drop clearance |
 | Escape-tooth width (rad) | wheel-angle budget − pallet width − drop | `toothWidthAngle` in `src/kinematics/palletGeometry.ts` | REF-ENG §9 | ASM-0021, ASM-0037 | DERIVED; VERIFIED_TEXT (same SRC-0036 passage as the budget row: 12° = 4½° tooth + 6° pallet + 1½° drop) | L1 | `palletGeometry.test.ts` › tooth width |
@@ -135,11 +136,13 @@ rev/min exist only at the UI boundary (`src/units/`).
 | Schema-8 file | Migrated to schema 9 on open (pallet geometry, where given, gains an empty drop angle to fill in, ASM-0036). |
 | Schema-9 file | Migrated to schema 10 on open (pallet geometry, where given, gains EQUIDISTANT — the only implemented kind — and an empty width angle to fill in, ASM-0037). |
 | Schema-10 file | Migrated to schema 11 on open (escape wheels gain CLUB — the only tooth kind previously assumed — ASM-0038). |
+| Schema-11 file | Migrated to schema 12 on open (balances gain an empty (null) impulse radius to fill in, ASM-0041). |
 | New pallet geometry (all empty) | Kept NaN; defaults to EQUIDISTANT (ASM-0037, the only implemented kind); ESC-104 span error, ESC-105 and ESC-106 errors until entered. No default angles. |
 | Pallet span not k + ½ teeth, or ≥ 180° | ESC-104 error; locking distance not derived; symbolic fork arms shown. |
 | Lock + run ≥ lever angle; lock ≤ 0; run < 0 | ESC-105 error. |
 | Draw ≤ 0 | ESC-105 warning (nothing pulls the lever onto its banking); no escape-tooth locking face derived (ESC-108). |
 | Draw > 0, derived escape-tooth locking face (2 × draw) outside the practically cited 20°-28° range | ESC-108 info advisory (ASM-0039); never blocks. |
+| Impulse radius ≤ 0 (when entered) | ESC-109 error; no fork acting length derived. |
 | Drop ≤ 0, or ≥ the one-beat wheel-angle budget | ESC-106 error; no clearance derived. |
 | Pallet width ≤ 0 | ESC-106 error. |
 | Pallet width + drop ≥ the one-beat wheel-angle budget (negative derived tooth width, club tooth) | ESC-106 error; no clearance or tooth-width figure derived. |
@@ -225,6 +228,7 @@ rev/min exist only at the UI boundary (`src/units/`).
 | ESC-106 | error | L1 | drop and pallet width (wheel-side) each positive, and together leaving a derived tooth width within the one-beat wheel-angle budget, π/escapeTeeth, that is positive for a club tooth or non-negative for a ratchet tooth (project addition, ASM-0021, ASM-0036, ASM-0037, ASM-0038) |
 | ESC-107 | info | L1 | drop outside the type-specific informally cited range (1.5° club / 2° ratchet); reports the resulting tip-circle clearance and the derived tooth width (project addition, ASM-0036, ASM-0037, ASM-0038, SRC-0036) |
 | ESC-108 | info | L1 | when draw is positive, reports the derived escape-tooth locking face (2 × draw, conventional, for point contact); outside the practically cited 20°-28° range is an advisory (project addition, ASM-0039, SRC-0036) |
+| ESC-109 | error / info | L1 | impulse radius, when entered, must be positive; the fork's real acting length is then reported, derived via the balance-lift/lever-angle ratio (project addition, ASM-0041, SRC-0036) |
 | ESC-101 | error | L1 / L2 | one escapement, three distinct existing arbors, valid inputs, amplitude above half the lift angle (project addition) |
 | ESC-102 | error | L2 | pallet arbor and balance staff are not gear-driven (project addition) |
 | ESC-103 | error | L1 | escape wheel clears the pallet arbor, the balance and other gears at its height; the balance clears the pallet arbor (project addition) |

@@ -79,6 +79,17 @@ export interface Balance {
    * isochronous by construction (ASM-0024).
    */
   isochronismCoefficient: number | null;
+  /**
+   * Distance from the balance staff to the face of the ruby pin (ASM-0041,
+   * SRC-0036 "The Fork and Roller Action"): "the ruby pin, or strictly
+   * speaking, the 'impulse radius,' is a lever arm, whose length is
+   * measured from the center of the balance staff to the face of the ruby
+   * pin". Entered directly, like `inertia`/`hairspringStiffness`: no roller
+   * or ruby-pin geometry is used to derive it. The fork's own real acting
+   * length is derived from it, not declared (`forkActingLength`, ESC-109).
+   * Null when unknown.
+   */
+  impulseRadius: Length | null;
 }
 
 /**

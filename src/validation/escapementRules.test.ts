@@ -21,7 +21,7 @@ const edit = (patch: Parameters<typeof updateEscapement>[2]): Movement => update
 
 describe("escapement rules", () => {
   it("the teaching escapement declares its model and derives 18 000 beats per hour, with no errors", () => {
-    expect(found(teaching, "ESC")).toEqual(["ESC-108:info:tooth-draw", "ESC-107:info:drop-clearance", "ESC-107:info:tooth-width", "ESC-001:info:declared", "ESC-002:info:no-contact-claim"]);
+    expect(found(teaching, "ESC")).toEqual(["ESC-108:info:tooth-draw", "ESC-107:info:drop-clearance", "ESC-107:info:tooth-width", "ESC-109:info:fork-acting-length", "ESC-001:info:declared", "ESC-002:info:no-contact-claim"]);
     const declared = validateMovement(teaching).find((i) => i.rule === "ESC-001");
     expect(declared?.message).toContain("SIMPLIFIED ESCAPEMENT MODEL");
     expect(declared?.message).toContain("18000 beats per hour");

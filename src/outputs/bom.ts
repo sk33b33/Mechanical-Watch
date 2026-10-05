@@ -4,6 +4,7 @@ import type { Shaft } from "@/domain/shaft";
 import { isValidModule, isValidToothCount, pitchDiameter } from "@/math/gearMath";
 import { mmText, optionalMmText } from "./componentReport";
 import { toMicronewtonMillimetresPerRadian, toMilligramSquareCentimetres } from "@/units/rotational";
+import { forkActingLength, forkRatio } from "@/kinematics/palletGeometry";
 import { toNewtonMillimetres } from "@/units/torque";
 import { toDegrees, type Angle } from "@/units/angle";
 
@@ -180,7 +181,13 @@ export function buildBom(movement: Movement): BomRow[] {
       ["Hairspring", "Spring",
         b.hairspringStiffness === null ? "not modeled" : `stiffness ${toMicronewtonMillimetresPerRadian(b.hairspringStiffness).toFixed(2)} µN·mm/rad (entered)`,
         "", b.hairspringStiffness === null ? "no restoring torque modeled (ASM-0022)" : "geometry and material not modeled; linear stiffness only (ASM-0024)"],
-      ["Roller and impulse pin", "Roller", "not modeled", "", ""],
+      ["Roller and impulse pin", "Roller",
+        b.impulseRadius === null ? "not modeled" : `impulse radius ${mmText(b.impulseRadius, 3)} (entered)`,
+        "",
+        b.impulseRadius === null ? "not modeled" : (() => {
+          const length = forkActingLength(b.impulseRadius, forkRatio(b.liftAngle, esc.leverAngle));
+          return `roller/ruby-pin shape not modeled; derived fork acting length ${length === null ? "not derived" : mmText(length, 3)} (ASM-0041)`;
+        })()],
     ];
     parts.forEach(([name, type, specification, location, notes], i) => {
       row({ item: `${parent}.${String(i + 1)}`, depth: 1, entityId: esc.id, name, type, specification, location, tolerances: "nominal only", notes });

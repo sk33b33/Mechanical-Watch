@@ -38,7 +38,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 11;
+export const DESIGN_SCHEMA_VERSION = 12;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -181,6 +181,22 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
       ]),
     );
     return { ...doc, schemaVersion: 11, movement: { ...movement, escapements } };
+  },
+  /**
+   * v11 → v12: balances gain `impulseRadius`, unknown (null) — like
+   * `inertia`/`hairspringStiffness`, entered directly, never guessed
+   * (ASM-0041).
+   */
+  11: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.escapements)) return doc;
+    const escapements = Object.fromEntries(
+      Object.entries(movement.escapements).map(([id, e]) => [
+        id,
+        isRecord(e) && isRecord(e.balance) ? { ...e, balance: { ...e.balance, impulseRadius: null } } : e,
+      ]),
+    );
+    return { ...doc, schemaVersion: 12, movement: { ...movement, escapements } };
   },
 };
 
@@ -490,6 +506,7 @@ const escapement: Decoder<Escapement> = (value, path) => {
       hairspringStiffness: field(balance, "hairspringStiffness", nullable(number as Decoder<TorsionalStiffness>), bp),
       qualityFactor: field(balance, "qualityFactor", nullable(number), bp),
       isochronismCoefficient: field(balance, "isochronismCoefficient", nullable(number), bp),
+      impulseRadius: field(balance, "impulseRadius", nullable(length), bp),
     },
     pallets: field(o, "pallets", nullable(pallets), path),
     escapementEfficiency: field(o, "escapementEfficiency", nullable(number), path),

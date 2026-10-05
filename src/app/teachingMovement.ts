@@ -288,6 +288,11 @@ export function createTeachingMovement(): Movement {
       qualityFactor: null,
       // Likewise only measurable/sourced per movement; left unknown (ASM-0034).
       isochronismCoefficient: null,
+      // Lift 50° / lever 10° = Playtner's own cited 5:1 proportion (SRC-0036, "some might use a
+      // proportion of... even 5 to 1"). Impulse radius chosen so the derived fork acting length
+      // (ESC-109) lands on Playtner's own worked example of 4.5 mm (SRC-0036, used for the ruby-pin
+      // shake calculation): 4.5 mm / 5 = 0.9 mm (ASM-0041).
+      impulseRadius: mm(0.9),
     },
     pallets: palletGeometry,
     // Also a loss property, left unknown for the same reason; the amplitude stays the declared one.

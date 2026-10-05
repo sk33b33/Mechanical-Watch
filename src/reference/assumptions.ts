@@ -243,6 +243,12 @@ export const ASSUMPTIONS = {
     scope: "Escapement geometry / viewport",
     status: "Active",
   },
+  "ASM-0041": {
+    summary:
+      "Balance.impulseRadius (balance staff to ruby pin face), entered directly like inertia/hairspringStiffness. The fork's real acting length is derived from it (forkActingLength = impulseRadius x forkRatio, Playtner's inverse-ratio law), turning forkRatio from an abstract number into real geometry. Only one piece of four fork-and-roller chapters; ruby pin, rollers, guard point, crescent and horn remain unmodeled",
+    scope: "Escapement geometry",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;
