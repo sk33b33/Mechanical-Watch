@@ -9,6 +9,7 @@ import {
   lockingPoints,
   spanAngle,
   tangentialCentreDistance,
+  toothDrawAngle,
   toothWidthAngle,
   wheelAngleBudgetPerBeat,
 } from "./palletGeometry";
@@ -78,5 +79,11 @@ describe("pallet geometry (ASM-0025)", () => {
     expect(toDegrees(toothWidthAngle(15, degrees(6), degrees(1.5)))).toBeCloseTo(4.5, 12);
     // Can go negative when over budget — validity is ESC-106's job, not this function's.
     expect(toDegrees(toothWidthAngle(15, degrees(11), degrees(1.5)))).toBeCloseTo(-0.5, 12);
+  });
+
+  it("the escape-tooth locking face is conventionally double the pallet's own draw (ASM-0039, SRC-0036)", () => {
+    // Playtner's own worked example: 12° pallet draw, 24° tooth locking face.
+    expect(toDegrees(toothDrawAngle(degrees(12)))).toBeCloseTo(24, 12);
+    expect(toDegrees(toothDrawAngle(degrees(10)))).toBeCloseTo(20, 12);
   });
 });

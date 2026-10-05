@@ -107,7 +107,15 @@ export interface PalletGeometry {
   kind: PalletKind;
   /** Lever rotation needed to unlock. */
   lockAngle: Angle;
-  /** Angle of the locking face that pulls the lever onto its banking; must be positive. */
+  /**
+   * The pallet's locking face: its inclination from the radial line
+   * between the escape axis and the locking point (ASM-0039, SRC-0036
+   * "The Draw" — "the locking planes... are inclined 12° from EB, and
+   * FB", EB/FB being radii from the escape center through the locking
+   * points). This incline is what pulls the lever onto its banking; must
+   * be positive. The escape tooth's own locking face is derived from it,
+   * not declared (`toothDrawAngle`, conventionally double, ESC-108).
+   */
   drawAngle: Angle;
   /** Lever rotation from full lock to the banking. */
   runAngle: Angle;

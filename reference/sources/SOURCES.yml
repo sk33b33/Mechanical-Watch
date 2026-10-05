@@ -1143,7 +1143,9 @@
     - "the interval from tooth to tooth is 360÷15=24°; divided by 2 pallets = 24÷2 = 12° for width of tooth, pallet and drop" — i.e. for two beats per tooth, each beat's wheel-angle budget (tooth width + pallet width + drop, all measured at the escape wheel's own axis) is half the tooth pitch; worked as 12° = 4½° (tooth) + 6° (pallet) + 1½° (drop) for a 15-tooth wheel
     - "it is well to know that the angles for width of teeth, pallets and drop are measured from the wheel center, while the lifting and locking angles are struck from the pallet center" (drop is a wheel-side angle, distinct from the lever-side lock/run/lift angles already in this codebase's PalletGeometry)
     - "1½° is the angle generally allowed for the lock" (corroborates this project's existing teaching-movement lock angle, 2°, as the right order of magnitude, not identical)
-    - "The draw... 12° on each [pallet]... the angle on the tooth is made just twice the amount, namely 24°" (corroborates the existing teaching-movement draw angle, 12°)
+    - "The draw... 12° on each [pallet]... the angle on the tooth is made just twice the amount, namely 24°" (corroborates the existing teaching-movement draw angle, 12°; also the practical doubling convention used by `toothDrawAngle`, ASM-0039)
+    - "The locking planes when locked are inclined 12° from EB, and FB" (EB/FB being radii from the escape center through the locking points — the actual geometric referent of `PalletGeometry.drawAngle`, ASM-0039: inclination from the radial line through the locking point, not just an abstract scalar)
+    - "it is certainly necessary that the point of the tooth alone should touch the pallet. From this it follows that the angle on the teeth must be greater than on the pallets... For practical reasons, from a manufacturing standpoint, the angle on the tooth is made just twice the amount, namely 24°; we could make it a little less or a little more. If we made it less than 20° too great a surface would be in contact with the jewel, involving greater friction in unlocking and an inefficient draw... or if the angle is made over 28°, the point or locking edge of the tooth would rapidly become worn" (the doubling convention is explicitly NOT a strict formula, with a cited practical working range of 20°-28° — `toothDrawAngle`/ESC-108)
     - "AC and AD... are tangents to the primitive circle GH. ABE and ABF are angles of 30° each... The locking circle MN is struck from the pallet center A; the interangles being equal, consequently the pallets must be equidistant... called the tangential escapement, on account of the unlocking taking place on the intersection of tangent AC with EB, and FB with AD" — identifies the equidistant pallet construction with the tangent-intersection ("tangential") construction this codebase's `tangentialCentreDistance`/`lockingPoints` already build
     - "The circular pallet is sometimes appropriately called 'the pallet with equal lifts,' as the lever arms AMO and ANP... are equal lengths... the pallets are bisected by the 30° lines EB and FB, one-half their width being placed on each side of these lines. In this pallet we have two locking circles, MP for the engaging pallet, and NO for the disengaging pallet" — the circular construction, locking off the tangent by an amount that grows with pallet width ("the narrower the circular pallet is made, the nearer to the tangent will the unlocking be performed") but with no closed-form offset stated
     - "Place the center of the protractor at B and draw the angle of width of pallets of 6°; IBE being for the engaging and JBF for the disengaging pallet. In the equidistant pallet IB is drawn on the side towards the center, while JB is drawn further from the center. If we were drawing a circular pallet, one-half the width of pallets would be placed on each side of EB and FB" (the worked 15-tooth specification's own pallet-width construction, 6°, matching the tooth/pallet/drop partition above)
@@ -1165,20 +1167,26 @@
     binary PDF is, so the curl-then-Read workaround was used instead).
     Used for ASM-0036 (`PalletGeometry.dropAngle`, `wheelAngleBudgetPerBeat`,
     `dropClearance` in `src/kinematics/palletGeometry.ts`), ASM-0037
-    (`PalletGeometry.kind`, `widthAngle`, `toothWidthAngle`) and ASM-0038
-    (`EscapeWheel.toothKind`, CLUB | RATCHET), and the ESC-106 (hard
-    geometric budget, derived — not just cited; type-aware since ASM-0038)
-    / ESC-107 (informal drop advisory — 1.5° club / 2° ratchet, cited;
-    derived tooth width) validation rules. Three pieces of this chapter's
-    material are used across these three assumptions (drop; pallet type
-    and width; tooth type); the book's larger remaining treatment of
-    convex/concave lifting-plane shapes and the actual tooth/pallet FACE
-    construction remains unmodeled and is explicitly out of scope here —
-    a genuinely larger undertaking, left for a future Phase 7.1 pass
-    rather than attempted incompletely now. The CIRCULAR pallet type is
-    named in the domain model (ASM-0037) but not implemented: this source
-    states only that its locking offset from the tangent shrinks with
-    pallet width, not a closed-form formula for it.
+    (`PalletGeometry.kind`, `widthAngle`, `toothWidthAngle`), ASM-0038
+    (`EscapeWheel.toothKind`, CLUB | RATCHET) and ASM-0039
+    (`drawAngle`'s geometric referent, `toothDrawAngle`), and the ESC-106
+    (hard geometric budget, derived — not just cited; type-aware since
+    ASM-0038) / ESC-107 (informal drop advisory — 1.5° club / 2° ratchet,
+    cited; derived tooth width) / ESC-108 (derived escape-tooth locking
+    face, conventional doubling, advisory outside the cited 20°-28° range)
+    validation rules. Re-read directly from the same locally cached HTML
+    (no re-fetch needed) for the "The Draw" chapter's exact construction
+    language. Four pieces of this chapter's material are now used across
+    these four assumptions (drop; pallet type and width; tooth type; draw/
+    tooth-face angle); the book's larger remaining treatment of the actual
+    2D tooth/pallet FACE and OUTLINE construction (convex/concave lifting
+    planes, the engaging/disengaging asymmetry, the locked-vs-unlocked
+    face-position correction) remains unmodeled and is explicitly out of
+    scope here — a genuinely larger undertaking, left for a future Phase
+    7.1 pass rather than attempted incompletely now. The CIRCULAR pallet
+    type is named in the domain model (ASM-0037) but not implemented:
+    this source states only that its locking offset from the tangent
+    shrinks with pallet width, not a closed-form formula for it.
 
 # Phase 7.5 (docs/ROADMAP.md): nonlinear mainspring torque curve and
 # bridle/slipping behaviour (REF-ENG §11; ASM-0026 currently uses a

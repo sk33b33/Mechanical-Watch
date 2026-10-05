@@ -246,3 +246,34 @@ describe("drop and pallet width (ESC-106, ESC-107, ASM-0036, ASM-0037)", () => {
     expect(ratchetInfo?.message).toContain("ratchet-tooth escapement (2°");
   });
 });
+
+describe("escape-tooth locking face, derived from draw (ESC-108, ASM-0039)", () => {
+  const teaching = createTeachingMovement();
+  const esc = Object.values(teaching.escapements)[0];
+  const pallets = esc?.pallets;
+  if (esc === undefined || pallets == null) throw new Error("teaching movement lacks pallets");
+  const drawRules = (m: Movement): string[] =>
+    validateMovement(m).filter((i) => i.rule === "ESC-108").map((i) => `${i.rule}:${i.severity}:${i.id.split(":")[1] ?? ""}`);
+
+  it("the teaching movement's 12° draw derives a 24° escape-tooth locking face, within Playtner's practical range", () => {
+    expect(drawRules(teaching)).toEqual(["ESC-108:info:tooth-draw"]);
+    const info = validateMovement(teaching).find((i) => i.rule === "ESC-108" && i.id.includes("tooth-draw"));
+    expect(info?.message).toContain("24.00°");
+    expect(info?.message).toContain("12.00°");
+  });
+
+  it("nothing is derived without a positive draw angle", () => {
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, drawAngle: degrees(0) } });
+    expect(drawRules(m)).toEqual([]);
+  });
+
+  it("a derived tooth-face angle outside the practically cited 20°-28° range is an advisory", () => {
+    // 8° draw -> 16° derived tooth face, below the 20° floor.
+    const tooLittle = updateEscapement(teaching, esc.id, { pallets: { ...pallets, drawAngle: degrees(8) } });
+    expect(drawRules(tooLittle)).toEqual(["ESC-108:info:tooth-draw", "ESC-108:info:tooth-draw-advisory"]);
+
+    // 15° draw -> 30° derived tooth face, above the 28° ceiling.
+    const tooMuch = updateEscapement(teaching, esc.id, { pallets: { ...pallets, drawAngle: degrees(15) } });
+    expect(drawRules(tooMuch)).toEqual(["ESC-108:info:tooth-draw", "ESC-108:info:tooth-draw-advisory"]);
+  });
+});

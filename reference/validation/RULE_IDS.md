@@ -77,6 +77,7 @@ ESC-105 Lever angles: lock positive, run not negative, impulse (lever − lock �
 ESC-106 Drop and pallet width (wheel-side, ASM-0036/0037) must each be positive, and together leave a derived tooth width within the wheel-angle budget for one beat (half the tooth pitch, ASM-0021) that is positive for a club tooth or non-negative for a ratchet tooth (ASM-0038).
 ESC-107 Drop outside the type-specific informally cited range (1.5° club / 2° ratchet, ASM-0038) is an advisory; the resulting tip-circle clearance and the derived tooth width are reported (ASM-0036, ASM-0037, SRC-0036).
 ESC-103 The escape wheel must clear the pallet arbor and balance staff, and the balance must clear the pallet arbor.
+ESC-108 When draw is positive, the escape-tooth locking face is derived as conventionally double the pallet's draw (ASM-0039); outside the practically cited 20°-28° range is an advisory.
 
 BAL-001 A balance-governed drive needs an escapement with a valid escape wheel and a positive balance inertia and hairspring stiffness; entered inertia and stiffness must be positive.
 BAL-002 The simplified dynamic balance model reports its free frequency, the frequency nominal time needs, and the predicted daily rate, with its assumptions.

@@ -87,3 +87,22 @@ export function toothWidthAngle(escapeTeeth: number, palletWidthAngle: Angle, dr
 export function forkRatio(balanceLift: Angle, leverAngle: Angle): number | null {
   return leverAngle > 0 && balanceLift > 0 ? balanceLift / leverAngle : null;
 }
+
+/**
+ * The escape tooth's own locking face, derived from the declared pallet
+ * draw (ASM-0039, SRC-0036 "The Draw"): "it is certainly necessary that
+ * the point of the tooth alone should touch the pallet. From this it
+ * follows that the angle on the teeth must be greater than on the
+ * pallets... for practical reasons, from a manufacturing standpoint, the
+ * angle on the tooth is made just twice the amount". Both angles are the
+ * face's inclination from the same reference, the radial line between the
+ * escape axis and the locking point (Playtner: "the locking planes...
+ * are inclined 12° from EB, and FB", EB/FB being radii from the escape
+ * center). Not a strict formula — "we could make it a little less or a
+ * little more" — so this is a conventional derivation, not a necessity;
+ * validity against Playtner's own cited practical range (20°-28°) is
+ * ESC-108's job, not this function's.
+ */
+export function toothDrawAngle(palletDrawAngle: Angle): Angle {
+  return radians(2 * palletDrawAngle);
+}

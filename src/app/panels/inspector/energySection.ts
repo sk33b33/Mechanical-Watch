@@ -6,7 +6,7 @@ import { updateCouplingSpring, updateEscapement } from "@/domain/movement";
 import type { MainspringLink, MainspringSpec } from "@/domain/coupling";
 import type { Escapement, PalletGeometry } from "@/domain/escapement";
 import { isValidToothCount } from "@/math/gearMath";
-import { dropClearance, forkRatio, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
+import { dropClearance, forkRatio, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
 import { isochronismAdjustedRate } from "@/kinematics/balance";
 import { summarizeBalance } from "@/kinematics/balanceSummary";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
@@ -118,6 +118,7 @@ function palletRows(esc: Escapement, edit: (patch: Parameters<typeof updateEscap
   const toothValid = tooth !== null && (w.toothKind === "RATCHET" ? tooth >= -NUMERICAL_PARAMETERS.angleZeroToleranceRadians : tooth > 0);
   const partitionValid = dropInBudget && widthValid && toothValid;
   const clearance = partitionValid ? dropClearance((w.tipDiameter / 2) as typeof w.tipDiameter, pg.dropAngle) : null;
+  const toothDraw = positive(pg.drawAngle) ? toothDrawAngle(pg.drawAngle) : null;
   out.push(
     readonlyRow("Model", "SIMPLIFIED PALLET GEOMETRY (L1)",
       "Tangential locking on the tip circle, (k+½)-pitch span, lever = lock + impulse + run (ASM-0025); drop and pallet width are declared wheel-side angles (ASM-0036, ASM-0037). Tooth and pallet FACE shapes, impact, sliding contact and recoil are not modeled."),
@@ -132,7 +133,10 @@ function palletRows(esc: Escapement, edit: (patch: Parameters<typeof updateEscap
     ], (value) => { patch({ kind: value as PalletGeometry["kind"] }); },
       "Which locking-point construction (ASM-0037, SRC-0036). This codebase's existing tangential-locking math already builds the equidistant case."),
     angle("Lock (°)", pg.lockAngle, "lockAngle", !positive(pg.lockAngle), "Lever rotation needed to unlock."),
-    angle("Draw (°)", pg.drawAngle, "drawAngle", !positive(pg.drawAngle), "Angle of the locking face that pulls the lever onto its banking. Must be positive; whether it overcomes friction is not checked."),
+    angle("Draw (°)", pg.drawAngle, "drawAngle", !positive(pg.drawAngle),
+      "The pallet locking face's inclination from the radial line through the locking point (ASM-0039); pulls the lever onto its banking. Must be positive; whether it overcomes friction is not checked."),
+    readonlyRow("Escape-tooth locking face (derived)", toothDraw === null ? "—" : `${toDegrees(toothDraw).toFixed(2)}°`,
+      "Conventionally double the pallet's own draw, for point contact (ASM-0039). Not a strict formula; Playtner cites a practical working range of 20°-28° (ESC-108)."),
     angle("Run (°)", pg.runAngle, "runAngle", !runValid, "Lever rotation from full lock to the banking."),
     angle("Drop (°, wheel-side)", pg.dropAngle, "dropAngle", !dropInBudget,
       "Escape wheel's free rotation between one pallet's tooth releasing and the next landing (ASM-0036). Measured at the wheel's own axis, not the lever's. Must be positive and under the one-beat wheel-angle budget (ESC-106)."),

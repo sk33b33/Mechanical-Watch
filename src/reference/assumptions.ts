@@ -231,6 +231,12 @@ export const ASSUMPTIONS = {
     scope: "Escapement geometry",
     status: "Active",
   },
+  "ASM-0039": {
+    summary:
+      "PalletGeometry.drawAngle is the pallet locking face's inclination from the radial line through the locking point (Playtner); the escape tooth's own locking face is derived (toothDrawAngle = 2 x draw, conventional, for point contact), checked against a cited practical 20-28 degree range (ESC-108). Engaging/disengaging asymmetry and the locked-vs-unlocked correction are unmodeled",
+    scope: "Escapement geometry",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

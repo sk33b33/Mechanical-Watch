@@ -93,12 +93,17 @@ level).
     from Playtner is not itself enforced — CIRCULAR pallets remain an
     unimplemented stub, so a RATCHET + EQUIDISTANT combination is
     accepted without a cross-check; not a gap this pass closes.
-  - 7.1.3 — Real draw-angled locking faces, replacing `drawAngle`'s
-    current role as a bare validated number with an actual face
-    direction: pallet face inclined at the declared draw angle from the
-    radial line at the locking point; escape-tooth locking face at
-    (conventionally) double that, for point contact (Playtner: 12°
-    pallet / 24° tooth). Builds on 7.1.1/7.1.2's locking-point geometry.
+  - 7.1.3 — **Done** (see `docs/STATUS.md`). Gave `drawAngle` its real
+    geometric referent (ASM-0039): the pallet locking face's inclination
+    from the radial line through the locking point (Playtner: "inclined
+    12° from EB, and FB"), rather than a bare validated number. Derived
+    the escape tooth's own locking face as conventionally double that,
+    for point contact (Playtner: 12° pallet / 24° tooth) — not a strict
+    formula, checked against a cited practical 20°-28° range (ESC-108).
+    Note: this does not yet build the actual 2D face/outline geometry
+    (lines, not just angles) — that needs the engaging/disengaging
+    asymmetry and locked-vs-unlocked correction 7.1.4 is scoped to
+    tackle alongside the full outline construction.
   - 7.1.4 — Full 2D outline construction for the pallet stones and
     escape-wheel teeth, replacing the current placeholder shapes
     (`generateEscapeWheelOutline`'s fixed trapezoid, `createForkGeometry`'s

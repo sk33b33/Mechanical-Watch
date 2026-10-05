@@ -6,7 +6,7 @@ import { toBeatsPerHour } from "@/units/frequency";
 import type { EntityId } from "@/domain/ids";
 import { gearZRange, zOverlaps } from "@/assembly/assemblyGeometry";
 import { balanceFrequency, beatFrequency, impulseFraction } from "@/kinematics/escapement";
-import { dropClearance, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
+import { dropClearance, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import type { Length } from "@/units/length";
 import type { ValidationIssue } from "../validationIssue";
@@ -179,6 +179,21 @@ export const escapementRules: Rule = ({ movement, placement, train }) => {
             `${esc.name}: without a positive draw angle nothing pulls the lever onto its banking. Whether a given draw overcomes friction is not checked.`,
             ["ASM-0025"]),
         );
+      } else {
+        // ESC-108: the escape tooth's own locking face, derived as conventionally double the pallet's draw (ASM-0039, SRC-0036).
+        const toothDraw = toothDrawAngle(pg.drawAngle);
+        issues.push(
+          issue("ESC-108", "tooth-draw", "info", "L1_GEOMETRIC", [esc.id],
+            `${esc.name}: escape-tooth locking face is ${toDegrees(toothDraw).toFixed(2)}° from the radial (conventionally double the pallet's own ${toDegrees(pg.drawAngle).toFixed(2)}° draw, for point contact, ASM-0039).`,
+            ["ASM-0039"]),
+        );
+        if (toDegrees(toothDraw) < 20 || toDegrees(toothDraw) > 28) {
+          issues.push(
+            issue("ESC-108", "tooth-draw-advisory", "info", "L1_GEOMETRIC", [esc.id],
+              `${esc.name}: the derived escape-tooth locking face (${toDegrees(toothDraw).toFixed(2)}°) is outside the practical range Playtner cites for this convention (20°-28°, ASM-0039, SRC-0036) — too little surface in contact with the jewel below it, too much wear on the tooth's locking edge above it.`,
+              ["ASM-0039"]),
+          );
+        }
       }
 
       // ESC-106 / ESC-107: drop (ASM-0036, SRC-0036) and the tooth/pallet partition (ASM-0037, ASM-0038), when a tooth count is known.

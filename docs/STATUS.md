@@ -2,6 +2,61 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 7.1.3: draw-derived escape-tooth locking face (ESC-108, ASM-0039)
+
+Third of the six 7.1 sub-items: giving `drawAngle` its actual geometric
+meaning instead of a bare validated positivity check, and deriving the
+escape tooth's own locking face from it — the piece of Playtner
+(SRC-0036, "The Draw") sitting right next to drop, pallet width and
+tooth type (ASM-0036/0037/0038).
+
+- **`drawAngle` now documents its real geometric referent.** Playtner:
+  "The locking planes when locked are inclined 12° from EB, and FB" —
+  EB/FB being radii from the escape wheel's own axis through the
+  locking points. `PalletGeometry.drawAngle`'s JSDoc and the inspector
+  tooltip now say this explicitly, rather than only "pulls the lever
+  onto its banking". No value or type changed — same field, accurate
+  framing.
+- **The escape tooth's own locking face is derived, not declared.**
+  `toothDrawAngle` = 2 × the pallet's draw — Playtner's own reasoning:
+  "it is certainly necessary that the point of the tooth alone should
+  touch the pallet. From this it follows that the angle on the teeth
+  must be greater than on the pallets... for practical reasons, from a
+  manufacturing standpoint, the angle on the tooth is made just twice
+  the amount". Explicitly NOT a strict formula — "we could make it a
+  little less or a little more" — so this is a conventional derivation
+  with a cited practical working range (20°-28°): below it, "too great
+  a surface would be in contact with the jewel"; above it, "the point
+  or locking edge of the tooth would rapidly become worn".
+- **ESC-108 (new rule)**: when draw is positive, reports the derived
+  tooth-locking-face angle as info; an advisory (not an error — this is
+  a cited practical figure, not a hard constraint) when it falls
+  outside 20°-28°.
+- **Deliberately not in scope**, and said so in ASM-0039: Playtner's
+  own further detail that the engaging and disengaging pallets incline
+  in physically opposite senses (one toward the pallet center, one
+  away), and that draw should properly be measured with the fork
+  against its banking rather than at the locking corner — both genuine
+  mechanical subtleties this simplified model doesn't carry. Also not
+  in scope: the actual 2D face/outline construction (that's 7.1.4, the
+  capstone).
+- **UI and outputs.** A readonly "Escape-tooth locking face (derived)"
+  row next to "Draw (°)" in the pallet geometry section; a matching
+  derived row in the component report.
+- **Verified live in a real browser**: the teaching movement's 12° draw
+  shows a derived 24° tooth face; setting draw to 8° shows 16° and
+  fires the ESC-108 advisory ("outside the practical range"); setting
+  it back to 12° clears the advisory.
+- New tests: `toothDrawAngle` against Playtner's own 12°→24° worked
+  value (`palletGeometry.test.ts`); ESC-108's info/advisory behavior,
+  including that nothing is derived without a positive draw
+  (`mainspringEnergy.test.ts`). Two existing exact-issue-list tests
+  updated for the new ESC-108 info row. Registered ASM-0039, extended
+  SRC-0036's `claims_supported` and notes, updated `RULE_IDS.md`/
+  `ruleIds.ts`/`TRACEABILITY.md`. 496 unit tests pass (492 before);
+  `tsc -b --noEmit` and `eslint` are clean; production build succeeds;
+  full e2e suite run.
+
 ## Phase 7.1.2: tooth type, club/ratchet (ESC-106/107 extended, ASM-0038)
 
 Second of the six 7.1 sub-items: which escape-tooth form (club or
