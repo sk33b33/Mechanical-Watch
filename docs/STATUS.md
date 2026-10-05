@@ -2,6 +2,54 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 7.1.5.2: ruby-pin entry freedom, slot shake, suggested width (ESC-110, ASM-0042)
+
+Second of 7.1.5's six sub-items: the ruby pin's own interaction with
+the fork's slot, continuing SRC-0036's "Fork and Roller Action"
+chapter where 7.1.5.1 left off.
+
+- **`PalletGeometry.rubyPinEntryFreedom` (declared, optional °).**
+  Playtner: "the ruby pin in entering the fork must have a certain
+  amount of freedom for action, from 1 to 1¼°." A genuine hard
+  necessity, not just a cited convention: "it is important that the
+  angular freedom between the fork and ruby pin at the moment it
+  enters into the slot be less than the total locking angle on the
+  pallets" — so a premature strike leaves the pallets still locked
+  rather than fully unlocking them. ESC-110 enforces this as an error
+  (entry freedom ≥ lock + run), on top of a simple positivity check,
+  with a separate non-blocking advisory for the cited 1°-1¼° figure.
+- **`PalletGeometry.rubyPinSlotShake` (declared, optional °).**
+  "The shake of the ruby pin in the slot of the fork must be as
+  slight as possible... it varies from ¼° to ½°." Simple
+  positive-when-declared check plus an advisory for the cited range.
+- **`suggestedRubyPinWidth` (derived, new function).** "We would
+  choose a ruby pin of a width equal to half the angular motion of the
+  fork" — a cited convention, not a strict formula (same genre as
+  `toothDrawAngle`'s doubling), so it has no corresponding hard
+  constraint; ESC-110 reports it as info only, whenever the lever
+  angle is valid (independent of whether freedom/shake are entered).
+- **Teaching movement values, both matching Playtner's own cited
+  numbers exactly**, not invented: entry freedom 1¼° is the precise
+  figure from his own total-lock worked example (1½° lock + ½° run =
+  2° total, 1¼° freedom leaves ¾° locked margin — the teaching
+  movement's own 2° lock + 0.5° run = 2.5° total leaves even more
+  margin); slot shake 0.25° is the low end of his cited ¼°-½° range.
+- **UI and outputs.** Two new optional inputs ("Ruby-pin entry freedom
+  (°)", "Ruby-pin slot shake (°)") next to "Fork ratio" in the pallet
+  geometry section, plus a readonly "Suggested ruby-pin width" row;
+  matching parameter/derived rows in the component report. The BOM's
+  terse "Pallet stones" summary row is deliberately left unchanged —
+  it already omits drop/width (added in 7.1.1) for brevity, so leaving
+  out these two new fields too matches that existing precedent rather
+  than inventing a new one.
+- New tests cover `suggestedRubyPinWidth`'s own worked numbers and
+  ESC-110's full behavior (positivity, the lock-angle hard constraint,
+  both advisories, and the no-entry case). Verified live in a real
+  browser, including the entry-freedom-vs-total-lock error and the
+  separate advisory for an in-bounds-but-atypical value. 516 unit
+  tests pass (508 before); `tsc -b --noEmit` and `eslint` are clean;
+  production build succeeds; full e2e suite run.
+
 ## Phase 7.1.5.1: impulse radius and the derived fork acting length (ESC-109, ASM-0041)
 
 First of 7.1.5's six sub-items (scoped last pass): gives the existing

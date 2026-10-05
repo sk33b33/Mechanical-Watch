@@ -138,11 +138,13 @@ level).
       quantity (real placed geometry vs. declared/derived theoretical
       radius) and reconciling them without risking a visually broken
       drawing needs the real ruby-pin/roller shapes, left to 7.1.5.6.
-    - 7.1.5.2 — Ruby pin width and slot freedom. Playtner's own cited
-      figures (freedom 1-1.25° at the acting edge, 0.25-0.5° shake in
-      the slot, a suggested width of half the fork's angular motion —
-      "we would choose", not a strict rule) as declared/derived values
-      with advisories, same genre as ESC-107/108.
+    - 7.1.5.2 — **Done** (see `docs/STATUS.md`). Ruby pin entry freedom
+      and slot shake (ASM-0042): entry freedom must be strictly less
+      than the total lock (a genuine hard necessity Playtner states,
+      not just a cited convention — ESC-110), with the cited 1-1.25°/
+      0.25-0.5° figures as non-blocking advisories; the suggested ruby
+      pin width (half the fork's angular motion, "we would choose", not
+      a strict rule) is derived and reported, same genre as ESC-108.
     - 7.1.5.3 — Roller and guard-point/dart freedom (1.25° cited).
       Single vs. double roller is a real domain distinction Playtner
       draws (double roller trades a larger safety roller for a smaller,

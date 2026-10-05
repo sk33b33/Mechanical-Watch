@@ -6,7 +6,7 @@ import { updateCouplingSpring, updateEscapement } from "@/domain/movement";
 import type { MainspringLink, MainspringSpec } from "@/domain/coupling";
 import type { Escapement, PalletGeometry } from "@/domain/escapement";
 import { isValidToothCount } from "@/math/gearMath";
-import { dropClearance, forkRatio, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
+import { dropClearance, forkRatio, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
 import { isochronismAdjustedRate } from "@/kinematics/balance";
 import { summarizeBalance } from "@/kinematics/balanceSummary";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
@@ -94,7 +94,7 @@ function palletRows(esc: Escapement, edit: (patch: Parameters<typeof updateEscap
       readonlyRow("Pallets", "not specified", "The locking geometry is not checked until it is entered (ESC-104…107)."),
       actionRow("Enter pallet geometry", "Adds empty span, lock, draw, run, drop and width fields to fill from a design or source.", () => {
         const empty = degrees(Number.NaN);
-        edit({ pallets: { spanTeeth: Number.NaN, kind: "EQUIDISTANT", lockAngle: empty, drawAngle: empty, runAngle: empty, dropAngle: empty, widthAngle: empty } });
+        edit({ pallets: { spanTeeth: Number.NaN, kind: "EQUIDISTANT", lockAngle: empty, drawAngle: empty, runAngle: empty, dropAngle: empty, widthAngle: empty, rubyPinEntryFreedom: null, rubyPinSlotShake: null } });
       }),
     );
     return out;
@@ -119,6 +119,8 @@ function palletRows(esc: Escapement, edit: (patch: Parameters<typeof updateEscap
   const partitionValid = dropInBudget && widthValid && toothValid;
   const clearance = partitionValid ? dropClearance((w.tipDiameter / 2) as typeof w.tipDiameter, pg.dropAngle) : null;
   const toothDraw = positive(pg.drawAngle) ? toothDrawAngle(pg.drawAngle) : null;
+  const totalLockDeg = positive(pg.lockAngle) && Number.isFinite(pg.runAngle) && pg.runAngle >= 0 ? toDegrees(pg.lockAngle) + toDegrees(pg.runAngle) : null;
+  const suggestedWidth = positive(esc.leverAngle) ? suggestedRubyPinWidth(esc.leverAngle) : null;
   out.push(
     readonlyRow("Model", "SIMPLIFIED PALLET GEOMETRY (L1)",
       "Tangential locking on the tip circle, (k+½)-pitch span, lever = lock + impulse + run (ASM-0025); drop and pallet width are declared wheel-side angles (ASM-0036, ASM-0037). Tooth and pallet FACE shapes, impact, sliding contact and recoil are not modeled."),
@@ -146,6 +148,20 @@ function palletRows(esc: Escapement, edit: (patch: Parameters<typeof updateEscap
     readonlyRow("Pallet arbor distance needed", needed === null ? "—" : formatMm(needed), "R / cos(span/2): where the tangents at the two locking points meet."),
     readonlyRow("Impulse (lever)", Number.isFinite(impulse) ? `${toDegrees(impulse).toFixed(2)}°` : "—", "Lever angle − lock − run."),
     readonlyRow("Fork ratio (lift ÷ lever)", ratio === null ? "—" : ratio.toFixed(3), "Balance lift per unit of lever swing implied by the two declared angles."),
+    inputRow({
+      label: "Ruby-pin entry freedom (°)", value: optionalText(pg.rubyPinEntryFreedom, toDegrees), step: "0.1", placeholder: "unknown",
+      invalid: pg.rubyPinEntryFreedom !== null && !positive(pg.rubyPinEntryFreedom),
+      title: `Angular freedom between the fork's slot and the ruby pin on entry (ASM-0042). Must be positive and less than the total lock${totalLockDeg === null ? "" : ` (lock + run = ${totalLockDeg.toFixed(2)}°)`} (ESC-110). Empty = unknown.`,
+      onCommit: (raw) => { patch({ rubyPinEntryFreedom: raw.trim() === "" ? null : degrees(parseRequired(raw)) }); },
+    }),
+    inputRow({
+      label: "Ruby-pin slot shake (°)", value: optionalText(pg.rubyPinSlotShake, toDegrees), step: "0.1", placeholder: "unknown",
+      invalid: pg.rubyPinSlotShake !== null && !positive(pg.rubyPinSlotShake),
+      title: "Shake of the ruby pin within the fork's slot (ASM-0042). Must be positive when declared. Empty = unknown.",
+      onCommit: (raw) => { patch({ rubyPinSlotShake: raw.trim() === "" ? null : degrees(parseRequired(raw)) }); },
+    }),
+    readonlyRow("Suggested ruby-pin width", suggestedWidth === null ? "—" : `${toDegrees(suggestedWidth).toFixed(2)}°`,
+      "Half the fork's total angular motion — Playtner's own cited choice, not a strict rule (ASM-0042)."),
     readonlyRow("Wheel-angle budget per beat", budget === null ? "—" : `${toDegrees(budget).toFixed(2)}°`, "Half the tooth pitch, π/escapeTeeth (ASM-0021, ASM-0036): shared by the tooth's width, the pallet's width and drop."),
     readonlyRow("Escape-tooth width (derived)", tooth === null ? "—" : `${toDegrees(tooth).toFixed(2)}°`,
       "Budget − pallet width − drop (ASM-0037). Must be positive for a club tooth, or may be zero for a ratchet tooth (ASM-0038)."),

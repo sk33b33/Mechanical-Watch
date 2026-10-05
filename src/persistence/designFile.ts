@@ -38,7 +38,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 12;
+export const DESIGN_SCHEMA_VERSION = 13;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -197,6 +197,22 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
       ]),
     );
     return { ...doc, schemaVersion: 12, movement: { ...movement, escapements } };
+  },
+  /**
+   * v12 → v13: pallet geometry, where given, gains an empty (null) ruby
+   * pin entry freedom and slot shake to fill in — entered directly,
+   * never guessed (ASM-0042).
+   */
+  12: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.escapements)) return doc;
+    const escapements = Object.fromEntries(
+      Object.entries(movement.escapements).map(([id, e]) => [
+        id,
+        isRecord(e) && isRecord(e.pallets) ? { ...e, pallets: { ...e.pallets, rubyPinEntryFreedom: null, rubyPinSlotShake: null } } : e,
+      ]),
+    );
+    return { ...doc, schemaVersion: 13, movement: { ...movement, escapements } };
   },
 };
 
@@ -470,6 +486,8 @@ const pallets: Decoder<PalletGeometry> = (value, path) => {
     runAngle: field(o, "runAngle", angle, path),
     dropAngle: field(o, "dropAngle", angle, path),
     widthAngle: field(o, "widthAngle", angle, path),
+    rubyPinEntryFreedom: field(o, "rubyPinEntryFreedom", nullable(angle), path),
+    rubyPinSlotShake: field(o, "rubyPinSlotShake", nullable(angle), path),
   };
 };
 

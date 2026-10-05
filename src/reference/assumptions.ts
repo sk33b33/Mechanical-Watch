@@ -249,6 +249,12 @@ export const ASSUMPTIONS = {
     scope: "Escapement geometry",
     status: "Active",
   },
+  "ASM-0042": {
+    summary:
+      "PalletGeometry.rubyPinEntryFreedom and rubyPinSlotShake (optional, entered directly). Entry freedom must be strictly less than the total lock (lock + run) -- a hard necessity, not just cited -- so a premature strike leaves the pallets still locked. Slot shake is a simple positive check. The ruby pin's suggested width is derived as half the fork's angular motion (Playtner's own cited choice, not a strict formula)",
+    scope: "Escapement geometry",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

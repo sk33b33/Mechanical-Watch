@@ -9,6 +9,7 @@ import {
   isHalfToothSpan,
   lockingPoints,
   spanAngle,
+  suggestedRubyPinWidth,
   tangentialCentreDistance,
   toothDrawAngle,
   toothWidthAngle,
@@ -97,5 +98,10 @@ describe("pallet geometry (ASM-0025)", () => {
     expect(forkActingLength(mm(0.9), null)).toBeNull();
     expect(forkActingLength(mm(0), ratio)).toBeNull();
     expect(forkActingLength(mm(-1), ratio)).toBeNull();
+  });
+
+  it("the suggested ruby-pin width is half the fork's total angular motion (ASM-0042, SRC-0036)", () => {
+    expect(toDegrees(suggestedRubyPinWidth(degrees(10)))).toBeCloseTo(5, 12);
+    expect(toDegrees(suggestedRubyPinWidth(degrees(2.5)))).toBeCloseTo(1.25, 12);
   });
 });

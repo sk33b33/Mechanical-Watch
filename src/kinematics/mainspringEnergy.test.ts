@@ -304,3 +304,56 @@ describe("impulse radius and the derived fork acting length (ESC-109, ASM-0041)"
     expect(forkRules(negative)).toEqual(["ESC-109:error:impulse-radius"]);
   });
 });
+
+describe("ruby-pin entry freedom, slot shake and the suggested width (ESC-110, ASM-0042)", () => {
+  const teaching = createTeachingMovement();
+  const esc = Object.values(teaching.escapements)[0];
+  const pallets = esc?.pallets;
+  if (esc === undefined || pallets == null) throw new Error("teaching movement lacks pallets");
+  const rubyRules = (m: Movement): string[] =>
+    validateMovement(m).filter((i) => i.rule === "ESC-110").map((i) => `${i.rule}:${i.severity}:${i.id.split(":")[1] ?? ""}`);
+
+  it("the teaching movement's 1.25° entry freedom and 0.25° slot shake are within Playtner's cited figures, only the suggested width reports", () => {
+    expect(rubyRules(teaching)).toEqual(["ESC-110:info:suggested-width"]);
+    const info = validateMovement(teaching).find((i) => i.rule === "ESC-110" && i.id.includes("suggested-width"));
+    // Half the teaching movement's 10° lever angle.
+    expect(info?.message).toContain("5.00°");
+  });
+
+  it("entry freedom must be positive", () => {
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, rubyPinEntryFreedom: degrees(0) } });
+    expect(rubyRules(m)).toContain("ESC-110:error:entry-freedom");
+  });
+
+  it("entry freedom must be less than the total lock (lock + run), or a premature strike could fully unlock the pallets", () => {
+    // Teaching movement: lock 2° + run 0.5° = 2.5° total lock.
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, rubyPinEntryFreedom: degrees(2.5) } });
+    const found = rubyRules(m);
+    expect(found).toContain("ESC-110:error:entry-freedom-lock");
+    const err = validateMovement(m).find((i) => i.rule === "ESC-110" && i.id.includes("entry-freedom-lock"));
+    expect(err?.message).toContain("2.50°");
+  });
+
+  it("entry freedom outside the cited 1°-1¼° range (but under the total lock) is an advisory", () => {
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, rubyPinEntryFreedom: degrees(0.5) } });
+    const found = rubyRules(m);
+    expect(found).toContain("ESC-110:info:entry-freedom-advisory");
+    expect(found.every((r) => !r.includes("error"))).toBe(true);
+  });
+
+  it("slot shake must be positive", () => {
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, rubyPinSlotShake: degrees(-0.1) } });
+    expect(rubyRules(m)).toContain("ESC-110:error:slot-shake");
+  });
+
+  it("slot shake outside the cited ¼°-½° range is an advisory", () => {
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, rubyPinSlotShake: degrees(1) } });
+    expect(rubyRules(m)).toContain("ESC-110:info:slot-shake-advisory");
+  });
+
+  it("nothing is derived for entry freedom or slot shake when they are not entered", () => {
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, rubyPinEntryFreedom: null, rubyPinSlotShake: null } });
+    const found = rubyRules(m);
+    expect(found).toEqual(["ESC-110:info:suggested-width"]);
+  });
+});

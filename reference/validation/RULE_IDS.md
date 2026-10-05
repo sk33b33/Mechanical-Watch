@@ -79,6 +79,7 @@ ESC-107 Drop outside the type-specific informally cited range (1.5° club / 2° 
 ESC-103 The escape wheel must clear the pallet arbor and balance staff, and the balance must clear the pallet arbor.
 ESC-108 When draw is positive, the escape-tooth locking face is derived as conventionally double the pallet's draw (ASM-0039); outside the practically cited 20°-28° range is an advisory.
 ESC-109 Impulse radius, when entered, must be positive; the fork's real acting length is then derived from it via the balance-lift/lever-angle ratio (ASM-0041).
+ESC-110 Ruby-pin entry freedom, when entered, must be positive and less than the total lock (lock + run); slot shake, when entered, must be positive; outside Playtner's cited figures (1°-1¼° freedom, ¼°-½° shake) is an advisory; the suggested ruby-pin width (half the fork's angular motion) is reported (ASM-0042).
 
 BAL-001 A balance-governed drive needs an escapement with a valid escape wheel and a positive balance inertia and hairspring stiffness; entered inertia and stiffness must be positive.
 BAL-002 The simplified dynamic balance model reports its free frequency, the frequency nominal time needs, and the predicted daily rate, with its assumptions.

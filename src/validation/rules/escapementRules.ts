@@ -1,12 +1,12 @@
 import { distance } from "@/math/vec2";
 import { isValidModule, isValidToothCount, pitchDiameter } from "@/math/gearMath";
 import { toRpm } from "@/units/angularVelocity";
-import { toDegrees } from "@/units/angle";
+import { radians, toDegrees } from "@/units/angle";
 import { toBeatsPerHour } from "@/units/frequency";
 import type { EntityId } from "@/domain/ids";
 import { gearZRange, zOverlaps } from "@/assembly/assemblyGeometry";
 import { balanceFrequency, beatFrequency, impulseFraction } from "@/kinematics/escapement";
-import { dropClearance, forkActingLength, forkRatio, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
+import { dropClearance, forkActingLength, forkRatio, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import type { Length } from "@/units/length";
 import type { ValidationIssue } from "../validationIssue";
@@ -194,6 +194,51 @@ export const escapementRules: Rule = ({ movement, placement, train }) => {
               ["ASM-0039"]),
           );
         }
+      }
+
+      // ESC-110: ruby-pin entry freedom and slot shake (optional), and the derived suggested width (ASM-0042, SRC-0036 "The Fork and Roller Action").
+      const totalLock = positive(pg.lockAngle) && Number.isFinite(pg.runAngle) && pg.runAngle >= 0 ? radians(pg.lockAngle + pg.runAngle) : null;
+      if (pg.rubyPinEntryFreedom !== null) {
+        if (!positive(pg.rubyPinEntryFreedom)) {
+          issues.push(
+            issue("ESC-110", "entry-freedom", "error", "L1_GEOMETRIC", [esc.id],
+              `${esc.name}: the ruby-pin entry freedom must be positive, or left empty (unknown).`, ["ASM-0042"]),
+          );
+        } else if (totalLock !== null && !(pg.rubyPinEntryFreedom < totalLock)) {
+          issues.push(
+            issue("ESC-110", "entry-freedom-lock", "error", "L1_GEOMETRIC", [esc.id],
+              `${esc.name}: ruby-pin entry freedom (${toDegrees(pg.rubyPinEntryFreedom).toFixed(2)}°) must be less than the total lock (lock + run = ${toDegrees(totalLock).toFixed(2)}°) — otherwise a premature strike against the fork could fully unlock the pallets instead of leaving them locked (ASM-0042, SRC-0036).`,
+              ["ASM-0042"]),
+          );
+        } else if (toDegrees(pg.rubyPinEntryFreedom) < 1 || toDegrees(pg.rubyPinEntryFreedom) > 1.25) {
+          issues.push(
+            issue("ESC-110", "entry-freedom-advisory", "info", "L1_GEOMETRIC", [esc.id],
+              `${esc.name}: ruby-pin entry freedom (${toDegrees(pg.rubyPinEntryFreedom).toFixed(2)}°) is outside the figure Playtner cites (1°-1¼°, ASM-0042, SRC-0036). An informal reference figure, not a validated limit.`,
+              ["ASM-0042"]),
+          );
+        }
+      }
+      if (pg.rubyPinSlotShake !== null) {
+        if (!positive(pg.rubyPinSlotShake)) {
+          issues.push(
+            issue("ESC-110", "slot-shake", "error", "L1_GEOMETRIC", [esc.id],
+              `${esc.name}: the ruby-pin slot shake must be positive, or left empty (unknown).`, ["ASM-0042"]),
+          );
+        } else if (toDegrees(pg.rubyPinSlotShake) < 0.25 || toDegrees(pg.rubyPinSlotShake) > 0.5) {
+          issues.push(
+            issue("ESC-110", "slot-shake-advisory", "info", "L1_GEOMETRIC", [esc.id],
+              `${esc.name}: ruby-pin slot shake (${toDegrees(pg.rubyPinSlotShake).toFixed(2)}°) is outside the figure Playtner cites (¼°-½°, ASM-0042, SRC-0036). An informal reference figure, not a validated limit.`,
+              ["ASM-0042"]),
+          );
+        }
+      }
+      if (positive(esc.leverAngle)) {
+        const suggested = suggestedRubyPinWidth(esc.leverAngle);
+        issues.push(
+          issue("ESC-110", "suggested-width", "info", "L1_GEOMETRIC", [esc.id],
+            `${esc.name}: a ruby pin width of ${toDegrees(suggested).toFixed(2)}° (half the fork's total angular motion) is Playtner's own cited choice, not a strict rule (ASM-0042, SRC-0036).`,
+            ["ASM-0042"]),
+        );
       }
 
       // ESC-106 / ESC-107: drop (ASM-0036, SRC-0036) and the tooth/pallet partition (ASM-0037, ASM-0038), when a tooth count is known.

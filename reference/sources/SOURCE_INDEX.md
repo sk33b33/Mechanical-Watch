@@ -262,10 +262,27 @@ angles are in the inverse ratio to the radii" — and a worked example,
 "the acting length of fork = 4.5 mm", divided by the teaching
 movement's own cited 5:1 impulse/lever-angle proportion ("some might
 use a proportion of... even 5 to 1") to choose its 0.9 mm impulse
-radius. The rest of this chapter, "The Safety Action", "The Crescent"
-and "The Horn" — ruby pin width/freedom/shake, single vs. double
-roller, guard-point/dart freedom, the crescent's angular opening, the
-horn's length and freedom — remains unmodeled, scoped as Phase 7.1.5's
+radius.
+
+Now also used for ASM-0042, the second piece of this same chapter:
+`PalletGeometry.rubyPinEntryFreedom` ("the ruby pin in entering the
+fork must have a certain amount of freedom for action, from 1 to 1¼°")
+must be strictly less than the total lock (lock + run) — "it is
+important that the angular freedom... be less than the total locking
+angle on the pallets", a hard necessity, not just cited, so a
+premature strike leaves the pallets still locked (ESC-110);
+`rubyPinSlotShake` ("it varies from ¼° to ½°, according to length of
+fork and shape of ruby pin") is a simple positive-when-declared check
+with the figure cited as an advisory. The ruby pin's own suggested
+width is derived, not declared (`suggestedRubyPinWidth` = lever angle
+÷ 2, "we would choose a ruby pin of a width equal to half the angular
+motion of the fork") — a cited convention, not a strict formula. The
+teaching movement's own 1¼° entry freedom is Playtner's exact cited
+number from his total-lock worked example. The rest of this chapter
+(the fuller width/freedom/impulse-radius relationship in Figs. 17-20,
+the Savage pin roller), "The Safety Action" (single vs. double roller,
+guard-point/dart freedom), "The Crescent" and "The Horn" (angular
+opening, length and freedom) remain unmodeled, scoped as Phase 7.1.5's
 later sub-items (`docs/ROADMAP.md`).
 
 ## Mainspring torque curve and bridle slip (REF-ENG §11)

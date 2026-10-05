@@ -16,7 +16,7 @@ import { balanceFrequency, beatFrequency, beatsPerEscapeRevolution, impulseFract
 import { isochronismAdjustedRate } from "@/kinematics/balance";
 import { summarizeBalance } from "@/kinematics/balanceSummary";
 import { summarizeEnergy } from "@/kinematics/energySummary";
-import { dropClearance, forkActingLength, forkRatio, impulseAngle, isHalfToothSpan, spanAngle, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
+import { dropClearance, forkActingLength, forkRatio, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import { toNewtonMillimetres } from "@/units/torque";
 import { toMicrojoules } from "@/units/energy";
@@ -472,6 +472,8 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
         entered("Run angle", angleText(pg.runAngle), pg.runAngle),
         entered("Drop angle (wheel-side)", angleText(pg.dropAngle), pg.dropAngle),
         entered("Pallet width (wheel-side)", angleText(pg.widthAngle), pg.widthAngle),
+        entered("Ruby-pin entry freedom", pg.rubyPinEntryFreedom === null ? "unknown" : angleText(pg.rubyPinEntryFreedom), pg.rubyPinEntryFreedom),
+        entered("Ruby-pin slot shake", pg.rubyPinSlotShake === null ? "unknown" : angleText(pg.rubyPinSlotShake), pg.rubyPinSlotShake),
       ];
   const budget = teethValid ? wheelAngleBudgetPerBeat(w.toothCount) : null;
   const tooth = pg !== null && teethValid ? toothWidthAngle(w.toothCount, pg.widthAngle, pg.dropAngle) : null;
@@ -481,12 +483,14 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
   const partitionValid = dropValid && widthValid && toothValid;
   const clearance = pg !== null && partitionValid ? dropClearance((w.tipDiameter / 2) as Length, pg.dropAngle) : null;
   const toothDraw = pg !== null && Number.isFinite(pg.drawAngle) && pg.drawAngle > 0 ? toothDrawAngle(pg.drawAngle) : null;
+  const suggestedWidth = pg !== null && Number.isFinite(esc.leverAngle) && esc.leverAngle > 0 ? suggestedRubyPinWidth(esc.leverAngle) : null;
   const palletDerived: ReportValue[] = pg === null ? [] : [
     { label: "Pallet span angle", text: span === null ? "—" : `${toDegrees(span).toFixed(2)}°`, si: span, equation: "span × 2π / z", level: "L1_GEOMETRIC", references: ["ASM-0025"] },
     { label: "Pallet arbor distance for tangential locking", text: needed === null ? "—" : mmText(needed), si: needed, equation: "R_tip / cos(span angle / 2)", level: "L1_GEOMETRIC", references: ["ASM-0025"] },
     { label: "Lever impulse angle", text: impulse === null || !Number.isFinite(impulse) ? "—" : `${toDegrees(impulse).toFixed(2)}°`, si: impulse !== null && Number.isFinite(impulse) ? impulse : null, equation: "lever − lock − run", level: "L1_GEOMETRIC", references: ["ASM-0025"] },
     { label: "Fork ratio", text: ratio === null ? "—" : ratio.toFixed(3), si: ratio, equation: "lift angle / lever angle", level: "L1_GEOMETRIC", references: ["ASM-0025"] },
     { label: "Fork acting length (derived)", text: forkLength === null ? "—" : mmText(forkLength), si: forkLength, equation: "impulse radius × fork ratio", level: "L1_GEOMETRIC", references: ["ASM-0041"] },
+    { label: "Suggested ruby-pin width (derived)", text: suggestedWidth === null ? "—" : `${toDegrees(suggestedWidth).toFixed(2)}°`, si: suggestedWidth, equation: "lever angle / 2", level: "L1_GEOMETRIC", references: ["ASM-0042"] },
     { label: "Escape-tooth locking face (derived)", text: toothDraw === null ? "—" : `${toDegrees(toothDraw).toFixed(2)}°`, si: toothDraw, equation: "2 × draw", level: "L1_GEOMETRIC", references: ["ASM-0039"] },
     { label: "Wheel-angle budget per beat", text: budget === null ? "—" : `${toDegrees(budget).toFixed(2)}°`, si: budget, equation: "π / escapeTeeth", level: "L1_GEOMETRIC", references: ["ASM-0021", "ASM-0036"] },
     { label: "Escape-tooth width (derived)", text: tooth === null ? "—" : `${toDegrees(tooth).toFixed(2)}°`, si: tooth, equation: "budget − pallet width − drop", level: "L1_GEOMETRIC", references: ["ASM-0037"] },

@@ -55,6 +55,7 @@ export const RULE_IDS = [
   "ESC-107",
   "ESC-108",
   "ESC-109",
+  "ESC-110",
   "BAL-001",
   "BAL-002",
   "SPR-001",

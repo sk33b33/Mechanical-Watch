@@ -1156,6 +1156,10 @@
     - "the angles are in the inverse ratio to the radii. In other words, the shorter the radius, the greater is the angle, and the smaller the angle the greater is the radius" (the law `forkActingLength` implements: impulse angle × impulse radius ≈ lever angle × fork acting length, ASM-0041/ESC-109)
     - "some might use a proportion of 3.5, 4 or even 5 to 1" (impulse-angle-to-fork-angle proportions; the teaching movement's own 50°/10° = 5:1 matches this cited upper end)
     - "The acting length of fork = 4.5 mm., what is the amount of shake when the ruby pin passes the acting corner? 4.5 × 2 × 3.1416 ÷ 360° = .0785 × 1.25 = .0992 mm." (Playtner's own worked fork-acting-length figure, 4.5 mm — used, divided by the teaching movement's own 5:1 ratio, to choose its impulse radius of 0.9 mm; not a universal value, a single worked example)
+    - "The ruby pin in entering the fork must have a certain amount of freedom for action, from 1 to 1¼°." (the cited range for `PalletGeometry.rubyPinEntryFreedom`, ASM-0042)
+    - "It is important that the angular freedom between the fork and ruby pin at the moment it enters into the slot be less than the total locking angle on the pallets. If we employ a locking angle of 1½° and ½° run, we would have a total lock on the pallets of 2°. By allowing 1¼° of freedom for the ruby pin at the moment the guard point enters the crescent, in case the fork should strike the face of the ruby pin, the pallets will still be locked ¾° and the fork drawn back against the bankings through the draft angle." (the hard geometric necessity ESC-110 checks: entry freedom strictly less than lock + run; the teaching movement's own 1¼° entry freedom is Playtner's exact cited number)
+    - "The shake of the ruby pin in the slot of the fork must be as slight as possible, consistent with perfect freedom of action. It varies from ¼° to ½°, according to length of fork and shape of ruby pin." (the cited range for `PalletGeometry.rubyPinSlotShake`, ASM-0042)
+    - "We would choose a ruby pin of a width equal to half the angular motion of the fork." (the convention `suggestedRubyPinWidth` implements — a cited choice, not a strict formula, ASM-0042)
   claims_to_check: []
   retrieved: true
   accessed: "2026-10-05"
@@ -1175,40 +1179,44 @@
     (`PalletGeometry.kind`, `widthAngle`, `toothWidthAngle`), ASM-0038
     (`EscapeWheel.toothKind`, CLUB | RATCHET), ASM-0039 (`drawAngle`'s
     geometric referent, `toothDrawAngle`), ASM-0040 (the real 2D
-    tooth/pallet-stone outlines in `src/geometry/assemblyGeometry3d.ts`)
-    and ASM-0041 (`Balance.impulseRadius`, `forkActingLength` — the first
-    piece of the book's separate "Fork and Roller Action" chapter used in
-    this project), and the ESC-106 (hard geometric budget, derived — not
-    just cited; type-aware since ASM-0038) / ESC-107 (informal drop
-    advisory — 1.5° club / 2° ratchet, cited; derived tooth width) /
-    ESC-108 (derived escape-tooth locking face, conventional doubling,
-    advisory outside the cited 20°-28° range) / ESC-109 (derived fork
-    acting length) validation rules. Re-read directly from the same
-    locally cached HTML (no re-fetch needed) for the "The Draw" and "The
-    Fork and Roller Action" chapters' exact language, and this pass
-    additionally fetched two of the chapter's own figures (fig05.png,
-    fig28.png — redirected through www.gutenberg.org, fetched with curl
-    -L) and viewed them directly (the same "fetch the image, read it as
-    an image" workaround already used for SRC-0037's formula images) to
-    confirm the pallet stone's general block-with-a-leaning-face shape
-    before implementing ASM-0040 — not to reverse-engineer the diagrams'
-    full construction point-for-point. Six pieces of this chapter's
-    material are now used across these six assumptions (drop; pallet
-    type and width; tooth type; draw/tooth-face angle; the 2D outlines;
-    impulse radius/fork length); the book's larger remaining treatment of
-    true lifting-face curvature, the tooth/pallet FACE contact geometry
-    itself, the real/primitive-circle correction, the engaging/
-    disengaging asymmetry and the locked-vs-unlocked face-position
-    correction remains unmodeled, as does nearly all of "The Fork and
-    Roller Action" (ruby pin width/freedom/shake, the Savage pin roller),
-    "The Safety Action" (single vs. double roller, guard point/dart
-    freedom), "The Crescent" and "The Horn" chapters — explicitly out of
-    scope here, scoped as Phase 7.1.5's later sub-items
-    (`docs/ROADMAP.md`) rather than attempted incompletely now. The
-    CIRCULAR pallet type is named in the domain model (ASM-0037) but not
-    implemented: this source states only that its locking offset from
-    the tangent shrinks with pallet width, not a closed-form formula
-    for it.
+    tooth/pallet-stone outlines in `src/geometry/assemblyGeometry3d.ts`),
+    ASM-0041 (`Balance.impulseRadius`, `forkActingLength`) and ASM-0042
+    (`PalletGeometry.rubyPinEntryFreedom`, `rubyPinSlotShake`,
+    `suggestedRubyPinWidth` — the second piece of the book's separate
+    "Fork and Roller Action" chapter used in this project), and the
+    ESC-106 (hard geometric budget, derived — not just cited; type-aware
+    since ASM-0038) / ESC-107 (informal drop advisory — 1.5° club / 2°
+    ratchet, cited; derived tooth width) / ESC-108 (derived escape-tooth
+    locking face, conventional doubling, advisory outside the cited
+    20°-28° range) / ESC-109 (derived fork acting length) / ESC-110
+    (ruby-pin entry freedom strictly under the total lock — a hard
+    necessity, not just cited; slot shake; the suggested width) validation
+    rules. Re-read directly from the same locally cached HTML (no
+    re-fetch needed) for the "The Draw" and "The Fork and Roller Action"
+    chapters' exact language, and this pass additionally fetched two of
+    the chapter's own figures (fig05.png, fig28.png — redirected through
+    www.gutenberg.org, fetched with curl -L) and viewed them directly
+    (the same "fetch the image, read it as an image" workaround already
+    used for SRC-0037's formula images) to confirm the pallet stone's
+    general block-with-a-leaning-face shape before implementing ASM-0040
+    — not to reverse-engineer the diagrams' full construction
+    point-for-point. Seven pieces of this chapter's material are now used
+    across these seven assumptions (drop; pallet type and width; tooth
+    type; draw/tooth-face angle; the 2D outlines; impulse radius/fork
+    length; ruby-pin entry freedom/slot shake/suggested width); the
+    book's larger remaining treatment of true lifting-face curvature, the
+    tooth/pallet FACE contact geometry itself, the real/primitive-circle
+    correction, the engaging/disengaging asymmetry and the locked-vs-
+    unlocked face-position correction remains unmodeled, as does most of
+    "The Fork and Roller Action" still (the fuller width/freedom/impulse-
+    radius relationship in Figs. 17-20, the Savage pin roller), "The
+    Safety Action" (single vs. double roller, guard point/dart freedom),
+    "The Crescent" and "The Horn" chapters — explicitly out of scope
+    here, scoped as Phase 7.1.5's later sub-items (`docs/ROADMAP.md`)
+    rather than attempted incompletely now. The CIRCULAR pallet type is
+    named in the domain model (ASM-0037) but not implemented: this
+    source states only that its locking offset from the tangent shrinks
+    with pallet width, not a closed-form formula for it.
 
 # Phase 7.5 (docs/ROADMAP.md): nonlinear mainspring torque curve and
 # bridle/slipping behaviour (REF-ENG §11; ASM-0026 currently uses a

@@ -258,9 +258,12 @@ export function createTeachingMovement(): Movement {
   // kind/widthAngle/dropAngle: Playtner's own 15-tooth worked example (SRC-0036, ASM-0036/0037) —
   // equidistant pallets, 6° wide, 1.5° drop, within the 12° wheel-angle budget per beat
   // (180°/15 teeth, leaving 4.5° for the tooth), same tooth count as this movement.
+  // rubyPinEntryFreedom: Playtner's own specific worked number, 1¼° (SRC-0036, ASM-0042), comfortably
+  // under this movement's total lock (2° lock + 0.5° run = 2.5°, ESC-110). rubyPinSlotShake: the low
+  // end of his cited ¼°-½° range.
   const palletGeometry = {
     spanTeeth: 3.5, kind: "EQUIDISTANT" as const, lockAngle: degrees(2), drawAngle: degrees(12), runAngle: degrees(0.5),
-    dropAngle: degrees(1.5), widthAngle: degrees(6),
+    dropAngle: degrees(1.5), widthAngle: degrees(6), rubyPinEntryFreedom: degrees(1.25), rubyPinSlotShake: degrees(0.25),
   };
   const escapeToPallet = tangentialCentreDistance(escapeTipRadius, spanAngle(escapeTeeth, palletGeometry.spanTeeth)) ?? mm(Number.NaN);
   const palletToBalance = mm(3.5);

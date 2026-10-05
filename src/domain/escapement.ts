@@ -147,6 +147,25 @@ export interface PalletGeometry {
    * budget (`toothWidthAngle`); both must be positive (ESC-106).
    */
   widthAngle: Angle;
+  /**
+   * Lever-side angular freedom between the fork's slot and the ruby pin
+   * at the moment it enters (ASM-0042, SRC-0036 "The Fork and Roller
+   * Action": "the ruby pin in entering the fork must have a certain
+   * amount of freedom for action, from 1 to 1¼°"). Must be positive and
+   * strictly less than the total lock (`lockAngle + runAngle`): "it is
+   * important that the angular freedom... be less than the total locking
+   * angle on the pallets", so that if the fork strikes the ruby pin
+   * early, the pallets are still locked (ESC-110). Optional; null when
+   * not declared.
+   */
+  rubyPinEntryFreedom: Angle | null;
+  /**
+   * The ruby pin's shake within the fork's slot (ASM-0042, SRC-0036):
+   * "the shake of the ruby pin in the slot of the fork must be as slight
+   * as possible, consistent with perfect freedom of action." Must be
+   * positive when declared (ESC-110). Optional; null when not declared.
+   */
+  rubyPinSlotShake: Angle | null;
 }
 
 export interface Escapement {

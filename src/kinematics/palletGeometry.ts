@@ -105,6 +105,19 @@ export function forkActingLength(impulseRadius: Length, ratio: number | null): L
 }
 
 /**
+ * The ruby pin's suggested width, derived from the fork's total angular
+ * motion (ASM-0042, SRC-0036 "The Fork and Roller Action": "we would
+ * choose a ruby pin of a width equal to half the angular motion of the
+ * fork"). A cited convention, not a strict formula — unlike
+ * `toothWidthAngle`, this is not load-bearing for any other derived
+ * quantity, so there is no corresponding hard constraint to check it
+ * against (ESC-110 reports it as info only).
+ */
+export function suggestedRubyPinWidth(leverAngle: Angle): Angle {
+  return radians(leverAngle / 2);
+}
+
+/**
  * The escape tooth's own locking face, derived from the declared pallet
  * draw (ASM-0039, SRC-0036 "The Draw"): "it is certainly necessary that
  * the point of the tooth alone should touch the pallet. From this it
