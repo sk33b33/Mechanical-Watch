@@ -160,3 +160,49 @@ level).
 
 Order: 7.1 before 7.2; 7.3 independent (recommended first); 7.4/7.5 can
 run in parallel as research; 7.6 depends on 7.3.
+
+## Phase 8 — Calendar complications (date, month, season, year)
+
+**User request, flagged 2026-10-05: pick this up once Phase 7 is done.**
+The user wants to design a watch that shows date, month, season and
+year in addition to time, and asked to be reminded about it once Phase
+7 wraps up. Checked the codebase at the time of the request: none of
+this exists yet.
+
+Not currently modeled, confirmed by inspection:
+- No calendar domain entities at all (no date wheel, month wheel,
+  jumper spring, snail cam, star wheel, or any instantaneous-jump
+  mechanism — a real date/month complication needs a discrete midnight
+  "jump," not a smoothly-turning gear, which is a different kind of
+  mechanism than anything in the current gear-train/escapement model).
+- No way to display one even if the gearing existed: hands are
+  hard-coded to HOURS/MINUTES/SECONDS only (`HAND_VISUALIZATION` in
+  `src/geometry/assemblyGeometry3d.ts`); the dial draws hour markers
+  only, no date window, sub-dial or disc.
+- "Season" specifically is a rare, high-end complication even in real
+  watchmaking — usually only seen alongside equation-of-time/perpetual-
+  calendar grand complications (tracking the ~365.2422-day tropical
+  year), not a standard calendar-watch feature. Worth the user knowing
+  this going in, independent of what the app supports.
+
+Rough shape of what adding this would need (not yet scoped into
+sub-items the way Phase 7.1 was):
+1. Domain entities for calendar components (date wheel/disc, month
+   wheel, year indicator) and their place in the component model listed
+   in `CLAUDE.md`.
+2. A jumper/cam mechanism model — genuinely new kinematics, not a
+   continuous gear ratio: energy storage (spring) release at a trigger
+   point, distinct from the steady-state gear-train propagation this
+   project models today.
+3. Display support: new hand/disc kinds, dial windows or sub-dials.
+4. Validation rules for the new components (interference, jumper
+   timing, etc.), consistent with the project's existing validation-
+   level discipline.
+5. Sourcing: cited mechanisms and assumptions for whichever calendar
+   mechanism design is chosen (simple date, annual calendar, or full
+   perpetual calendar each work differently), same engineering-
+   traceability standard as the rest of this project — nothing
+   invented without a source.
+
+Do not start this without the user's go-ahead; it's a new domain area,
+not a refinement of existing Phase 7 work.
