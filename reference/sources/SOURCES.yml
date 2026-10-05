@@ -1151,9 +1151,10 @@
     - "Place the center of the protractor at B and draw the angle of width of pallets of 6°; IBE being for the engaging and JBF for the disengaging pallet. In the equidistant pallet IB is drawn on the side towards the center, while JB is drawn further from the center. If we were drawing a circular pallet, one-half the width of pallets would be placed on each side of EB and FB" (the worked 15-tooth specification's own pallet-width construction, 6°, matching the tooth/pallet/drop partition above)
     - "the wheel teeth of the 'club' form" (Playtner's own worked 15-tooth specification uses club teeth — the CLUB case of `EscapeWheel.toothKind`)
     - "the entire lifting angle is on the pallets" and "a metal point passing over a jeweled plane" (describing the older, English ratchet-tooth form: the tooth is a bare point with no impulse face of its own, so its own width may be zero — the RATCHET case of `EscapeWheel.toothKind`)
+    - Fig. 5 ("Diagram illustrating Draw") and Fig. 28 ("The pallets when unlocked") were fetched and viewed directly (images/fig05.png, images/fig28.png) to confirm the pallet stone is drawn as a block with a flat locking face on the wheel-facing side, inclined off the radial — grounding, not literally reproducing, the straight-edged `generatePalletStoneOutline` construction (ASM-0040); the diagrams' own full construction (locked-vs-unlocked position correction, engaging/disengaging asymmetry) was not reverse-engineered point-for-point, only used to confirm the general shape and orientation
   claims_to_check: []
   retrieved: true
-  accessed: "2026-10-04"
+  accessed: "2026-10-05"
   notes: >
     Tier 4 (a recognized, book-length, primary watchmaking text devoted
     specifically to lever-escapement geometry — stronger than a derived
@@ -1168,25 +1169,34 @@
     Used for ASM-0036 (`PalletGeometry.dropAngle`, `wheelAngleBudgetPerBeat`,
     `dropClearance` in `src/kinematics/palletGeometry.ts`), ASM-0037
     (`PalletGeometry.kind`, `widthAngle`, `toothWidthAngle`), ASM-0038
-    (`EscapeWheel.toothKind`, CLUB | RATCHET) and ASM-0039
-    (`drawAngle`'s geometric referent, `toothDrawAngle`), and the ESC-106
-    (hard geometric budget, derived — not just cited; type-aware since
-    ASM-0038) / ESC-107 (informal drop advisory — 1.5° club / 2° ratchet,
-    cited; derived tooth width) / ESC-108 (derived escape-tooth locking
-    face, conventional doubling, advisory outside the cited 20°-28° range)
-    validation rules. Re-read directly from the same locally cached HTML
-    (no re-fetch needed) for the "The Draw" chapter's exact construction
-    language. Four pieces of this chapter's material are now used across
-    these four assumptions (drop; pallet type and width; tooth type; draw/
-    tooth-face angle); the book's larger remaining treatment of the actual
-    2D tooth/pallet FACE and OUTLINE construction (convex/concave lifting
-    planes, the engaging/disengaging asymmetry, the locked-vs-unlocked
-    face-position correction) remains unmodeled and is explicitly out of
-    scope here — a genuinely larger undertaking, left for a future Phase
-    7.1 pass rather than attempted incompletely now. The CIRCULAR pallet
-    type is named in the domain model (ASM-0037) but not implemented:
-    this source states only that its locking offset from the tangent
-    shrinks with pallet width, not a closed-form formula for it.
+    (`EscapeWheel.toothKind`, CLUB | RATCHET), ASM-0039 (`drawAngle`'s
+    geometric referent, `toothDrawAngle`) and ASM-0040 (the real 2D
+    tooth/pallet-stone outlines in `src/geometry/assemblyGeometry3d.ts`),
+    and the ESC-106 (hard geometric budget, derived — not just cited;
+    type-aware since ASM-0038) / ESC-107 (informal drop advisory — 1.5°
+    club / 2° ratchet, cited; derived tooth width) / ESC-108 (derived
+    escape-tooth locking face, conventional doubling, advisory outside
+    the cited 20°-28° range) validation rules. Re-read directly from the
+    same locally cached HTML (no re-fetch needed) for the "The Draw"
+    chapter's exact construction language, and this pass additionally
+    fetched two of the chapter's own figures (fig05.png, fig28.png —
+    redirected through www.gutenberg.org, fetched with curl -L) and
+    viewed them directly (the same "fetch the image, read it as an
+    image" workaround already used for SRC-0037's formula images) to
+    confirm the pallet stone's general block-with-a-leaning-face shape
+    before implementing ASM-0040 — not to reverse-engineer the diagrams'
+    full construction point-for-point. Five pieces of this chapter's
+    material are now used across these five assumptions (drop; pallet
+    type and width; tooth type; draw/tooth-face angle; the 2D outlines);
+    the book's larger remaining treatment of true lifting-face curvature,
+    the tooth/pallet FACE contact geometry itself, the real/primitive-
+    circle correction, the engaging/disengaging asymmetry and the locked-
+    vs-unlocked face-position correction remains unmodeled and is
+    explicitly out of scope — a genuinely larger undertaking than one
+    pass can responsibly close. The CIRCULAR pallet type is named in the
+    domain model (ASM-0037) but not implemented: this source states only
+    that its locking offset from the tangent shrinks with pallet width,
+    not a closed-form formula for it.
 
 # Phase 7.5 (docs/ROADMAP.md): nonlinear mainspring torque curve and
 # bridle/slipping behaviour (REF-ENG §11; ASM-0026 currently uses a

@@ -237,6 +237,12 @@ export const ASSUMPTIONS = {
     scope: "Escapement geometry",
     status: "Active",
   },
+  "ASM-0040": {
+    summary:
+      "The escape wheel's teeth and pallet stones are drawn as real 2D outlines using the model's own derived angles (toothWidthAngle, toothDrawAngle, draw), not fixed cosmetic ratios, via generateEscapeWheelOutline/generatePalletStoneOutline. Still visual only: straight-edged, no true face curvature or contact geometry, falls back to the earlier cosmetic shapes without pallet geometry",
+    scope: "Escapement geometry / viewport",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

@@ -1,15 +1,56 @@
 import { describe, expect, it } from "vitest";
+import type { Point2D } from "./gearOutline";
 import {
   balanceArmHalfExtents,
   balanceRimInnerRadius,
   escapeWheelHubRadius,
   generateEscapeWheelOutline,
   generateHandOutline,
+  generatePalletStoneOutline,
   handHubRadius,
+  rayCircleInward,
+  type PalletArm,
 } from "./assemblyGeometry3d";
 
+/** Twice the signed area of a simple polygon (shoelace formula); positive for counter-clockwise winding. */
+function signedArea(points: readonly Point2D[]): number {
+  let total = 0;
+  for (let i = 0; i < points.length; i += 1) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    if (a === undefined || b === undefined) continue;
+    total += a.x * b.y - b.x * a.y;
+  }
+  return total / 2;
+}
+
+function segmentsCross(p1: Point2D, p2: Point2D, p3: Point2D, p4: Point2D): boolean {
+  const d = (p2.x - p1.x) * (p4.y - p3.y) - (p2.y - p1.y) * (p4.x - p3.x);
+  if (Math.abs(d) < 1e-24) return false;
+  const t = ((p3.x - p1.x) * (p4.y - p3.y) - (p3.y - p1.y) * (p4.x - p3.x)) / d;
+  const u = ((p3.x - p1.x) * (p2.y - p1.y) - (p3.y - p1.y) * (p2.x - p1.x)) / d;
+  return t > 1e-9 && t < 1 - 1e-9 && u > 1e-9 && u < 1 - 1e-9;
+}
+
+/** True if any two non-adjacent edges of this closed polygon cross. */
+function isSelfIntersecting(points: readonly Point2D[]): boolean {
+  const n = points.length;
+  for (let i = 0; i < n; i += 1) {
+    for (let j = i + 1; j < n; j += 1) {
+      if (Math.abs(i - j) <= 1 || (i === 0 && j === n - 1)) continue;
+      const a1 = points[i];
+      const a2 = points[(i + 1) % n];
+      const b1 = points[j];
+      const b2 = points[(j + 1) % n];
+      if (a1 === undefined || a2 === undefined || b1 === undefined || b2 === undefined) continue;
+      if (segmentsCross(a1, a2, b1, b2)) return true;
+    }
+  }
+  return false;
+}
+
 describe("generateEscapeWheelOutline", () => {
-  it("produces 3 points per tooth, all between the hub and the tip radius", () => {
+  it("without a tooth face, produces 3 points per tooth, all between the hub and the tip radius (ASM-0012)", () => {
     const toothCount = 15;
     const tipRadius = 0.0023;
     const outline = generateEscapeWheelOutline(toothCount, tipRadius);
@@ -20,6 +61,84 @@ describe("generateEscapeWheelOutline", () => {
       expect(radius).toBeGreaterThan(hub);
       expect(radius).toBeLessThanOrEqual(tipRadius + 1e-12);
     }
+  });
+
+  it("with a tooth face, produces 4 points per tooth, each a valid non-self-intersecting quadrilateral (ASM-0040)", () => {
+    const toothCount = 15;
+    const tipRadius = 0.0023;
+    // Playtner's own worked 15-tooth example: 4.5° tooth width, 12° -> 24° draw doubling.
+    const face = { toothWidthAngle: (4.5 * Math.PI) / 180, toothDrawAngle: (24 * Math.PI) / 180 };
+    const outline = generateEscapeWheelOutline(toothCount, tipRadius, face);
+    expect(outline).toHaveLength(toothCount * 4);
+    const root = tipRadius * 0.72;
+    for (let i = 0; i < toothCount; i += 1) {
+      const tooth = outline.slice(i * 4, i * 4 + 4);
+      expect(tooth).toHaveLength(4);
+      expect(signedArea(tooth)).toBeGreaterThan(0);
+      expect(isSelfIntersecting(tooth)).toBe(false);
+      for (const point of tooth) {
+        const radius = Math.hypot(point.x, point.y);
+        expect(radius).toBeGreaterThan(root * 0.5);
+        expect(radius).toBeLessThanOrEqual(tipRadius + 1e-12);
+      }
+    }
+  });
+
+  it("clamps a near-zero tooth width (a ratchet tooth, ASM-0038) to a small but non-degenerate sliver", () => {
+    const outline = generateEscapeWheelOutline(15, 0.0023, { toothWidthAngle: 0, toothDrawAngle: (24 * Math.PI) / 180 });
+    const tooth = outline.slice(0, 4);
+    expect(signedArea(tooth)).toBeGreaterThan(0);
+  });
+
+  it("falls back to a plain radial trailing edge when the draw-derived lean has no solution (very steep lean)", () => {
+    // A lean this steep cannot reach the root circle (rayCircleInward returns null); should not throw or produce NaN.
+    const outline = generateEscapeWheelOutline(15, 0.0023, { toothWidthAngle: (4.5 * Math.PI) / 180, toothDrawAngle: (85 * Math.PI) / 180 });
+    for (const point of outline) {
+      expect(Number.isFinite(point.x)).toBe(true);
+      expect(Number.isFinite(point.y)).toBe(true);
+    }
+  });
+});
+
+describe("rayCircleInward", () => {
+  it("with zero lean, reaches the target radius by the straight inward distance", () => {
+    const from: Point2D = { x: 2.3e-3, y: 0 };
+    const q = rayCircleInward(from, 0, 1.656e-3);
+    expect(q?.x).toBeCloseTo(1.656e-3, 9);
+    expect(q?.y).toBeCloseTo(0, 9);
+  });
+
+  it("a non-zero lean moves the intersection point around the circle, not radially", () => {
+    const from: Point2D = { x: 2.3e-3, y: 0 };
+    const q = rayCircleInward(from, (24 * Math.PI) / 180, 1.656e-3) ?? { x: Number.NaN, y: Number.NaN };
+    expect(Math.hypot(q.x, q.y)).toBeCloseTo(1.656e-3, 9);
+    expect(Math.atan2(q.y, q.x)).not.toBeCloseTo(0, 3);
+  });
+
+  it("returns null when the lean is too steep for the ray to reach the target circle at all", () => {
+    const from: Point2D = { x: 2.3e-3, y: 0 };
+    expect(rayCircleInward(from, (80 * Math.PI) / 180, 1.656e-3)).toBeNull();
+  });
+});
+
+describe("generatePalletStoneOutline", () => {
+  it("without a face angle, falls back to a plain square centred on the locking point (ASM-0012)", () => {
+    const arm: PalletArm = { angle: 0.3, length: 2e-3, faceAngle: null };
+    const outline = generatePalletStoneOutline(arm);
+    expect(outline).toHaveLength(4);
+    const cx = arm.length * Math.cos(arm.angle);
+    const cy = arm.length * Math.sin(arm.angle);
+    const centroid = outline.reduce((acc, p) => ({ x: acc.x + p.x / 4, y: acc.y + p.y / 4 }), { x: 0, y: 0 });
+    expect(centroid.x).toBeCloseTo(cx, 9);
+    expect(centroid.y).toBeCloseTo(cy, 9);
+  });
+
+  it("with a face angle, produces a valid non-self-intersecting quadrilateral oriented along the face direction (ASM-0039, ASM-0040)", () => {
+    const arm: PalletArm = { angle: 0.3, length: 2e-3, faceAngle: 0.3 + (24 * Math.PI) / 180 };
+    const outline = generatePalletStoneOutline(arm);
+    expect(outline).toHaveLength(4);
+    expect(Math.abs(signedArea(outline))).toBeGreaterThan(0);
+    expect(isSelfIntersecting(outline)).toBe(false);
   });
 });
 

@@ -5,7 +5,7 @@ import type { EntityId } from "@/domain/ids";
 import type { ShaftId } from "@/domain/shaft";
 import { createGearGeometry } from "@/geometry/gearGeometry";
 import { generateGearOutline, visualBoreRadius, type Point2D } from "@/geometry/gearOutline";
-import { barFootprint, lineCircleInterval, linePolygonIntervals, squareFootprint, subtractIntervals, type Interval } from "@/geometry/sectionCap";
+import { barFootprint, lineCircleInterval, linePolygonIntervals, subtractIntervals, type Interval } from "@/geometry/sectionCap";
 import {
   ASSEMBLY_VISUALIZATION,
   HAND_VISUALIZATION,
@@ -18,6 +18,7 @@ import {
   generateEscapeWheelOutline,
   generateHandOutline,
   handHubRadius,
+  type EscapeToothFace,
 } from "@/geometry/assemblyGeometry3d";
 import { arborZRange, frameZRange, isCompleteFrame } from "@/assembly/assemblyGeometry";
 import { partReferencePoint, type Point3 } from "@/assembly/measure";
@@ -29,10 +30,11 @@ import {
   createEscapeWheelGeometry,
   createForkGeometry,
   ESCAPEMENT_VISUALIZATION,
+  generatePalletStoneOutline,
   symbolicPalletArms,
   type PalletArm,
 } from "@/geometry/assemblyGeometry3d";
-import { isHalfToothSpan, lockingPoints, spanAngle } from "@/kinematics/palletGeometry";
+import { isHalfToothSpan, lockingPoints, spanAngle, toothDrawAngle, toothWidthAngle } from "@/kinematics/palletGeometry";
 import { isValidToothCount } from "@/math/gearMath";
 import { metres } from "@/units/length";
 
@@ -567,8 +569,17 @@ export class Viewport {
     const w = esc.escapeWheel;
     const escapeGroup = this.shaftGroups.get(esc.escapeArborShaftId);
     const tipR = w.tipDiameter / 2;
+    // The tooth's real shape, derived from pallet geometry (ASM-0038, ASM-0039, ASM-0040), when there is one to derive it from.
+    const pgForWheel = esc.pallets;
+    const escapeToothFace: EscapeToothFace | undefined =
+      pgForWheel !== null && Number.isInteger(w.toothCount) && w.toothCount > 0
+        ? {
+            toothWidthAngle: toothWidthAngle(w.toothCount, pgForWheel.widthAngle, pgForWheel.dropAngle),
+            toothDrawAngle: Number.isFinite(pgForWheel.drawAngle) && pgForWheel.drawAngle > 0 ? toothDrawAngle(pgForWheel.drawAngle) : 0,
+          }
+        : undefined;
     if (escapeGroup !== undefined && Number.isInteger(w.toothCount) && w.toothCount > 0 && tipR > 0 && w.thickness > 0 && Number.isFinite(w.zCentre)) {
-      const mesh = new THREE.Mesh(createEscapeWheelGeometry(w.toothCount, tipR, w.thickness), material(COLORS.escapeWheel, { metalness: 0.6, roughness: 0.35 }));
+      const mesh = new THREE.Mesh(createEscapeWheelGeometry(w.toothCount, tipR, w.thickness, escapeToothFace), material(COLORS.escapeWheel, { metalness: 0.6, roughness: 0.35 }));
       const meshZ = this.displayZ(w.zCentre);
       mesh.position.z = meshZ;
       pick(mesh, COLORS.escapeWheel, escapeGroup);
@@ -580,7 +591,7 @@ export class Viewport {
         zHi: meshZ + w.thickness / 2,
         footprint: {
           kind: "polygonWithHole",
-          points: generateEscapeWheelOutline(w.toothCount, tipR),
+          points: generateEscapeWheelOutline(w.toothCount, tipR, escapeToothFace),
           holeRadius: escapeWheelHubRadius(tipR),
           holeCentre: { x: 0, y: 0 },
         },
@@ -633,14 +644,20 @@ export class Viewport {
     if (palletGroup !== undefined && pallet !== undefined && escape !== undefined && balance !== undefined && Number.isFinite(w.zCentre)) {
       const toEscape = Math.hypot(escape.x - pallet.x, escape.y - pallet.y);
       const toBalance = Math.hypot(balance.x - pallet.x, balance.y - pallet.y);
-      // With pallet geometry the stones sit on the locking points (ASM-0025); otherwise the arms are symbolic.
+      // With pallet geometry the stones sit on the locking points (ASM-0025), oriented by draw (ASM-0039, ASM-0040); otherwise the arms are symbolic.
       const pg = esc.pallets;
       const arms: [PalletArm, PalletArm] =
         pg !== null && isHalfToothSpan(pg.spanTeeth) && isValidToothCount(w.toothCount) && tipR > 0
-          ? (lockingPoints(escape, pallet, metres(tipR), spanAngle(w.toothCount, pg.spanTeeth)).map((p) => ({
-              angle: Math.atan2(p.y - pallet.y, p.x - pallet.x),
-              length: Math.hypot(p.x - pallet.x, p.y - pallet.y),
-            })) as [PalletArm, PalletArm])
+          ? (lockingPoints(escape, pallet, metres(tipR), spanAngle(w.toothCount, pg.spanTeeth)).map((p, i) => {
+              // Mirrored pair (entry/exit), per Playtner: one locking face inclines toward the pallet centre, the other away (SRC-0036 "The Draw").
+              const sign = i === 0 ? 1 : -1;
+              const radialAngle = Math.atan2(p.y - escape.y, p.x - escape.x);
+              return {
+                angle: Math.atan2(p.y - pallet.y, p.x - pallet.x),
+                length: Math.hypot(p.x - pallet.x, p.y - pallet.y),
+                faceAngle: Number.isFinite(pg.drawAngle) && pg.drawAngle > 0 ? radialAngle + sign * pg.drawAngle : null,
+              };
+            }) as [PalletArm, PalletArm])
           : symbolicPalletArms(Math.atan2(escape.y - pallet.y, escape.x - pallet.x), Math.max(toEscape - tipR * 0.9, toEscape * 0.2));
       const towardBalance = Math.atan2(balance.y - pallet.y, balance.x - pallet.x);
       const leverLength = toBalance * 0.85;
@@ -665,14 +682,14 @@ export class Viewport {
         });
       }
       const stoneHalfThickness = (v.forkThicknessMetres * 1.5) / 2;
-      for (const { angle, length } of arms) {
+      for (const arm of arms) {
         this.cappableSolids.push({
           positionX: palletGroup.position.x,
           positionY: palletGroup.position.y,
           rotationGroup: palletGroup,
           zLo: meshZ - stoneHalfThickness,
           zHi: meshZ + stoneHalfThickness,
-          footprint: { kind: "polygon", points: squareFootprint({ x: length * Math.cos(angle), y: length * Math.sin(angle) }, v.palletStoneMetres) },
+          footprint: { kind: "polygon", points: generatePalletStoneOutline(arm) },
           color: COLORS.fork,
         });
       }

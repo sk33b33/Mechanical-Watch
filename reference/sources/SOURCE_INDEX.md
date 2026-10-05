@@ -236,11 +236,20 @@ face's inclination from the radial line through the locking point,
 derived, not declared, as conventionally double the pallet's draw, for
 point contact — "we could make it a little less or a little more", with
 a cited practical working range of 20°-28°) and the ESC-106/ESC-107/
-ESC-108 rules; CIRCULAR is named but not implemented (no closed-form
-locking offset available). The book's remaining treatment of the actual
-2D tooth/pallet face and outline construction (the engaging/disengaging
-asymmetry, the locked-vs-unlocked position correction) is out of scope
-for this pass.
+ESC-108 rules. Now also used for ASM-0040: the escape wheel's teeth and
+pallet stones are drawn as real 2D outlines (`generateEscapeWheelOutline`/
+`generatePalletStoneOutline`, `src/geometry/assemblyGeometry3d.ts`) using
+the model's own derived angles — straight-edged quadrilaterals, the
+locking edge found by an exact ray–circle intersection at the declared/
+derived draw angle, not an arbitrary visual lean; still visual only,
+not a manufacturing claim. Two of the chapter's own figures (Fig. 5,
+Fig. 28) were fetched and viewed to ground the pallet stone's general
+shape, without reverse-engineering their full construction. CIRCULAR is
+named but not implemented (no closed-form locking offset available).
+The book's remaining treatment of true lifting-face curvature, the
+tooth/pallet FACE contact geometry itself, the real/primitive-circle
+correction, the engaging/disengaging asymmetry and the locked-vs-
+unlocked position correction is out of scope for this pass.
 
 ## Mainspring torque curve and bridle slip (REF-ENG §11)
 

@@ -2,6 +2,89 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 7.1.4: real 2D outlines for escape teeth and pallet stones (ASM-0040)
+
+The capstone of the six 7.1 sub-items: replacing the escape wheel's and
+pallet fork's purely cosmetic placeholder shapes with real 2D outlines
+built from the model's own angles (toothWidthAngle, toothDrawAngle,
+draw — ASM-0037/0038/0039), flagged in the roadmap as the highest-risk
+piece ("by far the largest single piece... budget for a construction
+that may not close cleanly").
+
+- **Scoped down from Playtner's full drafting procedure, deliberately.**
+  Fetched and viewed two of SRC-0036's own figures (Fig. 5 "Diagram
+  illustrating Draw", Fig. 28 "The pallets when unlocked" — redirected
+  through www.gutenberg.org, `curl -L`, same "fetch the image and read
+  it directly" workaround already used for SRC-0037's formula images)
+  to ground the general shape before building anything. The book's full
+  construction needs information this project doesn't have a source
+  for or has already explicitly deferred: true lifting-face curvature,
+  the actual tooth/pallet FACE contact geometry, the real/primitive-
+  circle correction, the engaging/disengaging asymmetry and the locked-
+  vs-unlocked position correction (ASM-0039 already named these out of
+  scope). What shipped is a straight-edged approximation using the
+  model's own real angles, not a reproduction of the source's diagrams
+  point-for-point.
+- **Escape tooth (`generateEscapeWheelOutline`, with a tooth face):** a
+  quadrilateral — a flat top of `toothWidthAngle` at the tip circle, a
+  plain radial trailing edge to the root, and a locking edge leaning
+  `toothDrawAngle` off the radial at the locking corner. The lean is
+  found exactly via a new `rayCircleInward` helper (ray–circle
+  intersection), not an arbitrary visual angle. A near-zero (ratchet)
+  tooth width clamps to a small non-degenerate sliver so it still
+  renders. Falls back to the earlier cosmetic leaning-trapezoid shape
+  when there's no pallet geometry to derive from (same 3-point-per-
+  tooth test still passes unchanged).
+- **A real math bug caught before it shipped.** The first version of
+  `rayCircleInward` picked the far root of the quadratic instead of the
+  near one — for Playtner's own 12°→24° draw numbers this sent the
+  tooth's root corner nearly 130° around the wheel instead of the
+  expected ~10°, caught by actually computing and inspecting the
+  numbers (a scratch script) before writing any TypeScript. Fixed by
+  picking the nearer intersection (`t = -b - √disc`, not `+`).
+  Re-verified the corrected version against a hand-worked example and a
+  sweep of lean angles before moving on — exactly the kind of thing
+  this is scoped to watch for; shipping the wrong root would have
+  looked like a plausible but wrong tooth shape.
+- **Pallet stone (`generatePalletStoneOutline`, new):** a quadrilateral
+  whose near edge is the locking face through the locking point, in the
+  model's own declared/derived draw direction, swept back a fixed
+  visual depth. The two locking points get mirrored lean signs (one
+  toward the pallet axis, one away) — matching Playtner's structural
+  description that the engaging and disengaging pallets incline in
+  opposite senses, without tracking which physical pallet is which.
+  Falls back to a plain square when there's no face to derive (no
+  pallet geometry, or draw not positive).
+- **Verified geometrically, not just visually.** New tests check every
+  tooth and both the zero-draw/no-pallet-geometry fallback and the
+  derived-face cases produce a closed, non-self-intersecting polygon
+  with the expected point count and correct radius bounds (shoelace
+  area + segment-intersection checks, for all 15 teeth against
+  Playtner's own worked numbers), plus `rayCircleInward`'s own
+  behaviour (zero lean reaches the target radius directly; a lean too
+  steep to reach the target circle returns null, not NaN).
+- **Verified live in a real browser, twice over.** First, a rendered
+  screenshot of the actual app's 3D viewport (pan/zoom via mouse
+  events) showing a plausible claw-shaped escape wheel. Second — more
+  reliably — an SVG dump calling the real exported functions directly
+  with the teaching movement's own numbers, rendered and screenshotted:
+  all 15 teeth form a clean ring of hook-shaped teeth with no overlap,
+  and both pallet stones sit correctly nested in the valley at their
+  locking points, visibly mirrored. Also exercised live edits (draw,
+  pallet width, tooth kind, clearing pallet geometry entirely) to
+  confirm the viewport rebuilds without errors on every path.
+- Fixed a latent bug surfaced along the way: the section/cutaway cap
+  footprint for pallet stones still used a plain `squareFootprint` even
+  where the rendered stone was already a real wedge; now built from the
+  same `generatePalletStoneOutline` the mesh itself uses, keeping the
+  cap and the solid consistent.
+- Registered ASM-0040, extended SRC-0036's `claims_supported` and notes,
+  added a Equations-table row each for the two outline functions
+  (`TRACEABILITY.md`, APPROXIMATION/L0, matching the existing precedent
+  for `generateGearOutline`). 504 unit tests pass (496 before); `tsc -b
+  --noEmit` and `eslint` are clean; production build succeeds; full e2e
+  suite run.
+
 ## Phase 7.1.3: draw-derived escape-tooth locking face (ESC-108, ASM-0039)
 
 Third of the six 7.1 sub-items: giving `drawAngle` its actual geometric

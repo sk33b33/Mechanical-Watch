@@ -104,16 +104,20 @@ level).
     (lines, not just angles) — that needs the engaging/disengaging
     asymmetry and locked-vs-unlocked correction 7.1.4 is scoped to
     tackle alongside the full outline construction.
-  - 7.1.4 — Full 2D outline construction for the pallet stones and
-    escape-wheel teeth, replacing the current placeholder shapes
-    (`generateEscapeWheelOutline`'s fixed trapezoid, `createForkGeometry`'s
-    plain stone boxes, both in `src/geometry/assemblyGeometry3d.ts`) with
-    real locking-face + lifting-face + back profiles. The capstone:
-    combines 7.1.1-7.1.3 into actual renderable/checkable geometry, by
-    far the largest single piece — same risk category that sank the
-    trochoidal-fillet attempt (SRC-0025/ASM-0031, not shipped when its
-    own verification didn't pass), so budget for a construction that may
-    not close cleanly on the first attempt.
+  - 7.1.4 — **Done** (see `docs/STATUS.md`), scoped down from "full".
+    Replaced the placeholder shapes (`generateEscapeWheelOutline`'s
+    fixed trapezoid, `createForkGeometry`'s plain stone boxes) with
+    real, straight-edged outlines (ASM-0040) using the model's own
+    angles: a flat-top tooth of `toothWidthAngle` with a locking edge
+    leaning `toothDrawAngle` off the radial (found by exact ray–circle
+    intersection); a pallet stone whose face sits through the locking
+    point in the declared/derived draw direction. Not the "real locking-
+    face + lifting-face + back profiles" originally envisioned here:
+    true face curvature, the actual tooth/pallet contact geometry, the
+    real/primitive-circle correction and the engaging/disengaging
+    asymmetry remain unmodeled (same gaps ASM-0039 already named) — a
+    deliberate, declared simplification rather than an attempt at full
+    fidelity without the source's own diagrams fully reverse-engineered.
   - 7.1.5 — Fork and roller action (ruby pin, safety roller, guard pin,
     crescent, horn) — REF-ENG §9's "balance interaction," currently
     modeled only as an abstract `forkRatio` with no actual roller/pin
