@@ -38,7 +38,7 @@ import { forkActingLength, forkRatio, isHalfToothSpan, lockingPoints, spanAngle,
 import { isValidToothCount } from "@/math/gearMath";
 import { metres } from "@/units/length";
 
-type PickKind = "gear" | "jewel" | "escapement" | "keyless" | "arbor" | "frame" | "dial" | "moonPhase";
+type PickKind = "gear" | "jewel" | "escapement" | "keyless" | "arbor" | "frame" | "dial" | "moonPhase" | "dateStar";
 type ViewSide = "BRIDGE" | "DIAL";
 
 /**
@@ -55,7 +55,7 @@ export interface SectionState {
 const EXPLODE_STRETCH = 3;
 
 /** When several objects are under the pointer, the most specific wins. */
-const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, escapement: 2, keyless: 2, moonPhase: 2, arbor: 3, frame: 4, dial: 5 };
+const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, escapement: 2, keyless: 2, moonPhase: 2, dateStar: 2, arbor: 3, frame: 4, dial: 5 };
 
 const COLORS = {
   selected: 0x4fa3ff,
@@ -70,6 +70,7 @@ const COLORS = {
   dial: 0xe6e1d5,
   dialMarker: 0x23282e,
   moonPhase: 0xaab4c2,
+  dateStar: 0xc2a06a,
   stem: 0x9aa4ae,
   crown: 0xa9b3bd,
   pinion: 0xb8c4d0,
@@ -456,6 +457,27 @@ export class Viewport {
         zHi,
         footprint: { kind: "circle", radius: moon.diameter / 2, centre: { x: 0, y: 0 } },
         color: COLORS.moonPhase,
+      });
+    }
+
+    for (const date of Object.values(movement.dateComplications)) {
+      const group = this.shaftGroups.get(date.starShaftId);
+      const valid = Number.isFinite(date.starTipDiameter) && date.starTipDiameter > 0 && Number.isFinite(date.starThickness) && date.starThickness > 0 && Number.isFinite(date.starZCentre);
+      if (group === undefined || !valid) continue;
+      // The star's own group turns only when `stepSimulation` jumps it (ASM-0048) — the same
+      // applyKinematicRotation() loop that spins every other shaft group spins this one too, since
+      // the jump writes straight into simulation.shaftAngle; no special-case rotation code needed.
+      const meshZ = this.displayZ(date.starZCentre);
+      const mesh = new THREE.Mesh(createZCylinder(date.starTipDiameter / 2, meshZ - date.starThickness / 2, meshZ + date.starThickness / 2, 64), material(COLORS.dateStar, { metalness: 0.1, roughness: 0.7 }));
+      this.addPickable(group, mesh, { kind: "dateStar", entityId: date.id, baseColor: COLORS.dateStar });
+      this.cappableSolids.push({
+        positionX: group.position.x,
+        positionY: group.position.y,
+        rotationGroup: group,
+        zLo: meshZ - date.starThickness / 2,
+        zHi: meshZ + date.starThickness / 2,
+        footprint: { kind: "circle", radius: date.starTipDiameter / 2, centre: { x: 0, y: 0 } },
+        color: COLORS.dateStar,
       });
     }
 

@@ -337,18 +337,20 @@ propagation used everywhere else.
   teaching movement's own two-stage 8:87 reduction lands on a ~29.57-day
   lunation, about 55 minutes off the real figure, reported rather than
   engineered away.
-- 8.2 — Simple instantaneous date. The jump-mechanism proving ground.
-  SRC-0042 (read in full): a 24-hour wheel (2:1 off the hour wheel) with
-  a finger that, once per rotation, pushes a roller off a cam's tip,
-  releasing a spring that abruptly advances a 31-tooth date star one
-  step, with a concave detent limiting it to exactly one step and a
-  separate spring-loaded jumper holding the position between jumps.
-  Needs new domain entities (a star wheel, a jumper, the
-  energy-store-then-release relationship) and the display groundwork
-  from 8.1. This is where the "how does a discrete jump fit into a
-  continuous-simulation engine" design question actually gets decided —
-  do it before 8.3/8.4, which both depend on whatever answer this item
-  settles on.
+- 8.2 — **Done** (see `docs/STATUS.md`). Simple instantaneous date: the
+  jump-mechanism question settled. A new `DateComplication` entity whose
+  star wheel is NOT a continuous gear-train member — its own arbor is
+  absent from the solver's angular-velocity map (exempted from the
+  "unpowered" warning, same pattern as the escapement's oscillating
+  arbors) and is instead advanced directly inside `stepSimulation`
+  itself, once per revolution of an ordinary, continuously-driven drive
+  arbor (a 24-hour wheel, 2:1 off the hour wheel, SRC-0042), detected as
+  a forward-only threshold crossing (reversing the drive never
+  un-advances the star — a real jump mechanism's ratchet behaviour).
+  SRC-0042's own "a concave portion... preventing the latter from moving
+  by more than one step" and its 31-tooth worked example are used
+  directly. No jumper-spring energy storage or finger/cam contact
+  geometry is modeled — only this net kinematic effect.
 - 8.3 — Month / annual calendar (answers the user's "month" and part of
   "year"). SRC-0043 (read in full, ETA SA's own production design, a
   granted patent — not a hobbyist concept): the date disc gains a

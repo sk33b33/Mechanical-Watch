@@ -11,6 +11,7 @@ import { createKeylessWorks, type KeylessWorks } from "./keyless";
 import { createDial, type Dial } from "./dial";
 import { createEscapement, type Escapement } from "./escapement";
 import { createMoonPhase, type MoonPhase } from "./moonPhase";
+import { createDateComplication, type DateComplication } from "./dateComplication";
 import { radians } from "@/units/angle";
 import type { ToleranceId } from "./tolerance";
 
@@ -124,6 +125,20 @@ export function newMoonPhase(movement: Movement): MoonPhase {
   });
 }
 
+/** A date complication with every dimension empty and no arbors chosen yet (DATE-001 lists what is missing). */
+export function newDateComplication(movement: Movement): DateComplication {
+  const none = "" as ShaftId;
+  return createDateComplication({
+    name: nextName(Object.values(movement.dateComplications), "Date"),
+    driveShaftId: none,
+    starShaftId: none,
+    starToothCount: Number.NaN,
+    starTipDiameter: EMPTY,
+    starThickness: EMPTY,
+    starZCentre: EMPTY,
+  });
+}
+
 /** An escapement with every dimension empty and no arbors chosen yet (ESC-101 lists what is missing). */
 export function newEscapement(movement: Movement): Escapement {
   const none = "" as ShaftId;
@@ -204,7 +219,7 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
   }
 
   const others = new Set<string>();
-  if (id in movement.keylessWorks || id in movement.dials || id in movement.escapements || id in movement.moonPhases) others.add(id);
+  if (id in movement.keylessWorks || id in movement.dials || id in movement.escapements || id in movement.moonPhases || id in movement.dateComplications) others.add(id);
 
   const removed = new Set<string>([...frames, ...shafts, ...gears, ...meshes, ...jewels, ...couplings, ...tolerances, ...others]);
   const drive = movement.drive;
@@ -222,6 +237,7 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
       dials: without(movement.dials, removed),
       escapements: without(movement.escapements, removed),
       moonPhases: without(movement.moonPhases, removed),
+      dateComplications: without(movement.dateComplications, removed),
       drive: drive?.kind === "PRESCRIBED" && removed.has(drive.shaftId) ? null : drive,
     },
     removedIds: [...removed] as EntityId[],

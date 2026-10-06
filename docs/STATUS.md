@@ -2,6 +2,78 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.2: simple instantaneous date — done
+
+Implemented per the Phase 8 scoping: a `DateComplication` entity whose
+star wheel is NOT a continuous gear-train member — the genuinely new
+"jump" kinematic concept Phase 8 flagged as the real risk in this item,
+now designed and built.
+
+- `src/domain/dateComplication.ts`: `driveShaftId` is an ordinary,
+  already-built, continuously-driven arbor (e.g. a 24-hour wheel geared
+  2:1 from the hour wheel, SRC-0042) — zero new domain concept there,
+  same finding as 8.1's moonphase. `starShaftId` is a separate, declared
+  (FIXED-position) arbor, deliberately not meshed with anything.
+- `src/kinematics/dateComplication.ts`: `crossesRevolution` (pure,
+  forward-only threshold-crossing detection — the ratchet behaviour real
+  jump mechanisms have: reversing the drive, e.g. setting the hands
+  backward through the trigger point, never un-advances the star),
+  `dateJumpStepAngle` (2π / starToothCount) and `starPosition` (reads the
+  star's current discrete position, rounding against floating-point
+  drift).
+- **The actual jump lives in the simulation layer**, not a display-only
+  offset like the escapement's phase trick: `DateJumpTrack`/
+  `dateJumpTracks` in `src/simulation/simulationState.ts`, applied inside
+  `stepSimulation` itself — each step, for every declared date
+  complication, reads the drive arbor's pre-step angle from `state` (never
+  mutated) and the solved gear train's live angular velocity, and if
+  `crossesRevolution` fires, nudges the star's own stored angle forward by
+  one step directly. The star is otherwise untouched by the normal
+  per-shaft continuous-velocity loop (it isn't gear-meshed, so it's absent
+  from the solver's angular-velocity map) — confirmed correct via a
+  dedicated `KIN-001` exemption (`dateStarShaftIds`, same pattern as the
+  escapement's `oscillatingShaftIds`) so it isn't flagged "unpowered."
+- DATE-001 (dimensions/references), DATE-002 (the star must not also be
+  continuously geared — a real configuration conflict, not just an
+  advisory) and DATE-003 (the drive arbor's implied jump period, reported
+  against one day, ±10% info/warning split) in
+  `src/validation/rules/dateComplicationRules.ts`.
+- Inspector section, component-tree "+ Date" button, component report
+  rows, and a 3D viewport disc on the star's own shaft group — turns only
+  when the simulation jumps it, via the same `applyKinematicRotation`
+  loop that spins every other shaft group, since the jump writes directly
+  into `simulation.shaftAngle`. No special-case rendering code needed.
+- Schema migration v18 → v19.
+- Teaching movement: a real 24-hour wheel (8:16, exactly 2:1 off the hour
+  wheel, SRC-0042) and a 31-tooth date star (SRC-0042's own worked
+  number) on its own declared arbor. Verified live: implied jump period
+  reads "1 rev per 24.002 h" (the balance governs the whole train at
+  very slightly off nominal, same ~0.004% deviation already reported
+  elsewhere in this design) — correctly classified as `info`, well inside
+  DATE-003's ±10% tolerance.
+- The guided tutorial was extended to match (24-hour pinion/arbor/wheel,
+  their mesh, the star's own declared arbor, the date complication
+  itself), preserving the existing enforced tutorial/reference-design
+  parity invariant.
+
+Verified: unit tests for the pure kinematics functions (nominal,
+boundary, ratchet/reversal cases) and for the simulation-layer jump
+integration directly (`simulationState.test.ts`'s new "date jump"
+block: no movement mid-revolution, exactly one step per revolution, many
+revolutions wrapping correctly at the tooth count, no movement on a
+stationary or reversed drive), a dedicated validation-rule test file
+(`dateComplicationRules.test.ts`, mirroring the existing
+escapementRules.test.ts pattern), the full suite (577 tests), typecheck,
+lint, a production build, a live-browser check (inspector values,
+validation message and a 5-step simulation advance with no crash and no
+premature jump), and the full e2e suite including the guided-tutorial
+walkthrough.
+
+Next in Phase 8's recommended order: 8.3 (month / annual calendar),
+which depends on this item's jump-mechanism design and extends it with
+an intermittently-engaged kinematic chain (the date disc's own
+month-end correction step, and the month star's own drive, per SRC-0043).
+
 ## Phase 8.1: moonphase disc — done
 
 Implemented per the Phase 8 scoping (below): a new `MoonPhase` domain

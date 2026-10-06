@@ -1,7 +1,7 @@
 import type { AppStore } from "@/app/store";
 import type { EntityId } from "@/domain/ids";
-import { addDial, addEscapement, addFrame, addKeylessWorks, addMoonPhase, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
-import { newDial, newEscapement, newFrame, newKeylessWorks, newMoonPhase, newShaft } from "@/domain/editing";
+import { addDateComplication, addDial, addEscapement, addFrame, addKeylessWorks, addMoonPhase, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
+import { newDateComplication, newDial, newEscapement, newFrame, newKeylessWorks, newMoonPhase, newShaft } from "@/domain/editing";
 import { listAssumptions } from "@/reference/assumptions";
 
 export function mountComponentTree(container: HTMLElement, store: AppStore): () => void {
@@ -96,6 +96,10 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
         const moonPhase = newMoonPhase(m);
         return { movement: addMoonPhase(m, moonPhase), id: moonPhase.id };
       }, "add-moon-phase"),
+      addButton("+ Date", "Add a simple instantaneous date mechanism with every value empty; then choose its arbors", (m) => {
+        const date = newDateComplication(m);
+        return { movement: addDateComplication(m, date), id: date.id };
+      }, "add-date"),
     );
     container.appendChild(actions);
 
@@ -139,6 +143,11 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
     if (Object.keys(movement.moonPhases).length > 0) {
       container.appendChild(header("Moon phase"));
       for (const moon of Object.values(movement.moonPhases)) container.appendChild(item(moon.name, moon.id, 0));
+    }
+
+    if (Object.keys(movement.dateComplications).length > 0) {
+      container.appendChild(header("Date"));
+      for (const date of Object.values(movement.dateComplications)) container.appendChild(item(date.name, date.id, 0, "(jump mechanism)"));
     }
 
     container.appendChild(header("Assumptions"));

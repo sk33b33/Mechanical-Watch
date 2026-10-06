@@ -12,6 +12,7 @@ import type { KeylessWorks, KeylessWorksId } from "./keyless";
 import type { Dial, DialId } from "./dial";
 import type { Escapement, EscapementId } from "./escapement";
 import type { MoonPhase, MoonPhaseId } from "./moonPhase";
+import type { DateComplication, DateComplicationId } from "./dateComplication";
 import type { ValidationLevel } from "@/reference/validationLevels";
 
 export type MovementId = EntityId<"movement">;
@@ -60,6 +61,8 @@ export interface Movement {
   escapements: Record<EscapementId, Escapement>;
   /** Zero or more; each driven continuously by its own arbor (ASM-0047, Phase 8.1). */
   moonPhases: Record<MoonPhaseId, MoonPhase>;
+  /** Zero or more; each star advanced only by a jump, not continuous gear-train propagation (ASM-0048, Phase 8.2). */
+  dateComplications: Record<DateComplicationId, DateComplication>;
   drive: Drive | null;
   /**
    * The level this design's model targets (REFERENCE_ENGINEERING.md §15).
@@ -89,6 +92,7 @@ export function createMovement(
     dials: {},
     escapements: {},
     moonPhases: {},
+    dateComplications: {},
     drive: null,
   };
 }
@@ -180,6 +184,18 @@ export function updateMoonPhase(movement: Movement, id: MoonPhaseId, patch: Part
     throw new Error(`Unknown moon phase id: ${id}`);
   }
   return { ...movement, moonPhases: { ...movement.moonPhases, [id]: { ...existing, ...patch } } };
+}
+
+export function addDateComplication(movement: Movement, date: DateComplication): Movement {
+  return { ...movement, dateComplications: { ...movement.dateComplications, [date.id]: date } };
+}
+
+export function updateDateComplication(movement: Movement, id: DateComplicationId, patch: Partial<Omit<DateComplication, "id" | "type">>): Movement {
+  const existing = movement.dateComplications[id];
+  if (existing === undefined) {
+    throw new Error(`Unknown date complication id: ${id}`);
+  }
+  return { ...movement, dateComplications: { ...movement.dateComplications, [id]: { ...existing, ...patch } } };
 }
 
 /**

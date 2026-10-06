@@ -285,6 +285,12 @@ export const ASSUMPTIONS = {
     scope: "MoonPhase disc (Phase 8.1, kinematic, L2)",
     status: "Active",
   },
+  "ASM-0048": {
+    summary:
+      "DateComplication (Phase 8.2): a simple instantaneous date star wheel that is NOT a continuous gear-train member -- it advances by exactly one step (2 pi / starToothCount) once per full revolution of a separate, ordinary, continuously-driven drive arbor (e.g. a 24-hour wheel geared 2:1 from the hour wheel), detected as a forward-only crossing of the drive shaft's own angle reference (crossesRevolution). SRC-0042 (a granted patent): 'the driving wheel 3 makes one turn in twenty-four hours' via that 2:1 ratio, drives 'a calendar mobile 1... bearing the numerals 0 to 31... with an inner toothing 1a of thirty-one teeth' forward 'one step' per drive revolution, with 'a concave portion... preventing the latter from moving by more than one step.' No jumper-spring energy storage, finger/cam contact geometry, or quick-correction mechanism is modeled -- only this net kinematic effect. Reversing the drive shaft (e.g. setting the hands backward through the trigger point) does not un-advance the star: real jump mechanisms are one-way (ratchet/jumper-spring action), so only forward crossings fire the jump -- a structural assumption about how any real star-and-jumper mechanism behaves, not itself drawn from a specific quote. starToothCount accepts any positive integer structurally (the same kinematics would describe a day-of-week star), though this project's Phase 8 scope is the date specifically (31, SRC-0042's own worked number, used in the teaching movement).",
+    scope: "DateComplication (Phase 8.2, kinematic, L2)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

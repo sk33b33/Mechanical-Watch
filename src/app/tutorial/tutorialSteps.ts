@@ -1,6 +1,6 @@
 import type { EntityId } from "@/domain/ids";
 import type { Movement } from "@/domain/movement";
-import { addDial, addEscapement, addFrame, addGear, addKeylessWorks, addMoonPhase, addShaft } from "@/domain/movement";
+import { addDateComplication, addDial, addEscapement, addFrame, addGear, addKeylessWorks, addMoonPhase, addShaft } from "@/domain/movement";
 import type { Frame } from "@/domain/frame";
 import type { Gear } from "@/domain/gear";
 import type { Coupling } from "@/domain/coupling";
@@ -183,11 +183,17 @@ function buildTeachingMovementSteps(): TutorialStep[] {
   const moonDiscArbor = byName(ref.shafts, "Moon disc arbor");
   const moonWheel2 = byName(ref.gears, "Moon wheel 2");
 
+  const twentyFourHourPinionGear = byName(ref.gears, "24-hour pinion");
+  const twentyFourHourArbor = byName(ref.shafts, "24-hour arbor");
+  const twentyFourHourWheel = byName(ref.gears, "24-hour wheel");
+  const dateStarArbor = byName(ref.shafts, "Date star");
+
   const mainspring = couplingOfKind(ref.couplings, "MAINSPRING");
   const keylessWorks = only(ref.keylessWorks);
   const dial = only(ref.dials);
   const escapement = only(ref.escapements);
   const moonPhase = only(ref.moonPhases);
+  const dateComplication = only(ref.dateComplications);
 
   return [
     {
@@ -350,6 +356,21 @@ function buildTeachingMovementSteps(): TutorialStep[] {
       createOverride: (m) => ({ movement: addMoonPhase(m, moonPhase), id: moonPhase.id }),
     },
 
+    gearStep("add-twenty-four-hour-pinion", "Add the date mechanism's drive pinion", "Back on the hour wheel arbor once more, click “Add gear”: an 8-tooth pinion — the “24-hour wheel” SRC-0042 describes.", twentyFourHourPinionGear, "add-hour-wheel-arbor"),
+    arborStep("add-twenty-four-hour-arbor", "Add the 24-hour arbor", "Click “+ Arbor” for a new arbor, 9 o'clock from the hour wheel.", twentyFourHourArbor, solvedFixed(twentyFourHourArbor)),
+    gearStep("add-twenty-four-hour-wheel", "Give it a 16-tooth wheel", "Click “Add gear”: 16 teeth — 2:1 off the hour wheel, so this arbor turns once every 24 hours (SRC-0042).", twentyFourHourWheel),
+    meshStep("mesh-hour-twenty-four-hour", "Mesh the drive pinion with the 24-hour wheel", twentyFourHourPinionGear, twentyFourHourWheel, "add-twenty-four-hour-pinion"),
+    arborStep("add-date-star-arbor", "Add the date star's own arbor", "Click “+ Arbor” — its position is declared, not derived: the star is not meshed with anything (ASM-0048).", dateStarArbor, solvedFixed(dateStarArbor)),
+    {
+      id: "add-date",
+      title: "Add the date complication",
+      instructions:
+        "Click “+ Date” — the drive and star arbors, star tooth count (31) and dimensions all come from the real design. This is the genuinely new part: the star advances by one step per 24-hour-wheel revolution, never continuously and never backward (ASM-0048).",
+      targetSelector: '[data-tutorial="add-date"]',
+      isComplete: (m) => m.dateComplications[dateComplication.id] !== undefined,
+      createOverride: (m) => ({ movement: addDateComplication(m, dateComplication), id: dateComplication.id }),
+    },
+
     {
       id: "set-balance-drive",
       title: "Let the balance govern the rate",
@@ -373,9 +394,9 @@ function buildTeachingMovementSteps(): TutorialStep[] {
 
 /**
  * Covers the whole teaching movement: going train, motion works, keyless
- * works, mainspring, dial, escapement and moonphase disc — everything
- * createTeachingMovement() builds. Extending it further (a second design,
- * or a from-scratch design
+ * works, mainspring, dial, escapement, moonphase disc and the date
+ * complication — everything createTeachingMovement() builds. Extending it
+ * further (a second design, or a from-scratch design
  * with genuinely invented — i.e. user-declared-as-they-go — dimensions)
  * follows the same pattern.
  */

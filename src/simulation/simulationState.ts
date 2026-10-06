@@ -6,7 +6,9 @@ import type { Movement } from "@/domain/movement";
 import type { ShaftId } from "@/domain/shaft";
 import { stemBodyId, type StemBodyId } from "@/domain/keyless";
 import { mainsprings, type CouplingId } from "@/domain/coupling";
+import type { DateComplicationId } from "@/domain/dateComplication";
 import type { GearTrainSolution } from "@/kinematics/solveGearTrain";
+import { crossesRevolution, dateJumpStepAngle } from "@/kinematics/dateComplication";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 
 /**
@@ -82,6 +84,26 @@ export function reconcileWind(state: SimulationState, movement: Movement): Simul
   return same ? state : { ...state, mainspringWind: next };
 }
 
+/**
+ * A declared date complication (ASM-0048), ready for stepping: which
+ * arbor's revolutions trigger the jump, which arbor the jump advances,
+ * and by how much. Built fresh whenever the design or its solved train
+ * changes, same lifecycle as `WindTrack`.
+ */
+export interface DateJumpTrack {
+  id: DateComplicationId;
+  driveShaftId: ShaftId;
+  starShaftId: ShaftId;
+  stepAngle: Angle;
+}
+
+export function dateJumpTracks(movement: Movement): DateJumpTrack[] {
+  return Object.values(movement.dateComplications).flatMap((date) => {
+    if (!(Number.isInteger(date.starToothCount) && date.starToothCount > 0)) return [];
+    return [{ id: date.id, driveShaftId: date.driveShaftId, starShaftId: date.starShaftId, stepAngle: dateJumpStepAngle(date.starToothCount) }];
+  });
+}
+
 export function windTracks(movement: Movement, running: GearTrainSolution): WindTrack[] {
   return mainsprings(movement.couplings).flatMap((link) => {
     const drumOmega = running.shaftAngularVelocity.get(link.shaftBId);
@@ -96,6 +118,7 @@ export function stepSimulation(
   solution: GearTrainSolution,
   dtSeconds: number = NUMERICAL_PARAMETERS.simulationTimestepSeconds,
   tracks: readonly WindTrack[] = [],
+  dateJumps: readonly DateJumpTrack[] = [],
 ): SimulationState {
   const nextShaftAngle: Record<ShaftId, Angle> = { ...state.shaftAngle };
   for (const [shaftId, angularVelocity] of solution.shaftAngularVelocity) {
@@ -105,6 +128,18 @@ export function stepSimulation(
       throw new NonFiniteSimulationStateError(`SIM-001: shaft ${shaftId} angle became non-finite`);
     }
     nextShaftAngle[shaftId] = normalizeAngle(radians(next));
+  }
+  // Date star arbors (ASM-0048) are not continuous gear-train members, so the loop above never
+  // touches them; a jump, when the drive arbor crosses its own revolution, advances the star
+  // directly by one step instead. Read from the drive arbor's pre-step angle (`state`, never
+  // mutated here), forward crossings only (`crossesRevolution`'s own ratchet behaviour).
+  for (const track of dateJumps) {
+    const driveOmega = solution.shaftAngularVelocity.get(track.driveShaftId);
+    if (driveOmega === undefined) continue;
+    const previousDriveAngle = state.shaftAngle[track.driveShaftId] ?? radians(0);
+    if (!crossesRevolution(previousDriveAngle, driveOmega, dtSeconds)) continue;
+    const current = nextShaftAngle[track.starShaftId] ?? radians(0);
+    nextShaftAngle[track.starShaftId] = normalizeAngle(radians(current + track.stepAngle));
   }
   const nextStemAngle: Record<StemBodyId, Angle> = { ...state.stemAngle };
   for (const [id, angularVelocity] of solution.stemAngularVelocity) {
@@ -154,6 +189,7 @@ export function advanceSimulation(
   source: SolutionSource,
   elapsedRealSeconds: number,
   tracks: readonly WindTrack[] = [],
+  dateJumps: readonly DateJumpTrack[] = [],
 ): SimulationState {
   const dt = NUMERICAL_PARAMETERS.simulationTimestepSeconds;
   let pending = state.pendingSeconds + Math.max(0, elapsedRealSeconds);
@@ -165,7 +201,7 @@ export function advanceSimulation(
 
   let next = state;
   for (let i = 0; i < steps; i += 1) {
-    next = stepSimulation(next, typeof source === "function" ? source(next) : source, dt, tracks);
+    next = stepSimulation(next, typeof source === "function" ? source(next) : source, dt, tracks, dateJumps);
   }
   return { ...next, pendingSeconds: pending - steps * dt };
 }

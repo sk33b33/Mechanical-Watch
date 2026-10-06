@@ -14,6 +14,7 @@ import type { Escapement } from "@/domain/escapement";
 import type { MoonPhase } from "@/domain/moonPhase";
 import { windowsPerRevolution } from "@/domain/moonPhase";
 import { impliedLunationDays, lunationDriftMinutes, SYNODIC_MONTH_DAYS } from "@/kinematics/moonPhase";
+import type { DateComplication } from "@/domain/dateComplication";
 import { toBeatsPerHour } from "@/units/frequency";
 import { balanceFrequency, beatFrequency, beatsPerEscapeRevolution, impulseFraction } from "@/kinematics/escapement";
 import { isochronismAdjustedRate, MIDDLE_TEMPERATURE_CELSIUS, temperatureAdjustedRate, USUAL_TEMPERATURE_RANGE_CELSIUS } from "@/kinematics/balance";
@@ -67,7 +68,7 @@ export interface ToleranceRow {
   scope: string;
 }
 
-export type ComponentKind = "Frame" | "Arbor" | "Gear" | "Bearing" | "Keyless works" | "Dial" | "Escapement" | "Moon phase";
+export type ComponentKind = "Frame" | "Arbor" | "Gear" | "Bearing" | "Keyless works" | "Dial" | "Escapement" | "Moon phase" | "Date";
 
 export interface ComponentReport {
   id: EntityId;
@@ -490,6 +491,45 @@ function moonPhaseReport(movement: Movement, analysis: MovementAnalysis, moon: M
   };
 }
 
+function dateComplicationReport(movement: Movement, analysis: MovementAnalysis, date: DateComplication): ComponentReport {
+  const omega = analysis.train.shaftAngularVelocity.get(date.driveShaftId);
+  const toothCountValid = Number.isInteger(date.starToothCount) && date.starToothCount > 0;
+  return {
+    id: date.id,
+    name: date.name,
+    kind: "Date",
+    description: "jump mechanism (one step per drive revolution, no jumper/cam mechanism modeled)",
+    parameters: [
+      entered("Drive arbor", movement.shafts[date.driveShaftId]?.name ?? "not chosen"),
+      entered("Star arbor", movement.shafts[date.starShaftId]?.name ?? "not chosen"),
+      entered("Star tooth count", toothCountValid ? String(date.starToothCount) : "not set", toothCountValid ? date.starToothCount : null),
+      lengthParam("Star tip diameter", date.starTipDiameter),
+      lengthParam("Star thickness", date.starThickness),
+      lengthParam("Star mid-plane height", date.starZCentre),
+    ],
+    derived: [
+      {
+        label: "Implied jump period",
+        text: omega === undefined || omega === 0 ? "not driven" : formatPeriod(omega),
+        si: omega === undefined || omega === 0 ? null : (2 * Math.PI) / Math.abs(omega),
+        equation: "T = 2π / |ω_drive|, versus one day for a standard date mechanism",
+        level: "L2_KINEMATIC",
+        references: ["ASM-0048", "SRC-0042"],
+      },
+      {
+        label: "Jump step",
+        text: toothCountValid ? `${(360 / date.starToothCount).toFixed(2)}°` : "—",
+        si: toothCountValid ? (2 * Math.PI) / date.starToothCount : null,
+        equation: "2π / starToothCount",
+        level: "L2_KINEMATIC",
+        references: ["ASM-0048"],
+      },
+    ],
+    tolerances: [],
+    issues: issuesFor(analysis, date.id),
+  };
+}
+
 function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: Escapement): ComponentReport {
   const w = esc.escapeWheel;
   const b = esc.balance;
@@ -661,6 +701,7 @@ export function componentReports(movement: Movement, analysis: MovementAnalysis)
     ...Object.values(movement.dials).sort(byName).map((d) => dialReport(movement, analysis, d)),
     ...Object.values(movement.escapements).sort(byName).map((e) => escapementReport(movement, analysis, e)),
     ...Object.values(movement.moonPhases).sort(byName).map((m) => moonPhaseReport(movement, analysis, m)),
+    ...Object.values(movement.dateComplications).sort(byName).map((d) => dateComplicationReport(movement, analysis, d)),
   ];
 }
 

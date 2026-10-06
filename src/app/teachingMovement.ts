@@ -20,8 +20,9 @@ import { createJewel } from "@/domain/jewel";
 import { createFrictionClutch, createMainspring } from "@/domain/coupling";
 import { createKeylessWorks } from "@/domain/keyless";
 import { createDial } from "@/domain/dial";
-import { addDial, addEscapement, addKeylessWorks, addMoonPhase, setBalanceDrive } from "@/domain/movement";
+import { addDateComplication, addDial, addEscapement, addKeylessWorks, addMoonPhase, setBalanceDrive } from "@/domain/movement";
 import { createMoonPhase } from "@/domain/moonPhase";
+import { createDateComplication } from "@/domain/dateComplication";
 import { micronewtonMillimetresPerRadian, milligramSquareCentimetres } from "@/units/rotational";
 import { newtonMillimetres } from "@/units/torque";
 import { spanAngle, tangentialCentreDistance } from "@/kinematics/palletGeometry";
@@ -166,6 +167,21 @@ export function createTeachingMovement(): Movement {
   const moonDiscArbor = shaft("Moon disc arbor", null, { kind: "STUD", frameId: mainplate.id });
   const moonWheel2 = gear("Moon wheel 2", moonDiscArbor, 87, motionModule, -1.26, 0.06);
 
+  // Simple instantaneous date (Phase 8.2, ASM-0048): the "24-hour wheel" is an ordinary
+  // continuous reduction, same engine as the moonphase train above — 2:1 off the hour wheel's
+  // own arbor, at 9 o'clock this time (SRC-0042: "the driving wheel 3 makes one turn in
+  // twenty-four hours"). The date star itself is NOT meshed with anything: it is a separate,
+  // declared (FIXED-position) arbor that the DateComplication entity below advances by one
+  // step per 24-hour-wheel revolution — the genuinely new "jump" kinematics this item scoped.
+  // Stud-mounted, like the minute wheel and moonphase train, so it needs no dial-side bearing.
+  const twentyFourHourPinion = gear("24-hour pinion", hourWheel, 8, motionModule, -0.85, 0.06);
+  const twentyFourHourArbor = shaft("24-hour arbor", null, { kind: "STUD", frameId: mainplate.id });
+  const twentyFourHourWheel = gear("24-hour wheel", twentyFourHourArbor, 16, motionModule, -0.85, 0.1);
+  // Declared, not mesh-derived (there is no real gear mesh to derive it from, same as the
+  // pallet arbor/balance staff below): a plausible clearance further along the same 9 o'clock
+  // line from the 24-hour arbor, comfortably inside the mainplate and clear of the dial back.
+  const dateStarArbor = shaft("Date star", null, { kind: "STUD", frameId: mainplate.id });
+
   // Keyless works. Ratchet and crown wheel just above the mainplate (its top face is at 1.0 mm).
   const keylessModule = mm(0.1);
   const ratchetWheel = gear("Ratchet wheel", barrelArbor, 40, keylessModule, 1.1, 0.2);
@@ -183,6 +199,7 @@ export function createTeachingMovement(): Movement {
   const settingToMinute = mesh(settingWheel, minuteWheelGear);
   const hourToMoon1 = mesh(moonPinion, moonWheel1);
   const moon1ToMoon2 = mesh(moonPinion2, moonWheel2);
+  const hourToTwentyFourHour = mesh(twentyFourHourPinion, twentyFourHourWheel);
 
   let m = createMovement("Teaching movement: going train and motion works", true);
   m = addFrame(m, mainplate);
@@ -198,18 +215,18 @@ export function createTeachingMovement(): Movement {
   m = addFrame(m, balanceCock);
   for (const s of [
     barrel, centre, third, fourth, escape, cannon, minuteWheel, hourWheel, barrelArbor, crownWheelArbor, settingWheelArbor,
-    moonReductionArbor, moonDiscArbor,
+    moonReductionArbor, moonDiscArbor, twentyFourHourArbor, dateStarArbor,
   ]) {
     m = addShaft(m, s);
   }
   for (const g of [
     barrelDrum, centrePinion, centreWheel, thirdPinion, thirdWheel, fourthPinion, fourthWheel, escapePinion,
     cannonPinion, minuteWheelGear, minutePinion, hourWheelGear, ratchetWheel, crownWheel, settingWheel,
-    moonPinion, moonWheel1, moonPinion2, moonWheel2,
+    moonPinion, moonWheel1, moonPinion2, moonWheel2, twentyFourHourPinion, twentyFourHourWheel,
   ]) m = addGear(m, g);
   for (const g of [
     barrelToCentre, centreToThird, thirdToFourth, fourthToEscape, cannonToMinute, minuteToHour, crownToRatchet, settingToMinute,
-    hourToMoon1, moon1ToMoon2,
+    hourToMoon1, moon1ToMoon2, hourToTwentyFourHour,
   ]) {
     m = addGearMesh(m, g);
   }
@@ -249,6 +266,11 @@ export function createTeachingMovement(): Movement {
   // train and balance bridges and well inside both the mainplate and the dial.
   polar(moonReductionArbor, hourWheel, hourToMoon1, 270);
   polar(moonDiscArbor, moonReductionArbor, moon1ToMoon2, 270);
+  // 9 o'clock from the hour wheel, clear of the moonphase train (6 o'clock) and the stem line.
+  polar(twentyFourHourArbor, hourWheel, hourToTwentyFourHour, 180);
+  // Declared, not mesh-derived (the star is not meshed with anything, ASM-0048) — a plausible
+  // clearance further along the same 9 o'clock line.
+  m = updateShaft(m, dateStarArbor.id, { placement: fixedAt(mm(-6), mm(0)) });
 
   // Put the crown wheel and setting wheel on the stem line y = 0 (the centre arbor is at the origin).
   // Each is placed from its partner by its mesh; the angle is the one that lands on y = 0 on the crown side.
@@ -287,6 +309,17 @@ export function createTeachingMovement(): Movement {
     // Clear of moon wheel 2 (−1.26 ± 0.03 mm) and the dial's own back (−1.4 mm).
     faceHeight: mm(-1.35),
     windowCount: "DOUBLE",
+  }));
+  m = addDateComplication(m, createDateComplication({
+    name: "Date",
+    driveShaftId: twentyFourHourArbor.id,
+    starShaftId: dateStarArbor.id,
+    // 31 positions, SRC-0042's own worked example ("a calendar mobile 1... bearing the numerals
+    // 0 to 31... with an inner toothing 1a of thirty-one teeth").
+    starToothCount: 31,
+    starTipDiameter: mm(5),
+    starThickness: mm(0.15),
+    starZCentre: mm(-1.2),
   }));
 
   // Pallet arbor and balance staff: fixed positions along a line from the escape arbor

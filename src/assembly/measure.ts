@@ -47,6 +47,8 @@ function axisOf(placement: PlacementSolution, entity: SelectableEntity): Vec2 | 
       return placement.shaftPositions.get(entity.escapeArborShaftId) ?? null;
     case "MoonPhase":
       return placement.shaftPositions.get(entity.shaftId) ?? null;
+    case "DateComplication":
+      return placement.shaftPositions.get(entity.starShaftId) ?? null;
     case "Frame":
     case "KeylessWorks":
       return "none";
@@ -84,6 +86,10 @@ function zRangeOf(movement: Movement, entity: SelectableEntity): ZRange | null {
     case "MoonPhase":
       return Number.isFinite(entity.faceHeight) && Number.isFinite(entity.thickness) && entity.thickness > 0
         ? { lo: entity.faceHeight, hi: entity.faceHeight + entity.thickness }
+        : null;
+    case "DateComplication":
+      return Number.isFinite(entity.starZCentre) && Number.isFinite(entity.starThickness) && entity.starThickness > 0
+        ? { lo: entity.starZCentre - entity.starThickness / 2, hi: entity.starZCentre + entity.starThickness / 2 }
         : null;
   }
 }

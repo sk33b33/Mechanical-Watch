@@ -11,10 +11,13 @@ import {
   advanceSimulation,
   NonFiniteSimulationStateError,
   reconcileWind,
+  type DateJumpTrack,
   type WindTrack,
 } from "./simulationState";
 import type { CouplingId } from "@/domain/coupling";
 import { newtonMillimetres } from "@/units/torque";
+import type { DateComplicationId } from "@/domain/dateComplication";
+import { dateJumpStepAngle } from "@/kinematics/dateComplication";
 
 const shaftId = "shaft_1" as ShaftId;
 const movement = { shafts: { [shaftId]: {} }, keylessWorks: {}, couplings: {} } as unknown as Movement;
@@ -150,5 +153,52 @@ describe("mainspring wind (ASM-0026)", () => {
     expect(reconcileWind(state, fewer).mainspringWind[springId]).toBe(4);
     expect(reconcileWind(state, { ...withSpring, couplings: {} }).mainspringWind).toEqual({});
     expect(reconcileWind({ ...state, mainspringWind: {} }, withSpring).mainspringWind[springId]).toBe(6.5);
+  });
+});
+
+describe("date jump (ASM-0048)", () => {
+  const driveShaftId = "shaft_drive" as ShaftId;
+  const starShaftId = "shaft_star" as ShaftId;
+  const dateId = "dateComplication_1" as DateComplicationId;
+  const starToothCount = 31;
+  const track: DateJumpTrack = { id: dateId, driveShaftId, starShaftId, stepAngle: dateJumpStepAngle(starToothCount) };
+  const withDate = { shafts: { [driveShaftId]: {}, [starShaftId]: {} }, keylessWorks: {}, couplings: {} } as unknown as Movement;
+  const driveSolution = (revPerSecond: number): GearTrainSolution => ({
+    ...solutionAt(0),
+    shaftAngularVelocity: new Map([[driveShaftId, radiansPerSecond(revPerSecond * 2 * Math.PI)]]),
+  });
+
+  it("the star does not move mid-revolution", () => {
+    // 0.25 Hz drive over 0.5 s = 1/8 turn: nowhere near a full revolution.
+    const next = stepSimulation(createSimulationState(withDate), driveSolution(0.25), 0.5, [], [track]);
+    expect(next.shaftAngle[starShaftId] ?? radians(0)).toBe(0);
+  });
+
+  it("one full drive revolution advances the star by exactly one step", () => {
+    // 1 Hz drive over 1 s = exactly one revolution.
+    const next = stepSimulation(createSimulationState(withDate), driveSolution(1), 1, [], [track]);
+    expect(toDegrees(next.shaftAngle[starShaftId] ?? radians(0))).toBeCloseTo(360 / starToothCount, 9);
+  });
+
+  it("many revolutions advance many steps, wrapping at the tooth count", () => {
+    let state = createSimulationState(withDate);
+    // 33 one-second steps at 1 Hz = 33 revolutions; the star has only 31 positions.
+    for (let i = 0; i < 33; i += 1) state = stepSimulation(state, driveSolution(1), 1, [], [track]);
+    const expectedSteps = 33 % starToothCount;
+    expect(toDegrees(state.shaftAngle[starShaftId] ?? radians(0))).toBeCloseTo((360 / starToothCount) * expectedSteps, 6);
+  });
+
+  it("a stationary or reversed drive never advances the star (ratchet, one-way only)", () => {
+    const stationary = stepSimulation(createSimulationState(withDate), driveSolution(0), 1, [], [track]);
+    expect(stationary.shaftAngle[starShaftId] ?? radians(0)).toBe(0);
+    // Start partway through a revolution, then reverse past the same angle: still no jump.
+    let state = stepSimulation(createSimulationState(withDate), driveSolution(0.1), 1, [], [track]);
+    state = stepSimulation(state, driveSolution(-0.1), 1, [], [track]);
+    expect(state.shaftAngle[starShaftId] ?? radians(0)).toBe(0);
+  });
+
+  it("drive revolutions do not advance the star if no date jump is declared", () => {
+    const next = stepSimulation(createSimulationState(withDate), driveSolution(1), 1);
+    expect(next.shaftAngle[starShaftId] ?? radians(0)).toBe(0);
   });
 });

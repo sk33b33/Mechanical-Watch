@@ -21,9 +21,11 @@ import { amplitudeAtWind, summarizeEnergy, type EnergySummary } from "@/kinemati
 import {
   advanceSimulation,
   createSimulationState,
+  dateJumpTracks,
   reconcileWind,
   stepSimulation,
   windTracks,
+  type DateJumpTrack,
   type SimulationState,
   type WindTrack,
 } from "@/simulation/simulationState";
@@ -86,6 +88,7 @@ export class AppStore {
   /** The mainspring → balance energy chain for the running train (ASM-0026), or null without a mainspring. */
   energy: EnergySummary | null = null;
   private windTracks: WindTrack[] = [];
+  private dateJumpTracks: DateJumpTrack[] = [];
   /**
    * When the balance-governed going train stops: the primary spring's wind
    * at or below `turns` (where the balance can no longer unlock, or let
@@ -152,6 +155,7 @@ export class AppStore {
       this.energy = null;
     }
     this.windTracks = windTracks(this.movement, this.analysis.train);
+    this.dateJumpTracks = dateJumpTracks(this.movement);
     this.simulation = reconcileWind(this.simulation, this.movement);
     const spring = this.energy?.spec == null ? null : this.energy.spring;
     this.runDown = this.movement.drive?.kind === "BALANCE" && spring !== null && this.simulation.mainspringWind[spring.id] !== undefined
@@ -477,7 +481,7 @@ export class AppStore {
 
   /** Advances exactly one fixed simulation step, whether playing or paused. */
   stepOnce(): void {
-    this.runSimulation(() => stepSimulation(this.simulation, this.trainFor(this.simulation), undefined, this.windTracks));
+    this.runSimulation(() => stepSimulation(this.simulation, this.trainFor(this.simulation), undefined, this.windTracks, this.dateJumpTracks));
     this.notify();
   }
 
@@ -500,7 +504,7 @@ export class AppStore {
     if (!this.playing) return;
     const wasStopped = this.goingTrainStopped;
     this.runSimulation(() =>
-      advanceSimulation(this.simulation, (state) => this.trainFor(state), elapsedRealSeconds * this.playbackRate, this.windTracks),
+      advanceSimulation(this.simulation, (state) => this.trainFor(state), elapsedRealSeconds * this.playbackRate, this.windTracks, this.dateJumpTracks),
     );
     // Running down or restarting changes what panels show; normal frames stay silent.
     if (this.goingTrainStopped !== wasStopped) this.notify();

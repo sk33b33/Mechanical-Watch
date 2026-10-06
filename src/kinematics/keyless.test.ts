@@ -81,8 +81,9 @@ describe("teaching movement keyless works", () => {
   it("running: the click holds the ratchet, the crown is still, the setting wheel idles with the minute wheel", () => {
     const solution = solveGearTrain(movement);
     expect(solution.conflicts).toEqual([]);
-    // Only the pallet arbor and balance staff, which oscillate under the escapement, are outside the gear train.
-    expect(solution.unreachableShaftIds.map((id) => movement.shafts[id]?.name).sort()).toEqual(["Balance staff", "Pallet arbor"]);
+    // The pallet arbor and balance staff oscillate under the escapement; the date star advances
+    // only by its own jump mechanism (ASM-0048) — none are continuous gear-train members.
+    expect(solution.unreachableShaftIds.map((id) => movement.shafts[id]?.name).sort()).toEqual(["Balance staff", "Date star", "Pallet arbor"]);
     for (const name of ["Barrel arbor", "Crown wheel"]) expect(shaftOmega(movement, name)).toBe(0);
     expect(solution.stemAngularVelocity.get(stemBodyId(keyless.id, "STEM"))).toBe(0);
     const minuteWheel = shaftOmega(movement, "Minute wheel") ?? Number.NaN;

@@ -10,6 +10,7 @@ import { shaftSection } from "./shaftSection";
 import { dialSection, keylessSection } from "./keylessSection";
 import { escapementSection } from "./escapementSection";
 import { moonPhaseSection } from "./moonPhaseSection";
+import { dateComplicationSection } from "./dateComplicationSection";
 
 const TYPE_LABEL: Record<SelectableEntity["type"], string> = {
   Gear: "Gear",
@@ -20,6 +21,7 @@ const TYPE_LABEL: Record<SelectableEntity["type"], string> = {
   Dial: "Dial",
   Escapement: "Escapement",
   MoonPhase: "Moon phase",
+  DateComplication: "Date",
 };
 
 /** Entities whose issues bear on the selected one's status. */
@@ -37,6 +39,8 @@ function relatedIds(entity: SelectableEntity): EntityId[] {
       return [entity.id, entity.escapeArborShaftId, entity.palletArborShaftId, entity.balanceShaftId];
     case "MoonPhase":
       return [entity.id, entity.shaftId];
+    case "DateComplication":
+      return [entity.id, entity.driveShaftId, entity.starShaftId];
     default:
       return [entity.id];
   }
@@ -85,6 +89,7 @@ export function mountInspector(
       : entity.type === "Dial" ? dialSection(store, entity)
       : entity.type === "Escapement" ? escapementSection(store, entity)
       : entity.type === "MoonPhase" ? moonPhaseSection(store, entity)
+      : entity.type === "DateComplication" ? dateComplicationSection(store, entity)
       : frameSection(store, entity, storage, notify);
     container.append(...section);
 

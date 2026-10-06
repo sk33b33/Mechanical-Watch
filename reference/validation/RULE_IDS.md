@@ -99,3 +99,7 @@ VAL-001 The validation engine must complete; if it cannot, the design cannot be 
 
 MOON-001 A moonphase disc's diameter, thickness and face height must be positive/finite, and it must be centred on an arbor that exists (ASM-0047).
 MOON-002 The moonphase disc's implied lunation period, derived from its own arbor's solved angular velocity, is reported against the real synodic month (ASM-0047, SRC-0046); not driven reports as such.
+
+DATE-001 A date complication's star dimensions must be positive/finite, its tooth count a positive integer, and its drive and star arbors must exist and be distinct (ASM-0048).
+DATE-002 The date star's own arbor must not also be reached by the continuous gear train: a jump mechanism and continuous meshing on the same arbor conflict (ASM-0048).
+DATE-003 The date mechanism's implied jump period, derived from the drive arbor's own solved angular velocity, is reported against one day; not driven reports as such (ASM-0048).
