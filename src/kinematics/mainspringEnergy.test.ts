@@ -357,3 +357,53 @@ describe("ruby-pin entry freedom, slot shake and the suggested width (ESC-110, A
     expect(found).toEqual(["ESC-110:info:suggested-width"]);
   });
 });
+
+describe("guard-point freedom, radius and the single-roller fork-ratio floor (ESC-111, ASM-0043)", () => {
+  const teaching = createTeachingMovement();
+  const esc = Object.values(teaching.escapements)[0];
+  const pallets = esc?.pallets;
+  if (esc === undefined || pallets == null) throw new Error("teaching movement lacks pallets");
+  const guardRules = (m: Movement): string[] =>
+    validateMovement(m).filter((i) => i.rule === "ESC-111").map((i) => `${i.rule}:${i.severity}:${i.id.split(":")[1] ?? ""}`);
+
+  it("the teaching movement's 1¼° freedom and 4mm radius reproduce Playtner's own worked clearance, 0.0873mm", () => {
+    expect(guardRules(teaching)).toEqual(["ESC-111:info:guard-clearance"]);
+    const info = validateMovement(teaching).find((i) => i.rule === "ESC-111" && i.id.includes("guard-clearance"));
+    expect(info?.message).toContain("0.0873 mm");
+  });
+
+  it("guard-point freedom must be positive", () => {
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, guardPointFreedom: degrees(0) } });
+    expect(guardRules(m)).toContain("ESC-111:error:guard-freedom");
+  });
+
+  it("guard-point freedom must be less than the total lock (lock + run), or a premature strike could fully unlock the pallets", () => {
+    // Teaching movement: lock 2° + run 0.5° = 2.5° total lock.
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, guardPointFreedom: degrees(2.5) } });
+    const found = guardRules(m);
+    expect(found).toContain("ESC-111:error:guard-freedom-lock");
+    const err = validateMovement(m).find((i) => i.rule === "ESC-111" && i.id.includes("guard-freedom-lock"));
+    expect(err?.message).toContain("2.50°");
+  });
+
+  it("guard-point radius must be positive", () => {
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, guardPointRadius: millimetres(-1) } });
+    expect(guardRules(m)).toContain("ESC-111:error:guard-radius");
+  });
+
+  it("nothing is derived for guard-point freedom or radius when they are not entered", () => {
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, guardPointFreedom: null, guardPointRadius: null } });
+    expect(guardRules(m)).toEqual([]);
+  });
+
+  it("a single roller with a fork ratio below Playtner's cited floor (3 to 1) is an advisory", () => {
+    // Teaching movement: 50° lift / 10° lever = 5:1, above the floor — raise the lever angle to push below it.
+    const m = updateEscapement(teaching, esc.id, { leverAngle: degrees(20) });
+    expect(guardRules(m)).toContain("ESC-111:info:single-roller-ratio");
+  });
+
+  it("a double roller is not subject to the single-roller fork-ratio floor, even at the same ratio", () => {
+    const m = updateEscapement(teaching, esc.id, { leverAngle: degrees(20), balance: { ...esc.balance, rollerKind: "DOUBLE" } });
+    expect(guardRules(m).some((r) => r.includes("single-roller-ratio"))).toBe(false);
+  });
+});

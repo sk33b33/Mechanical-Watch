@@ -92,6 +92,11 @@ export function escapementSection(store: AppStore, esc: Escapement): Section {
       "Distance from the balance staff to the ruby pin's face (ASM-0041). Entered, not derived from roller geometry. Empty = unknown."),
     readonlyRow("Fork acting length (derived)", forkLength === null ? "—" : formatMm(forkLength),
       "Pallet centre to ruby-pin contact = impulse radius × (lift angle ÷ lever angle), Playtner's own inverse-ratio law (ASM-0041, ESC-109)."),
+    selectRow("Roller", b.rollerKind, [
+      { value: "SINGLE", label: "Single" },
+      { value: "DOUBLE", label: "Double" },
+    ], (value) => { setBalance({ rollerKind: value as Escapement["balance"]["rollerKind"] }); },
+      "Single or double roller (ASM-0043, SRC-0036): a single roller trades off impulse against the safety action on one roller; a double roller decouples them. Affects only a fork-ratio advisory (ESC-111) — no separate roller geometry is modeled for either kind."),
     sectionHeader("Balance dynamics (L3 simplified, optional)"),
     optionalRow("Inertia (mg·cm²)", b.inertia === null ? "" : String(toMilligramSquareCentimetres(b.inertia)), b.inertia,
       (raw) => { setBalance({ inertia: raw.trim() === "" ? null : milligramSquareCentimetres(Number(raw)) }); },

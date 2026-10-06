@@ -6,7 +6,7 @@ import { toBeatsPerHour } from "@/units/frequency";
 import type { EntityId } from "@/domain/ids";
 import { gearZRange, zOverlaps } from "@/assembly/assemblyGeometry";
 import { balanceFrequency, beatFrequency, impulseFraction } from "@/kinematics/escapement";
-import { dropClearance, forkActingLength, forkRatio, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
+import { dropClearance, forkActingLength, forkRatio, guardPointClearance, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import type { Length } from "@/units/length";
 import type { ValidationIssue } from "../validationIssue";
@@ -241,6 +241,38 @@ export const escapementRules: Rule = ({ movement, placement, train }) => {
         );
       }
 
+      // ESC-111: guard-point freedom and radius (optional), and the derived clearance (ASM-0043, SRC-0036 "The Safety Action").
+      if (pg.guardPointFreedom !== null) {
+        if (!positive(pg.guardPointFreedom)) {
+          issues.push(
+            issue("ESC-111", "guard-freedom", "error", "L1_GEOMETRIC", [esc.id],
+              `${esc.name}: the guard-point freedom must be positive, or left empty (unknown).`, ["ASM-0043"]),
+          );
+        } else if (totalLock !== null && !(pg.guardPointFreedom < totalLock)) {
+          issues.push(
+            issue("ESC-111", "guard-freedom-lock", "error", "L1_GEOMETRIC", [esc.id],
+              `${esc.name}: guard-point freedom (${toDegrees(pg.guardPointFreedom).toFixed(2)}°) must be less than the total lock (lock + run = ${toDegrees(totalLock).toFixed(2)}°) — the escape tooth must still rest on the pallet's locking face when the guard point is pressed against the roller (ASM-0043, SRC-0036).`,
+              ["ASM-0043"]),
+          );
+        } else if (pg.guardPointRadius !== null) {
+          if (!positive(pg.guardPointRadius)) {
+            issues.push(
+              issue("ESC-111", "guard-radius", "error", "L1_GEOMETRIC", [esc.id],
+                `${esc.name}: the guard-point radius must be positive, or left empty (unknown).`, ["ASM-0043"]),
+            );
+          } else {
+            const clearance = guardPointClearance(pg.guardPointRadius, pg.guardPointFreedom);
+            if (clearance !== null) {
+              issues.push(
+                issue("ESC-111", "guard-clearance", "info", "L1_GEOMETRIC", [esc.id],
+                  `${esc.name}: guard-point freedom gives ${mm(clearance)} of clearance at the bank (arc length = radius × angle, ASM-0043).`,
+                  ["ASM-0043"]),
+              );
+            }
+          }
+        }
+      }
+
       // ESC-106 / ESC-107: drop (ASM-0036, SRC-0036) and the tooth/pallet partition (ASM-0037, ASM-0038), when a tooth count is known.
       if (isValidToothCount(w.toothCount)) {
         const budget = wheelAngleBudgetPerBeat(w.toothCount);
@@ -315,6 +347,18 @@ export const escapementRules: Rule = ({ movement, placement, train }) => {
               ["ASM-0041"]),
           );
         }
+      }
+    }
+
+    // ESC-111: single-roller fork-ratio floor (ASM-0043, SRC-0036 "The Safety Action").
+    if (b.rollerKind === "SINGLE") {
+      const ratio = forkRatio(b.liftAngle, esc.leverAngle);
+      if (ratio !== null && ratio < 3) {
+        issues.push(
+          issue("ESC-111", "single-roller-ratio", "info", "L1_GEOMETRIC", [esc.id],
+            `${esc.name}: fork ratio (${ratio.toFixed(2)}) is below the figure Playtner cites as the lowest for a single roller ("a proportion between the fork and impulse angles in 10° pallets of 3 or 3½ to 1, depending upon the size of the escapement, is the lowest which should be made in single roller") — in a single roller, the safety action and the impulse compete for the same roller size. A double roller decouples them (ASM-0043, SRC-0036).`,
+            ["ASM-0043"]),
+        );
       }
     }
 

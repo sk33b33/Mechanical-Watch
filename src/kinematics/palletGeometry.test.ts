@@ -5,6 +5,7 @@ import {
   dropClearance,
   forkActingLength,
   forkRatio,
+  guardPointClearance,
   impulseAngle,
   isHalfToothSpan,
   lockingPoints,
@@ -103,5 +104,13 @@ describe("pallet geometry (ASM-0025)", () => {
   it("the suggested ruby-pin width is half the fork's total angular motion (ASM-0042, SRC-0036)", () => {
     expect(toDegrees(suggestedRubyPinWidth(degrees(10)))).toBeCloseTo(5, 12);
     expect(toDegrees(suggestedRubyPinWidth(degrees(2.5)))).toBeCloseTo(1.25, 12);
+  });
+
+  it("guard-point clearance is the arc length at the guard-point radius (ASM-0043, SRC-0036)", () => {
+    // Playtner's own worked example: 4 mm guard radius, 1¼° freedom ⇒ 0.0873 mm.
+    const clearance = guardPointClearance(mm(4), degrees(1.25)) ?? mm(Number.NaN);
+    expect(toMillimetres(clearance)).toBeCloseTo(0.0873, 3);
+    expect(guardPointClearance(mm(0), degrees(1.25))).toBeNull();
+    expect(guardPointClearance(mm(-1), degrees(1.25))).toBeNull();
   });
 });

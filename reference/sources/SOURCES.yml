@@ -1160,6 +1160,9 @@
     - "It is important that the angular freedom between the fork and ruby pin at the moment it enters into the slot be less than the total locking angle on the pallets. If we employ a locking angle of 1½° and ½° run, we would have a total lock on the pallets of 2°. By allowing 1¼° of freedom for the ruby pin at the moment the guard point enters the crescent, in case the fork should strike the face of the ruby pin, the pallets will still be locked ¾° and the fork drawn back against the bankings through the draft angle." (the hard geometric necessity ESC-110 checks: entry freedom strictly less than lock + run; the teaching movement's own 1¼° entry freedom is Playtner's exact cited number)
     - "The shake of the ruby pin in the slot of the fork must be as slight as possible, consistent with perfect freedom of action. It varies from ¼° to ½°, according to length of fork and shape of ruby pin." (the cited range for `PalletGeometry.rubyPinSlotShake`, ASM-0042)
     - "We would choose a ruby pin of a width equal to half the angular motion of the fork." (the convention `suggestedRubyPinWidth` implements — a cited choice, not a strict formula, ASM-0042)
+    - "in the single roller the safety action is at the mercy of the impulse and pallet angles. We have noticed that in order to favor the impulse we require a large roller, and for the safety action a small one, therefore escapements made on fine principles are supplied with two rollers, one for each action." (the geometric trade-off `Balance.rollerKind` names: SINGLE | DOUBLE, ASM-0043)
+    - "It may be well to say that in our opinion a proportion between the fork and impulse angles in 10° pallets of 3 or 3½ to 1, depending upon the size of the escapement, is the lowest which should be made in single roller. We have seen them in proportions of 2 to 1 in single roller—a scientific principle foolishly applied—resulting in an action entirely unsatisfactory." (the cited single-roller fork-ratio floor, ESC-111 — Playtner's own hedged figure, not checked for DOUBLE)
+    - "When the guard point is pressed against the roller the escape tooth must still rest on the locking face of the pallet; if the total lock is 2°, by allowing 1¼° freedom for the guard point between the bank and the roller the escapement will still be locked ¾°. How much this shake actually amounts to depends upon the guard radius. Suppose this to be 4 mm., then the freedom would equal 4 × 2 × 3.1416 ÷ 360 × 1.25 = .0873 mm." (the same hard necessity as ESC-110 applied to the guard point — `PalletGeometry.guardPointFreedom` strictly under the total lock — and Playtner's own worked numbers, reproduced exactly by the teaching movement's guardPointFreedom=1¼°/guardPointRadius=4mm, `guardPointClearance`, ASM-0043)
   claims_to_check: []
   retrieved: true
   accessed: "2026-10-05"
@@ -1180,17 +1183,23 @@
     (`EscapeWheel.toothKind`, CLUB | RATCHET), ASM-0039 (`drawAngle`'s
     geometric referent, `toothDrawAngle`), ASM-0040 (the real 2D
     tooth/pallet-stone outlines in `src/geometry/assemblyGeometry3d.ts`),
-    ASM-0041 (`Balance.impulseRadius`, `forkActingLength`) and ASM-0042
+    ASM-0041 (`Balance.impulseRadius`, `forkActingLength`), ASM-0042
     (`PalletGeometry.rubyPinEntryFreedom`, `rubyPinSlotShake`,
     `suggestedRubyPinWidth` — the second piece of the book's separate
-    "Fork and Roller Action" chapter used in this project), and the
+    "Fork and Roller Action" chapter used in this project) and ASM-0043
+    (`Balance.rollerKind`, `PalletGeometry.guardPointFreedom`,
+    `guardPointRadius`, `guardPointClearance` — drawn from the book's
+    "The Safety Action" chapter), and the
     ESC-106 (hard geometric budget, derived — not just cited; type-aware
     since ASM-0038) / ESC-107 (informal drop advisory — 1.5° club / 2°
     ratchet, cited; derived tooth width) / ESC-108 (derived escape-tooth
     locking face, conventional doubling, advisory outside the cited
     20°-28° range) / ESC-109 (derived fork acting length) / ESC-110
     (ruby-pin entry freedom strictly under the total lock — a hard
-    necessity, not just cited; slot shake; the suggested width) validation
+    necessity, not just cited; slot shake; the suggested width) / ESC-111
+    (guard-point freedom strictly under the total lock, the same hard
+    necessity; guard-point radius; the derived guard-point clearance; the
+    single-roller fork-ratio-floor advisory) validation
     rules. Re-read directly from the same locally cached HTML (no
     re-fetch needed) for the "The Draw" and "The Fork and Roller Action"
     chapters' exact language, and this pass additionally fetched two of
@@ -1200,23 +1209,29 @@
     used for SRC-0037's formula images) to confirm the pallet stone's
     general block-with-a-leaning-face shape before implementing ASM-0040
     — not to reverse-engineer the diagrams' full construction
-    point-for-point. Seven pieces of this chapter's material are now used
-    across these seven assumptions (drop; pallet type and width; tooth
-    type; draw/tooth-face angle; the 2D outlines; impulse radius/fork
-    length; ruby-pin entry freedom/slot shake/suggested width); the
-    book's larger remaining treatment of true lifting-face curvature, the
-    tooth/pallet FACE contact geometry itself, the real/primitive-circle
-    correction, the engaging/disengaging asymmetry and the locked-vs-
-    unlocked face-position correction remains unmodeled, as does most of
-    "The Fork and Roller Action" still (the fuller width/freedom/impulse-
-    radius relationship in Figs. 17-20, the Savage pin roller), "The
-    Safety Action" (single vs. double roller, guard point/dart freedom),
-    "The Crescent" and "The Horn" chapters — explicitly out of scope
-    here, scoped as Phase 7.1.5's later sub-items (`docs/ROADMAP.md`)
-    rather than attempted incompletely now. The CIRCULAR pallet type is
-    named in the domain model (ASM-0037) but not implemented: this
-    source states only that its locking offset from the tangent shrinks
-    with pallet width, not a closed-form formula for it.
+    point-for-point. A later pass re-read the same cached HTML for "The
+    Safety Action" chapter's exact language (single vs. double roller,
+    guard-point freedom and radius) without re-fetching. Eight pieces of
+    this chapter's material are now used across these eight assumptions
+    (drop; pallet type and width; tooth type; draw/tooth-face angle; the
+    2D outlines; impulse radius/fork length; ruby-pin entry
+    freedom/slot shake/suggested width; roller kind/guard-point
+    freedom/radius/clearance); the book's larger remaining treatment of
+    true lifting-face curvature, the tooth/pallet FACE contact geometry
+    itself, the real/primitive-circle correction, the
+    engaging/disengaging asymmetry and the locked-vs-unlocked
+    face-position correction remains unmodeled, as does most of "The
+    Fork and Roller Action" still (the fuller width/freedom/impulse-
+    radius relationship in Figs. 17-20, the Savage pin roller), the rest
+    of "The Safety Action" (the dart's own shape, the fuller
+    roller/crescent geometric relationship), "The Crescent" (angular
+    opening) and "The Horn" (length, freedom) chapters — explicitly out
+    of scope here, scoped as Phase 7.1.5's later sub-items
+    (`docs/ROADMAP.md`) rather than attempted incompletely now. The
+    CIRCULAR pallet type is named in the domain model (ASM-0037) but not
+    implemented: this source states only that its locking offset from
+    the tangent shrinks with pallet width, not a closed-form formula for
+    it.
 
 # Phase 7.5 (docs/ROADMAP.md): nonlinear mainspring torque curve and
 # bridle/slipping behaviour (REF-ENG §11; ASM-0026 currently uses a

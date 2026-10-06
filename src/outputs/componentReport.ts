@@ -16,7 +16,7 @@ import { balanceFrequency, beatFrequency, beatsPerEscapeRevolution, impulseFract
 import { isochronismAdjustedRate } from "@/kinematics/balance";
 import { summarizeBalance } from "@/kinematics/balanceSummary";
 import { summarizeEnergy } from "@/kinematics/energySummary";
-import { dropClearance, forkActingLength, forkRatio, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
+import { dropClearance, forkActingLength, forkRatio, guardPointClearance, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import { toNewtonMillimetres } from "@/units/torque";
 import { toMicrojoules } from "@/units/energy";
@@ -474,6 +474,8 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
         entered("Pallet width (wheel-side)", angleText(pg.widthAngle), pg.widthAngle),
         entered("Ruby-pin entry freedom", pg.rubyPinEntryFreedom === null ? "unknown" : angleText(pg.rubyPinEntryFreedom), pg.rubyPinEntryFreedom),
         entered("Ruby-pin slot shake", pg.rubyPinSlotShake === null ? "unknown" : angleText(pg.rubyPinSlotShake), pg.rubyPinSlotShake),
+        entered("Guard-point freedom", pg.guardPointFreedom === null ? "unknown" : angleText(pg.guardPointFreedom), pg.guardPointFreedom),
+        entered("Guard-point radius", optionalMmText(pg.guardPointRadius), pg.guardPointRadius),
       ];
   const budget = teethValid ? wheelAngleBudgetPerBeat(w.toothCount) : null;
   const tooth = pg !== null && teethValid ? toothWidthAngle(w.toothCount, pg.widthAngle, pg.dropAngle) : null;
@@ -484,6 +486,8 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
   const clearance = pg !== null && partitionValid ? dropClearance((w.tipDiameter / 2) as Length, pg.dropAngle) : null;
   const toothDraw = pg !== null && Number.isFinite(pg.drawAngle) && pg.drawAngle > 0 ? toothDrawAngle(pg.drawAngle) : null;
   const suggestedWidth = pg !== null && Number.isFinite(esc.leverAngle) && esc.leverAngle > 0 ? suggestedRubyPinWidth(esc.leverAngle) : null;
+  const guardClearance = pg !== null && pg.guardPointFreedom !== null && pg.guardPointFreedom > 0 && pg.guardPointRadius !== null
+    ? guardPointClearance(pg.guardPointRadius, pg.guardPointFreedom) : null;
   const palletDerived: ReportValue[] = pg === null ? [] : [
     { label: "Pallet span angle", text: span === null ? "—" : `${toDegrees(span).toFixed(2)}°`, si: span, equation: "span × 2π / z", level: "L1_GEOMETRIC", references: ["ASM-0025"] },
     { label: "Pallet arbor distance for tangential locking", text: needed === null ? "—" : mmText(needed), si: needed, equation: "R_tip / cos(span angle / 2)", level: "L1_GEOMETRIC", references: ["ASM-0025"] },
@@ -495,6 +499,7 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
     { label: "Wheel-angle budget per beat", text: budget === null ? "—" : `${toDegrees(budget).toFixed(2)}°`, si: budget, equation: "π / escapeTeeth", level: "L1_GEOMETRIC", references: ["ASM-0021", "ASM-0036"] },
     { label: "Escape-tooth width (derived)", text: tooth === null ? "—" : `${toDegrees(tooth).toFixed(2)}°`, si: tooth, equation: "budget − pallet width − drop", level: "L1_GEOMETRIC", references: ["ASM-0037"] },
     { label: "Drop clearance at tip circle", text: clearance === null ? "—" : mmText(clearance), si: clearance, equation: "tip radius × drop angle", level: "L1_GEOMETRIC", references: ["ASM-0036"] },
+    { label: "Guard-point clearance (derived)", text: guardClearance === null ? "—" : mmText(guardClearance), si: guardClearance, equation: "guard-point radius × guard-point freedom", level: "L1_GEOMETRIC", references: ["ASM-0043"] },
   ];
   const energy = summarizeEnergy(movement, analysis.train);
   const en = energy?.escapement?.id === esc.id ? energy : null;
@@ -542,6 +547,7 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
       entered("Hairspring stiffness", b.hairspringStiffness === null ? "unknown" : `${toMicronewtonMillimetresPerRadian(b.hairspringStiffness).toFixed(3)} µN·mm/rad`, b.hairspringStiffness),
       entered("Isochronism coefficient", b.isochronismCoefficient === null ? "unmodeled" : `${(b.isochronismCoefficient * (Math.PI / 180)).toFixed(3)} s/day per °`, b.isochronismCoefficient),
       entered("Impulse radius", optionalMmText(b.impulseRadius), b.impulseRadius),
+      entered("Roller kind", b.rollerKind === "SINGLE" ? "Single" : "Double"),
       ...palletParameters,
       ...energyParameters,
     ],

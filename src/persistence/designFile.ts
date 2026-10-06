@@ -38,7 +38,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 13;
+export const DESIGN_SCHEMA_VERSION = 14;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -213,6 +213,24 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
       ]),
     );
     return { ...doc, schemaVersion: 13, movement: { ...movement, escapements } };
+  },
+  /**
+   * v13 → v14: balances gain `rollerKind: "SINGLE"` (the only
+   * configuration previously assumed, ASM-0043); pallet geometry, where
+   * given, gains an empty (null) guard-point freedom and radius to fill
+   * in — entered directly, never guessed.
+   */
+  13: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.escapements)) return doc;
+    const escapements = Object.fromEntries(
+      Object.entries(movement.escapements).map(([id, e]) => {
+        if (!isRecord(e)) return [id, e];
+        const withRoller = isRecord(e.balance) ? { ...e, balance: { ...e.balance, rollerKind: "SINGLE" } } : e;
+        return [id, isRecord(withRoller.pallets) ? { ...withRoller, pallets: { ...withRoller.pallets, guardPointFreedom: null, guardPointRadius: null } } : withRoller];
+      }),
+    );
+    return { ...doc, schemaVersion: 14, movement: { ...movement, escapements } };
   },
 };
 
@@ -488,6 +506,8 @@ const pallets: Decoder<PalletGeometry> = (value, path) => {
     widthAngle: field(o, "widthAngle", angle, path),
     rubyPinEntryFreedom: field(o, "rubyPinEntryFreedom", nullable(angle), path),
     rubyPinSlotShake: field(o, "rubyPinSlotShake", nullable(angle), path),
+    guardPointFreedom: field(o, "guardPointFreedom", nullable(angle), path),
+    guardPointRadius: field(o, "guardPointRadius", nullable(length), path),
   };
 };
 
@@ -525,6 +545,7 @@ const escapement: Decoder<Escapement> = (value, path) => {
       qualityFactor: field(balance, "qualityFactor", nullable(number), bp),
       isochronismCoefficient: field(balance, "isochronismCoefficient", nullable(number), bp),
       impulseRadius: field(balance, "impulseRadius", nullable(length), bp),
+      rollerKind: field(balance, "rollerKind", oneOf(["SINGLE", "DOUBLE"]), bp),
     },
     pallets: field(o, "pallets", nullable(pallets), path),
     escapementEfficiency: field(o, "escapementEfficiency", nullable(number), path),

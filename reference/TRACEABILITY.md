@@ -79,6 +79,7 @@ CLAUDE_REFERENCE_INSTRUCTIONS.md rule 10); finding one remains open work.
 | Fork ratio | lift angle / lever angle | `forkRatio` | definition | ASM-0025 | DERIVED | L1 | `palletGeometry.test.ts` |
 | Fork acting length (m) | impulse radius × fork ratio | `forkActingLength` in `src/kinematics/palletGeometry.ts` | REF-ENG §9 | ASM-0041 | DERIVED; VERIFIED_TEXT (SRC-0036, Playtner's own 5:1 proportion and 4.5mm fork-length worked example) | L1 | `palletGeometry.test.ts` › fork acting length |
 | Suggested ruby-pin width (rad) | lever angle / 2 | `suggestedRubyPinWidth` in `src/kinematics/palletGeometry.ts` | REF-ENG §9 | ASM-0042 | DERIVED; VERIFIED_TEXT (SRC-0036: "we would choose a ruby pin of a width equal to half the angular motion of the fork") | L1 | `palletGeometry.test.ts` › suggested ruby-pin width |
+| Guard-point clearance (m) | guard-point radius × guard-point freedom (arc length) | `guardPointClearance` in `src/kinematics/palletGeometry.ts` | REF-ENG §9 | ASM-0043 | DERIVED; VERIFIED_TEXT (SRC-0036, Playtner's own worked example: 4mm guard radius, 1¼° freedom ⇒ 0.0873mm) | L1 | `palletGeometry.test.ts` › guard-point clearance |
 | Wheel-angle budget per beat (rad) | π / escapeTeeth (half the tooth pitch) | `wheelAngleBudgetPerBeat` in `src/kinematics/palletGeometry.ts` | REF-ENG §9 | ASM-0021, ASM-0036 | DERIVED; VERIFIED_TEXT (SRC-0036, Playtner, worked 15-tooth example: 12° budget = 4½° tooth + 6° pallet + 1½° drop) | L1 | `palletGeometry.test.ts` › wheel-angle budget per beat |
 | Drop clearance at tip circle (m) | tip radius × drop angle (arc length) | `dropClearance` in `src/kinematics/palletGeometry.ts` | REF-ENG §9 | ASM-0036 | DERIVED; VERIFIED_TEXT (SRC-0036, Playtner's own worked example: 7.5mm primitive diameter, 1.5° drop ⇒ 0.0983mm) | L1 | `palletGeometry.test.ts` › drop clearance |
 | Escape-tooth width (rad) | wheel-angle budget − pallet width − drop | `toothWidthAngle` in `src/kinematics/palletGeometry.ts` | REF-ENG §9 | ASM-0021, ASM-0037 | DERIVED; VERIFIED_TEXT (same SRC-0036 passage as the budget row: 12° = 4½° tooth + 6° pallet + 1½° drop) | L1 | `palletGeometry.test.ts` › tooth width |
@@ -139,6 +140,7 @@ rev/min exist only at the UI boundary (`src/units/`).
 | Schema-10 file | Migrated to schema 11 on open (escape wheels gain CLUB — the only tooth kind previously assumed — ASM-0038). |
 | Schema-11 file | Migrated to schema 12 on open (balances gain an empty (null) impulse radius to fill in, ASM-0041). |
 | Schema-12 file | Migrated to schema 13 on open (pallet geometry, where given, gains an empty (null) ruby-pin entry freedom and slot shake to fill in, ASM-0042). |
+| Schema-13 file | Migrated to schema 14 on open (balances gain `rollerKind: "SINGLE"` — the only configuration previously assumed; pallet geometry, where given, gains an empty (null) guard-point freedom and radius to fill in, ASM-0043). |
 | New pallet geometry (all empty) | Kept NaN; defaults to EQUIDISTANT (ASM-0037, the only implemented kind); ESC-104 span error, ESC-105 and ESC-106 errors until entered. No default angles. |
 | Pallet span not k + ½ teeth, or ≥ 180° | ESC-104 error; locking distance not derived; symbolic fork arms shown. |
 | Lock + run ≥ lever angle; lock ≤ 0; run < 0 | ESC-105 error. |
@@ -150,6 +152,10 @@ rev/min exist only at the UI boundary (`src/units/`).
 | Ruby-pin entry freedom outside the cited 1°-1¼° range (but under the total lock) | ESC-110 info advisory (ASM-0042); never blocks. |
 | Ruby-pin slot shake ≤ 0 (when entered) | ESC-110 error. |
 | Ruby-pin slot shake outside the cited ¼°-½° range | ESC-110 info advisory (ASM-0042); never blocks. |
+| Guard-point freedom ≤ 0 (when entered) | ESC-111 error. |
+| Guard-point freedom ≥ total lock (lock + run), when entered | ESC-111 error — a premature strike against the guard point could otherwise fully unlock the pallets instead of leaving them locked. |
+| Guard-point radius ≤ 0 (when entered) | ESC-111 error; no clearance derived. |
+| Single roller with fork ratio below Playtner's cited floor (3 to 1) | ESC-111 info advisory (ASM-0043); never blocks; not checked for a double roller. |
 | Drop ≤ 0, or ≥ the one-beat wheel-angle budget | ESC-106 error; no clearance derived. |
 | Pallet width ≤ 0 | ESC-106 error. |
 | Pallet width + drop ≥ the one-beat wheel-angle budget (negative derived tooth width, club tooth) | ESC-106 error; no clearance or tooth-width figure derived. |
@@ -237,6 +243,7 @@ rev/min exist only at the UI boundary (`src/units/`).
 | ESC-108 | info | L1 | when draw is positive, reports the derived escape-tooth locking face (2 × draw, conventional, for point contact); outside the practically cited 20°-28° range is an advisory (project addition, ASM-0039, SRC-0036) |
 | ESC-109 | error / info | L1 | impulse radius, when entered, must be positive; the fork's real acting length is then reported, derived via the balance-lift/lever-angle ratio (project addition, ASM-0041, SRC-0036) |
 | ESC-110 | error / info | L1 | ruby-pin entry freedom, when entered, must be positive and less than the total lock (lock + run); slot shake, when entered, must be positive; outside Playtner's cited figures is an advisory; the suggested ruby-pin width (half the fork's angular motion) is reported (project addition, ASM-0042, SRC-0036) |
+| ESC-111 | error / info | L1 | guard-point freedom, when entered, must be positive and less than the total lock (lock + run); guard-point radius, when entered, must be positive, and the derived clearance is reported; a single roller with a fork ratio under Playtner's cited floor (3 to 1) is an advisory, not checked for a double roller (project addition, ASM-0043, SRC-0036) |
 | ESC-101 | error | L1 / L2 | one escapement, three distinct existing arbors, valid inputs, amplitude above half the lift angle (project addition) |
 | ESC-102 | error | L2 | pallet arbor and balance staff are not gear-driven (project addition) |
 | ESC-103 | error | L1 | escape wheel clears the pallet arbor, the balance and other gears at its height; the balance clears the pallet arbor (project addition) |

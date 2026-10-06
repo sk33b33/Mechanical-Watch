@@ -255,6 +255,12 @@ export const ASSUMPTIONS = {
     scope: "Escapement geometry",
     status: "Active",
   },
+  "ASM-0043": {
+    summary:
+      "Balance.rollerKind (SINGLE | DOUBLE, required) and PalletGeometry.guardPointFreedom/guardPointRadius (optional). Guard-point freedom must be strictly less than the total lock, same hard necessity as ruby-pin entry freedom. Radius and freedom together derive a linear clearance (guardPointClearance). SINGLE with a fork ratio below Playtner's cited floor (3 to 1) is an advisory; not checked for DOUBLE, which decouples impulse and safety roller sizing",
+    scope: "Escapement geometry",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

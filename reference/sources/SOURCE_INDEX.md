@@ -280,10 +280,33 @@ motion of the fork") — a cited convention, not a strict formula. The
 teaching movement's own 1¼° entry freedom is Playtner's exact cited
 number from his total-lock worked example. The rest of this chapter
 (the fuller width/freedom/impulse-radius relationship in Figs. 17-20,
-the Savage pin roller), "The Safety Action" (single vs. double roller,
-guard-point/dart freedom), "The Crescent" and "The Horn" (angular
-opening, length and freedom) remain unmodeled, scoped as Phase 7.1.5's
-later sub-items (`docs/ROADMAP.md`).
+the Savage pin roller) remains unmodeled, as do "The Crescent" and "The
+Horn" (angular opening, length and freedom) chapters, scoped as Phase
+7.1.5's later sub-items (`docs/ROADMAP.md`).
+
+Now also used for ASM-0043, from the book's "The Safety Action" chapter:
+`Balance.rollerKind` (SINGLE | DOUBLE) names the trade-off Playtner
+draws — "in the single roller the safety action is at the mercy of the
+impulse and pallet angles... in order to favor the impulse we require a
+large roller, and for the safety action a small one, therefore
+escapements made on fine principles are supplied with two rollers, one
+for each action." When SINGLE, a fork ratio below his own hedged floor
+("a proportion between the fork and impulse angles in 10° pallets of 3
+or 3½ to 1, depending upon the size of the escapement, is the lowest
+which should be made in single roller") is a non-blocking advisory
+(ESC-111), not checked for DOUBLE. `PalletGeometry.guardPointFreedom`
+and `guardPointRadius` are entered directly, the same pattern as the
+ruby-pin fields; guard-point freedom must be strictly less than the
+total lock, the same hard necessity as entry freedom — "when the guard
+point is pressed against the roller the escape tooth must still rest
+on the locking face of the pallet" (ESC-111). The two together derive a
+linear clearance at the bank (`guardPointClearance`, arc length =
+radius × angle, the same formula as `dropClearance`); the teaching
+movement's own 1¼° freedom and 4 mm radius are Playtner's own worked
+numbers, reproducing his own computed clearance, 0.0873 mm, exactly.
+No separate roller geometry (diameter, the dart's own shape) is
+modeled for either roller kind — unmodeled, same as the rest of "The
+Safety Action", "The Crescent" and "The Horn" chapters.
 
 ## Mainspring torque curve and bridle slip (REF-ENG §11)
 

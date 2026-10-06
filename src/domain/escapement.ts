@@ -90,6 +90,18 @@ export interface Balance {
    * Null when unknown.
    */
   impulseRadius: Length | null;
+  /**
+   * Single or double roller (ASM-0043, SRC-0036 "The Safety Action"):
+   * "in the single roller the safety action is at the mercy of the
+   * impulse and pallet angles... therefore escapements made on fine
+   * principles are supplied with two rollers, one for each action" — a
+   * single roller must serve both the impulse (favoring a large roller)
+   * and the safety action (favoring a small one); a double roller
+   * decouples them. Only affects validation (ESC-111's single-roller
+   * fork-ratio advisory); no separate roller geometry is modeled for
+   * either case.
+   */
+  rollerKind: "SINGLE" | "DOUBLE";
 }
 
 /**
@@ -166,6 +178,26 @@ export interface PalletGeometry {
    * positive when declared (ESC-110). Optional; null when not declared.
    */
   rubyPinSlotShake: Angle | null;
+  /**
+   * Lever-side angular freedom between the fork's guard point (dart) and
+   * the roller, at the bank (ASM-0043, SRC-0036 "The Safety Action"):
+   * "when the guard point is pressed against the roller the escape tooth
+   * must still rest on the locking face of the pallet". Must be positive
+   * and strictly less than the total lock (`lockAngle + runAngle`), the
+   * same hard necessity as `rubyPinEntryFreedom` (ESC-111). Optional;
+   * null when not declared.
+   */
+  guardPointFreedom: Angle | null;
+  /**
+   * Distance from the pallet centre to the guard point, the radius its
+   * arc of travel is struck from (ASM-0043, SRC-0036: "how much this
+   * shake actually amounts to depends upon the guard radius"). Entered
+   * directly, like `impulseRadius`: no fork geometry is used to derive
+   * it. Together with `guardPointFreedom` it gives the guard point's
+   * linear clearance at the bank (arc length = radius × angle, ESC-111).
+   * Optional; null when not declared.
+   */
+  guardPointRadius: Length | null;
 }
 
 export interface Escapement {

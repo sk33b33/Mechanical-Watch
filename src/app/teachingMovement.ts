@@ -260,10 +260,13 @@ export function createTeachingMovement(): Movement {
   // (180°/15 teeth, leaving 4.5° for the tooth), same tooth count as this movement.
   // rubyPinEntryFreedom: Playtner's own specific worked number, 1¼° (SRC-0036, ASM-0042), comfortably
   // under this movement's total lock (2° lock + 0.5° run = 2.5°, ESC-110). rubyPinSlotShake: the low
-  // end of his cited ¼°-½° range.
+  // end of his cited ¼°-½° range. guardPointFreedom: the same 1¼° figure, reused by Playtner for his
+  // worked guard-point example. guardPointRadius: his own worked guard radius, 4 mm (ASM-0043) —
+  // together they reproduce his own computed clearance, 0.0873 mm (ESC-111).
   const palletGeometry = {
     spanTeeth: 3.5, kind: "EQUIDISTANT" as const, lockAngle: degrees(2), drawAngle: degrees(12), runAngle: degrees(0.5),
     dropAngle: degrees(1.5), widthAngle: degrees(6), rubyPinEntryFreedom: degrees(1.25), rubyPinSlotShake: degrees(0.25),
+    guardPointFreedom: degrees(1.25), guardPointRadius: mm(4),
   };
   const escapeToPallet = tangentialCentreDistance(escapeTipRadius, spanAngle(escapeTeeth, palletGeometry.spanTeeth)) ?? mm(Number.NaN);
   const palletToBalance = mm(3.5);
@@ -296,6 +299,9 @@ export function createTeachingMovement(): Movement {
       // (ESC-109) lands on Playtner's own worked example of 4.5 mm (SRC-0036, used for the ruby-pin
       // shake calculation): 4.5 mm / 5 = 0.9 mm (ASM-0041).
       impulseRadius: mm(0.9),
+      // Single roller (ASM-0043) — the only configuration previously assumed. This movement's own
+      // 5:1 fork ratio is comfortably above Playtner's cited single-roller floor (3 to 1, ESC-111).
+      rollerKind: "SINGLE",
     },
     pallets: palletGeometry,
     // Also a loss property, left unknown for the same reason; the amplitude stays the declared one.

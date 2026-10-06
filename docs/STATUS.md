@@ -2,6 +2,75 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 7.1.5.3: roller kind, guard-point freedom/radius/clearance (ESC-111, ASM-0043)
+
+Third of 7.1.5's six sub-items: single vs. double roller, and the
+guard point's own freedom and clearance, from SRC-0036's "The Safety
+Action" chapter (the chapter after "Fork and Roller Action").
+
+- **`Balance.rollerKind` ("SINGLE" | "DOUBLE", required, new field).**
+  Playtner draws a real trade-off: "in the single roller the safety
+  action is at the mercy of the impulse and pallet angles... in order
+  to favor the impulse we require a large roller, and for the safety
+  action a small one, therefore escapements made on fine principles
+  are supplied with two rollers, one for each action." SINGLE is the
+  only configuration this codebase previously assumed; the field only
+  changes a validation outcome (the fork-ratio advisory below) — no
+  separate roller geometry (diameter, dart shape) is modeled for
+  either kind.
+- **Single-roller fork-ratio floor (ESC-111, advisory).** "A
+  proportion between the fork and impulse angles in 10° pallets of 3
+  or 3½ to 1, depending upon the size of the escapement, is the
+  lowest which should be made in single roller. We have seen them in
+  proportions of 2 to 1 in single roller — a scientific principle
+  foolishly applied — resulting in an action entirely
+  unsatisfactory." Playtner's own hedged number (3, not his cited
+  "3½") is used as the non-blocking floor; only checked when
+  `rollerKind === "SINGLE"`. The teaching movement's own 5:1 ratio is
+  comfortably above it, so the advisory does not fire there.
+- **`PalletGeometry.guardPointFreedom`/`guardPointRadius` (declared,
+  optional ° and mm, new fields).** The same hard necessity as
+  7.1.5.2's ruby-pin entry freedom, now applied to the guard point:
+  "When the guard point is pressed against the roller the escape
+  tooth must still rest on the locking face of the pallet; if the
+  total lock is 2°, by allowing 1¼° freedom for the guard point
+  between the bank and the roller the escapement will still be locked
+  ¾°." ESC-111 enforces guard-point freedom strictly under the total
+  lock (lock + run) as an error, plus simple positivity checks on both
+  fields.
+- **`guardPointClearance` (derived, new function).** Arc length =
+  guard-point radius × guard-point freedom, the same formula as
+  `dropClearance` applied to the guard point's own radius. Playtner's
+  own worked numbers — "Suppose this [radius] to be 4 mm., then the
+  freedom would equal 4 × 2 × 3.1416 ÷ 360 × 1.25 = .0873 mm." — are
+  used verbatim as the teaching movement's guard-point freedom (1¼°)
+  and radius (4 mm), reproducing his 0.0873 mm clearance exactly.
+- **UI and outputs.** A new "Roller" select (Single/Double) next to
+  the balance's impulse radius; two new optional inputs ("Guard-point
+  freedom (°)", "Guard-point radius (mm)") next to the ruby-pin rows
+  in the pallet geometry section, plus a readonly "Guard-point
+  clearance (derived)" row; matching parameter/derived rows in the
+  component report; the BOM's "Roller and impulse pin" row now names
+  the roller kind (single/double) in its specification text, since —
+  unlike the ruby-pin freedoms left out of the terser "Pallet stones"
+  row in 7.1.5.2 — roller kind directly describes the part that row is
+  already about.
+- Schema bumped to v14: balances gain `rollerKind: "SINGLE"` (the only
+  configuration previously assumed); pallet geometry, where given,
+  gains empty (null) guard-point freedom and radius. Migration
+  verified with a scratch test (old-schema document → migrated
+  defaults), then removed.
+- New tests cover `guardPointClearance`'s own worked numbers and
+  ESC-111's full behavior (both positivity checks, the lock-angle hard
+  constraint, the single-roller advisory firing and not firing, and
+  double roller never triggering it even at the same low ratio).
+  Verified live in a real browser: the roller selector, both new
+  inputs, the derived clearance readout, the lock-angle error, the
+  single-roller advisory appearing and disappearing when switched to
+  double. 524 unit tests pass (516 before); `tsc -b --noEmit` and
+  `eslint` are clean; production build succeeds; full e2e suite
+  (31 tests) passes.
+
 ## Phase 7.1.5.2: ruby-pin entry freedom, slot shake, suggested width (ESC-110, ASM-0042)
 
 Second of 7.1.5's six sub-items: the ruby pin's own interaction with

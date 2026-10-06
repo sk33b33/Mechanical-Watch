@@ -71,6 +71,17 @@ export function dropClearance(tipRadius: Length, dropAngle: Angle): Length | nul
 }
 
 /**
+ * Linear clearance a declared guard-point freedom gives at the bank
+ * (ASM-0043, SRC-0036 "The Safety Action"): arc length = radius × angle,
+ * the same formula as `dropClearance` applied to the guard point's own
+ * radius from the pallet centre, not the escape wheel's tip circle. Null
+ * when the guard-point radius is not positive.
+ */
+export function guardPointClearance(guardPointRadius: Length, guardPointFreedom: Angle): Length | null {
+  return guardPointRadius > 0 ? metres(guardPointRadius * guardPointFreedom) : null;
+}
+
+/**
  * Escape-tooth width (wheel-side), the remainder of the per-beat wheel-angle
  * budget after the pallet's own width and drop (ASM-0037, SRC-0036: "12°
  * for width of tooth, pallet and drop; drop is to be 1½°, the tooth is to

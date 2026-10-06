@@ -145,11 +145,18 @@ level).
       0.25-0.5° figures as non-blocking advisories; the suggested ruby
       pin width (half the fork's angular motion, "we would choose", not
       a strict rule) is derived and reported, same genre as ESC-108.
-    - 7.1.5.3 — Roller and guard-point/dart freedom (1.25° cited).
-      Single vs. double roller is a real domain distinction Playtner
-      draws (double roller trades a larger safety roller for a smaller,
-      more secure one) — may need its own `rollerKind` field, same
-      pattern as `toothKind`/`PalletKind`.
+    - 7.1.5.3 — **Done** (see `docs/STATUS.md`). `Balance.rollerKind`
+      (SINGLE | DOUBLE, ASM-0043): single roller trades off impulse
+      against the safety action on one roller; double decouples them,
+      per Playtner's own stated reasoning. When SINGLE, a fork ratio
+      below his cited floor (3 to 1) is a non-blocking advisory
+      (ESC-111), not checked for DOUBLE. Guard-point freedom/radius
+      (declared) and the derived clearance (`guardPointClearance`,
+      same arc-length formula as `dropClearance`): guard-point freedom
+      must be strictly less than the total lock, the same hard
+      necessity as 7.1.5.2's ruby-pin entry freedom. The dart's own
+      shape and the fuller roller/crescent geometric relationship
+      remain unmodeled.
     - 7.1.5.4 — Crescent angular opening: a genuine geometric
       construction (the guard point's circular path around the pallet
       axis intersecting the roller circle around the balance axis),
