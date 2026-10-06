@@ -1,7 +1,7 @@
 import type { AppStore } from "@/app/store";
 import type { EntityId } from "@/domain/ids";
-import { addDateComplication, addDial, addEscapement, addFrame, addKeylessWorks, addMonthComplication, addMoonPhase, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
-import { newDateComplication, newDial, newEscapement, newFrame, newKeylessWorks, newMonthComplication, newMoonPhase, newShaft } from "@/domain/editing";
+import { addDateComplication, addDial, addEscapement, addFrame, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
+import { newDateComplication, newDial, newEscapement, newFrame, newKeylessWorks, newLeapYearComplication, newMonthComplication, newMoonPhase, newShaft } from "@/domain/editing";
 import { listAssumptions } from "@/reference/assumptions";
 
 export function mountComponentTree(container: HTMLElement, store: AppStore): () => void {
@@ -104,6 +104,10 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
         const month = newMonthComplication(m);
         return { movement: addMonthComplication(m, month), id: month.id };
       }, "add-month"),
+      addButton("+ Leap year", "Add a leap-year (four-year cycle) indicator with every value empty; then choose its month complication and arbor", (m) => {
+        const year = newLeapYearComplication(m);
+        return { movement: addLeapYearComplication(m, year), id: year.id };
+      }, "add-leap-year"),
     );
     container.appendChild(actions);
 
@@ -157,6 +161,11 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
     if (Object.keys(movement.monthComplications).length > 0) {
       container.appendChild(header("Month"));
       for (const month of Object.values(movement.monthComplications)) container.appendChild(item(month.name, month.id, 0, "(driven by date jumps)"));
+    }
+
+    if (Object.keys(movement.leapYearComplications).length > 0) {
+      container.appendChild(header("Leap year"));
+      for (const year of Object.values(movement.leapYearComplications)) container.appendChild(item(year.name, year.id, 0, "(driven by month wrap)"));
     }
 
     container.appendChild(header("Assumptions"));

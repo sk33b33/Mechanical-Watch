@@ -14,6 +14,7 @@ import type { Escapement, EscapementId } from "./escapement";
 import type { MoonPhase, MoonPhaseId } from "./moonPhase";
 import type { DateComplication, DateComplicationId } from "./dateComplication";
 import type { MonthComplication, MonthComplicationId } from "./monthComplication";
+import type { LeapYearComplication, LeapYearComplicationId } from "./leapYearComplication";
 import type { ValidationLevel } from "@/reference/validationLevels";
 
 export type MovementId = EntityId<"movement">;
@@ -66,6 +67,8 @@ export interface Movement {
   dateComplications: Record<DateComplicationId, DateComplication>;
   /** Zero or more; each driven by its referenced date complication's own jumps, not a continuous arbor (ASM-0049, Phase 8.3). */
   monthComplications: Record<MonthComplicationId, MonthComplication>;
+  /** Zero or more; each driven by its referenced month complication's own December-to-January wrap, not a continuous arbor (ASM-0050, Phase 8.4). */
+  leapYearComplications: Record<LeapYearComplicationId, LeapYearComplication>;
   drive: Drive | null;
   /**
    * The level this design's model targets (REFERENCE_ENGINEERING.md §15).
@@ -97,6 +100,7 @@ export function createMovement(
     moonPhases: {},
     dateComplications: {},
     monthComplications: {},
+    leapYearComplications: {},
     drive: null,
   };
 }
@@ -212,6 +216,18 @@ export function updateMonthComplication(movement: Movement, id: MonthComplicatio
     throw new Error(`Unknown month complication id: ${id}`);
   }
   return { ...movement, monthComplications: { ...movement.monthComplications, [id]: { ...existing, ...patch } } };
+}
+
+export function addLeapYearComplication(movement: Movement, year: LeapYearComplication): Movement {
+  return { ...movement, leapYearComplications: { ...movement.leapYearComplications, [year.id]: year } };
+}
+
+export function updateLeapYearComplication(movement: Movement, id: LeapYearComplicationId, patch: Partial<Omit<LeapYearComplication, "id" | "type">>): Movement {
+  const existing = movement.leapYearComplications[id];
+  if (existing === undefined) {
+    throw new Error(`Unknown leap-year complication id: ${id}`);
+  }
+  return { ...movement, leapYearComplications: { ...movement.leapYearComplications, [id]: { ...existing, ...patch } } };
 }
 
 /**

@@ -13,6 +13,7 @@ import { createEscapement, type Escapement } from "./escapement";
 import { createMoonPhase, type MoonPhase } from "./moonPhase";
 import { createDateComplication, type DateComplication } from "./dateComplication";
 import { createMonthComplication, type MonthComplication } from "./monthComplication";
+import { createLeapYearComplication, type LeapYearComplication } from "./leapYearComplication";
 import { radians } from "@/units/angle";
 import type { ToleranceId } from "./tolerance";
 
@@ -152,6 +153,18 @@ export function newMonthComplication(movement: Movement): MonthComplication {
   });
 }
 
+/** A leap-year complication with every dimension empty and no arbor/month complication chosen yet (YEAR-001 lists what is missing). */
+export function newLeapYearComplication(movement: Movement): LeapYearComplication {
+  return createLeapYearComplication({
+    name: nextName(Object.values(movement.leapYearComplications), "Leap year"),
+    monthComplicationId: "" as MonthComplication["id"],
+    wheelShaftId: "" as ShaftId,
+    wheelTipDiameter: EMPTY,
+    wheelThickness: EMPTY,
+    wheelZCentre: EMPTY,
+  });
+}
+
 /** An escapement with every dimension empty and no arbors chosen yet (ESC-101 lists what is missing). */
 export function newEscapement(movement: Movement): Escapement {
   const none = "" as ShaftId;
@@ -232,7 +245,7 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
   }
 
   const others = new Set<string>();
-  if (id in movement.keylessWorks || id in movement.dials || id in movement.escapements || id in movement.moonPhases || id in movement.dateComplications || id in movement.monthComplications) others.add(id);
+  if (id in movement.keylessWorks || id in movement.dials || id in movement.escapements || id in movement.moonPhases || id in movement.dateComplications || id in movement.monthComplications || id in movement.leapYearComplications) others.add(id);
 
   const removed = new Set<string>([...frames, ...shafts, ...gears, ...meshes, ...jewels, ...couplings, ...tolerances, ...others]);
   const drive = movement.drive;
@@ -252,6 +265,7 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
       moonPhases: without(movement.moonPhases, removed),
       dateComplications: without(movement.dateComplications, removed),
       monthComplications: without(movement.monthComplications, removed),
+      leapYearComplications: without(movement.leapYearComplications, removed),
       drive: drive?.kind === "PRESCRIBED" && removed.has(drive.shaftId) ? null : drive,
     },
     removedIds: [...removed] as EntityId[],

@@ -2,6 +2,114 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.4: leap year / four-year cycle — done
+
+Implemented per the Phase 8 scoping, after first clearing its own research
+gate: ROADMAP.md's 8.4 entry flagged "Geneva-drive kinematics are
+implementable here" as an open question, not a confirmed yes, pending a
+literature check. That check (SRC-0047, a peer-reviewed mechanism-design
+paper, independently re-derived from first principles and cross-checked
+against two further sources) confirmed it — a genuine yes, with real
+closed-form position and velocity equations, not a hand-waved claim.
+
+- `src/kinematics/genevaDrive.ts` (new): a generic, reusable external
+  single-pin Geneva (Maltese-cross) drive kinematics module, not watch-
+  specific — the same role `math/gearMath.ts` plays for gears.
+  `genevaLambda` (the no-shock pin-radius/centre-distance ratio, λ =
+  sin(π/n)), `genevaLockingDiscRadiusRatio` (cos(π/n)),
+  `genevaWheelAdvanceAngle` (2π/n), `genevaDriverMotionAngle` (π(n−2)/n),
+  and the two continuous-motion functions this item's research was
+  actually gated on: `genevaWheelAngle` (β(α) = arctan(λ sin α / (1 − λ
+  cos α))) and `genevaWheelAngularVelocity` (ω2 = λω1(cos α − λ)/(1 + λ²
+  − 2λ cos α)). The secondhand research report's own α reference point
+  (measured from slot entry) did not survive independent verification —
+  direct driver-pin/wheel-centre coordinate geometry showed α must be
+  measured from the stroke's symmetric midpoint instead, where β is an
+  odd function of α; this was caught and fixed before shipping, by
+  deriving the relationship from scratch and cross-checking it
+  numerically, not by trusting the transcription.
+- `src/domain/leapYearComplication.ts` (new): a `LeapYearComplication`
+  entity, structurally identical in pattern to `MonthComplication` —
+  references an existing `MonthComplicationId`, has no drive arbor or
+  gear train of its own. `LEAP_YEAR_SLOT_COUNT = 4` is a named constant
+  (a four-year cycle has four positions, not a declared per-movement
+  field). SRC-0044 (Omega SA, a granted patent): the real mechanism is "a
+  rotatable assembly journalled on the month star such assembly including
+  a year cam and a Maltese cross" — a cam-plus-Geneva hybrid; this project
+  models only the Geneva-drive component, a stated simplification
+  (ASM-0050), not a literal reproduction (the year cam, which would carry
+  real leap-year logic such as century exceptions, is not modeled).
+- **The trigger is chained one level further than 8.3's**, not a new
+  mechanism: a `DateJumpTrack.monthCorrection.yearCorrection` field
+  (`{ wheelShaftId, wheelStepAngle }`), populated by `dateJumpTracks`
+  whenever a `LeapYearComplication` references the `MonthComplication`
+  already referencing this date complication. Inside `stepSimulation`'s
+  existing jump loop, when the month star's own correction advances it
+  AND its pre-step position was December (the last of `MONTHS_PER_YEAR`),
+  that is a year-wrap by construction — the year wheel then advances by
+  exactly one real Geneva index step
+  (`genevaWheelAdvanceAngle(LEAP_YEAR_SLOT_COUNT)` = 90°), in the same
+  event. The real mechanism's own continuous, non-uniform pin/slot
+  contact motion during that index event is not simulated — only its net
+  effect, consistent with how ASM-0048/0049 model their own jump
+  mechanisms — though the real kinematics for that motion are implemented,
+  tested and cited (`genevaWheelAngle`/`genevaWheelAngularVelocity`), and
+  surfaced as reference figures (YEAR-002), not left as inert unused code:
+  the peak wheel/driver speed ratio at mid-stroke (λ/(1−λ) ≈ 2.414 for a
+  4-slot wheel) is computed from the real velocity formula and reported in
+  both the inspector and the validation message.
+- YEAR-001 (dimensions/references/`wheel-also-geared`, mirroring
+  MONTH-001 exactly) and YEAR-002 (an info message giving the drive model
+  plus the real Geneva reference figures: index angle, motion/dwell
+  split, λ, peak speed ratio) in
+  `src/validation/rules/leapYearComplicationRules.ts`.
+- Inspector section, component-tree "+ Leap year" button, component
+  report rows (including the same four reference-figure derived values as
+  the validation message), and a 3D viewport disc on the wheel's own
+  shaft group — same zero-special-case rendering pattern as every other
+  shaft-group entity.
+- `leapYearWheelShaftIds` is a new `KIN-001` exemption helper (mirroring
+  `monthStarShaftIds`).
+- Schema migration v20 → v21.
+- Teaching movement: a declared leap-year wheel arbor (no gear train of
+  its own, positioned further along the same line from the month star,
+  comfortably inside the mainplate) and a `LeapYearComplication`
+  referencing the existing month complication. Verified live: the
+  inspector's reference Geneva figures read "4-slot: 90° index / 90°
+  driver motion, λ = 0.7071, peak speed ratio 2.414" — matching a
+  hand-derivation of the same formulas exactly; current position reads
+  "Year 1"; validation shows YEAR-002's info message and no YEAR-001
+  errors.
+- The guided tutorial was extended to match (the leap-year wheel's own
+  declared arbor, then the leap-year complication itself), preserving the
+  existing enforced tutorial/reference-design parity invariant.
+
+Verified: unit tests for the Geneva-drive kinematics
+(`genevaDrive.test.ts`: λ and the locking-disc ratio against known
+values and the Pythagorean identity, the wheel-advance and driver-motion
+formulas, a direct independent coordinate-geometry cross-check of
+`genevaWheelAngle`, oddness/monotonicity, and for
+`genevaWheelAngularVelocity`: agreement with a numerical derivative of
+the position function, integration recovering the net wheel advance, and
+boundary/peak checks), a new `simulationState.test.ts` "year-wrap
+correction" block (a month-end correction that is not a December wrap
+leaves the wheel untouched, an ordinary day in December does too,
+December's own correction both wraps the month star and advances the
+wheel by exactly one Geneva step, the wheel itself wraps at
+`LEAP_YEAR_SLOT_COUNT`, and no leap-year complication means no wheel
+movement at all), a dedicated validation-rule test file
+(`leapYearComplicationRules.test.ts`, mirroring
+`monthComplicationRules.test.ts`), the full suite (625 tests), typecheck,
+lint, a production build, a live-browser check (inspector values,
+validation console, and a 3-step simulation advance with no crash), and
+the full e2e suite.
+
+Next in Phase 8's recommended order: 8.6/8.7 (display/UI groundwork and
+validation rules) are cross-cutting and were done incrementally alongside
+8.1–8.4 rather than as separate items; 8.5 (season/equation of time)
+stays confirmed out of scope. No further Phase 8 sub-item is currently
+scoped to start without the user's next explicit instruction.
+
 ## Phase 8.3: month / annual calendar — done
 
 Implemented per the Phase 8 scoping: a `MonthComplication` entity that

@@ -12,6 +12,7 @@ import { escapementSection } from "./escapementSection";
 import { moonPhaseSection } from "./moonPhaseSection";
 import { dateComplicationSection } from "./dateComplicationSection";
 import { monthComplicationSection } from "./monthComplicationSection";
+import { leapYearComplicationSection } from "./leapYearComplicationSection";
 
 const TYPE_LABEL: Record<SelectableEntity["type"], string> = {
   Gear: "Gear",
@@ -24,6 +25,7 @@ const TYPE_LABEL: Record<SelectableEntity["type"], string> = {
   MoonPhase: "Moon phase",
   DateComplication: "Date",
   MonthComplication: "Month",
+  LeapYearComplication: "Leap year",
 };
 
 /** Entities whose issues bear on the selected one's status. */
@@ -45,6 +47,8 @@ function relatedIds(entity: SelectableEntity): EntityId[] {
       return [entity.id, entity.driveShaftId, entity.starShaftId];
     case "MonthComplication":
       return [entity.id, entity.starShaftId, entity.dateComplicationId];
+    case "LeapYearComplication":
+      return [entity.id, entity.wheelShaftId, entity.monthComplicationId];
     default:
       return [entity.id];
   }
@@ -95,6 +99,7 @@ export function mountInspector(
       : entity.type === "MoonPhase" ? moonPhaseSection(store, entity)
       : entity.type === "DateComplication" ? dateComplicationSection(store, entity)
       : entity.type === "MonthComplication" ? monthComplicationSection(store, entity)
+      : entity.type === "LeapYearComplication" ? leapYearComplicationSection(store, entity)
       : frameSection(store, entity, storage, notify);
     container.append(...section);
 

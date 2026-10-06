@@ -1646,3 +1646,42 @@
     29.53059 days per lunation), rather than the unsourced "~29.5 days"
     figure floating around most horology blog posts. Nothing implemented
     yet; recorded for Phase 8 scoping only.
+
+- id: SRC-0047
+  title: "Optimization of Kinematic Characteristics of Geneva Mechanism"
+  author: Aleksandar Nikolić, Radovan Bulatović
+  year: 2011
+  type: conference_paper
+  url: https://scidar.kg.ac.rs/bitstream/123456789/19559/1/HMProceedings2011_393-398.pdf
+  topics: [geneva-drive, maltese-cross, intermittent-motion, leap-year, phase-8]
+  claims_supported:
+    - "Gives the full closed-form angular position/velocity/acceleration equations for an external single-pin Geneva (Maltese-cross) mechanism: tan(beta) = l*sin(alpha) / (a - l*cos(alpha)), with their eq. 3 for angular velocity and eq. 5 for angular acceleration, where a is the centre distance, l is the driver pin radius, alpha is the driver's rotation angle and beta is the Geneva wheel's own angular displacement."
+    - "Derives the no-shock (impact-free) pin entry/exit condition (O1-P perpendicular to O2-P at the instant of engagement), which fixes the pin-radius-to-centre-distance ratio at lambda = l/a = sin(pi/n) for an n-slot wheel, and uses a 4-slot wheel as its own worked numerical example 'without loss of generality.'"
+    - "States the standard index/dwell split: the driver's own motion sweep (the portion of its revolution during which the Geneva wheel is actually turning) is 180 x (n-2)/n degrees, with the remainder as dwell; for n=4 that is 90 degrees motion / 270 degrees dwell."
+  claims_to_check: []
+  retrieved: true
+  accessed: "2026-10-06"
+  notes: >
+    Tier 1-2 (peer-reviewed conference proceedings, VII Triennial
+    International Conference "Heavy Machinery" HM2011, Faculty of
+    Mechanical Engineering, University of Kragujevac, Serbia; ISBN
+    978-86-82631-58-3). Read directly. Independently re-derived the same
+    beta(alpha)/omega(alpha) result from first principles (law of sines in
+    the O1-O2-P triangle) and cross-checked the omega2/omega1 ratio form
+    against a third-party Geneva-mechanism calculator (mechsimulator.com,
+    lower tier, used only as a numerical cross-check, not a primary
+    source) — all three agree. Confirms the ROADMAP.md 8.4 open question
+    ("Geneva-drive kinematics are implementable here, pending a literature
+    check") as a genuine yes: this is standard, well-documented mechanism-
+    design content (also a stock worked example in university dynamics
+    courseware — University of Arkansas MEEG 4003, Purdue ME274 — and in
+    the engineering-reference site Engineers Edge's own centre-distance
+    formula, both consistent with this paper's geometry), not a hand-waved
+    claim. SRC-0044 (the actual Omega perpetual-calendar patent) describes
+    its real four-year-cycle indicator as "a year cam and a Maltese
+    cross" together — a cam-plus-Geneva hybrid, not a pure single-pin
+    Geneva alone — so a pure-Geneva implementation here is a stated
+    simplification of SRC-0044's own mechanism (ASM-0050), not a literal
+    reproduction of it. Found while gating Phase 8.4 (leap year / four-
+    year cycle) per the roadmap's own research requirement before
+    implementation.

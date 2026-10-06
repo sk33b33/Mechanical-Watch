@@ -38,7 +38,7 @@ import { forkActingLength, forkRatio, isHalfToothSpan, lockingPoints, spanAngle,
 import { isValidToothCount } from "@/math/gearMath";
 import { metres } from "@/units/length";
 
-type PickKind = "gear" | "jewel" | "escapement" | "keyless" | "arbor" | "frame" | "dial" | "moonPhase" | "dateStar" | "monthStar";
+type PickKind = "gear" | "jewel" | "escapement" | "keyless" | "arbor" | "frame" | "dial" | "moonPhase" | "dateStar" | "monthStar" | "leapYearWheel";
 type ViewSide = "BRIDGE" | "DIAL";
 
 /**
@@ -55,7 +55,7 @@ export interface SectionState {
 const EXPLODE_STRETCH = 3;
 
 /** When several objects are under the pointer, the most specific wins. */
-const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, escapement: 2, keyless: 2, moonPhase: 2, dateStar: 2, monthStar: 2, arbor: 3, frame: 4, dial: 5 };
+const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, escapement: 2, keyless: 2, moonPhase: 2, dateStar: 2, monthStar: 2, leapYearWheel: 2, arbor: 3, frame: 4, dial: 5 };
 
 const COLORS = {
   selected: 0x4fa3ff,
@@ -72,6 +72,7 @@ const COLORS = {
   moonPhase: 0xaab4c2,
   dateStar: 0xc2a06a,
   monthStar: 0x8aa0c2,
+  leapYearWheel: 0x8ac2a0,
   stem: 0x9aa4ae,
   crown: 0xa9b3bd,
   pinion: 0xb8c4d0,
@@ -499,6 +500,26 @@ export class Viewport {
         zHi: meshZ + month.starThickness / 2,
         footprint: { kind: "circle", radius: month.starTipDiameter / 2, centre: { x: 0, y: 0 } },
         color: COLORS.monthStar,
+      });
+    }
+
+    for (const year of Object.values(movement.leapYearComplications)) {
+      const group = this.shaftGroups.get(year.wheelShaftId);
+      const valid = Number.isFinite(year.wheelTipDiameter) && year.wheelTipDiameter > 0 && Number.isFinite(year.wheelThickness) && year.wheelThickness > 0 && Number.isFinite(year.wheelZCentre);
+      if (group === undefined || !valid) continue;
+      // Driven entirely by the month complication's own December-to-January wrap (ASM-0050) —
+      // same applyKinematicRotation() loop that spins every other shaft group spins this one too.
+      const meshZ = this.displayZ(year.wheelZCentre);
+      const mesh = new THREE.Mesh(createZCylinder(year.wheelTipDiameter / 2, meshZ - year.wheelThickness / 2, meshZ + year.wheelThickness / 2, 64), material(COLORS.leapYearWheel, { metalness: 0.1, roughness: 0.7 }));
+      this.addPickable(group, mesh, { kind: "leapYearWheel", entityId: year.id, baseColor: COLORS.leapYearWheel });
+      this.cappableSolids.push({
+        positionX: group.position.x,
+        positionY: group.position.y,
+        rotationGroup: group,
+        zLo: meshZ - year.wheelThickness / 2,
+        zHi: meshZ + year.wheelThickness / 2,
+        footprint: { kind: "circle", radius: year.wheelTipDiameter / 2, centre: { x: 0, y: 0 } },
+        color: COLORS.leapYearWheel,
       });
     }
 

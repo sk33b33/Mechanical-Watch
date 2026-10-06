@@ -20,10 +20,11 @@ import { createJewel } from "@/domain/jewel";
 import { createFrictionClutch, createMainspring } from "@/domain/coupling";
 import { createKeylessWorks } from "@/domain/keyless";
 import { createDial } from "@/domain/dial";
-import { addDateComplication, addDial, addEscapement, addKeylessWorks, addMonthComplication, addMoonPhase, setBalanceDrive } from "@/domain/movement";
+import { addDateComplication, addDial, addEscapement, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, setBalanceDrive } from "@/domain/movement";
 import { createMoonPhase } from "@/domain/moonPhase";
 import { createDateComplication } from "@/domain/dateComplication";
 import { createMonthComplication } from "@/domain/monthComplication";
+import { createLeapYearComplication } from "@/domain/leapYearComplication";
 import { micronewtonMillimetresPerRadian, milligramSquareCentimetres } from "@/units/rotational";
 import { newtonMillimetres } from "@/units/torque";
 import { spanAngle, tangentialCentreDistance } from "@/kinematics/palletGeometry";
@@ -95,6 +96,15 @@ const mm = millimetres;
  * its own at all — it is driven entirely by the date complication's own
  * jumps, and only on the one each month that also enlarges to skip the days
  * the current month does not have.
+ *
+ * Leap-year (four-year cycle) wheel (Phase 8.4, ASM-0050): likewise no gear
+ * train of its own — driven entirely by the month star's own
+ * December-to-January wrap, once a calendar year. Advances by one real
+ * Geneva-mechanism index step (90°, a 4-slot wheel, SRC-0047), though only
+ * the net effect is simulated, not the real mechanism's continuous
+ * non-uniform indexing motion (its closed-form kinematics are implemented
+ * and tested, `src/kinematics/genevaDrive.ts`, but not wired into the live
+ * simulation).
  */
 export function createTeachingMovement(): Movement {
   const trainModule = mm(0.12);
@@ -195,6 +205,11 @@ export function createTeachingMovement(): Movement {
   // separate, declared (FIXED-position) arbor for the MonthComplication entity below to turn.
   const monthStarArbor = shaft("Month star", null, { kind: "STUD", frameId: mainplate.id });
 
+  // Leap-year wheel (Phase 8.4, ASM-0050): driven entirely by the month complication's own
+  // December-to-January wrap, so — like the month star — it has no gear, mesh or drive train of
+  // its own, just a separate, declared (FIXED-position) arbor for the LeapYearComplication below.
+  const leapYearWheelArbor = shaft("Leap-year wheel", null, { kind: "STUD", frameId: mainplate.id });
+
   // Keyless works. Ratchet and crown wheel just above the mainplate (its top face is at 1.0 mm).
   const keylessModule = mm(0.1);
   const ratchetWheel = gear("Ratchet wheel", barrelArbor, 40, keylessModule, 1.1, 0.2);
@@ -228,7 +243,7 @@ export function createTeachingMovement(): Movement {
   m = addFrame(m, balanceCock);
   for (const s of [
     barrel, centre, third, fourth, escape, cannon, minuteWheel, hourWheel, barrelArbor, crownWheelArbor, settingWheelArbor,
-    moonReductionArbor, moonDiscArbor, twentyFourHourArbor, dateStarArbor, monthStarArbor,
+    moonReductionArbor, moonDiscArbor, twentyFourHourArbor, dateStarArbor, monthStarArbor, leapYearWheelArbor,
   ]) {
     m = addShaft(m, s);
   }
@@ -287,6 +302,10 @@ export function createTeachingMovement(): Movement {
   // Declared, not mesh-derived (the month star is not meshed with anything either, ASM-0049) —
   // offset from the date star by more than both their tip radii combined (ASSY-002 clearance).
   m = updateShaft(m, monthStarArbor.id, { placement: fixedAt(mm(-6), mm(-5)) });
+  // Declared, not mesh-derived (the leap-year wheel is not meshed with anything either,
+  // ASM-0050) — further along the same line from the month star, by more than their tip radii
+  // combined (ASSY-002 clearance), comfortably inside the mainplate.
+  m = updateShaft(m, leapYearWheelArbor.id, { placement: fixedAt(mm(-6), mm(-9)) });
 
   // Put the crown wheel and setting wheel on the stem line y = 0 (the centre arbor is at the origin).
   // Each is placed from its partner by its mesh; the angle is the one that lands on y = 0 on the crown side.
@@ -338,7 +357,7 @@ export function createTeachingMovement(): Movement {
     starZCentre: mm(-1.2),
   });
   m = addDateComplication(m, dateComplication);
-  m = addMonthComplication(m, createMonthComplication({
+  const monthComplication = createMonthComplication({
     name: "Month",
     dateComplicationId: dateComplication.id,
     starShaftId: monthStarArbor.id,
@@ -346,6 +365,16 @@ export function createTeachingMovement(): Movement {
     starTipDiameter: mm(4),
     starThickness: mm(0.15),
     starZCentre: mm(-1.2),
+  });
+  m = addMonthComplication(m, monthComplication);
+  m = addLeapYearComplication(m, createLeapYearComplication({
+    name: "Leap year",
+    monthComplicationId: monthComplication.id,
+    wheelShaftId: leapYearWheelArbor.id,
+    // Smaller still: 4 positions need the least resolution of the three star/wheel discs (illustrative, ASM-0009).
+    wheelTipDiameter: mm(3),
+    wheelThickness: mm(0.15),
+    wheelZCentre: mm(-1.2),
   }));
 
   // Pallet arbor and balance staff: fixed positions along a line from the escape arbor

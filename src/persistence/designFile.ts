@@ -12,6 +12,7 @@ import type { Escapement, PalletGeometry } from "@/domain/escapement";
 import type { MoonPhase } from "@/domain/moonPhase";
 import type { DateComplication } from "@/domain/dateComplication";
 import type { MonthComplication } from "@/domain/monthComplication";
+import type { LeapYearComplication } from "@/domain/leapYearComplication";
 import type { MainspringSpec } from "@/domain/coupling";
 import type { Torque } from "@/units/torque";
 import type { MomentOfInertia, TorsionalStiffness } from "@/units/rotational";
@@ -41,7 +42,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 20;
+export const DESIGN_SCHEMA_VERSION = 21;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -297,6 +298,12 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
     const movement = doc.movement;
     if (!isRecord(movement)) return doc;
     return { ...doc, schemaVersion: 20, movement: { ...movement, monthComplications: {} } };
+  },
+  /** v20 → v21: movements gain empty `leapYearComplications` (ASM-0050, Phase 8.4). */
+  20: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement)) return doc;
+    return { ...doc, schemaVersion: 21, movement: { ...movement, leapYearComplications: {} } };
   },
 };
 
@@ -603,6 +610,20 @@ const monthComplication: Decoder<MonthComplication> = (value, path) => {
   };
 };
 
+const leapYearComplication: Decoder<LeapYearComplication> = (value, path) => {
+  const o = object(value, path);
+  return {
+    id: field(o, "id", id<LeapYearComplication["id"]>(), path),
+    type: field(o, "type", literal("LeapYearComplication"), path),
+    name: field(o, "name", string, path),
+    monthComplicationId: field(o, "monthComplicationId", id<MonthComplication["id"]>(), path),
+    wheelShaftId: field(o, "wheelShaftId", id<Shaft["id"]>(), path),
+    wheelTipDiameter: field(o, "wheelTipDiameter", length, path),
+    wheelThickness: field(o, "wheelThickness", length, path),
+    wheelZCentre: field(o, "wheelZCentre", length, path),
+  };
+};
+
 const pallets: Decoder<PalletGeometry> = (value, path) => {
   const o = object(value, path);
   return {
@@ -684,6 +705,7 @@ const movement: Decoder<Movement> = (value, path) => {
     moonPhases: field(o, "moonPhases", entityRecord(moonPhase), path),
     dateComplications: field(o, "dateComplications", entityRecord(dateComplication), path),
     monthComplications: field(o, "monthComplications", entityRecord(monthComplication), path),
+    leapYearComplications: field(o, "leapYearComplications", entityRecord(leapYearComplication), path),
     drive: field(o, "drive", nullable(drive), path),
   };
 };

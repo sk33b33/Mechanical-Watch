@@ -367,18 +367,22 @@ propagation used everywhere else.
   annual calendar in the real-watchmaking sense still needs manual
   correction once a year (end of Feb, by design); that is a legitimate,
   sourced design point, not a bug, left to 8.4.
-- 8.4 — Leap year / four-year cycle (the rest of "year"; optional,
-  depends on 8.3). SRC-0044 (Omega SA, read): leap-year handling
-  conventionally built on a "Maltese cross... to effect one revolution
-  every four years" — i.e. a Geneva-drive-family intermittent-motion
-  mechanism, not another bespoke jump/cam like 8.2/8.3. Genuinely
-  promising because, unlike the date/month jump mechanisms, Geneva
-  drives have well-documented closed-form kinematics in standard
-  mechanism-design literature (dwell/motion fractions from pin/slot
-  geometry) — but that literature has not yet been checked against this
-  specific claim, so treat "Geneva-drive kinematics are implementable
-  here" as an open research question, not a confirmed yes, until that
-  check happens.
+- 8.4 — **Done** (see `docs/STATUS.md`). Leap year / four-year cycle: the
+  research gate cleared first — SRC-0047 (a peer-reviewed mechanism-design
+  paper), independently re-derived and cross-checked, confirms a genuine
+  single-pin Geneva (Maltese-cross) drive has real closed-form position
+  and velocity kinematics (`src/kinematics/genevaDrive.ts`), not a
+  hand-waved claim. SRC-0044 (Omega SA)'s real mechanism is "a rotatable
+  assembly journalled on the month star... including a year cam and a
+  Maltese cross" — a cam-plus-Geneva hybrid; this item models only the
+  Geneva-drive component (the year cam, which would carry real leap-year
+  logic such as century exceptions, is not modeled). Like 8.2/8.3, only
+  the net kinematic effect is simulated (one 90° index step per calendar
+  year, triggered by the month star's own December-to-January wrap, the
+  same jump-chaining pattern 8.3 established) — but unlike 8.2/8.3, the
+  real continuous, non-uniform indexing-stroke kinematics genuinely exist
+  and are implemented, tested and cited as a reusable library module, and
+  surfaced as reference figures rather than left unused.
 - 8.5 — "Season" / equation of time — **confirmed out of scope, not
   reconsidered without the user asking.** Re-researched this pass
   (beyond the original flag): the real mechanism (per auction-house and
@@ -409,6 +413,8 @@ mechanism-design source first. 8.5 stays out of scope. 8.6/8.7 are
 cross-cutting — do the display groundwork alongside 8.1, and the
 validation rules alongside whichever jump-mechanism item is current.
 
-This is a scoping pass only — nothing above is implemented yet.
-Confirm which sub-item to start with before writing any domain code;
-this is a new domain area, not a refinement of existing Phase 7 work.
+8.1–8.4 are done (see `docs/STATUS.md` for each). 8.6/8.7's
+cross-cutting work was folded into 8.1–8.4 as they shipped, rather than
+built as separate items. 8.5 remains confirmed out of scope. No further
+Phase 8 sub-item is scoped to start without the user's next explicit
+instruction.

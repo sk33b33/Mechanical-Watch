@@ -106,3 +106,6 @@ DATE-003 The date mechanism's implied jump period, derived from the drive arbor'
 
 MONTH-001 A month complication's star dimensions must be positive/finite, its star arbor must exist and must not also be reached by the continuous gear train, and it must reference a date complication that exists and is distinct from the month's own star arbor (ASM-0049).
 MONTH-002 The month complication's correction schedule (which months get an extra date-star step, and by how many) is reported, with February's fixed 28-day length and the lack of leap-year awareness flagged (ASM-0049).
+
+YEAR-001 A leap-year complication's wheel dimensions must be positive/finite, its wheel arbor must exist and must not also be reached by the continuous gear train, and it must reference a month complication that exists and is distinct from the year's own wheel arbor (ASM-0050).
+YEAR-002 The leap-year complication's drive model and reference Geneva-mechanism figures (4-slot index angle, motion/dwell split, no-shock pin-radius ratio) are reported (ASM-0050, SRC-0047).

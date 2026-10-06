@@ -1,6 +1,6 @@
 import type { EntityId } from "@/domain/ids";
 import type { Movement } from "@/domain/movement";
-import { addDateComplication, addDial, addEscapement, addFrame, addGear, addKeylessWorks, addMonthComplication, addMoonPhase, addShaft } from "@/domain/movement";
+import { addDateComplication, addDial, addEscapement, addFrame, addGear, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addShaft } from "@/domain/movement";
 import type { Frame } from "@/domain/frame";
 import type { Gear } from "@/domain/gear";
 import type { Coupling } from "@/domain/coupling";
@@ -68,7 +68,7 @@ function couplingOfKind(record: Record<string, Coupling>, kind: Coupling["kind"]
   return found;
 }
 
-/** Builds the ~49-step walkthrough from a real teaching movement (createTeachingMovement()), read once at module load. */
+/** Builds the ~51-step walkthrough from a real teaching movement (createTeachingMovement()), read once at module load. */
 function buildTeachingMovementSteps(): TutorialStep[] {
   const ref = createTeachingMovement();
   const placement = solvePlacement(ref);
@@ -188,6 +188,7 @@ function buildTeachingMovementSteps(): TutorialStep[] {
   const twentyFourHourWheel = byName(ref.gears, "24-hour wheel");
   const dateStarArbor = byName(ref.shafts, "Date star");
   const monthStarArbor = byName(ref.shafts, "Month star");
+  const leapYearWheelArbor = byName(ref.shafts, "Leap-year wheel");
 
   const mainspring = couplingOfKind(ref.couplings, "MAINSPRING");
   const keylessWorks = only(ref.keylessWorks);
@@ -196,6 +197,7 @@ function buildTeachingMovementSteps(): TutorialStep[] {
   const moonPhase = only(ref.moonPhases);
   const dateComplication = only(ref.dateComplications);
   const monthComplication = only(ref.monthComplications);
+  const leapYearComplication = only(ref.leapYearComplications);
 
   return [
     {
@@ -382,6 +384,17 @@ function buildTeachingMovementSteps(): TutorialStep[] {
       targetSelector: '[data-tutorial="add-month"]',
       isComplete: (m) => m.monthComplications[monthComplication.id] !== undefined,
       createOverride: (m) => ({ movement: addMonthComplication(m, monthComplication), id: monthComplication.id }),
+    },
+
+    arborStep("add-leap-year-wheel-arbor", "Add the leap-year wheel's own arbor", "Click “+ Arbor” — like the date and month stars, its position is declared, not derived: it is not meshed with anything either (ASM-0050).", leapYearWheelArbor, solvedFixed(leapYearWheelArbor)),
+    {
+      id: "add-leap-year",
+      title: "Add the leap-year complication",
+      instructions:
+        "Click “+ Leap year” — the referenced month complication, wheel arbor and dimensions all come from the real design. Like the month complication, this one has no drive train of its own: it advances by one Geneva-mechanism index step each time the month star wraps from December back to January (ASM-0050).",
+      targetSelector: '[data-tutorial="add-leap-year"]',
+      isComplete: (m) => m.leapYearComplications[leapYearComplication.id] !== undefined,
+      createOverride: (m) => ({ movement: addLeapYearComplication(m, leapYearComplication), id: leapYearComplication.id }),
     },
 
     {

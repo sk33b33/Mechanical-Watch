@@ -18,6 +18,7 @@ import { springRules } from "./rules/springRules";
 import { moonPhaseRules } from "./rules/moonPhaseRules";
 import { dateComplicationRules } from "./rules/dateComplicationRules";
 import { monthComplicationRules } from "./rules/monthComplicationRules";
+import { leapYearComplicationRules } from "./rules/leapYearComplicationRules";
 
 /** Rule families, in the order their issues are reported. */
 const RULES: readonly Rule[] = [
@@ -40,6 +41,7 @@ const RULES: readonly Rule[] = [
   moonPhaseRules,
   dateComplicationRules,
   monthComplicationRules,
+  leapYearComplicationRules,
 ];
 
 /**

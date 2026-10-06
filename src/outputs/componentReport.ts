@@ -1,6 +1,6 @@
 import { toMillimetres, type Length } from "@/units/length";
 import { radians, toDegrees, type Angle } from "@/units/angle";
-import { toRpm, type AngularVelocity } from "@/units/angularVelocity";
+import { radiansPerSecond, toRpm, type AngularVelocity } from "@/units/angularVelocity";
 import type { Movement } from "@/domain/movement";
 import type { EntityId } from "@/domain/ids";
 import type { Shaft } from "@/domain/shaft";
@@ -17,6 +17,8 @@ import { impliedLunationDays, lunationDriftMinutes, SYNODIC_MONTH_DAYS } from "@
 import type { DateComplication } from "@/domain/dateComplication";
 import type { MonthComplication } from "@/domain/monthComplication";
 import { GREGORIAN_MONTH_LENGTHS } from "@/kinematics/monthComplication";
+import { LEAP_YEAR_SLOT_COUNT, type LeapYearComplication } from "@/domain/leapYearComplication";
+import { genevaDriverMotionAngle, genevaLambda, genevaWheelAdvanceAngle, genevaWheelAngularVelocity } from "@/kinematics/genevaDrive";
 import { toBeatsPerHour } from "@/units/frequency";
 import { balanceFrequency, beatFrequency, beatsPerEscapeRevolution, impulseFraction } from "@/kinematics/escapement";
 import { isochronismAdjustedRate, MIDDLE_TEMPERATURE_CELSIUS, temperatureAdjustedRate, USUAL_TEMPERATURE_RANGE_CELSIUS } from "@/kinematics/balance";
@@ -70,7 +72,7 @@ export interface ToleranceRow {
   scope: string;
 }
 
-export type ComponentKind = "Frame" | "Arbor" | "Gear" | "Bearing" | "Keyless works" | "Dial" | "Escapement" | "Moon phase" | "Date" | "Month";
+export type ComponentKind = "Frame" | "Arbor" | "Gear" | "Bearing" | "Keyless works" | "Dial" | "Escapement" | "Moon phase" | "Date" | "Month" | "Leap year";
 
 export interface ComponentReport {
   id: EntityId;
@@ -570,6 +572,62 @@ function monthComplicationReport(movement: Movement, analysis: MovementAnalysis,
   };
 }
 
+function leapYearComplicationReport(movement: Movement, analysis: MovementAnalysis, year: LeapYearComplication): ComponentReport {
+  const month = movement.monthComplications[year.monthComplicationId];
+  const n = LEAP_YEAR_SLOT_COUNT;
+  const lambda = genevaLambda(n);
+  const peakRatio = genevaWheelAngularVelocity(radiansPerSecond(1), radians(0), n);
+  return {
+    id: year.id,
+    name: year.name,
+    kind: "Leap year",
+    description: "driven entirely by the referenced month complication's own December-to-January wrap, one step per calendar year (no drive arbor of its own)",
+    parameters: [
+      entered("Month complication", month?.name ?? "not chosen"),
+      entered("Wheel arbor", movement.shafts[year.wheelShaftId]?.name ?? "not chosen"),
+      lengthParam("Wheel tip diameter", year.wheelTipDiameter),
+      lengthParam("Wheel thickness", year.wheelThickness),
+      lengthParam("Wheel mid-plane height", year.wheelZCentre),
+    ],
+    derived: [
+      {
+        label: "Jump step",
+        text: `${toDegrees(genevaWheelAdvanceAngle(n)).toFixed(0)}°`,
+        si: genevaWheelAdvanceAngle(n),
+        equation: `2π / ${String(n)} (LEAP_YEAR_SLOT_COUNT)`,
+        level: "L2_KINEMATIC",
+        references: ["ASM-0050"],
+      },
+      {
+        label: "Reference Geneva driver motion sweep",
+        text: `${toDegrees(genevaDriverMotionAngle(n)).toFixed(0)}° (of a real single-pin ${String(n)}-slot drive, not simulated)`,
+        si: genevaDriverMotionAngle(n),
+        equation: "π(n − 2) / n (SRC-0047)",
+        level: "L2_KINEMATIC",
+        references: ["ASM-0050", "SRC-0047"],
+      },
+      {
+        label: "Reference no-shock pin-radius ratio λ",
+        text: lambda.toFixed(4),
+        si: lambda,
+        equation: "sin(π / n) (SRC-0047)",
+        level: "L2_KINEMATIC",
+        references: ["ASM-0050", "SRC-0047"],
+      },
+      {
+        label: "Reference peak wheel/driver speed ratio",
+        text: peakRatio.toFixed(3),
+        si: peakRatio,
+        equation: "λ(cos α − λ) / (1 + λ² − 2λ cos α), at α = 0 (mid-stroke, SRC-0047)",
+        level: "L2_KINEMATIC",
+        references: ["ASM-0050", "SRC-0047"],
+      },
+    ],
+    tolerances: [],
+    issues: issuesFor(analysis, year.id),
+  };
+}
+
 function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: Escapement): ComponentReport {
   const w = esc.escapeWheel;
   const b = esc.balance;
@@ -743,6 +801,7 @@ export function componentReports(movement: Movement, analysis: MovementAnalysis)
     ...Object.values(movement.moonPhases).sort(byName).map((m) => moonPhaseReport(movement, analysis, m)),
     ...Object.values(movement.dateComplications).sort(byName).map((d) => dateComplicationReport(movement, analysis, d)),
     ...Object.values(movement.monthComplications).sort(byName).map((m) => monthComplicationReport(movement, analysis, m)),
+    ...Object.values(movement.leapYearComplications).sort(byName).map((y) => leapYearComplicationReport(movement, analysis, y)),
   ];
 }
 

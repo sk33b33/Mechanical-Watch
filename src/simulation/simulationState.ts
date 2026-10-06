@@ -10,6 +10,8 @@ import type { DateComplicationId } from "@/domain/dateComplication";
 import type { GearTrainSolution } from "@/kinematics/solveGearTrain";
 import { crossesRevolution, dateJumpStepAngle, starPosition } from "@/kinematics/dateComplication";
 import { monthEndCorrection, monthJumpStepAngle, MONTHS_PER_YEAR } from "@/kinematics/monthComplication";
+import { LEAP_YEAR_SLOT_COUNT } from "@/domain/leapYearComplication";
+import { genevaWheelAdvanceAngle } from "@/kinematics/genevaDrive";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 
 /**
@@ -93,6 +95,10 @@ export function reconcileWind(state: SimulationState, movement: Movement): Simul
  * `MonthComplication` references this date complication (ASM-0049),
  * makes the jump size month-aware instead of always one step, and
  * advances the month star in the same event — see `stepSimulation`.
+ * `monthCorrection.yearCorrection`, when a `LeapYearComplication`
+ * references that month complication (ASM-0050), advances a Geneva
+ * wheel by one index step in the same event the month star wraps from
+ * December back to January.
  */
 export interface DateJumpTrack {
   id: DateComplicationId;
@@ -100,20 +106,25 @@ export interface DateJumpTrack {
   starShaftId: ShaftId;
   starToothCount: number;
   stepAngle: Angle;
-  monthCorrection: { monthStarShaftId: ShaftId; monthStepAngle: Angle } | null;
+  monthCorrection: { monthStarShaftId: ShaftId; monthStepAngle: Angle; yearCorrection: { wheelShaftId: ShaftId; wheelStepAngle: Angle } | null } | null;
 }
 
 export function dateJumpTracks(movement: Movement): DateJumpTrack[] {
   return Object.values(movement.dateComplications).flatMap((date) => {
     if (!(Number.isInteger(date.starToothCount) && date.starToothCount > 0)) return [];
     const month = Object.values(movement.monthComplications).find((m) => m.dateComplicationId === date.id);
+    const year = month === undefined ? undefined : Object.values(movement.leapYearComplications).find((y) => y.monthComplicationId === month.id);
     return [{
       id: date.id,
       driveShaftId: date.driveShaftId,
       starShaftId: date.starShaftId,
       starToothCount: date.starToothCount,
       stepAngle: dateJumpStepAngle(date.starToothCount),
-      monthCorrection: month === undefined ? null : { monthStarShaftId: month.starShaftId, monthStepAngle: monthJumpStepAngle() },
+      monthCorrection: month === undefined ? null : {
+        monthStarShaftId: month.starShaftId,
+        monthStepAngle: monthJumpStepAngle(),
+        yearCorrection: year === undefined ? null : { wheelShaftId: year.wheelShaftId, wheelStepAngle: genevaWheelAdvanceAngle(LEAP_YEAR_SLOT_COUNT) },
+      },
     }];
   });
 }
@@ -149,7 +160,9 @@ export function stepSimulation(
   // forward crossings only (`crossesRevolution`'s own ratchet behaviour). With a month
   // complication attached (ASM-0049), the jump size is read from the star's own pre-step
   // position each time (month-aware, via `monthEndCorrection`) instead of always one step, and
-  // the month star — also not a continuous gear-train member — advances in the same event.
+  // the month star — also not a continuous gear-train member — advances in the same event. With
+  // a leap-year complication attached (ASM-0050), the one month-advance each year that wraps
+  // December back to January also advances a Geneva wheel by one index step, in that same event.
   for (const track of dateJumps) {
     const driveOmega = solution.shaftAngularVelocity.get(track.driveShaftId);
     if (driveOmega === undefined) continue;
@@ -167,6 +180,14 @@ export function stepSimulation(
     if (correction.monthAdvances) {
       const currentMonth = nextShaftAngle[track.monthCorrection.monthStarShaftId] ?? radians(0);
       nextShaftAngle[track.monthCorrection.monthStarShaftId] = normalizeAngle(radians(currentMonth + track.monthCorrection.monthStepAngle));
+      // The year wheel (ASM-0050) advances only on the one month-advance each year that wraps
+      // the month star from December (its last position) back to January — a calendar-year
+      // event by construction, not a continuously-timed one.
+      const yearCorrection = track.monthCorrection.yearCorrection;
+      if (yearCorrection !== null && monthPosition === MONTHS_PER_YEAR - 1) {
+        const currentWheel = nextShaftAngle[yearCorrection.wheelShaftId] ?? radians(0);
+        nextShaftAngle[yearCorrection.wheelShaftId] = normalizeAngle(radians(currentWheel + yearCorrection.wheelStepAngle));
+      }
     }
   }
   const nextStemAngle: Record<StemBodyId, Angle> = { ...state.stemAngle };
