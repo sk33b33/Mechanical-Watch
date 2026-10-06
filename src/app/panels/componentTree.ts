@@ -1,7 +1,7 @@
 import type { AppStore } from "@/app/store";
 import type { EntityId } from "@/domain/ids";
-import { addDateComplication, addDial, addEscapement, addFrame, addKeylessWorks, addMoonPhase, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
-import { newDateComplication, newDial, newEscapement, newFrame, newKeylessWorks, newMoonPhase, newShaft } from "@/domain/editing";
+import { addDateComplication, addDial, addEscapement, addFrame, addKeylessWorks, addMonthComplication, addMoonPhase, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
+import { newDateComplication, newDial, newEscapement, newFrame, newKeylessWorks, newMonthComplication, newMoonPhase, newShaft } from "@/domain/editing";
 import { listAssumptions } from "@/reference/assumptions";
 
 export function mountComponentTree(container: HTMLElement, store: AppStore): () => void {
@@ -100,6 +100,10 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
         const date = newDateComplication(m);
         return { movement: addDateComplication(m, date), id: date.id };
       }, "add-date"),
+      addButton("+ Month", "Add a month indicator with every value empty; then choose its date complication and arbor", (m) => {
+        const month = newMonthComplication(m);
+        return { movement: addMonthComplication(m, month), id: month.id };
+      }, "add-month"),
     );
     container.appendChild(actions);
 
@@ -148,6 +152,11 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
     if (Object.keys(movement.dateComplications).length > 0) {
       container.appendChild(header("Date"));
       for (const date of Object.values(movement.dateComplications)) container.appendChild(item(date.name, date.id, 0, "(jump mechanism)"));
+    }
+
+    if (Object.keys(movement.monthComplications).length > 0) {
+      container.appendChild(header("Month"));
+      for (const month of Object.values(movement.monthComplications)) container.appendChild(item(month.name, month.id, 0, "(driven by date jumps)"));
     }
 
     container.appendChild(header("Assumptions"));

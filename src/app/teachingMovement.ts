@@ -20,9 +20,10 @@ import { createJewel } from "@/domain/jewel";
 import { createFrictionClutch, createMainspring } from "@/domain/coupling";
 import { createKeylessWorks } from "@/domain/keyless";
 import { createDial } from "@/domain/dial";
-import { addDateComplication, addDial, addEscapement, addKeylessWorks, addMoonPhase, setBalanceDrive } from "@/domain/movement";
+import { addDateComplication, addDial, addEscapement, addKeylessWorks, addMonthComplication, addMoonPhase, setBalanceDrive } from "@/domain/movement";
 import { createMoonPhase } from "@/domain/moonPhase";
 import { createDateComplication } from "@/domain/dateComplication";
+import { createMonthComplication } from "@/domain/monthComplication";
 import { micronewtonMillimetresPerRadian, milligramSquareCentimetres } from "@/units/rotational";
 import { newtonMillimetres } from "@/units/torque";
 import { spanAngle, tangentialCentreDistance } from "@/kinematics/palletGeometry";
@@ -87,6 +88,13 @@ const mm = millimetres;
  * conventional layout, SRC-0045) that is a ≈29.57-day lunation, a few tens
  * of minutes off the real synodic month (29.53059 days, SRC-0046) — reported
  * (MOON-002), not engineered away.
+ *
+ * Simple instantaneous date (Phase 8.2, ASM-0048) and month indicator (Phase
+ * 8.3, ASM-0049): a 24-hour wheel geared 2:1 off the hour wheel drives a date
+ * star through one jump per revolution. The month star has no gear train of
+ * its own at all — it is driven entirely by the date complication's own
+ * jumps, and only on the one each month that also enlarges to skip the days
+ * the current month does not have.
  */
 export function createTeachingMovement(): Movement {
   const trainModule = mm(0.12);
@@ -182,6 +190,11 @@ export function createTeachingMovement(): Movement {
   // line from the 24-hour arbor, comfortably inside the mainplate and clear of the dial back.
   const dateStarArbor = shaft("Date star", null, { kind: "STUD", frameId: mainplate.id });
 
+  // Month star (Phase 8.3, ASM-0049): driven entirely by the date complication's own jumps, so
+  // unlike every other arbor above it has no gear, mesh or drive train of its own — just a
+  // separate, declared (FIXED-position) arbor for the MonthComplication entity below to turn.
+  const monthStarArbor = shaft("Month star", null, { kind: "STUD", frameId: mainplate.id });
+
   // Keyless works. Ratchet and crown wheel just above the mainplate (its top face is at 1.0 mm).
   const keylessModule = mm(0.1);
   const ratchetWheel = gear("Ratchet wheel", barrelArbor, 40, keylessModule, 1.1, 0.2);
@@ -215,7 +228,7 @@ export function createTeachingMovement(): Movement {
   m = addFrame(m, balanceCock);
   for (const s of [
     barrel, centre, third, fourth, escape, cannon, minuteWheel, hourWheel, barrelArbor, crownWheelArbor, settingWheelArbor,
-    moonReductionArbor, moonDiscArbor, twentyFourHourArbor, dateStarArbor,
+    moonReductionArbor, moonDiscArbor, twentyFourHourArbor, dateStarArbor, monthStarArbor,
   ]) {
     m = addShaft(m, s);
   }
@@ -271,6 +284,9 @@ export function createTeachingMovement(): Movement {
   // Declared, not mesh-derived (the star is not meshed with anything, ASM-0048) — a plausible
   // clearance further along the same 9 o'clock line.
   m = updateShaft(m, dateStarArbor.id, { placement: fixedAt(mm(-6), mm(0)) });
+  // Declared, not mesh-derived (the month star is not meshed with anything either, ASM-0049) —
+  // offset from the date star by more than both their tip radii combined (ASSY-002 clearance).
+  m = updateShaft(m, monthStarArbor.id, { placement: fixedAt(mm(-6), mm(-5)) });
 
   // Put the crown wheel and setting wheel on the stem line y = 0 (the centre arbor is at the origin).
   // Each is placed from its partner by its mesh; the angle is the one that lands on y = 0 on the crown side.
@@ -310,7 +326,7 @@ export function createTeachingMovement(): Movement {
     faceHeight: mm(-1.35),
     windowCount: "DOUBLE",
   }));
-  m = addDateComplication(m, createDateComplication({
+  const dateComplication = createDateComplication({
     name: "Date",
     driveShaftId: twentyFourHourArbor.id,
     starShaftId: dateStarArbor.id,
@@ -318,6 +334,16 @@ export function createTeachingMovement(): Movement {
     // 0 to 31... with an inner toothing 1a of thirty-one teeth").
     starToothCount: 31,
     starTipDiameter: mm(5),
+    starThickness: mm(0.15),
+    starZCentre: mm(-1.2),
+  });
+  m = addDateComplication(m, dateComplication);
+  m = addMonthComplication(m, createMonthComplication({
+    name: "Month",
+    dateComplicationId: dateComplication.id,
+    starShaftId: monthStarArbor.id,
+    // Smaller than the date star: 12 positions need less resolution than 31 (illustrative, ASM-0009).
+    starTipDiameter: mm(4),
     starThickness: mm(0.15),
     starZCentre: mm(-1.2),
   }));

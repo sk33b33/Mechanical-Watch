@@ -2,6 +2,94 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.3: month / annual calendar — done
+
+Implemented per the Phase 8 scoping: a `MonthComplication` entity that
+both advances once a month and enlarges its referenced date complication's
+own jump at the end of short months — the "intermittently-engaged
+kinematic chain" 8.2's write-up flagged as this item's real new risk, now
+designed and built on top of 8.2's own jump-mechanism foundation.
+
+- `src/domain/monthComplication.ts`: a new top-level entity that
+  REFERENCES an existing `DateComplicationId` (`dateComplicationId`) —
+  distinct from the "entity references a `ShaftId`" pattern used
+  everywhere else in this codebase. Chosen specifically so
+  `DateComplication` stays exactly as useful standalone as it shipped in
+  8.2 (month-awareness is strictly additive), and because this mechanism
+  genuinely has no continuous drive arbor or gear train of its own: SRC-0043
+  (ETA SA, a granted patent) describes the date disc itself gaining "a
+  second toothing (24), a correction drive wheel set (42)... and a month
+  star wheel (54) arranged to be actuated at the end of each month" — the
+  month star is driven entirely by the date complication's own jumps.
+  `starShaftId` is a separate, declared (FIXED-position) arbor, like the
+  date star, deliberately not meshed with anything.
+- `src/kinematics/monthComplication.ts`: `MONTHS_PER_YEAR` and
+  `GREGORIAN_MONTH_LENGTHS` as named constants (February fixed at 28
+  days — real, uncontested external facts, not invented or declared
+  per-movement, same treatment as 8.1's `SYNODIC_MONTH_DAYS`).
+  `monthEndCorrection(dayPosition, monthIndex, dateStarToothCount)` is the
+  single formula covering every case: on an ordinary day, one date-star
+  step and no month advance; on a month's last day, `dateStarToothCount −
+  lastDay + 1` date-star steps (landing exactly on day 1 of the next
+  month) and a month-star advance. Verified by hand that this reduces to
+  an ordinary single step after every 31-day month, so no special-cased
+  branch is needed there.
+- **The correction lives in the same jump-application loop 8.2 built**,
+  not a parallel mechanism: `DateJumpTrack` in
+  `src/simulation/simulationState.ts` gained an optional `monthCorrection`
+  field (`{ monthStarShaftId, monthStepAngle }`), populated by
+  `dateJumpTracks` whenever a `MonthComplication` references that date
+  complication. Inside `stepSimulation`, the existing trigger
+  (`crossesRevolution` on the date's own drive shaft) is unchanged; only
+  the action taken on a crossing becomes conditional — with no month
+  correction, behaves exactly as in 8.2 (always +1 step); with one, reads
+  the date and month stars' own pre-step positions (`starPosition`, 8.2's
+  own function, reused unchanged for the month star too, keyed off
+  `MONTHS_PER_YEAR` instead of a tooth count) and applies
+  `monthEndCorrection`'s result to both stars in the same event. No new
+  top-level simulation-state field was needed.
+- MONTH-001 (dimensions/references, including "does not reference an
+  existing date complication" and "star arbor must be different from the
+  date complication's own star arbor," plus a `star-also-geared` conflict
+  check parallel to DATE-002) and MONTH-002 (an info summary of the
+  correction schedule — which months get an extra date-star step and by
+  how many — explicitly flagging February's fixed length and the Phase
+  8.4 leap-year deferral) in
+  `src/validation/rules/monthComplicationRules.ts`.
+- Inspector section, component-tree "+ Month" button, component report
+  rows, and a 3D viewport disc on the star's own shaft group — same
+  zero-special-case rendering pattern as every other shaft-group entity:
+  it turns only when the simulation writes into `simulation.shaftAngle`.
+- `monthStarShaftIds` is a new `KIN-001` exemption helper (mirroring
+  `dateStarShaftIds`): jump-driven shafts are never flagged "unpowered."
+- Schema migration v19 → v20.
+- Teaching movement: a declared month star arbor (no gear train of its
+  own) and a `MonthComplication` referencing the existing date
+  complication. Verified live: the inspector's correction schedule reads
+  "February (28d, +3), April (30d, +1), June (30d, +1), September (30d,
+  +1), November (30d, +1)"; current position reads "January"; validation
+  shows MONTH-002's info message and no MONTH-001 errors.
+- The guided tutorial was extended to match (the month star's own
+  declared arbor, then the month complication itself), preserving the
+  existing enforced tutorial/reference-design parity invariant.
+
+Verified: unit tests for the pure kinematics functions
+(`monthComplication.test.ts`: `daysInMonth` nominal/wrap/boundary,
+`monthEndCorrection` for every Gregorian month length, `monthJumpStepAngle`),
+a new `simulationState.test.ts` block directly exercising `stepSimulation`
+with a month-aware `DateJumpTrack` (an ordinary day, the last day of a
+31/30/28-day month, and month-star wraparound at `MONTHS_PER_YEAR`), a
+dedicated validation-rule test file (`monthComplicationRules.test.ts`,
+mirroring `dateComplicationRules.test.ts`), the full suite (599 tests),
+typecheck, lint, a production build, a live-browser check (inspector
+values, validation console, and a 3-step simulation advance with no
+crash), and a scratch e2e check of the month complication's inspector,
+validation and simulation-stepping behaviour.
+
+Next in Phase 8's recommended order: 8.4 (leap year / four-year cycle),
+gated on checking its Geneva-drive kinematics claim against a real
+mechanism-design source first, per the original Phase 8 scoping.
+
 ## Phase 8.2: simple instantaneous date — done
 
 Implemented per the Phase 8 scoping: a `DateComplication` entity whose

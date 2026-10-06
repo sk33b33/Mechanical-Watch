@@ -1,5 +1,6 @@
 import { oscillatingShaftIds } from "@/domain/escapement";
 import { dateStarShaftIds } from "@/domain/dateComplication";
+import { monthStarShaftIds } from "@/domain/monthComplication";
 import type { EntityId } from "@/domain/ids";
 import { drivenShaftId } from "@/domain/movement";
 import type { ValidationIssue } from "../validationIssue";
@@ -72,10 +73,11 @@ export const kinematicRules: Rule = ({ movement, train }) => {
   if (shaftId !== null) {
     // Pallet arbor and balance staff oscillate under the escapement; they are not meant to be gear-driven (ESC-102).
     const oscillating = oscillatingShaftIds(movement.escapements);
-    // Date star arbors advance only by a jump, not continuous propagation (ASM-0048); DATE-003 reports their own drive state.
+    // Date and month star arbors advance only by a jump, not continuous propagation (ASM-0048/0049); DATE-003/MONTH-002 report their own drive state.
     const dateStars = dateStarShaftIds(movement.dateComplications);
+    const monthStars = monthStarShaftIds(movement.monthComplications);
     for (const id of train.unreachableShaftIds) {
-      if (oscillating.has(id) || dateStars.has(id)) continue;
+      if (oscillating.has(id) || dateStars.has(id) || monthStars.has(id)) continue;
       const shaft = movement.shafts[id];
       issues.push(
         issue("KIN-001", "unpowered", "warning", "L2_KINEMATIC", [id],

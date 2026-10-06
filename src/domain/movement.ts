@@ -13,6 +13,7 @@ import type { Dial, DialId } from "./dial";
 import type { Escapement, EscapementId } from "./escapement";
 import type { MoonPhase, MoonPhaseId } from "./moonPhase";
 import type { DateComplication, DateComplicationId } from "./dateComplication";
+import type { MonthComplication, MonthComplicationId } from "./monthComplication";
 import type { ValidationLevel } from "@/reference/validationLevels";
 
 export type MovementId = EntityId<"movement">;
@@ -63,6 +64,8 @@ export interface Movement {
   moonPhases: Record<MoonPhaseId, MoonPhase>;
   /** Zero or more; each star advanced only by a jump, not continuous gear-train propagation (ASM-0048, Phase 8.2). */
   dateComplications: Record<DateComplicationId, DateComplication>;
+  /** Zero or more; each driven by its referenced date complication's own jumps, not a continuous arbor (ASM-0049, Phase 8.3). */
+  monthComplications: Record<MonthComplicationId, MonthComplication>;
   drive: Drive | null;
   /**
    * The level this design's model targets (REFERENCE_ENGINEERING.md §15).
@@ -93,6 +96,7 @@ export function createMovement(
     escapements: {},
     moonPhases: {},
     dateComplications: {},
+    monthComplications: {},
     drive: null,
   };
 }
@@ -196,6 +200,18 @@ export function updateDateComplication(movement: Movement, id: DateComplicationI
     throw new Error(`Unknown date complication id: ${id}`);
   }
   return { ...movement, dateComplications: { ...movement.dateComplications, [id]: { ...existing, ...patch } } };
+}
+
+export function addMonthComplication(movement: Movement, month: MonthComplication): Movement {
+  return { ...movement, monthComplications: { ...movement.monthComplications, [month.id]: month } };
+}
+
+export function updateMonthComplication(movement: Movement, id: MonthComplicationId, patch: Partial<Omit<MonthComplication, "id" | "type">>): Movement {
+  const existing = movement.monthComplications[id];
+  if (existing === undefined) {
+    throw new Error(`Unknown month complication id: ${id}`);
+  }
+  return { ...movement, monthComplications: { ...movement.monthComplications, [id]: { ...existing, ...patch } } };
 }
 
 /**

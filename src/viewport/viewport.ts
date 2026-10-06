@@ -38,7 +38,7 @@ import { forkActingLength, forkRatio, isHalfToothSpan, lockingPoints, spanAngle,
 import { isValidToothCount } from "@/math/gearMath";
 import { metres } from "@/units/length";
 
-type PickKind = "gear" | "jewel" | "escapement" | "keyless" | "arbor" | "frame" | "dial" | "moonPhase" | "dateStar";
+type PickKind = "gear" | "jewel" | "escapement" | "keyless" | "arbor" | "frame" | "dial" | "moonPhase" | "dateStar" | "monthStar";
 type ViewSide = "BRIDGE" | "DIAL";
 
 /**
@@ -55,7 +55,7 @@ export interface SectionState {
 const EXPLODE_STRETCH = 3;
 
 /** When several objects are under the pointer, the most specific wins. */
-const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, escapement: 2, keyless: 2, moonPhase: 2, dateStar: 2, arbor: 3, frame: 4, dial: 5 };
+const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, escapement: 2, keyless: 2, moonPhase: 2, dateStar: 2, monthStar: 2, arbor: 3, frame: 4, dial: 5 };
 
 const COLORS = {
   selected: 0x4fa3ff,
@@ -71,6 +71,7 @@ const COLORS = {
   dialMarker: 0x23282e,
   moonPhase: 0xaab4c2,
   dateStar: 0xc2a06a,
+  monthStar: 0x8aa0c2,
   stem: 0x9aa4ae,
   crown: 0xa9b3bd,
   pinion: 0xb8c4d0,
@@ -478,6 +479,26 @@ export class Viewport {
         zHi: meshZ + date.starThickness / 2,
         footprint: { kind: "circle", radius: date.starTipDiameter / 2, centre: { x: 0, y: 0 } },
         color: COLORS.dateStar,
+      });
+    }
+
+    for (const month of Object.values(movement.monthComplications)) {
+      const group = this.shaftGroups.get(month.starShaftId);
+      const valid = Number.isFinite(month.starTipDiameter) && month.starTipDiameter > 0 && Number.isFinite(month.starThickness) && month.starThickness > 0 && Number.isFinite(month.starZCentre);
+      if (group === undefined || !valid) continue;
+      // Driven entirely by the date complication's own jumps (ASM-0049) — same applyKinematicRotation()
+      // loop that spins every other shaft group spins this one too; no special-case rotation code needed.
+      const meshZ = this.displayZ(month.starZCentre);
+      const mesh = new THREE.Mesh(createZCylinder(month.starTipDiameter / 2, meshZ - month.starThickness / 2, meshZ + month.starThickness / 2, 64), material(COLORS.monthStar, { metalness: 0.1, roughness: 0.7 }));
+      this.addPickable(group, mesh, { kind: "monthStar", entityId: month.id, baseColor: COLORS.monthStar });
+      this.cappableSolids.push({
+        positionX: group.position.x,
+        positionY: group.position.y,
+        rotationGroup: group,
+        zLo: meshZ - month.starThickness / 2,
+        zHi: meshZ + month.starThickness / 2,
+        footprint: { kind: "circle", radius: month.starTipDiameter / 2, centre: { x: 0, y: 0 } },
+        color: COLORS.monthStar,
       });
     }
 

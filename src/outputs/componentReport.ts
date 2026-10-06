@@ -15,6 +15,8 @@ import type { MoonPhase } from "@/domain/moonPhase";
 import { windowsPerRevolution } from "@/domain/moonPhase";
 import { impliedLunationDays, lunationDriftMinutes, SYNODIC_MONTH_DAYS } from "@/kinematics/moonPhase";
 import type { DateComplication } from "@/domain/dateComplication";
+import type { MonthComplication } from "@/domain/monthComplication";
+import { GREGORIAN_MONTH_LENGTHS } from "@/kinematics/monthComplication";
 import { toBeatsPerHour } from "@/units/frequency";
 import { balanceFrequency, beatFrequency, beatsPerEscapeRevolution, impulseFraction } from "@/kinematics/escapement";
 import { isochronismAdjustedRate, MIDDLE_TEMPERATURE_CELSIUS, temperatureAdjustedRate, USUAL_TEMPERATURE_RANGE_CELSIUS } from "@/kinematics/balance";
@@ -68,7 +70,7 @@ export interface ToleranceRow {
   scope: string;
 }
 
-export type ComponentKind = "Frame" | "Arbor" | "Gear" | "Bearing" | "Keyless works" | "Dial" | "Escapement" | "Moon phase" | "Date";
+export type ComponentKind = "Frame" | "Arbor" | "Gear" | "Bearing" | "Keyless works" | "Dial" | "Escapement" | "Moon phase" | "Date" | "Month";
 
 export interface ComponentReport {
   id: EntityId;
@@ -530,6 +532,44 @@ function dateComplicationReport(movement: Movement, analysis: MovementAnalysis, 
   };
 }
 
+function monthComplicationReport(movement: Movement, analysis: MovementAnalysis, month: MonthComplication): ComponentReport {
+  const date = movement.dateComplications[month.dateComplicationId];
+  const shortMonths = GREGORIAN_MONTH_LENGTHS.filter((days) => days < 31);
+  return {
+    id: month.id,
+    name: month.name,
+    kind: "Month",
+    description: "driven entirely by the referenced date complication's own jumps, one step per month (no drive arbor of its own)",
+    parameters: [
+      entered("Date complication", date?.name ?? "not chosen"),
+      entered("Star arbor", movement.shafts[month.starShaftId]?.name ?? "not chosen"),
+      lengthParam("Star tip diameter", month.starTipDiameter),
+      lengthParam("Star thickness", month.starThickness),
+      lengthParam("Star mid-plane height", month.starZCentre),
+    ],
+    derived: [
+      {
+        label: "Jump step",
+        text: `${(360 / 12).toFixed(2)}°`,
+        si: (2 * Math.PI) / 12,
+        equation: "2π / 12 (MONTHS_PER_YEAR)",
+        level: "L2_KINEMATIC",
+        references: ["ASM-0049"],
+      },
+      {
+        label: "Months needing a date-star correction",
+        text: `${String(shortMonths.length)} of 12 (all but 31-day months)`,
+        si: shortMonths.length,
+        equation: "count of GREGORIAN_MONTH_LENGTHS < 31; February fixed at 28 days, leap years not modeled (Phase 8.4)",
+        level: "L2_KINEMATIC",
+        references: ["ASM-0049"],
+      },
+    ],
+    tolerances: [],
+    issues: issuesFor(analysis, month.id),
+  };
+}
+
 function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: Escapement): ComponentReport {
   const w = esc.escapeWheel;
   const b = esc.balance;
@@ -702,6 +742,7 @@ export function componentReports(movement: Movement, analysis: MovementAnalysis)
     ...Object.values(movement.escapements).sort(byName).map((e) => escapementReport(movement, analysis, e)),
     ...Object.values(movement.moonPhases).sort(byName).map((m) => moonPhaseReport(movement, analysis, m)),
     ...Object.values(movement.dateComplications).sort(byName).map((d) => dateComplicationReport(movement, analysis, d)),
+    ...Object.values(movement.monthComplications).sort(byName).map((m) => monthComplicationReport(movement, analysis, m)),
   ];
 }
 

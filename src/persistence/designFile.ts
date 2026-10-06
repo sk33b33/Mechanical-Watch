@@ -11,6 +11,7 @@ import type { Dial } from "@/domain/dial";
 import type { Escapement, PalletGeometry } from "@/domain/escapement";
 import type { MoonPhase } from "@/domain/moonPhase";
 import type { DateComplication } from "@/domain/dateComplication";
+import type { MonthComplication } from "@/domain/monthComplication";
 import type { MainspringSpec } from "@/domain/coupling";
 import type { Torque } from "@/units/torque";
 import type { MomentOfInertia, TorsionalStiffness } from "@/units/rotational";
@@ -40,7 +41,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 19;
+export const DESIGN_SCHEMA_VERSION = 20;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -290,6 +291,12 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
     const movement = doc.movement;
     if (!isRecord(movement)) return doc;
     return { ...doc, schemaVersion: 19, movement: { ...movement, dateComplications: {} } };
+  },
+  /** v19 → v20: movements gain empty `monthComplications` (ASM-0049, Phase 8.3). */
+  19: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement)) return doc;
+    return { ...doc, schemaVersion: 20, movement: { ...movement, monthComplications: {} } };
   },
 };
 
@@ -582,6 +589,20 @@ const dateComplication: Decoder<DateComplication> = (value, path) => {
   };
 };
 
+const monthComplication: Decoder<MonthComplication> = (value, path) => {
+  const o = object(value, path);
+  return {
+    id: field(o, "id", id<MonthComplication["id"]>(), path),
+    type: field(o, "type", literal("MonthComplication"), path),
+    name: field(o, "name", string, path),
+    dateComplicationId: field(o, "dateComplicationId", id<DateComplication["id"]>(), path),
+    starShaftId: field(o, "starShaftId", id<Shaft["id"]>(), path),
+    starTipDiameter: field(o, "starTipDiameter", length, path),
+    starThickness: field(o, "starThickness", length, path),
+    starZCentre: field(o, "starZCentre", length, path),
+  };
+};
+
 const pallets: Decoder<PalletGeometry> = (value, path) => {
   const o = object(value, path);
   return {
@@ -662,6 +683,7 @@ const movement: Decoder<Movement> = (value, path) => {
     escapements: field(o, "escapements", entityRecord(escapement), path),
     moonPhases: field(o, "moonPhases", entityRecord(moonPhase), path),
     dateComplications: field(o, "dateComplications", entityRecord(dateComplication), path),
+    monthComplications: field(o, "monthComplications", entityRecord(monthComplication), path),
     drive: field(o, "drive", nullable(drive), path),
   };
 };

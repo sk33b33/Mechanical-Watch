@@ -17,7 +17,8 @@ import {
 import type { CouplingId } from "@/domain/coupling";
 import { newtonMillimetres } from "@/units/torque";
 import type { DateComplicationId } from "@/domain/dateComplication";
-import { dateJumpStepAngle } from "@/kinematics/dateComplication";
+import { dateJumpStepAngle, starPosition } from "@/kinematics/dateComplication";
+import { monthJumpStepAngle, MONTHS_PER_YEAR } from "@/kinematics/monthComplication";
 
 const shaftId = "shaft_1" as ShaftId;
 const movement = { shafts: { [shaftId]: {} }, keylessWorks: {}, couplings: {} } as unknown as Movement;
@@ -161,7 +162,7 @@ describe("date jump (ASM-0048)", () => {
   const starShaftId = "shaft_star" as ShaftId;
   const dateId = "dateComplication_1" as DateComplicationId;
   const starToothCount = 31;
-  const track: DateJumpTrack = { id: dateId, driveShaftId, starShaftId, stepAngle: dateJumpStepAngle(starToothCount) };
+  const track: DateJumpTrack = { id: dateId, driveShaftId, starShaftId, starToothCount, stepAngle: dateJumpStepAngle(starToothCount), monthCorrection: null };
   const withDate = { shafts: { [driveShaftId]: {}, [starShaftId]: {} }, keylessWorks: {}, couplings: {} } as unknown as Movement;
   const driveSolution = (revPerSecond: number): GearTrainSolution => ({
     ...solutionAt(0),
@@ -200,5 +201,81 @@ describe("date jump (ASM-0048)", () => {
   it("drive revolutions do not advance the star if no date jump is declared", () => {
     const next = stepSimulation(createSimulationState(withDate), driveSolution(1), 1);
     expect(next.shaftAngle[starShaftId] ?? radians(0)).toBe(0);
+  });
+});
+
+describe("month-end correction (ASM-0049)", () => {
+  const driveShaftId = "shaft_drive" as ShaftId;
+  const starShaftId = "shaft_star" as ShaftId;
+  const monthStarShaftId = "shaft_month" as ShaftId;
+  const dateId = "dateComplication_1" as DateComplicationId;
+  const starToothCount = 31;
+  const withMonth = {
+    shafts: { [driveShaftId]: {}, [starShaftId]: {}, [monthStarShaftId]: {} },
+    keylessWorks: {},
+    couplings: {},
+  } as unknown as Movement;
+  const driveSolution = (revPerSecond: number): GearTrainSolution => ({
+    ...solutionAt(0),
+    shaftAngularVelocity: new Map([[driveShaftId, radiansPerSecond(revPerSecond * 2 * Math.PI)]]),
+  });
+  const track: DateJumpTrack = {
+    id: dateId,
+    driveShaftId,
+    starShaftId,
+    starToothCount,
+    stepAngle: dateJumpStepAngle(starToothCount),
+    monthCorrection: { monthStarShaftId, monthStepAngle: monthJumpStepAngle() },
+  };
+
+  function stateAt(dayPosition: number, monthIndex: number): ReturnType<typeof createSimulationState> {
+    const base = createSimulationState(withMonth);
+    return {
+      ...base,
+      shaftAngle: {
+        ...base.shaftAngle,
+        [starShaftId]: radians(track.stepAngle * dayPosition),
+        [monthStarShaftId]: radians(monthJumpStepAngle() * monthIndex),
+      },
+    };
+  }
+
+  it("an ordinary day advances the date star by one step and leaves the month star unchanged", () => {
+    // April (index 3), day 11 (position 10): not the last day (30).
+    const state = stateAt(10, 3);
+    const next = stepSimulation(state, driveSolution(1), 1, [], [track]);
+    expect(starPosition(next.shaftAngle[starShaftId] ?? radians(0), starToothCount)).toBe(11);
+    expect(starPosition(next.shaftAngle[monthStarShaftId] ?? radians(0), MONTHS_PER_YEAR)).toBe(3);
+  });
+
+  it("the last day of a 31-day month (January) takes an ordinary single step and also advances the month star", () => {
+    // January (index 0), day 31 (position 30): the last day.
+    const state = stateAt(30, 0);
+    const next = stepSimulation(state, driveSolution(1), 1, [], [track]);
+    expect(starPosition(next.shaftAngle[starShaftId] ?? radians(0), starToothCount)).toBe(0); // February 1
+    expect(starPosition(next.shaftAngle[monthStarShaftId] ?? radians(0), MONTHS_PER_YEAR)).toBe(1); // February
+  });
+
+  it("the last day of a 30-day month (April) skips a day and advances the month star", () => {
+    // April (index 3), day 30 (position 29): the last day.
+    const state = stateAt(29, 3);
+    const next = stepSimulation(state, driveSolution(1), 1, [], [track]);
+    expect(starPosition(next.shaftAngle[starShaftId] ?? radians(0), starToothCount)).toBe(0); // May 1
+    expect(starPosition(next.shaftAngle[monthStarShaftId] ?? radians(0), MONTHS_PER_YEAR)).toBe(4); // May
+  });
+
+  it("the last day of February (28 days, no leap-year awareness yet) skips three days and advances the month star", () => {
+    // February (index 1), day 28 (position 27): the last day.
+    const state = stateAt(27, 1);
+    const next = stepSimulation(state, driveSolution(1), 1, [], [track]);
+    expect(starPosition(next.shaftAngle[starShaftId] ?? radians(0), starToothCount)).toBe(0); // March 1
+    expect(starPosition(next.shaftAngle[monthStarShaftId] ?? radians(0), MONTHS_PER_YEAR)).toBe(2); // March
+  });
+
+  it("the month star wraps at MONTHS_PER_YEAR: December's correction advances it back to January", () => {
+    // December (index 11), day 31 (position 30): the last day.
+    const state = stateAt(30, 11);
+    const next = stepSimulation(state, driveSolution(1), 1, [], [track]);
+    expect(starPosition(next.shaftAngle[monthStarShaftId] ?? radians(0), MONTHS_PER_YEAR)).toBe(0); // January
   });
 });

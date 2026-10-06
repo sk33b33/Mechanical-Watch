@@ -351,21 +351,22 @@ propagation used everywhere else.
   by more than one step" and its 31-tooth worked example are used
   directly. No jumper-spring energy storage or finger/cam contact
   geometry is modeled — only this net kinematic effect.
-- 8.3 — Month / annual calendar (answers the user's "month" and part of
-  "year"). SRC-0043 (read in full, ETA SA's own production design, a
-  granted patent — not a hobbyist concept): the date disc gains a
-  second toothing that engages only at month-end to give it one extra
-  step (so the same disc self-corrects for 30-day months without a
-  separate snail-cam part), driving a month star (one revolution/year)
-  through a drive wheel set with two positions — disengaged ("the
-  kinematic chain between the date disc and the month star wheel is
-  broken") except for the instant the month actually changes. A genuine
-  example of an intermittently-engaged gear train this project has no
-  precedent for; depends on 8.2's jump mechanism being in place first.
-  Does not by itself handle 31-vs-28/29-day February or leap years — an
-  annual calendar in the real-watchmaking sense needs manual correction
-  twice a year (end of Feb, by design); that is a legitimate, sourced
-  design point, not a bug, if 8.4 is not also done.
+- 8.3 — **Done** (see `docs/STATUS.md`). Month / annual calendar: SRC-0043
+  (ETA SA's own production design, a granted patent)'s date disc with a
+  second toothing and month star, modeled as the net kinematic effect —
+  the same simplification 8.2 applied to the date jump itself, not a
+  literal simulation of the drive wheel set's engaged/disengaged
+  positions. A new `MonthComplication` entity references an existing
+  `DateComplication` (a new "entity references another entity's id"
+  pattern) and has no drive arbor or gear train of its own: it is driven
+  entirely by the date complication's own jumps, via a `monthEndCorrection`
+  formula that enlarges the date star's jump by exactly the days the
+  current month is short, in the same event that advances the month star —
+  built directly into 8.2's own jump-application loop, no new top-level
+  simulation-state field needed. Does not by itself handle leap years — an
+  annual calendar in the real-watchmaking sense still needs manual
+  correction once a year (end of Feb, by design); that is a legitimate,
+  sourced design point, not a bug, left to 8.4.
 - 8.4 — Leap year / four-year cycle (the rest of "year"; optional,
   depends on 8.3). SRC-0044 (Omega SA, read): leap-year handling
   conventionally built on a "Maltese cross... to effect one revolution

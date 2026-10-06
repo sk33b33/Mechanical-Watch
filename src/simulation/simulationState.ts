@@ -8,7 +8,8 @@ import { stemBodyId, type StemBodyId } from "@/domain/keyless";
 import { mainsprings, type CouplingId } from "@/domain/coupling";
 import type { DateComplicationId } from "@/domain/dateComplication";
 import type { GearTrainSolution } from "@/kinematics/solveGearTrain";
-import { crossesRevolution, dateJumpStepAngle } from "@/kinematics/dateComplication";
+import { crossesRevolution, dateJumpStepAngle, starPosition } from "@/kinematics/dateComplication";
+import { monthEndCorrection, monthJumpStepAngle, MONTHS_PER_YEAR } from "@/kinematics/monthComplication";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 
 /**
@@ -88,19 +89,32 @@ export function reconcileWind(state: SimulationState, movement: Movement): Simul
  * A declared date complication (ASM-0048), ready for stepping: which
  * arbor's revolutions trigger the jump, which arbor the jump advances,
  * and by how much. Built fresh whenever the design or its solved train
- * changes, same lifecycle as `WindTrack`.
+ * changes, same lifecycle as `WindTrack`. `monthCorrection`, when a
+ * `MonthComplication` references this date complication (ASM-0049),
+ * makes the jump size month-aware instead of always one step, and
+ * advances the month star in the same event — see `stepSimulation`.
  */
 export interface DateJumpTrack {
   id: DateComplicationId;
   driveShaftId: ShaftId;
   starShaftId: ShaftId;
+  starToothCount: number;
   stepAngle: Angle;
+  monthCorrection: { monthStarShaftId: ShaftId; monthStepAngle: Angle } | null;
 }
 
 export function dateJumpTracks(movement: Movement): DateJumpTrack[] {
   return Object.values(movement.dateComplications).flatMap((date) => {
     if (!(Number.isInteger(date.starToothCount) && date.starToothCount > 0)) return [];
-    return [{ id: date.id, driveShaftId: date.driveShaftId, starShaftId: date.starShaftId, stepAngle: dateJumpStepAngle(date.starToothCount) }];
+    const month = Object.values(movement.monthComplications).find((m) => m.dateComplicationId === date.id);
+    return [{
+      id: date.id,
+      driveShaftId: date.driveShaftId,
+      starShaftId: date.starShaftId,
+      starToothCount: date.starToothCount,
+      stepAngle: dateJumpStepAngle(date.starToothCount),
+      monthCorrection: month === undefined ? null : { monthStarShaftId: month.starShaftId, monthStepAngle: monthJumpStepAngle() },
+    }];
   });
 }
 
@@ -131,15 +145,29 @@ export function stepSimulation(
   }
   // Date star arbors (ASM-0048) are not continuous gear-train members, so the loop above never
   // touches them; a jump, when the drive arbor crosses its own revolution, advances the star
-  // directly by one step instead. Read from the drive arbor's pre-step angle (`state`, never
-  // mutated here), forward crossings only (`crossesRevolution`'s own ratchet behaviour).
+  // directly instead. Read from the drive arbor's pre-step angle (`state`, never mutated here),
+  // forward crossings only (`crossesRevolution`'s own ratchet behaviour). With a month
+  // complication attached (ASM-0049), the jump size is read from the star's own pre-step
+  // position each time (month-aware, via `monthEndCorrection`) instead of always one step, and
+  // the month star — also not a continuous gear-train member — advances in the same event.
   for (const track of dateJumps) {
     const driveOmega = solution.shaftAngularVelocity.get(track.driveShaftId);
     if (driveOmega === undefined) continue;
     const previousDriveAngle = state.shaftAngle[track.driveShaftId] ?? radians(0);
     if (!crossesRevolution(previousDriveAngle, driveOmega, dtSeconds)) continue;
-    const current = nextShaftAngle[track.starShaftId] ?? radians(0);
-    nextShaftAngle[track.starShaftId] = normalizeAngle(radians(current + track.stepAngle));
+    const currentDate = nextShaftAngle[track.starShaftId] ?? radians(0);
+    if (track.monthCorrection === null) {
+      nextShaftAngle[track.starShaftId] = normalizeAngle(radians(currentDate + track.stepAngle));
+      continue;
+    }
+    const dayPosition = starPosition(state.shaftAngle[track.starShaftId] ?? radians(0), track.starToothCount);
+    const monthPosition = starPosition(state.shaftAngle[track.monthCorrection.monthStarShaftId] ?? radians(0), MONTHS_PER_YEAR);
+    const correction = monthEndCorrection(dayPosition, monthPosition, track.starToothCount);
+    nextShaftAngle[track.starShaftId] = normalizeAngle(radians(currentDate + track.stepAngle * correction.dateSteps));
+    if (correction.monthAdvances) {
+      const currentMonth = nextShaftAngle[track.monthCorrection.monthStarShaftId] ?? radians(0);
+      nextShaftAngle[track.monthCorrection.monthStarShaftId] = normalizeAngle(radians(currentMonth + track.monthCorrection.monthStepAngle));
+    }
   }
   const nextStemAngle: Record<StemBodyId, Angle> = { ...state.stemAngle };
   for (const [id, angularVelocity] of solution.stemAngularVelocity) {

@@ -1,6 +1,6 @@
 import type { EntityId } from "@/domain/ids";
 import type { Movement } from "@/domain/movement";
-import { addDateComplication, addDial, addEscapement, addFrame, addGear, addKeylessWorks, addMoonPhase, addShaft } from "@/domain/movement";
+import { addDateComplication, addDial, addEscapement, addFrame, addGear, addKeylessWorks, addMonthComplication, addMoonPhase, addShaft } from "@/domain/movement";
 import type { Frame } from "@/domain/frame";
 import type { Gear } from "@/domain/gear";
 import type { Coupling } from "@/domain/coupling";
@@ -68,7 +68,7 @@ function couplingOfKind(record: Record<string, Coupling>, kind: Coupling["kind"]
   return found;
 }
 
-/** Builds the ~47-step walkthrough from a real teaching movement (createTeachingMovement()), read once at module load. */
+/** Builds the ~49-step walkthrough from a real teaching movement (createTeachingMovement()), read once at module load. */
 function buildTeachingMovementSteps(): TutorialStep[] {
   const ref = createTeachingMovement();
   const placement = solvePlacement(ref);
@@ -187,6 +187,7 @@ function buildTeachingMovementSteps(): TutorialStep[] {
   const twentyFourHourArbor = byName(ref.shafts, "24-hour arbor");
   const twentyFourHourWheel = byName(ref.gears, "24-hour wheel");
   const dateStarArbor = byName(ref.shafts, "Date star");
+  const monthStarArbor = byName(ref.shafts, "Month star");
 
   const mainspring = couplingOfKind(ref.couplings, "MAINSPRING");
   const keylessWorks = only(ref.keylessWorks);
@@ -194,6 +195,7 @@ function buildTeachingMovementSteps(): TutorialStep[] {
   const escapement = only(ref.escapements);
   const moonPhase = only(ref.moonPhases);
   const dateComplication = only(ref.dateComplications);
+  const monthComplication = only(ref.monthComplications);
 
   return [
     {
@@ -369,6 +371,17 @@ function buildTeachingMovementSteps(): TutorialStep[] {
       targetSelector: '[data-tutorial="add-date"]',
       isComplete: (m) => m.dateComplications[dateComplication.id] !== undefined,
       createOverride: (m) => ({ movement: addDateComplication(m, dateComplication), id: dateComplication.id }),
+    },
+
+    arborStep("add-month-star-arbor", "Add the month star's own arbor", "Click “+ Arbor” — like the date star, its position is declared, not derived: it is not meshed with anything either (ASM-0049).", monthStarArbor, solvedFixed(monthStarArbor)),
+    {
+      id: "add-month",
+      title: "Add the month complication",
+      instructions:
+        "Click “+ Month” — the referenced date complication, star arbor and dimensions all come from the real design. Unlike every part so far, this one has no drive train of its own: it is turned entirely by the date complication's own jumps, enlarged just enough at each month's end to skip the days the current month does not have (ASM-0049).",
+      targetSelector: '[data-tutorial="add-month"]',
+      isComplete: (m) => m.monthComplications[monthComplication.id] !== undefined,
+      createOverride: (m) => ({ movement: addMonthComplication(m, monthComplication), id: monthComplication.id }),
     },
 
     {
