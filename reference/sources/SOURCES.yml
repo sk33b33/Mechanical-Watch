@@ -1492,3 +1492,157 @@
     three rotational axes, so it does not fit this project's declared/
     measured-coefficient pattern without a materially different domain
     model (see STATUS.md's Phase 7.6 write-up).
+
+- id: SRC-0042
+  title: "Timepiece with Date Mechanism"
+  author: unknown assignee/inventor (patent text not yet fully attributed beyond the fetched abstract/claims)
+  year: 2007
+  type: patent
+  url: https://patents.google.com/patent/US7158448B1/en
+  topics: [calendar, date, jumper-spring, star-wheel, phase-8]
+  claims_supported:
+    - "the driving wheel 3 makes one turn in twenty-four hours" (via a 2:1 gear ratio from the hour wheel) — the continuous-rotation "24-hour wheel" that carries the date mechanism's own daily trigger
+    - "a calendar mobile 1 in the form of a ring or a disk bearing the numerals 0 to 31... with an inner toothing 1a of thirty-one teeth" — the date disc/star tooth count
+    - "engaging with a spring-action positioning jumper 2" and an "instantaneous-jump spring 11" released when "the roller 10a passes the tip of the cam 7, whereby the energy of the instantaneous-jump spring 11 can be released, abruptly rotating the cam 7... allowing the calendar mobile 1 to be advanced by one step"; a concave detent portion on the cam "prevent[s] the latter from moving by more than one step" — the genuine energy-storage-then-release jump, not a continuous gear ratio
+  claims_to_check: []
+  retrieved: true
+  accessed: "2026-10-06"
+  notes: >
+    Tier 1-2 (a granted US patent; read directly via Google Patents' HTML
+    rendering, not yet cross-checked against the original USPTO PDF).
+    Found and read while scoping Phase 8 (calendar complications). This is
+    the simplest, most standard instantaneous-date mechanism: a
+    continuously-turning 24-hour wheel (needs no new kinematics — this
+    project's existing gear-mesh/shaft-angular-velocity engine already
+    covers a continuous reduction from the hour wheel) triggering a
+    discrete one-step-per-day jump of a 31-tooth date star via a
+    spring-and-cam energy-release, held in position between jumps by a
+    spring-loaded jumper. The genuinely new kinematic concept for this
+    project is the discrete jump itself — closer in kind to this
+    project's own escapement phase model (lock/impulse/drop, ASM-0021)
+    than to the continuous gear-train propagation used everywhere else.
+    Nothing implemented yet; recorded for Phase 8 scoping only.
+
+- id: SRC-0043
+  title: "Annual Calendar Mechanism for Watch Movement"
+  author: Alphonse Bron
+  year: 2007
+  type: patent
+  doi: null
+  url: https://patents.google.com/patent/US7218576B1/en
+  topics: [calendar, annual-calendar, month-star, phase-8]
+  claims_supported:
+    - "a date disc (16) to which are thirty one figures are affixed... provided with a first inner toothing (20) including thirty one teeth (20a), a date drive wheel set (32)... including a finger (34) driving the date disc (16) through one step per day" — the same 31-tooth daily-step pattern as SRC-0042
+    - "said date disc (16) including a second toothing (24), a correction drive wheel set (42) able to cooperate with the second toothing (24) to drive the date disc (16) through an additional step at the end of the months of less than thirty one days" — the mechanism's own month-length correction, via a second (separate) toothing rather than a snail cam
+    - "a month star wheel (54) arranged to be actuated at the end of each month and to complete one revolution per year... a month drive wheel set (52)... occupying a first position in which it has no effect on the month star wheel (54), such that the kinematic chain between the date disc (16) and the month star wheel (54) is broken, and a second position that it occupies only at the moment when the change of month occurs... such that a correction device (90) can act on the date disc (16) without any effect on the month star wheel (54) and vice versa" — a deliberately interruptible kinematic chain, and independent manual correction of date vs. month
+  claims_to_check: []
+  retrieved: true
+  accessed: "2026-10-06"
+  notes: >
+    Tier 1-2 (a granted US patent, assigned to ETA SA Manufacture Horlogère
+    Suisse — a major Swiss ébauche manufacturer, so a real production
+    design, not a prototype curiosity). Read directly: the USPTO PDF
+    (fetched via `image-ppubs.uspto.gov`) is a scanned image with no text
+    layer, so its abstract page was read with the Read tool's image
+    support, the same workaround already used for Gould 1934 (SRC-0040)
+    and Playtner's figures (SRC-0036). Found and read while scoping Phase
+    8. Gives this project a genuine, quotable, production-grade
+    engineering reference for the "month" part of 8's date/month/year
+    scope: the date disc itself gains a second toothing that only engages
+    at month-end, and the month star's own drive is deliberately
+    disengaged (kinematic chain "broken") except at the moment of month
+    change — a real example of a non-continuous, intermittently-engaged
+    gear train this project has no precedent for. Nothing implemented
+    yet; recorded for Phase 8 scoping only.
+
+- id: SRC-0044
+  title: "Perpetual Calendar Mechanism Comprising a Four Year Cycle Indicator"
+  author: Louis Baumgartner, Philippe Meylan
+  year: 1985
+  type: patent
+  url: https://patents.google.com/patent/US4541725A/en
+  topics: [calendar, perpetual-calendar, leap-year, geneva-drive, phase-8]
+  claims_supported:
+    - "The perpetual calendar mechanism of the invention comprises in addition to the months indicator a four year cycle indicator which displays successively the normal years and the leap-year. The four year cycle indicator is controlled directly or indirectly by a rotatable assembly journalled on the month star such assembly including a year cam and a Maltese cross enabling it to effect one revolution every four years."
+    - cites "B. Humbert, 'Modern Calendar Watches', Edition Scriptar S.A., Lausanne (Switzerland) 1954, pp. 41-42" as its own prior-art reference for calendar-watch design — a further, unread, Tier-unknown lead if this project ever needs deeper calendar-watch history
+  claims_to_check: []
+  retrieved: true
+  accessed: "2026-10-06"
+  notes: >
+    Tier 1-2 (a granted US patent, assigned to Omega SA). Read directly
+    (abstract page, same scanned-PDF-via-Read-tool-image-support route as
+    SRC-0043). Found and read while scoping Phase 8. The load-bearing
+    finding: leap-year handling is conventionally built on a "Maltese
+    cross" — i.e. a Geneva-drive-family intermittent-motion mechanism —
+    making one quarter-turn per year, four years per revolution. Unlike
+    the date/month jump mechanisms above (which have no closed-form
+    kinematic description found so far, only patent prose), the Geneva
+    drive itself is a textbook mechanism with well-documented closed-form
+    kinematics (driven-wheel dwell/motion fractions, pin/slot geometry) in
+    standard mechanism-design literature — a genuinely promising, better-
+    sourced building block for a leap-year sub-item specifically, distinct
+    from the rest of Phase 8's jump mechanisms. Nothing implemented yet;
+    the Geneva-drive kinematics claim above is this project's own
+    characterization, not yet checked against a dedicated mechanism-design
+    source — flagged here as the next research step if a leap-year
+    sub-item is scoped in.
+
+- id: SRC-0045
+  title: "Moon Phase Display Clock"
+  author: Koichi Kaneko, Masado Hanya
+  year: 1987
+  type: patent
+  url: https://patents.google.com/patent/US4692031A/en
+  topics: [calendar, moonphase, phase-8]
+  claims_supported:
+    - "A clock for indicating moon phase comprises a moon phase dial fixed to a hub rotatable around an axle... A moon phase gear is slideably disposed around the hub and is driven to continuously rotate around the axle at a rotation period related to the moon phase period." — confirms the moonphase disc is driven by ordinary continuous rotation (no jump mechanism at all), unlike every other Phase 8 complication
+    - "A slip mechanism is disposed between the moon phase dial and the moon phase gear and frictionally engages... operative during the correction of the angular position of the moon phase dial for decoupling the moon phase gear from the hub... and operative during normal operation... for coupling the moon phase gear to the hub" — the manual-correction slip-clutch pattern (distinct from the date mechanism's spring-release jump correction)
+    - Fig. 4 shows the moon disc with two moon windows set diametrically opposite (180°) on the disc, confirming the conventional "two moons per disc" layout (seen directly in the patent's own drawing, not merely described in its claims text)
+  claims_to_check:
+    - "the moon-phase gear's own tooth count and reduction ratio (the specific numbers that set this clock's own lunation approximation) — this patent's description pages were not read in full; only the abstract and Figs. 1-4 were examined"
+  retrieved: true
+  accessed: "2026-10-06"
+  notes: >
+    Tier 2 (a granted US patent, Seikosha Co. — a clock, not a watch,
+    mechanism, but the same moonphase-disc genre). Abstract and Figs. 1-4
+    read via the Read tool's image support (scanned PDF, no text layer).
+    Found while scoping Phase 8. The conventional "59-tooth wheel, two
+    moons 180° apart, half-turn per lunation ≈ 29.5 days" design (real
+    synodic month 29.53059 days, so roughly 29.5/29.53059 synodic months
+    completed per half-turn, drifting about 44 minutes per lunation) is
+    a widely and independently corroborated horological convention — the
+    same genre of informal, Tier 6/7, multiply-corroborated convention
+    already cited for "2 beats per escape tooth" (SRC-0016/SRC-0017) —
+    but this specific patent's own text was not read closely enough to
+    confirm its own tooth count matches 59; do not cite 59 specifically
+    to this patent without re-reading its full description. Confirms,
+    independently of the tooth-count question, the more basic
+    architectural point: moonphase needs no new jump-mechanism kinematics
+    at all — a continuous reduction gear (already fully supported by this
+    project's existing gear-mesh engine) is the conventional design.
+    Nothing implemented yet; recorded for Phase 8 scoping only.
+
+- id: SRC-0046
+  title: "Eclipses and the Moon's Orbit"
+  author: NASA (Fred Espenak, Goddard Space Flight Center)
+  year: null
+  type: reference_website
+  url: https://eclipse.gsfc.nasa.gov/help/moonorbit.html
+  topics: [moonphase, synodic-month, astronomy, phase-8]
+  claims_supported:
+    - "The mean length of the synodic month is 29.53059 days (29d 12h 44m 03s)." — the astronomical reference figure for comparing any moonphase mechanism's own mechanical approximation (e.g. the conventional "59 teeth / two moons / 29.5 days" design, SRC-0045) against the real lunation period
+    - New Moon is conventionally "the instant when the geocentric ecliptic longitudes of the Sun and Moon are equal," and a synodic-month interval measured New-Moon-to-New-Moon is "sometimes referred to as a lunation"
+  claims_to_check: []
+  retrieved: true
+  accessed: "2026-10-06"
+  notes: >
+    Tier 1 (NASA Goddard Space Flight Center, an authoritative primary
+    source for astronomical constants — not a horology source, used only
+    to ground the real-world comparison figure a moonphase complication's
+    own mechanical approximation would be checked against). Read directly.
+    Found while scoping Phase 8's moonphase sub-item: gives this project
+    an actual citable number for "how far off is a 29.5-day mechanical
+    approximation from the real synodic month" (about 44 minutes short of
+    29.53059 days per lunation), rather than the unsourced "~29.5 days"
+    figure floating around most horology blog posts. Nothing implemented
+    yet; recorded for Phase 8 scoping only.

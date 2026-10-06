@@ -302,24 +302,111 @@ Not currently modeled, confirmed by inspection:
   year), not a standard calendar-watch feature. Worth the user knowing
   this going in, independent of what the app supports.
 
-Rough shape of what adding this would need (not yet scoped into
-sub-items the way Phase 7.1 was):
-1. Domain entities for calendar components (date wheel/disc, month
-   wheel, year indicator) and their place in the component model listed
-   in `CLAUDE.md`.
-2. A jumper/cam mechanism model — genuinely new kinematics, not a
-   continuous gear ratio: energy storage (spring) release at a trigger
-   point, distinct from the steady-state gear-train propagation this
-   project models today.
-3. Display support: new hand/disc kinds, dial windows or sub-dials.
-4. Validation rules for the new components (interference, jumper
-   timing, etc.), consistent with the project's existing validation-
-   level discipline.
-5. Sourcing: cited mechanisms and assumptions for whichever calendar
-   mechanism design is chosen (simple date, annual calendar, or full
-   perpetual calendar each work differently), same engineering-
-   traceability standard as the rest of this project — nothing
-   invented without a source.
+**Scoped 2026-10-06** (see `docs/STATUS.md`) into ordered sub-items,
+same pattern as Phase 7.1. Five new patent sources were found and read
+(SRC-0042 through SRC-0045 — US/granted patents, two from major Swiss
+manufacturers, ETA SA and Omega SA) plus one astronomical reference
+(SRC-0046, NASA), closing the "no sourcing yet" gap the first pass of
+this entry flagged. Key architectural finding from reading them: **the
+driving side of every one of these complications is an ordinary
+continuous gear reduction** — this project's existing gear-mesh/
+shaft-angular-velocity engine (Phase 2/3) already covers a "24-hour
+wheel" off the hour wheel, or a moonphase reduction, with zero new
+kinematics. The one genuinely new concept, needed by date/month/leap-
+year but *not* moonphase, is the discrete **jump**: a spring stores
+energy continuously and releases it abruptly at a trigger point,
+snapping a star wheel forward one tooth and holding it there with a
+jumper until the next trigger — closer in kind to this project's own
+escapement phase model (lock/impulse/drop, ASM-0021, and specifically
+the pattern in `src/simulation/escapementDisplay.ts` of deriving a
+discrete-looking display from an underlying continuous simulation
+state, not a separate state machine) than to the smooth gear-train
+propagation used everywhere else.
 
-Do not start this without the user's go-ahead; it's a new domain area,
-not a refinement of existing Phase 7 work.
+- 8.1 — Moonphase. Lowest risk: a continuously-turning disc off the
+  going train, no jump mechanism at all (SRC-0045, confirmed directly
+  from a patent's own abstract and figures — "driven to continuously
+  rotate around the axle at a rotation period related to the moon phase
+  period"). Conventional design is a 59-tooth wheel advancing one tooth
+  per day, two moon windows 180° apart on the disc, so a half-turn (29.5
+  days) is each lunation — a widely corroborated convention (Tier 6/7,
+  same genre as the existing "2 beats per tooth" sourcing), checked
+  against the real synodic month, 29.53059 days (SRC-0046, NASA) — about
+  44 minutes short per lunation, a genuine, reportable, non-invented
+  approximation error. Needs: a new Gear/Shaft for the reduction (no new
+  domain concept), a new disc-display concept for the dial/viewport
+  (shared groundwork with 8.2-8.4 below), and a validation note stating
+  the drift. Good first target: ships independently, proves the new
+  disc-display groundwork without the jump-mechanism risk.
+- 8.2 — Simple instantaneous date. The jump-mechanism proving ground.
+  SRC-0042 (read in full): a 24-hour wheel (2:1 off the hour wheel) with
+  a finger that, once per rotation, pushes a roller off a cam's tip,
+  releasing a spring that abruptly advances a 31-tooth date star one
+  step, with a concave detent limiting it to exactly one step and a
+  separate spring-loaded jumper holding the position between jumps.
+  Needs new domain entities (a star wheel, a jumper, the
+  energy-store-then-release relationship) and the display groundwork
+  from 8.1. This is where the "how does a discrete jump fit into a
+  continuous-simulation engine" design question actually gets decided —
+  do it before 8.3/8.4, which both depend on whatever answer this item
+  settles on.
+- 8.3 — Month / annual calendar (answers the user's "month" and part of
+  "year"). SRC-0043 (read in full, ETA SA's own production design, a
+  granted patent — not a hobbyist concept): the date disc gains a
+  second toothing that engages only at month-end to give it one extra
+  step (so the same disc self-corrects for 30-day months without a
+  separate snail-cam part), driving a month star (one revolution/year)
+  through a drive wheel set with two positions — disengaged ("the
+  kinematic chain between the date disc and the month star wheel is
+  broken") except for the instant the month actually changes. A genuine
+  example of an intermittently-engaged gear train this project has no
+  precedent for; depends on 8.2's jump mechanism being in place first.
+  Does not by itself handle 31-vs-28/29-day February or leap years — an
+  annual calendar in the real-watchmaking sense needs manual correction
+  twice a year (end of Feb, by design); that is a legitimate, sourced
+  design point, not a bug, if 8.4 is not also done.
+- 8.4 — Leap year / four-year cycle (the rest of "year"; optional,
+  depends on 8.3). SRC-0044 (Omega SA, read): leap-year handling
+  conventionally built on a "Maltese cross... to effect one revolution
+  every four years" — i.e. a Geneva-drive-family intermittent-motion
+  mechanism, not another bespoke jump/cam like 8.2/8.3. Genuinely
+  promising because, unlike the date/month jump mechanisms, Geneva
+  drives have well-documented closed-form kinematics in standard
+  mechanism-design literature (dwell/motion fractions from pin/slot
+  geometry) — but that literature has not yet been checked against this
+  specific claim, so treat "Geneva-drive kinematics are implementable
+  here" as an open research question, not a confirmed yes, until that
+  check happens.
+- 8.5 — "Season" / equation of time — **confirmed out of scope, not
+  reconsidered without the user asking.** Re-researched this pass
+  (beyond the original flag): the real mechanism (per auction-house and
+  manufacturer technical descriptions) is a "very specifically
+  bean-shaped cam that can take into account the analemma curve... over
+  the course of a year" — a fundamentally different mechanism class
+  (a profile cam encoding empirical orbital-mechanics curve data) from
+  every other item here, "rarely featured in a wristwatch" even among
+  grand complications, and would need real analemma/equation-of-time
+  data this project has not sourced. Left deliberately unscoped.
+- 8.6 — Display/UI groundwork (cross-cutting, needed by 8.1-8.4): a new
+  disc/window display concept distinct from the continuously-rotating
+  `HandFunction` hands (`src/kinematics/timeDisplay.ts`,
+  `HAND_VISUALIZATION` in `src/geometry/assemblyGeometry3d.ts`), dial
+  windows or sub-dials to show it through, in both the inspector and the
+  3D viewport.
+- 8.7 — Validation rules (cross-cutting, needed by 8.2-8.4): jump-timing
+  sanity (a trigger genuinely near the driving wheel's own period
+  boundary, not an arbitrary angle), interference between the new discs/
+  stars and existing components at their z-height, same discipline as
+  the existing GEAR-1xx/ESC-1xx rules.
+
+Order: 8.1 first (ships independently, no jump-mechanism risk, proves
+the display groundwork 8.6 needs). 8.2 next (the jump-mechanism design
+decision, needed by everything after it). 8.3 after 8.2. 8.4 after 8.3,
+gated on checking its Geneva-drive kinematics claim against a real
+mechanism-design source first. 8.5 stays out of scope. 8.6/8.7 are
+cross-cutting — do the display groundwork alongside 8.1, and the
+validation rules alongside whichever jump-mechanism item is current.
+
+This is a scoping pass only — nothing above is implemented yet.
+Confirm which sub-item to start with before writing any domain code;
+this is a new domain area, not a refinement of existing Phase 7 work.

@@ -2,6 +2,39 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8: scoped into ordered sub-items (8.1-8.7)
+
+Phase 7 closed out; per the user's standing request (flagged
+2026-10-05), scoped Phase 8 (calendar complications) next. Found and
+read five new sources: four granted patents (SRC-0042 simple date;
+SRC-0043 annual calendar, ETA SA; SRC-0044 leap year/Geneva drive, Omega
+SA; SRC-0045 moonphase, Seikosha) and one NASA astronomical reference
+(SRC-0046, the real 29.53059-day synodic month). Full sub-item
+breakdown, sourcing and suggested order are in `docs/ROADMAP.md`'s
+Phase 8 entry; summary:
+
+- The driving side of every calendar complication here is an ordinary
+  continuous gear reduction — zero new kinematics needed, this
+  project's existing gear-mesh engine already covers it.
+- The one genuinely new concept (needed by date/month/leap-year, not
+  moonphase) is the discrete **jump**: spring energy stored
+  continuously, released abruptly at a trigger to snap a star wheel
+  forward one tooth. Closer in kind to this project's own escapement
+  phase-display pattern (derive a discrete-looking display from a
+  continuous simulation state) than to anything else in Phase 1-7.
+- Recommended order: 8.1 moonphase (no jump-mechanism risk, ships
+  independently) → 8.2 simple date (settles the jump-mechanism design)
+  → 8.3 month/annual calendar → 8.4 leap year (gated on checking its
+  Geneva-drive kinematics claim against a real mechanism-design source
+  first, not yet done). 8.5 "season"/equation of time re-researched and
+  confirmed out of scope (a profile cam encoding analemma curve data —
+  a different mechanism class entirely, "rarely featured in a
+  wristwatch" even among grand complications). 8.6 display groundwork
+  and 8.7 validation rules are cross-cutting.
+
+Nothing implemented yet — this is a scoping pass only, same as Phase
+7.1's initial scoping before any sub-item was built.
+
 ## Phase 7.2: impact/sliding-contact dynamics — researched, deliberately not implemented
 
 REF-ENG §9 already flags that "a simple rigid gear mesh is not an

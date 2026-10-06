@@ -458,6 +458,45 @@ rate differences) was read but deliberately not implemented — position
 is a spread across several rotational axes, not a single scalar
 sensitivity like temperature or amplitude.
 
+## Calendar complications (REF-ENG §8 extension, Phase 8)
+
+### "Timepiece with Date Mechanism", US7158448B1, 2007 (SRC-0042, read)
+Simplest instantaneous-date design: a continuously-turning 24-hour wheel
+(2:1 off the hour wheel — needs no new kinematics) triggers a discrete
+one-step-per-day jump of a 31-tooth date star via a spring-and-cam energy
+release, held between jumps by a spring-loaded jumper. The genuinely new
+concept is the discrete jump itself.
+
+### Bron (ETA SA) — "Annual Calendar Mechanism for Watch Movement", US7218576B1, 2007 (SRC-0043, read)
+Production-grade (ETA SA) annual calendar: the date disc gains a second
+toothing that engages only at month-end, driving a month star (one
+revolution/year) via a month drive wheel set with two positions — one
+where "the kinematic chain between the date disc and the month star wheel
+is broken," one where it engages, only at the moment of month change.
+Independent manual correction of date vs. month.
+
+### Baumgartner & Meylan (Omega SA) — "Perpetual Calendar Mechanism Comprising a Four Year Cycle Indicator", US4541725A, 1985 (SRC-0044, read)
+Leap-year handling built on a "Maltese cross" (Geneva-drive-family
+intermittent motion), making one quarter-turn per year, four years per
+revolution. Unlike the date/month jump mechanisms above, Geneva drives
+have well-documented closed-form kinematics in standard mechanism-design
+literature — a promising, better-sourced building block, not yet
+cross-checked against a dedicated mechanism-design source.
+
+### Kaneko & Hanya (Seikosha) — "Moon Phase Display Clock", US4692031A, 1987 (SRC-0045, read: abstract + figures only)
+Confirms the moonphase disc is driven by ordinary continuous rotation —
+no jump mechanism at all, unlike every other Phase 8 complication. Two
+moon windows 180° apart on the disc, confirmed directly in Fig. 4. The
+conventional "59 teeth / 29.5 days" figure is a widely corroborated
+convention (same genre as SRC-0016/0017's "2 beats per tooth"), but this
+patent's own tooth count was not read closely enough to confirm 59
+specifically — do not attribute that number to this patent alone.
+
+### NASA (Espenak/GSFC) — "Eclipses and the Moon's Orbit" (SRC-0046, read)
+Tier 1 astronomical reference, not horology: "the mean length of the
+synodic month is 29.53059 days (29d 12h 44m 03s)" — the real-world figure
+any moonphase mechanism's own approximation is compared against.
+
 ## Movement-specific sources
 
 Movement-specific measurements must live under:
