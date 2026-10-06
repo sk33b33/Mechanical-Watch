@@ -420,6 +420,25 @@ Confirms, independently of SRC-0037, that real mainsprings have a
 non-constant torque curve — but gives no formula or shape, just states
 the problem. A third source landing on the same negative result.
 
+## Temperature compensation (REF-ENG §10, Phase 7.6)
+
+### Gould — Precision of Watches and the Effect of Temperature upon Their Rate, NIST RP670, 1934 (SRC-0040, read)
+Tier 1 primary source (Bureau of Standards Journal of Research). Cites
+the "middle temperature (20 C)" as the conventional reference and "5 C"/
+"35 C" as the "usual temperature range" bookends — used as-is for
+`MIDDLE_TEMPERATURE_CELSIUS`/`USUAL_TEMPERATURE_RANGE_CELSIUS`. States a
+compensated balance's own rate-vs-temperature curve is "approximately
+straight lines" near the working range, grounding the same first-order
+local-linearization pattern already used for the isochronism coefficient
+(ASM-0034), now for `temperatureCoefficient` (ASM-0046). Compensated and
+monometallic assemblies differ by roughly an order of magnitude in this
+slope, so no universal value exists. A scanned PDF; WebFetch's text
+extraction failed, so the cached file was read directly with the Read
+tool's image support instead. The paper's own Section III (positional
+rate differences) was read but deliberately not implemented — position
+is a spread across several rotational axes, not a single scalar
+sensitivity like temperature or amplitude.
+
 ## Movement-specific sources
 
 Movement-specific measurements must live under:

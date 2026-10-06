@@ -2,6 +2,52 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 7.6: temperature coefficient implemented; position deliberately not
+
+Found a genuinely actionable Tier 1 primary source: F. A. Gould,
+"Precision of Watches and the Effect of Temperature upon Their Rate"
+(Bureau of Standards Research Paper RP670, *Journal of Research* vol.
+12, 1934, SRC-0040) — a scanned PDF; WebFetch's text extraction failed
+outright, so the cached file was read directly with the Read tool's
+image support (the same workaround already used for Playtner's figures
+and Roymech's spring-rate images).
+
+Gould treats a compensated balance's rate-vs-temperature curve as
+"approximately straight lines" near the working range, with the
+slope "indicat[ing] the degree of temperature compensation," and
+cites "the middle temperature (20 C)" as the reference and "the usual
+temperature range 5 to 35 C" as reporting bookends. That is exactly
+this project's existing `isochronismCoefficient` pattern (ASM-0034) —
+a declared/measured first-order local linearization, null by default,
+no universal value (compensated and monometallic/elinvar assemblies
+differ by roughly an order of magnitude in Gould's own figures) —
+so it was implemented the same way:
+
+- `Balance.temperatureCoefficient: number | null` (ASM-0046).
+- `temperatureAdjustedRate`, `MIDDLE_TEMPERATURE_CELSIUS` (20),
+  `USUAL_TEMPERATURE_RANGE_CELSIUS` (5–35) in `src/kinematics/balance.ts`,
+  mirroring `isochronismAdjustedRate` exactly.
+- BAL-001 (finiteness) and BAL-002 (reports the rate at 5 °C and 35 °C
+  when a coefficient is declared, combined with the existing isochronism
+  sentence into one message) in `src/validation/rules/balanceRules.ts`.
+- A new inspector input row and a componentReport parameter/derived row,
+  both mirroring the isochronism-coefficient rows.
+- Schema migration v16 → v17 (existing balances gain `temperatureCoefficient:
+  null`); verified with a scratch test that decodes a synthetic v16 file.
+
+**Positional error, the other half of 7.6, was read (Gould's own
+Section III) but deliberately not implemented.** Unlike temperature or
+amplitude, a watch's positional rate is not a sensitivity to one ordered
+scalar variable — it is a spread across (at least) three rotational
+axes (dial up/down, crown positions), referenced to no single "zero."
+Fitting it into the declared/measured-coefficient pattern used for
+isochronism and temperature would need a materially different domain
+shape (per-orientation rates, or a 3-axis model), not a one-line
+addition, and no source read this phase supplies that structure. Left
+genuinely unmodeled rather than squeezed into a scalar that would
+misrepresent it — consistent with REF-ENG §10's own "Physical model"
+list, which already named position as unmodeled.
+
 ## Phase 7.1.6: researched, deliberately not implemented
 
 Read Playtner's "Center Distance of Wheel and Pallets" chapter in

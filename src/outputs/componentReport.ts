@@ -13,7 +13,7 @@ import type { Dial } from "@/domain/dial";
 import type { Escapement } from "@/domain/escapement";
 import { toBeatsPerHour } from "@/units/frequency";
 import { balanceFrequency, beatFrequency, beatsPerEscapeRevolution, impulseFraction } from "@/kinematics/escapement";
-import { isochronismAdjustedRate } from "@/kinematics/balance";
+import { isochronismAdjustedRate, MIDDLE_TEMPERATURE_CELSIUS, temperatureAdjustedRate, USUAL_TEMPERATURE_RANGE_CELSIUS } from "@/kinematics/balance";
 import { summarizeBalance } from "@/kinematics/balanceSummary";
 import { summarizeEnergy } from "@/kinematics/energySummary";
 import { crescentHalfAngle, dropClearance, forkActingLength, forkRatio, guardPointClearance, hornClearance, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
@@ -558,6 +558,7 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
       entered("Balance inertia", b.inertia === null ? "unknown" : `${toMilligramSquareCentimetres(b.inertia).toFixed(3)} mg·cm²`, b.inertia),
       entered("Hairspring stiffness", b.hairspringStiffness === null ? "unknown" : `${toMicronewtonMillimetresPerRadian(b.hairspringStiffness).toFixed(3)} µN·mm/rad`, b.hairspringStiffness),
       entered("Isochronism coefficient", b.isochronismCoefficient === null ? "unmodeled" : `${(b.isochronismCoefficient * (Math.PI / 180)).toFixed(3)} s/day per °`, b.isochronismCoefficient),
+      entered("Temperature coefficient", b.temperatureCoefficient === null ? "unmodeled" : `${b.temperatureCoefficient.toFixed(3)} s/day per °C`, b.temperatureCoefficient),
       entered("Impulse radius", optionalMmText(b.impulseRadius), b.impulseRadius),
       entered("Roller kind", b.rollerKind === "SINGLE" ? "Single" : "Double"),
       entered("Roller radius", optionalMmText(b.rollerRadius), b.rollerRadius),
@@ -583,6 +584,17 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
         equation: "dailyRate + c·(amplitude − declared amplitude)",
         level: "L3_SIMPLIFIED_DYNAMIC" as const,
         references: ["ASM-0034" as const],
+      }]),
+      ...(b.temperatureCoefficient === null || dyn.dailyRate === null ? [] : [{
+        label: `Temperature-adjusted rate, ${String(USUAL_TEMPERATURE_RANGE_CELSIUS.low)}°C → ${String(USUAL_TEMPERATURE_RANGE_CELSIUS.high)}°C`,
+        text: [
+          temperatureAdjustedRate(dyn.dailyRate, b.temperatureCoefficient, USUAL_TEMPERATURE_RANGE_CELSIUS.low),
+          temperatureAdjustedRate(dyn.dailyRate, b.temperatureCoefficient, USUAL_TEMPERATURE_RANGE_CELSIUS.high),
+        ].map((v) => `${v >= 0 ? "+" : ""}${v.toFixed(2)} s/day`).join(" → "),
+        si: temperatureAdjustedRate(dyn.dailyRate, b.temperatureCoefficient, USUAL_TEMPERATURE_RANGE_CELSIUS.low),
+        equation: `dailyRate + c·(temperature − ${String(MIDDLE_TEMPERATURE_CELSIUS)}°C)`,
+        level: "L3_SIMPLIFIED_DYNAMIC" as const,
+        references: ["ASM-0046" as const],
       }]),
       ...palletDerived,
       ...energyDerived,

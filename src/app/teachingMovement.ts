@@ -312,6 +312,8 @@ export function createTeachingMovement(): Movement {
       // (3.5 mm < |4.5 − 0.9| mm) — entering a roller radius here would only ever report the
       // crescent construction as not realizable, not a useful demonstration (ESC-112).
       rollerRadius: null,
+      // No source gives this movement's own measured temperature coefficient; left unknown (ASM-0046).
+      temperatureCoefficient: null,
     },
     pallets: palletGeometry,
     // Also a loss property, left unknown for the same reason; the amplitude stays the declared one.

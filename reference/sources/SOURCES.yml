@@ -1382,3 +1382,45 @@
     coil-to-barrel contact as a cause. A third independent source landing
     on the same negative result (no accessible closed-form "real" curve),
     corroborating rather than extending the conclusion.
+
+- id: SRC-0040
+  title: "Precision of Watches and the Effect of Temperature upon Their Rate (Bureau of Standards Research Paper RP670)"
+  author: F. A. Gould
+  year: 1934
+  type: government_report
+  url: https://nvlpubs.nist.gov/nistpubs/jres/12/jresv12n4p451_A2b.pdf
+  topics: [balance, hairspring, temperature-compensation, temperature-coefficient]
+  claims_supported:
+    - "considerable difference between the middle temperature (20 C) rate and those at the high (35 C) and low (5 C) temperatures" (the conventional 20 C middle-temperature reference, and the 5 C/35 C usual temperature-range bookends, used as-is for `MIDDLE_TEMPERATURE_CELSIUS` and `USUAL_TEMPERATURE_RANGE_CELSIUS`)
+    - a compensated balance's own rate-vs-temperature curve is, near the usual working range, "approximately straight lines," whose slope "indicat[es] the degree of temperature compensation" (the first-order local-linearization pattern `temperatureAdjustedRate` implements — the same pattern already used for `isochronismCoefficient`, ASM-0034)
+    - compensated (cut bimetallic rim with a steel/brass compensation curb) and monometallic (elinvar-type) balance assemblies differ by roughly an order of magnitude in this rate-vs-temperature slope (Gould's own comparative figures), so no single numeric coefficient is universal — it must be measured or sourced per movement
+  claims_to_check: []
+  retrieved: true
+  accessed: "2026-10-05"
+  notes: >
+    Tier 1 (a primary NIST/Bureau of Standards research paper, published
+    in the Bureau's own Journal of Research, reporting original
+    measurements rather than restating a textbook convention). A scanned
+    document (JBIG2/JPX-encoded page images); WebFetch's text extraction
+    failed outright ("could not decode the compressed streams"), so the
+    locally cached PDF (saved by the failed WebFetch call) was read
+    directly with the Read tool's image/vision-based PDF support instead
+    — the same "WebFetch can't extract this, read the saved file as
+    images" workaround already used for Playtner's figures (SRC-0036) and
+    Roymech's spring-rate GIFs (SRC-0037), here for a genuinely
+    image-only scanned PDF rather than an embedded formula image. Found
+    via a web search for "hairspring temperature coefficient
+    thermoelastic coefficient steel Invar Elinvar watch rate ppm per
+    degree" while researching Phase 7.6 (positional and temperature
+    effects). Used for ASM-0046 (`Balance.temperatureCoefficient`,
+    `temperatureAdjustedRate`, `MIDDLE_TEMPERATURE_CELSIUS`,
+    `USUAL_TEMPERATURE_RANGE_CELSIUS` in `src/kinematics/balance.ts`) and
+    the BAL-001/BAL-002 validation rules in
+    `src/validation/rules/balanceRules.ts`. The paper's Section III
+    (positional-rate differences between dial-up/dial-down/pendant
+    positions) was read but deliberately not implemented: unlike
+    temperature, a watch's positional error is not a single scalar
+    sensitivity to one ordered variable but a spread across at least
+    three rotational axes, so it does not fit this project's declared/
+    measured-coefficient pattern without a materially different domain
+    model (see STATUS.md's Phase 7.6 write-up).

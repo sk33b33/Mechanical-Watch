@@ -250,8 +250,16 @@ level).
   real nonlinearity needs measurement, not a formula. Bridle slip
   (~1.3-1.5×, SRC-0038, unread/unverified) is scoped to automatic
   winding, which this project doesn't model at all.
-- 7.6 — Positional and temperature effects (REF-ENG §10's "Physical
-  model"). Depends on 7.3. Highest research risk.
+- 7.6 — **Temperature done; position researched, deliberately not
+  implemented** (see `docs/STATUS.md`). A Tier 1 primary source (Gould
+  1934, NIST RP670, SRC-0040) gives the same kind of declared/measured
+  first-order linearization already used for isochronism (ASM-0034), now
+  for temperature (`Balance.temperatureCoefficient`, ASM-0046), cites a
+  20 °C middle-temperature reference and a 5 °C-35 °C reporting range
+  used as-is. Positional error does not fit this pattern — it is a
+  spread across several rotational axes, not a sensitivity to one scalar
+  — and is left unmodeled rather than squeezed into a scalar coefficient
+  that would misrepresent it.
 
 Order: 7.1 before 7.2; 7.3 independent (recommended first); 7.4/7.5 can
 run in parallel as research; 7.6 depends on 7.3.

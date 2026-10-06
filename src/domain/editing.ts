@@ -122,7 +122,7 @@ export function newEscapement(movement: Movement): Escapement {
     palletArborShaftId: none,
     leverAngle: angle,
     balanceShaftId: none,
-    balance: { diameter: EMPTY, thickness: EMPTY, zCentre: EMPTY, amplitude: angle, liftAngle: angle, inertia: null, hairspringStiffness: null, qualityFactor: null, isochronismCoefficient: null, impulseRadius: null, rollerKind: "SINGLE", rollerRadius: null },
+    balance: { diameter: EMPTY, thickness: EMPTY, zCentre: EMPTY, amplitude: angle, liftAngle: angle, inertia: null, hairspringStiffness: null, qualityFactor: null, isochronismCoefficient: null, impulseRadius: null, rollerKind: "SINGLE", rollerRadius: null, temperatureCoefficient: null },
     pallets: null,
     escapementEfficiency: null,
   });

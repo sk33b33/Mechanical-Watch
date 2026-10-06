@@ -273,6 +273,12 @@ export const ASSUMPTIONS = {
     scope: "Escapement geometry",
     status: "Active",
   },
+  "ASM-0046": {
+    summary:
+      "Balance.temperatureCoefficient (optional, s/day per degree C, from a conventional 20C 'middle temperature' reference), the same first-order local-linearization pattern as isochronismCoefficient (ASM-0034). SRC-0040 (Gould 1934, NIST/Bureau of Standards) treats a compensated balance's temperature-rate curve as approximately straight near the working range, with the slope indicating the degree of temperature compensation; cites 20C as the middle-temperature reference and 5C-35C as the usual temperature range. No universal value exists -- compensated (cut bimetallic rim + steel) and monometallic (elinvar) assemblies differ by an order of magnitude in this coefficient, so it must be measured or sourced per movement, never invented. Null by default, including in the teaching movement, since no source gives its own measured value. Positional error (REF-ENG section 10) remains entirely unmodeled: no single scalar coefficient captures a watch's rate spread across its axes of orientation",
+    scope: "Balance (simplified dynamic, L3)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

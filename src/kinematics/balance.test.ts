@@ -13,7 +13,7 @@ import { minutesHandShaftId, setNominalTimeDrive, updateEscapement, type Movemen
 import { createTeachingMovement } from "@/app/teachingMovement";
 import { analyzeMovement } from "@/analysis/analyzeMovement";
 import { validateMovement } from "@/validation/validateMovement";
-import { dailyRateSeconds, escapeSpeedFromBalance, isochronismAdjustedRate, naturalFrequency, stiffnessForFrequency } from "./balance";
+import { dailyRateSeconds, escapeSpeedFromBalance, isochronismAdjustedRate, naturalFrequency, stiffnessForFrequency, temperatureAdjustedRate } from "./balance";
 import { summarizeBalance } from "./balanceSummary";
 import { nominalHandAngularVelocity } from "./timeDisplay";
 
@@ -82,6 +82,27 @@ describe("isochronism-adjusted rate (ASM-0034)", () => {
   });
 });
 
+describe("temperature-adjusted rate (ASM-0046, SRC-0040)", () => {
+  it("is unchanged when the coefficient is unknown (ASM-0024 baseline stands)", () => {
+    expect(temperatureAdjustedRate(-7, null, 5)).toBe(-7);
+  });
+
+  it("defaults the reference to the cited 20°C middle temperature (SRC-0040)", () => {
+    expect(temperatureAdjustedRate(-7, 2, 20)).toBeCloseTo(-7, 12);
+  });
+
+  it("is linear in the temperature deviation from the reference, in the declared units (s/day per °C)", () => {
+    const coefficient = -1.5;
+    expect(temperatureAdjustedRate(-7, coefficient, 5)).toBeCloseTo(-7 + coefficient * (5 - 20), 12);
+    expect(temperatureAdjustedRate(-7, coefficient, 35)).toBeCloseTo(-7 + coefficient * (35 - 20), 12);
+  });
+
+  it("an explicit reference temperature overrides the 20°C default", () => {
+    expect(temperatureAdjustedRate(0, 2, 10, 10)).toBeCloseTo(0, 12);
+    expect(temperatureAdjustedRate(0, 2, 15, 10)).toBeCloseTo(10, 12);
+  });
+});
+
 describe("teaching movement governed by its balance", () => {
   const movement = createTeachingMovement();
   const escapement = Object.values(movement.escapements)[0];
@@ -135,10 +156,11 @@ describe("teaching movement governed by its balance", () => {
     expect(validateMovement(m).some((i) => i.rule === "BAL-001" && i.id.includes("isochronism-coefficient"))).toBe(true);
   });
 
-  it("BAL-002: with no isochronism coefficient declared, says amplitude dependence is not declared (ASM-0034)", () => {
+  it("BAL-002: with no isochronism or temperature coefficient declared, says both are not declared (ASM-0034, ASM-0046)", () => {
     const info = validateMovement(movement).find((i) => i.rule === "BAL-002");
-    expect(info?.message).toContain("amplitude dependence is not declared (ASM-0034)");
+    expect(info?.message).toContain("amplitude dependence and temperature dependence are not declared (ASM-0034, ASM-0046)");
     expect(info?.references).not.toContain("ASM-0034");
+    expect(info?.references).not.toContain("ASM-0046");
   });
 
   it("BAL-002: a declared coefficient with no predicted amplitude says there is nothing to apply it to", () => {
@@ -158,5 +180,22 @@ describe("teaching movement governed by its balance", () => {
     expect(info?.message).toContain("With the declared isochronism coefficient (ASM-0034) applied");
     expect(info?.message).toMatch(/s\/day fully wound, [+-]?\d+\.\d s\/day let down/);
     expect(info?.references).toContain("ASM-0034");
+  });
+
+  it("BAL-001: an entered temperature coefficient must be finite", () => {
+    const m = updateEscapement(movement, escapement.id, { balance: { ...escapement.balance, temperatureCoefficient: Number.NaN } });
+    expect(validateMovement(m).some((i) => i.rule === "BAL-001" && i.id.includes("temperature-coefficient"))).toBe(true);
+  });
+
+  it("BAL-002: a declared temperature coefficient reports the rate at the usual 5°C-35°C range (ASM-0046, SRC-0040)", () => {
+    const m = updateEscapement(movement, escapement.id, { balance: { ...escapement.balance, temperatureCoefficient: -1.5 } });
+    const baseline = summarizeBalance(m, { ...escapement, balance: { ...escapement.balance, temperatureCoefficient: -1.5 } }).dailyRate ?? Number.NaN;
+    const info = validateMovement(m).find((i) => i.rule === "BAL-002");
+    expect(info?.message).toContain("With the declared temperature coefficient (ASM-0046) applied across the usual 5°C-35°C range");
+    expect(info?.references).toContain("ASM-0046");
+    const atLow = temperatureAdjustedRate(baseline, -1.5, 5);
+    const atHigh = temperatureAdjustedRate(baseline, -1.5, 35);
+    expect(info?.message).toContain(`${atLow >= 0 ? "+" : ""}${atLow.toFixed(1)} s/day at 5°C`);
+    expect(info?.message).toContain(`${atHigh >= 0 ? "+" : ""}${atHigh.toFixed(1)} s/day at 35°C`);
   });
 });

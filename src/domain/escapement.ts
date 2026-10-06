@@ -80,6 +80,21 @@ export interface Balance {
    */
   isochronismCoefficient: number | null;
   /**
+   * Declared/measured rate sensitivity to temperature (s/day per °C,
+   * equivalently per kelvin, from the conventional 20°C "middle
+   * temperature," ASM-0046), the same first-order local-linearization
+   * pattern as `isochronismCoefficient`: SRC-0040 (Gould 1934, NIST/Bureau
+   * of Standards) treats a compensated balance's own temperature-rate
+   * curve as "approximately straight lines" near the working range, with
+   * "the slope of these straight lines... indicat[ing] the degree of
+   * temperature compensation." No universal value exists — compensated
+   * (cut bimetallic rim + steel) and monometallic (elinvar) assemblies
+   * differ by an order of magnitude, so this must be measured or sourced
+   * per movement, never invented. Null when unknown; the balance then
+   * stays temperature-independent by construction (ASM-0024).
+   */
+  temperatureCoefficient: number | null;
+  /**
    * Distance from the balance staff to the face of the ruby pin (ASM-0041,
    * SRC-0036 "The Fork and Roller Action"): "the ruby pin, or strictly
    * speaking, the 'impulse radius,' is a lever arm, whose length is

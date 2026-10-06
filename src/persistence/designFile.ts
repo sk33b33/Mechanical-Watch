@@ -38,7 +38,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 16;
+export const DESIGN_SCHEMA_VERSION = 17;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -261,6 +261,21 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
       ]),
     );
     return { ...doc, schemaVersion: 16, movement: { ...movement, escapements } };
+  },
+  /**
+   * v16 → v17: balances gain an empty (null) temperature coefficient to
+   * fill in — entered directly, never guessed (ASM-0046).
+   */
+  16: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.escapements)) return doc;
+    const escapements = Object.fromEntries(
+      Object.entries(movement.escapements).map(([id, e]) => [
+        id,
+        isRecord(e) && isRecord(e.balance) ? { ...e, balance: { ...e.balance, temperatureCoefficient: null } } : e,
+      ]),
+    );
+    return { ...doc, schemaVersion: 17, movement: { ...movement, escapements } };
   },
 };
 
@@ -578,6 +593,7 @@ const escapement: Decoder<Escapement> = (value, path) => {
       impulseRadius: field(balance, "impulseRadius", nullable(length), bp),
       rollerKind: field(balance, "rollerKind", oneOf(["SINGLE", "DOUBLE"]), bp),
       rollerRadius: field(balance, "rollerRadius", nullable(length), bp),
+      temperatureCoefficient: field(balance, "temperatureCoefficient", nullable(number), bp),
     },
     pallets: field(o, "pallets", nullable(pallets), path),
     escapementEfficiency: field(o, "escapementEfficiency", nullable(number), path),
