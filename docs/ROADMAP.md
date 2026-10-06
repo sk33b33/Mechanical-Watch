@@ -206,11 +206,23 @@ level).
     declared/derived scalars, 7.1.5.4-5 are real geometric
     constructions needing source figures first, 7.1.5.6 is the visual
     capstone. All six sub-items are now done.
-  - 7.1.6 — Center-distance refined for manufacturing clearance (pallet
-    arbor thickness, working stock) rather than the current pure
-    idealized tangent-circle construction (`tangentialCentreDistance`).
-    Smallest, lowest-priority item; a polish-level refinement in
-    Playtner's own "Center Distance" chapter.
+  - 7.1.6 — **Researched, deliberately not implemented** (see
+    `docs/STATUS.md`). Looked simplest of all the 7.1.x items from its
+    one-line description, but read in full (plus Figs. 2-4, fetched and
+    viewed) it needs a genuinely new domain concept this project has
+    consistently deferred throughout 7.1: a separate tooth-side
+    *lifting* angle, distinct from the tooth's own declared *width*
+    (ASM-0037) — "the lifting angle on the tooth must be less in
+    proportion to its width than it is on the pallet," with fine
+    watches even using curved (not flat) lifting planes. Playtner's own
+    worked "heel of the tooth" distance depends on this tooth-face lift
+    distribution, which is exactly the "tooth/pallet FACE contact
+    geometry... true lifting-face curvature" this project's own
+    SOURCES.yml has repeatedly and deliberately scoped out since 7.1.1.
+    Implementing it well would mean quietly reopening that boundary for
+    an item explicitly flagged as smallest/lowest-priority — not done;
+    left genuinely open rather than approximated with an uncited
+    substitute.
   Suggested order: 7.1.1 → 7.1.2 → 7.1.3 → 7.1.4, each independently
   shippable and testable (same incremental pattern as the
   WATCH_SPECIFIC_PROFILE gear work); 7.1.5 and 7.1.6 can run separately,

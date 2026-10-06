@@ -2,6 +2,43 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 7.1.6: researched, deliberately not implemented
+
+Read Playtner's "Center Distance of Wheel and Pallets" chapter in
+full, plus Figs. 2, 3 and 4 (fetched and viewed directly). His own
+worked example ("the distance from the heel of the tooth to the
+pallet center will be .4691 mm... by allowing .1 mm. between wheel and
+pallet and .15 mm. for stock on the pallets we find we will have a
+pallet arbor [diameter]... .4382 mm" — the transcriber flags the
+printed arithmetic itself as `Sic`; working it as
+`(heelDistance − clearance − stock) × 2` reproduces his stated result
+exactly, `(.4691 − .1 − .15) × 2 = .4382`, so that is almost certainly
+the intended formula despite how it is printed) depends on a quantity
+this project has never modeled: the escape tooth's own *heel* corner
+position, which in turn depends on a tooth-side *lifting* angle
+distinct from the tooth's declared *width* (ASM-0037) — "the lifting
+angle on the tooth must be less in proportion to its width than it is
+on the pallet," and fine watches (A. Lange & Söhne, per Playtner) even
+curve the lifting planes rather than leave them flat.
+
+This is squarely the "tooth/pallet FACE contact geometry... true
+lifting-face curvature" every prior SOURCES.yml update this phase has
+named as deliberately out of scope (ASM-0038 through ASM-0045 all
+carry some version of that same exclusion). Approximating the tooth's
+heel position using the already-modeled `toothWidthAngle` in place of
+a real, separately-sourced tooth-lift angle would be exactly the kind
+of uncited substitution CLAUDE.md rules out ("never invent an
+engineering constant... mark it UNKNOWN, ask for a source, or register
+an explicit assumption") — and inventing a new domain field (a tooth
+lift-angle split) just to unblock an item the roadmap itself flagged
+as smallest/lowest-priority would reopen a boundary this project has
+held deliberately firm since 7.1.1.
+
+Decision: leave 7.1.6 unimplemented, documented here as a genuine
+research finding rather than silently dropped or approximated. Revisit
+only alongside real tooth/pallet face-contact work (the same family as
+7.2's impact/sliding-contact dynamics), not before.
+
 ## Phase 7.1.5.6: ruby pin and single roller in the 3D viewport (grounded slice)
 
 Sixth and last of 7.1.5's sub-items — the visual capstone, flagged in
