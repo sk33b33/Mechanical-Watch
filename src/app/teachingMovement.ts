@@ -20,7 +20,8 @@ import { createJewel } from "@/domain/jewel";
 import { createFrictionClutch, createMainspring } from "@/domain/coupling";
 import { createKeylessWorks } from "@/domain/keyless";
 import { createDial } from "@/domain/dial";
-import { addDial, addEscapement, addKeylessWorks, setBalanceDrive } from "@/domain/movement";
+import { addDial, addEscapement, addKeylessWorks, addMoonPhase, setBalanceDrive } from "@/domain/movement";
+import { createMoonPhase } from "@/domain/moonPhase";
 import { micronewtonMillimetresPerRadian, milligramSquareCentimetres } from "@/units/rotational";
 import { newtonMillimetres } from "@/units/torque";
 import { spanAngle, tangentialCentreDistance } from "@/kinematics/palletGeometry";
@@ -76,6 +77,15 @@ const mm = millimetres;
  * gives the power reserve and escape-wheel torque; the balance's Q and the
  * escapement efficiency are loss properties left unknown, so the energy
  * model does not predict an amplitude here (ASM-0026).
+ *
+ * Moonphase disc (Phase 8.1, ASM-0047): a two-stage 8:87 reduction off the
+ * hour wheel's own arbor, at 6 o'clock, stud-mounted on the mainplate. No
+ * jumper/cam mechanism — an ordinary continuous gear train, same engine as
+ * the going train. ≈1/118.27 of the hour wheel's own speed gives a disc
+ * period of about 59.1 days; with two moon images 180° apart (the
+ * conventional layout, SRC-0045) that is a ≈29.57-day lunation, a few tens
+ * of minutes off the real synodic month (29.53059 days, SRC-0046) — reported
+ * (MOON-002), not engineered away.
  */
 export function createTeachingMovement(): Movement {
   const trainModule = mm(0.12);
@@ -138,6 +148,24 @@ export function createTeachingMovement(): Movement {
   const minutePinion = gear("Minute pinion", minuteWheel, 8, motionModule, -1.0, 0.4);
   const hourWheelGear = gear("Hour wheel", hourWheel, 32, motionModule, -1.0, 0.2);
 
+  // Moonphase disc (Phase 8.1, ASM-0047): a two-stage continuous reduction off the hour
+  // wheel's own arbor, at a different plan position (6 o'clock, off the motion works). Stud-
+  // mounted on the mainplate, like the minute wheel, so it needs no dial-side bearing of its
+  // own (BRG-001). Its own z-levels (−1.15 / −1.26) sit below the existing motion works
+  // (−0.6 / −1.0) and above the dial's back (−1.4, DIAL-002). No jumper/cam mechanism — an
+  // ordinary gear train, same as the going train.
+  // 8:87 twice gives 64/7569 ≈ 1/118.27 of the hour wheel's own speed (1 rev/12 h), so the disc
+  // completes a revolution in about 59.1 days; with two moon images 180° apart (the conventional
+  // DOUBLE layout, SRC-0045) that is a lunation of about 29.57 days — a few tens of minutes off
+  // the real 29.53059-day synodic month (SRC-0046), reported rather than engineered away
+  // (illustrative tooth counts, ASM-0009, same as the rest of this movement).
+  const moonPinion = gear("Moon pinion", hourWheel, 8, motionModule, -1.15, 0.06);
+  const moonReductionArbor = shaft("Moon reduction arbor", null, { kind: "STUD", frameId: mainplate.id });
+  const moonWheel1 = gear("Moon wheel 1", moonReductionArbor, 87, motionModule, -1.15, 0.06);
+  const moonPinion2 = gear("Moon pinion 2", moonReductionArbor, 8, motionModule, -1.26, 0.06);
+  const moonDiscArbor = shaft("Moon disc arbor", null, { kind: "STUD", frameId: mainplate.id });
+  const moonWheel2 = gear("Moon wheel 2", moonDiscArbor, 87, motionModule, -1.26, 0.06);
+
   // Keyless works. Ratchet and crown wheel just above the mainplate (its top face is at 1.0 mm).
   const keylessModule = mm(0.1);
   const ratchetWheel = gear("Ratchet wheel", barrelArbor, 40, keylessModule, 1.1, 0.2);
@@ -153,6 +181,8 @@ export function createTeachingMovement(): Movement {
   const minuteToHour = mesh(minutePinion, hourWheelGear);
   const crownToRatchet = mesh(crownWheel, ratchetWheel);
   const settingToMinute = mesh(settingWheel, minuteWheelGear);
+  const hourToMoon1 = mesh(moonPinion, moonWheel1);
+  const moon1ToMoon2 = mesh(moonPinion2, moonWheel2);
 
   let m = createMovement("Teaching movement: going train and motion works", true);
   m = addFrame(m, mainplate);
@@ -166,15 +196,20 @@ export function createTeachingMovement(): Movement {
     thickness: mm(0.8),
   });
   m = addFrame(m, balanceCock);
-  for (const s of [barrel, centre, third, fourth, escape, cannon, minuteWheel, hourWheel, barrelArbor, crownWheelArbor, settingWheelArbor]) {
+  for (const s of [
+    barrel, centre, third, fourth, escape, cannon, minuteWheel, hourWheel, barrelArbor, crownWheelArbor, settingWheelArbor,
+    moonReductionArbor, moonDiscArbor,
+  ]) {
     m = addShaft(m, s);
   }
   for (const g of [
     barrelDrum, centrePinion, centreWheel, thirdPinion, thirdWheel, fourthPinion, fourthWheel, escapePinion,
     cannonPinion, minuteWheelGear, minutePinion, hourWheelGear, ratchetWheel, crownWheel, settingWheel,
+    moonPinion, moonWheel1, moonPinion2, moonWheel2,
   ]) m = addGear(m, g);
   for (const g of [
     barrelToCentre, centreToThird, thirdToFourth, fourthToEscape, cannonToMinute, minuteToHour, crownToRatchet, settingToMinute,
+    hourToMoon1, moon1ToMoon2,
   ]) {
     m = addGearMesh(m, g);
   }
@@ -210,6 +245,10 @@ export function createTeachingMovement(): Movement {
   m = updateShaft(m, hourWheel.id, { placement: { kind: "COAXIAL", referenceShaftId: centre.id } });
   polar(minuteWheel, cannon, cannonToMinute, 135);
   m = updateShaft(m, barrelArbor.id, { placement: { kind: "COAXIAL", referenceShaftId: barrel.id } });
+  // Straight down from the hour wheel (6 o'clock, ASM-0014's dial convention), clear of the
+  // train and balance bridges and well inside both the mainplate and the dial.
+  polar(moonReductionArbor, hourWheel, hourToMoon1, 270);
+  polar(moonDiscArbor, moonReductionArbor, moon1ToMoon2, 270);
 
   // Put the crown wheel and setting wheel on the stem line y = 0 (the centre arbor is at the origin).
   // Each is placed from its partner by its mesh; the angle is the one that lands on y = 0 on the crown side.
@@ -239,6 +278,15 @@ export function createTeachingMovement(): Movement {
     thickness: mm(0.4),
     // Below the lowest motion-works part (−1.2 mm) with 0.2 mm clear.
     faceHeight: mm(-1.8),
+  }));
+  m = addMoonPhase(m, createMoonPhase({
+    name: "Moon phase",
+    shaftId: moonDiscArbor.id,
+    diameter: mm(6),
+    thickness: mm(0.04),
+    // Clear of moon wheel 2 (−1.26 ± 0.03 mm) and the dial's own back (−1.4 mm).
+    faceHeight: mm(-1.35),
+    windowCount: "DOUBLE",
   }));
 
   // Pallet arbor and balance staff: fixed positions along a line from the escape arbor

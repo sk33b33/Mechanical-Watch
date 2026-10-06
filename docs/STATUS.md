@@ -2,6 +2,56 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.1: moonphase disc — done
+
+Implemented per the Phase 8 scoping (below): a new `MoonPhase` domain
+entity (`src/domain/moonPhase.ts`), a flat disc fixed to, and turning
+continuously with, its own declared arbor — no jumper/cam mechanism
+(ASM-0047). This was the key architectural finding from scoping: unlike
+every other Phase 8 item, moonphase needs zero new kinematics, since a
+declared arbor geared down from an existing shaft is already fully
+covered by this project's gear-mesh/shaft-angular-velocity engine
+(Phase 2/3).
+
+- `src/kinematics/moonPhase.ts`: `moonPhaseFraction` (reads the current
+  phase cyclically from the arbor's own solved angle, the same pattern
+  `readHand` uses — this project tracks no absolute calendar date, so
+  this is not a claim to show the real moon phase on any particular real
+  date), `impliedLunationDays` and `lunationDriftMinutes` (report the
+  gear train's own implied lunation against the real synodic month,
+  29.53059 days, SRC-0046 — a comparison only, never fed back into the
+  model).
+- MOON-001 (dimensions/reference) and MOON-002 (the implied-lunation
+  report) in `src/validation/rules/moonPhaseRules.ts`.
+- Inspector section, component-tree "+ Moon phase" button, component
+  report rows, and a 3D viewport disc that rotates automatically with
+  its own shaft group (`applyKinematicRotation`'s existing per-shaft loop
+  — no special-case rotation code needed, confirming the "ordinary
+  continuous gear train" architecture finding).
+- Schema migration v17 → v18 (movements gain an empty `moonPhases`
+  record).
+- Added to the teaching movement: a two-stage 8:87 reduction off the
+  hour wheel's own arbor (≈1/118.27 of its speed), giving a disc period
+  of about 59.1 days and, with the conventional two-moon-images-180°-
+  apart layout (SRC-0045), a lunation of about 29.57 days — a few tens
+  of minutes off the real synodic month, reported (+55 min/lunation)
+  rather than engineered away. Illustrative tooth counts (ASM-0009),
+  same as the rest of the teaching movement.
+- The guided tutorial (`src/app/tutorial/tutorialSteps.ts`) was extended
+  with matching steps, keeping the tutorial-built design structurally
+  identical to `createTeachingMovement()` (an existing, enforced test
+  invariant) rather than leaving moonphase as an undocumented gap.
+
+Verified: unit tests for the pure kinematics functions (nominal,
+boundary — zero/non-finite angular velocity, reversed direction —
+cases), the full suite (556 tests), typecheck, lint, a production build,
+a live-browser check (inspector values and validation message match the
+hand-computed figures above), and the full e2e suite.
+
+Next in Phase 8's recommended order: 8.2 (simple instantaneous date),
+which is where the genuinely new "discrete jump" kinematic concept
+(needed by date/month/leap-year, not moonphase) actually gets designed.
+
 ## Phase 8: scoped into ordered sub-items (8.1-8.7)
 
 Phase 7 closed out; per the user's standing request (flagged

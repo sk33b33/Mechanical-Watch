@@ -15,6 +15,7 @@ import { dialRules, keylessRules } from "./rules/keylessRules";
 import { escapementRules } from "./rules/escapementRules";
 import { balanceRules } from "./rules/balanceRules";
 import { springRules } from "./rules/springRules";
+import { moonPhaseRules } from "./rules/moonPhaseRules";
 
 /** Rule families, in the order their issues are reported. */
 const RULES: readonly Rule[] = [
@@ -34,6 +35,7 @@ const RULES: readonly Rule[] = [
   escapementRules,
   balanceRules,
   springRules,
+  moonPhaseRules,
 ];
 
 /**

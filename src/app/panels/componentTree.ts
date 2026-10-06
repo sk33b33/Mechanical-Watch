@@ -1,7 +1,7 @@
 import type { AppStore } from "@/app/store";
 import type { EntityId } from "@/domain/ids";
-import { addDial, addEscapement, addFrame, addKeylessWorks, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
-import { newDial, newEscapement, newFrame, newKeylessWorks, newShaft } from "@/domain/editing";
+import { addDial, addEscapement, addFrame, addKeylessWorks, addMoonPhase, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
+import { newDial, newEscapement, newFrame, newKeylessWorks, newMoonPhase, newShaft } from "@/domain/editing";
 import { listAssumptions } from "@/reference/assumptions";
 
 export function mountComponentTree(container: HTMLElement, store: AppStore): () => void {
@@ -92,6 +92,10 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
         const escapement = newEscapement(m);
         return { movement: addEscapement(m, escapement), id: escapement.id };
       }, "add-escapement"),
+      addButton("+ Moon phase", "Add a moonphase disc with every dimension empty; then choose its arbor", (m) => {
+        const moonPhase = newMoonPhase(m);
+        return { movement: addMoonPhase(m, moonPhase), id: moonPhase.id };
+      }, "add-moon-phase"),
     );
     container.appendChild(actions);
 
@@ -130,6 +134,11 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
       container.appendChild(header("Keyless works and dial"));
       for (const keyless of Object.values(movement.keylessWorks)) container.appendChild(item(keyless.name, keyless.id, 0, "(crown and stem)"));
       for (const dial of Object.values(movement.dials)) container.appendChild(item(dial.name, dial.id, 0));
+    }
+
+    if (Object.keys(movement.moonPhases).length > 0) {
+      container.appendChild(header("Moon phase"));
+      for (const moon of Object.values(movement.moonPhases)) container.appendChild(item(moon.name, moon.id, 0));
     }
 
     container.appendChild(header("Assumptions"));

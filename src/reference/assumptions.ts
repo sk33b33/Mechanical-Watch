@@ -279,6 +279,12 @@ export const ASSUMPTIONS = {
     scope: "Balance (simplified dynamic, L3)",
     status: "Active",
   },
+  "ASM-0047": {
+    summary:
+      "MoonPhase.windowCount (SINGLE | DOUBLE, ASM-0043-style structural enum, no new kinematics): the disc is driven by an ordinary continuous gear-train reduction on its own declared arbor and its phase is read directly from that arbor's solved angle, the same cyclical-reading pattern as readHand -- this project tracks no absolute calendar date, so this is not a claim to show the real moon phase on any particular real date. DOUBLE (two moon images 180 degrees apart, so a half-turn is one lunation) is the conventional modern layout (SRC-0045); SINGLE (one full turn per lunation) is offered as a structural option but not itself sourced as common. The implied lunation period (from the arbor's own angular velocity) is reported against the real synodic month, 29.53059 days (SRC-0046, NASA/GSFC) -- a comparison only, never fed back into the model. No jumper/cam mechanism: unlike the date/month complications also scoped in Phase 8, a real moonphase disc can be, and here is, driven by continuous rotation alone (SRC-0045, a granted patent, confirms this directly: 'driven to continuously rotate around the axle').",
+    scope: "MoonPhase disc (Phase 8.1, kinematic, L2)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

@@ -11,6 +11,9 @@ import type { GearMesh } from "@/domain/gearMesh";
 import type { KeylessWorks, StemPinion } from "@/domain/keyless";
 import type { Dial } from "@/domain/dial";
 import type { Escapement } from "@/domain/escapement";
+import type { MoonPhase } from "@/domain/moonPhase";
+import { windowsPerRevolution } from "@/domain/moonPhase";
+import { impliedLunationDays, lunationDriftMinutes, SYNODIC_MONTH_DAYS } from "@/kinematics/moonPhase";
 import { toBeatsPerHour } from "@/units/frequency";
 import { balanceFrequency, beatFrequency, beatsPerEscapeRevolution, impulseFraction } from "@/kinematics/escapement";
 import { isochronismAdjustedRate, MIDDLE_TEMPERATURE_CELSIUS, temperatureAdjustedRate, USUAL_TEMPERATURE_RANGE_CELSIUS } from "@/kinematics/balance";
@@ -64,7 +67,7 @@ export interface ToleranceRow {
   scope: string;
 }
 
-export type ComponentKind = "Frame" | "Arbor" | "Gear" | "Bearing" | "Keyless works" | "Dial" | "Escapement";
+export type ComponentKind = "Frame" | "Arbor" | "Gear" | "Bearing" | "Keyless works" | "Dial" | "Escapement" | "Moon phase";
 
 export interface ComponentReport {
   id: EntityId;
@@ -447,6 +450,46 @@ function dialReport(movement: Movement, analysis: MovementAnalysis, dial: Dial):
   };
 }
 
+function moonPhaseReport(movement: Movement, analysis: MovementAnalysis, moon: MoonPhase): ComponentReport {
+  const omega = analysis.train.shaftAngularVelocity.get(moon.shaftId);
+  const windows = windowsPerRevolution(moon.windowCount);
+  const impliedDays = omega === undefined ? null : impliedLunationDays(omega, windows);
+  return {
+    id: moon.id,
+    name: moon.name,
+    kind: "Moon phase",
+    description: "continuous gear-train disc (no jumper/cam mechanism)",
+    parameters: [
+      entered("Mounted on", movement.shafts[moon.shaftId]?.name ?? "not chosen"),
+      lengthParam("Diameter", moon.diameter),
+      lengthParam("Thickness", moon.thickness),
+      lengthParam("Face height", moon.faceHeight),
+      entered("Moon images", moon.windowCount === "DOUBLE" ? "Double (two, 180° apart)" : "Single (one)"),
+    ],
+    derived: [
+      ...angularVelocityValues(omega),
+      {
+        label: "Implied lunation",
+        text: impliedDays === null ? "not driven" : `${impliedDays.toFixed(3)} days`,
+        si: impliedDays,
+        equation: "disc revolution period ÷ moon images per revolution",
+        level: "L2_KINEMATIC",
+        references: ["ASM-0047"],
+      },
+      {
+        label: "Drift vs. the real synodic month",
+        text: impliedDays === null ? "—" : `${(lunationDriftMinutes(impliedDays) >= 0 ? "+" : "")}${lunationDriftMinutes(impliedDays).toFixed(1)} min / lunation`,
+        si: impliedDays === null ? null : lunationDriftMinutes(impliedDays),
+        equation: `implied lunation − ${SYNODIC_MONTH_DAYS.toFixed(5)} days`,
+        level: "L2_KINEMATIC",
+        references: ["ASM-0047", "SRC-0046"],
+      },
+    ],
+    tolerances: [],
+    issues: issuesFor(analysis, moon.id),
+  };
+}
+
 function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: Escapement): ComponentReport {
   const w = esc.escapeWheel;
   const b = esc.balance;
@@ -617,6 +660,7 @@ export function componentReports(movement: Movement, analysis: MovementAnalysis)
     ...Object.values(movement.keylessWorks).sort(byName).map((k) => keylessReport(movement, analysis, k)),
     ...Object.values(movement.dials).sort(byName).map((d) => dialReport(movement, analysis, d)),
     ...Object.values(movement.escapements).sort(byName).map((e) => escapementReport(movement, analysis, e)),
+    ...Object.values(movement.moonPhases).sort(byName).map((m) => moonPhaseReport(movement, analysis, m)),
   ];
 }
 

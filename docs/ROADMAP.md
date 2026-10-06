@@ -323,21 +323,20 @@ discrete-looking display from an underlying continuous simulation
 state, not a separate state machine) than to the smooth gear-train
 propagation used everywhere else.
 
-- 8.1 — Moonphase. Lowest risk: a continuously-turning disc off the
-  going train, no jump mechanism at all (SRC-0045, confirmed directly
-  from a patent's own abstract and figures — "driven to continuously
-  rotate around the axle at a rotation period related to the moon phase
-  period"). Conventional design is a 59-tooth wheel advancing one tooth
-  per day, two moon windows 180° apart on the disc, so a half-turn (29.5
-  days) is each lunation — a widely corroborated convention (Tier 6/7,
-  same genre as the existing "2 beats per tooth" sourcing), checked
-  against the real synodic month, 29.53059 days (SRC-0046, NASA) — about
-  44 minutes short per lunation, a genuine, reportable, non-invented
-  approximation error. Needs: a new Gear/Shaft for the reduction (no new
-  domain concept), a new disc-display concept for the dial/viewport
-  (shared groundwork with 8.2-8.4 below), and a validation note stating
-  the drift. Good first target: ships independently, proves the new
-  disc-display groundwork without the jump-mechanism risk.
+- 8.1 — **Done** (see `docs/STATUS.md`). Moonphase: a continuously-
+  turning disc off the going train, no jump mechanism at all (SRC-0045,
+  confirmed directly from a patent's own abstract and figures — "driven
+  to continuously rotate around the axle at a rotation period related to
+  the moon phase period"). New `MoonPhase` domain entity, declared on its
+  own arbor — reuses the existing gear-mesh engine entirely, zero new
+  kinematics, confirming this item's own scoping. Phase read cyclically
+  from the arbor's solved angle (`moonPhaseFraction`), the implied
+  lunation reported against the real synodic month, 29.53059 days
+  (SRC-0046, NASA) via `impliedLunationDays`/`lunationDriftMinutes` — a
+  comparison only, never fed back into the model (ASM-0047). The
+  teaching movement's own two-stage 8:87 reduction lands on a ~29.57-day
+  lunation, about 55 minutes off the real figure, reported rather than
+  engineered away.
 - 8.2 — Simple instantaneous date. The jump-mechanism proving ground.
   SRC-0042 (read in full): a 24-hour wheel (2:1 off the hour wheel) with
   a finger that, once per rotation, pushes a roller off a cam's tip,

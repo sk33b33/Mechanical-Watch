@@ -403,6 +403,12 @@ describe("AppStore guided tutorial", () => {
         store.edit((mv) => addGearMesh(mv, newGearMesh(settingGear.id, minuteGear.id)));
         return;
       }
+      case "mesh-hour-moon1":
+        store.edit((mv) => addGearMesh(mv, newGearMesh(byName(m.gears, "Moon pinion").id, byName(m.gears, "Moon wheel 1").id)));
+        return;
+      case "mesh-moon1-moon2":
+        store.edit((mv) => addGearMesh(mv, newGearMesh(byName(m.gears, "Moon pinion 2").id, byName(m.gears, "Moon wheel 2").id)));
+        return;
       case "add-bearings": {
         const mainplate = byName(m.frames, "Mainplate");
         const trainBridge = byName(m.frames, "Train bridge");

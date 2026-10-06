@@ -9,6 +9,7 @@ import type { Tolerance } from "@/domain/tolerance";
 import type { KeylessWorks, StemPinion } from "@/domain/keyless";
 import type { Dial } from "@/domain/dial";
 import type { Escapement, PalletGeometry } from "@/domain/escapement";
+import type { MoonPhase } from "@/domain/moonPhase";
 import type { MainspringSpec } from "@/domain/coupling";
 import type { Torque } from "@/units/torque";
 import type { MomentOfInertia, TorsionalStiffness } from "@/units/rotational";
@@ -38,7 +39,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 17;
+export const DESIGN_SCHEMA_VERSION = 18;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -276,6 +277,12 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
       ]),
     );
     return { ...doc, schemaVersion: 17, movement: { ...movement, escapements } };
+  },
+  /** v17 → v18: movements gain empty `moonPhases` (ASM-0047, Phase 8.1). */
+  17: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement)) return doc;
+    return { ...doc, schemaVersion: 18, movement: { ...movement, moonPhases: {} } };
   },
 };
 
@@ -539,6 +546,20 @@ const dial: Decoder<Dial> = (value, path) => {
   };
 };
 
+const moonPhase: Decoder<MoonPhase> = (value, path) => {
+  const o = object(value, path);
+  return {
+    id: field(o, "id", id<MoonPhase["id"]>(), path),
+    type: field(o, "type", literal("MoonPhase"), path),
+    name: field(o, "name", string, path),
+    shaftId: field(o, "shaftId", id<Shaft["id"]>(), path),
+    diameter: field(o, "diameter", length, path),
+    thickness: field(o, "thickness", length, path),
+    faceHeight: field(o, "faceHeight", length, path),
+    windowCount: field(o, "windowCount", oneOf(["SINGLE", "DOUBLE"]), path),
+  };
+};
+
 const pallets: Decoder<PalletGeometry> = (value, path) => {
   const o = object(value, path);
   return {
@@ -617,6 +638,7 @@ const movement: Decoder<Movement> = (value, path) => {
     keylessWorks: field(o, "keylessWorks", entityRecord(keylessWorks), path),
     dials: field(o, "dials", entityRecord(dial), path),
     escapements: field(o, "escapements", entityRecord(escapement), path),
+    moonPhases: field(o, "moonPhases", entityRecord(moonPhase), path),
     drive: field(o, "drive", nullable(drive), path),
   };
 };

@@ -38,7 +38,7 @@ import { forkActingLength, forkRatio, isHalfToothSpan, lockingPoints, spanAngle,
 import { isValidToothCount } from "@/math/gearMath";
 import { metres } from "@/units/length";
 
-type PickKind = "gear" | "jewel" | "escapement" | "keyless" | "arbor" | "frame" | "dial";
+type PickKind = "gear" | "jewel" | "escapement" | "keyless" | "arbor" | "frame" | "dial" | "moonPhase";
 type ViewSide = "BRIDGE" | "DIAL";
 
 /**
@@ -55,7 +55,7 @@ export interface SectionState {
 const EXPLODE_STRETCH = 3;
 
 /** When several objects are under the pointer, the most specific wins. */
-const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, escapement: 2, keyless: 2, arbor: 3, frame: 4, dial: 5 };
+const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, escapement: 2, keyless: 2, moonPhase: 2, arbor: 3, frame: 4, dial: 5 };
 
 const COLORS = {
   selected: 0x4fa3ff,
@@ -69,6 +69,7 @@ const COLORS = {
   measure: 0x5cc98a,
   dial: 0xe6e1d5,
   dialMarker: 0x23282e,
+  moonPhase: 0xaab4c2,
   stem: 0x9aa4ae,
   crown: 0xa9b3bd,
   pinion: 0xb8c4d0,
@@ -434,6 +435,27 @@ export class Viewport {
         zHi: meshZ + gear.thickness / 2,
         footprint: { kind: "polygonWithHole", points: generateGearOutline(gear), holeRadius: visualBoreRadius(gear), holeCentre: { x: 0, y: 0 } },
         color: COLORS.gear,
+      });
+    }
+
+    for (const moon of Object.values(movement.moonPhases)) {
+      const group = this.shaftGroups.get(moon.shaftId);
+      const valid = Number.isFinite(moon.diameter) && moon.diameter > 0 && Number.isFinite(moon.thickness) && moon.thickness > 0 && Number.isFinite(moon.faceHeight);
+      if (group === undefined || !valid) continue;
+      // Turns continuously with its own arbor's group (ASM-0047) — no special-case rotation code, the
+      // same applyKinematicRotation() loop that spins every other shaft group spins this one too.
+      const zLo = this.displayZ(moon.faceHeight);
+      const zHi = zLo + moon.thickness;
+      const mesh = new THREE.Mesh(createZCylinder(moon.diameter / 2, zLo, zHi, 64), material(COLORS.moonPhase, { metalness: 0.1, roughness: 0.7 }));
+      this.addPickable(group, mesh, { kind: "moonPhase", entityId: moon.id, baseColor: COLORS.moonPhase });
+      this.cappableSolids.push({
+        positionX: group.position.x,
+        positionY: group.position.y,
+        rotationGroup: group,
+        zLo,
+        zHi,
+        footprint: { kind: "circle", radius: moon.diameter / 2, centre: { x: 0, y: 0 } },
+        color: COLORS.moonPhase,
       });
     }
 

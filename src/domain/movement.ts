@@ -11,6 +11,7 @@ import type { Tolerance, ToleranceId } from "./tolerance";
 import type { KeylessWorks, KeylessWorksId } from "./keyless";
 import type { Dial, DialId } from "./dial";
 import type { Escapement, EscapementId } from "./escapement";
+import type { MoonPhase, MoonPhaseId } from "./moonPhase";
 import type { ValidationLevel } from "@/reference/validationLevels";
 
 export type MovementId = EntityId<"movement">;
@@ -57,6 +58,8 @@ export interface Movement {
   dials: Record<DialId, Dial>;
   /** At most one (ESC-101). */
   escapements: Record<EscapementId, Escapement>;
+  /** Zero or more; each driven continuously by its own arbor (ASM-0047, Phase 8.1). */
+  moonPhases: Record<MoonPhaseId, MoonPhase>;
   drive: Drive | null;
   /**
    * The level this design's model targets (REFERENCE_ENGINEERING.md §15).
@@ -85,6 +88,7 @@ export function createMovement(
     keylessWorks: {},
     dials: {},
     escapements: {},
+    moonPhases: {},
     drive: null,
   };
 }
@@ -164,6 +168,18 @@ export function updateDial(movement: Movement, id: DialId, patch: Partial<Omit<D
     throw new Error(`Unknown dial id: ${id}`);
   }
   return { ...movement, dials: { ...movement.dials, [id]: { ...existing, ...patch } } };
+}
+
+export function addMoonPhase(movement: Movement, moonPhase: MoonPhase): Movement {
+  return { ...movement, moonPhases: { ...movement.moonPhases, [moonPhase.id]: moonPhase } };
+}
+
+export function updateMoonPhase(movement: Movement, id: MoonPhaseId, patch: Partial<Omit<MoonPhase, "id" | "type">>): Movement {
+  const existing = movement.moonPhases[id];
+  if (existing === undefined) {
+    throw new Error(`Unknown moon phase id: ${id}`);
+  }
+  return { ...movement, moonPhases: { ...movement.moonPhases, [id]: { ...existing, ...patch } } };
 }
 
 /**

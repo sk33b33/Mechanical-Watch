@@ -1,6 +1,6 @@
 import type { EntityId } from "@/domain/ids";
 import type { Movement } from "@/domain/movement";
-import { addDial, addEscapement, addFrame, addGear, addKeylessWorks, addShaft } from "@/domain/movement";
+import { addDial, addEscapement, addFrame, addGear, addKeylessWorks, addMoonPhase, addShaft } from "@/domain/movement";
 import type { Frame } from "@/domain/frame";
 import type { Gear } from "@/domain/gear";
 import type { Coupling } from "@/domain/coupling";
@@ -176,10 +176,18 @@ function buildTeachingMovementSteps(): TutorialStep[] {
   const settingWheelGear = Object.values(ref.gears).find((g) => g.name === "Setting wheel" && g.shaftId === settingWheelArbor.id);
   if (settingWheelGear === undefined) throw new Error("teaching movement reference: no setting wheel gear");
 
+  const moonPinionGear = byName(ref.gears, "Moon pinion");
+  const moonReductionArbor = byName(ref.shafts, "Moon reduction arbor");
+  const moonWheel1 = byName(ref.gears, "Moon wheel 1");
+  const moonPinion2 = byName(ref.gears, "Moon pinion 2");
+  const moonDiscArbor = byName(ref.shafts, "Moon disc arbor");
+  const moonWheel2 = byName(ref.gears, "Moon wheel 2");
+
   const mainspring = couplingOfKind(ref.couplings, "MAINSPRING");
   const keylessWorks = only(ref.keylessWorks);
   const dial = only(ref.dials);
   const escapement = only(ref.escapements);
+  const moonPhase = only(ref.moonPhases);
 
   return [
     {
@@ -324,6 +332,24 @@ function buildTeachingMovementSteps(): TutorialStep[] {
       createOverride: (m) => ({ movement: addEscapement(m, escapement), id: escapement.id }),
     },
 
+    gearStep("add-moon-pinion", "Add the moonphase drive pinion", "Back on the hour wheel arbor, click “Add gear” again: an 8-tooth pinion that drives the moonphase reduction.", moonPinionGear, "add-hour-wheel-arbor"),
+    arborStep("add-moon-reduction-arbor", "Add the moonphase reduction arbor", "Click “+ Arbor” for a new arbor, 6 o'clock from the hour wheel.", moonReductionArbor, solvedFixed(moonReductionArbor)),
+    gearStep("add-moon-wheel-1", "Give it an 87-tooth wheel", "Click “Add gear”: 87 teeth.", moonWheel1),
+    meshStep("mesh-hour-moon1", "Mesh the moonphase pinion with the first reduction wheel", moonPinionGear, moonWheel1, "add-moon-pinion"),
+    gearStep("add-moon-pinion-2", "Add its own 8-tooth pinion", "Back on the reduction arbor, click “Add gear” again: an 8-tooth pinion carrying the drive onward.", moonPinion2, "add-moon-reduction-arbor"),
+    arborStep("add-moon-disc-arbor", "Add the moonphase disc's arbor", "Click “+ Arbor” — this one carries the disc itself.", moonDiscArbor, solvedFixed(moonDiscArbor)),
+    gearStep("add-moon-wheel-2", "Give it the final 87-tooth wheel", "Click “Add gear”: 87 teeth. Two 8:87 stages give about 1/118 of the hour wheel's own speed (ASM-0047).", moonWheel2),
+    meshStep("mesh-moon1-moon2", "Mesh the second pinion with the final wheel", moonPinion2, moonWheel2, "add-moon-pinion-2"),
+    {
+      id: "add-moon-phase",
+      title: "Add the moonphase disc",
+      instructions:
+        "Click “+ Moon phase” — diameter, thickness, face height and the double moon-image layout all come from the real design, mounted on the arbor you just built. No jumper/cam mechanism: it turns continuously with the gear train (ASM-0047).",
+      targetSelector: '[data-tutorial="add-moon-phase"]',
+      isComplete: (m) => m.moonPhases[moonPhase.id] !== undefined,
+      createOverride: (m) => ({ movement: addMoonPhase(m, moonPhase), id: moonPhase.id }),
+    },
+
     {
       id: "set-balance-drive",
       title: "Let the balance govern the rate",
@@ -347,8 +373,9 @@ function buildTeachingMovementSteps(): TutorialStep[] {
 
 /**
  * Covers the whole teaching movement: going train, motion works, keyless
- * works, mainspring, dial and escapement — everything createTeachingMovement()
- * builds. Extending it further (a second design, or a from-scratch design
+ * works, mainspring, dial, escapement and moonphase disc — everything
+ * createTeachingMovement() builds. Extending it further (a second design,
+ * or a from-scratch design
  * with genuinely invented — i.e. user-declared-as-they-go — dimensions)
  * follows the same pattern.
  */

@@ -96,3 +96,6 @@ TOL-001 A declared tolerance must apply to an existing dimension once, with fini
 TOL-002 A clearance or gear-mesh centre distance that is positive at nominal should stay positive at its worst-case declared tolerance limits.
 
 VAL-001 The validation engine must complete; if it cannot, the design cannot be represented safely.
+
+MOON-001 A moonphase disc's diameter, thickness and face height must be positive/finite, and it must be centred on an arbor that exists (ASM-0047).
+MOON-002 The moonphase disc's implied lunation period, derived from its own arbor's solved angular velocity, is reported against the real synodic month (ASM-0047, SRC-0046); not driven reports as such.
