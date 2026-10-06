@@ -34,7 +34,7 @@ import {
   symbolicPalletArms,
   type PalletArm,
 } from "@/geometry/assemblyGeometry3d";
-import { isHalfToothSpan, lockingPoints, spanAngle, toothDrawAngle, toothWidthAngle } from "@/kinematics/palletGeometry";
+import { forkActingLength, forkRatio, isHalfToothSpan, lockingPoints, spanAngle, toothDrawAngle, toothWidthAngle } from "@/kinematics/palletGeometry";
 import { isValidToothCount } from "@/math/gearMath";
 import { metres } from "@/units/length";
 
@@ -636,6 +636,52 @@ export class Viewport {
         },
         color: COLORS.balance,
       });
+
+      // Roller (ASM-0044, single roller only) and ruby pin (ASM-0041), drawn at their real
+      // declared/derived position and size when entered, not placeholders — the roller's own
+      // crescent notch and the fork's horn jaws are not drawn, since their physical outline isn't
+      // derivable from the declared angular openings alone (ASM-0044, ASM-0045, 7.1.5.6).
+      if (b.rollerKind === "SINGLE" && b.rollerRadius !== null && b.rollerRadius > 0) {
+        const rollerThickness = b.thickness * 0.5;
+        const rollerMesh = new THREE.Mesh(
+          createZCylinder(b.rollerRadius, meshZ - rollerThickness / 2, meshZ + rollerThickness / 2),
+          material(COLORS.balance, { metalness: 0.5, roughness: 0.3 }),
+        );
+        pick(rollerMesh, COLORS.balance, balanceGroup);
+        this.cappableSolids.push({
+          positionX: balanceGroup.position.x,
+          positionY: balanceGroup.position.y,
+          rotationGroup: balanceGroup,
+          zLo: meshZ - rollerThickness / 2,
+          zHi: meshZ + rollerThickness / 2,
+          footprint: { kind: "circle", radius: b.rollerRadius, centre: { x: 0, y: 0 } },
+          color: COLORS.balance,
+        });
+      }
+      const palletAxisForPin = positions.get(esc.palletArborShaftId);
+      const balanceAxisForPin = positions.get(esc.balanceShaftId);
+      if (b.impulseRadius !== null && b.impulseRadius > 0 && palletAxisForPin !== undefined && balanceAxisForPin !== undefined) {
+        const v = ESCAPEMENT_VISUALIZATION;
+        const towardPallet = Math.atan2(palletAxisForPin.y - balanceAxisForPin.y, palletAxisForPin.x - balanceAxisForPin.x);
+        const pinX = b.impulseRadius * Math.cos(towardPallet);
+        const pinY = b.impulseRadius * Math.sin(towardPallet);
+        const pinHalfThickness = v.rubyPinThicknessMetres / 2;
+        const pinMesh = new THREE.Mesh(
+          createZCylinder(v.rubyPinRadiusMetres, meshZ - pinHalfThickness, meshZ + pinHalfThickness),
+          material(COLORS.jewel, { metalness: 0.1, roughness: 0.25 }),
+        );
+        pinMesh.position.set(pinX, pinY, 0);
+        pick(pinMesh, COLORS.jewel, balanceGroup);
+        this.cappableSolids.push({
+          positionX: balanceGroup.position.x,
+          positionY: balanceGroup.position.y,
+          rotationGroup: balanceGroup,
+          zLo: meshZ - pinHalfThickness,
+          zHi: meshZ + pinHalfThickness,
+          footprint: { kind: "circle", radius: v.rubyPinRadiusMetres, centre: { x: pinX, y: pinY } },
+          color: COLORS.jewel,
+        });
+      }
     }
     const palletGroup = this.shaftGroups.get(esc.palletArborShaftId);
     const pallet = positions.get(esc.palletArborShaftId);
@@ -660,7 +706,13 @@ export class Viewport {
             }) as [PalletArm, PalletArm])
           : symbolicPalletArms(Math.atan2(escape.y - pallet.y, escape.x - pallet.x), Math.max(toEscape - tipR * 0.9, toEscape * 0.2));
       const towardBalance = Math.atan2(balance.y - pallet.y, balance.x - pallet.x);
-      const leverLength = toBalance * 0.85;
+      // The real derived fork acting length (ASM-0041), used only when it fits within the actual
+      // placed pallet-to-balance distance — otherwise the cosmetic 85% placeholder, rather than
+      // drawing a bar that overshoots past the balance (a real possibility: ASM-0044 notes the
+      // teaching movement's own forkActingLength does not in fact fit its own placed distance).
+      const ratio = forkRatio(b.liftAngle, esc.leverAngle);
+      const forkLength = b.impulseRadius !== null ? forkActingLength(b.impulseRadius, ratio) : null;
+      const leverLength = forkLength !== null && forkLength > 0 && forkLength < toBalance ? forkLength : toBalance * 0.85;
       const parts = createForkGeometry(towardBalance, leverLength, arms);
       const meshZ = this.displayZ(w.zCentre);
       for (const geometry of parts) {

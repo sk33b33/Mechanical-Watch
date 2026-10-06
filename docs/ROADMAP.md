@@ -186,17 +186,25 @@ level).
       margin above the guard-point freedom is a non-blocking advisory.
       The horn's own physical length/shape remains unmodeled, left to
       7.1.5.6.
-    - 7.1.5.6 — Visual 2D/3D construction for the ruby pin, roller(s),
-      crescent and horn shapes, replacing the current symbolic fork bar
-      and plain stone-style placeholders — the capstone for this area,
-      same role 7.1.4 played for pallets/teeth. By far the largest
-      single piece here; likely the highest-risk item in the whole of
-      7.1.5, same caution as 7.1.4's own risk flag.
+    - 7.1.5.6 — **Done, grounded slice** (see `docs/STATUS.md`). Fig. 25
+      ("The Horn") was fetched and viewed before implementing, showing
+      the real shape: curved horn jaws cradling a roller with a
+      crescent notch. Scoped down from the full capstone (which this
+      entry originally envisioned) after confirming with the user: the
+      ruby pin and single roller are now drawn at their real
+      declared/derived position and size (`impulseRadius`/
+      `rollerRadius`, ASM-0041/ASM-0044) in the 3D viewport, and the
+      fork bar's own drawn length now uses the real `forkActingLength`
+      when it fits the actual placed pallet-to-balance distance — the
+      reconciliation flagged as deferred since 7.1.5.1. The crescent
+      notch and horn jaw curvature are NOT drawn: their angular bounds
+      are derived but their physical outline is not, and drawing them
+      would mean inventing curvature rather than computing it.
     Suggested order: 7.1.5.1 → 7.1.5.2 → 7.1.5.3 → 7.1.5.4 → 7.1.5.5 →
     7.1.5.6, each independently shippable; 7.1.5.1-3 are low-risk
     declared/derived scalars, 7.1.5.4-5 are real geometric
     constructions needing source figures first, 7.1.5.6 is the visual
-    capstone.
+    capstone. All six sub-items are now done.
   - 7.1.6 — Center-distance refined for manufacturing clearance (pallet
     arbor thickness, working stock) rather than the current pure
     idealized tangent-circle construction (`tangentialCentreDistance`).

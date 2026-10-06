@@ -2,6 +2,64 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 7.1.5.6: ruby pin and single roller in the 3D viewport (grounded slice)
+
+Sixth and last of 7.1.5's sub-items — the visual capstone, flagged in
+`docs/ROADMAP.md` as "by far the largest single piece here; likely the
+highest-risk item in the whole of 7.1.5." Fetched and viewed Fig. 25
+("The Horn") first, which confirmed the risk: a real two-pronged fork
+with curved horn jaws cradling a roller with a notch (the crescent)
+cut into its edge — neither curve has a stated formula, only derived
+angular bounds (`crescentHalfAngle`, ASM-0044; the horn's own freedom,
+ASM-0045).
+
+- **Scoping decision, put to the user first.** Three options: the full
+  capstone (curved horn jaws + crescent notch + roller + ruby pin,
+  with invented-but-flagged curvature for the two shapes with no
+  formula), a grounded slice (only what's directly derivable), or
+  deferring 7.1.5.6 entirely. The user chose the grounded slice.
+- **Ruby pin, drawn at its real position (`src/viewport/viewport.ts`).**
+  A small cylinder at `impulseRadius` from the balance centre
+  (ASM-0041), in the direction toward the pallet arbor at the
+  escapement's placed (rest) pose — attached to the balance's own
+  rotation group, so it swings with the balance's simulated motion
+  like every other escapement mesh already does. Drawn whenever
+  `impulseRadius` is entered (true for the teaching movement, 0.9mm).
+- **Single roller, drawn as a plain disc.** Radius = `rollerRadius`
+  (ASM-0044), centred on the balance, drawn only for `rollerKind ===
+  "SINGLE"` with a positive declared radius. The crescent notch is not
+  cut into it — that would need the notch's own curvature, which
+  isn't derivable, only its angular span.
+- **Fork bar length finally reconciled (deferred since 7.1.5.1).** The
+  bar's own drawn length now uses the real `forkActingLength` when it
+  is positive and strictly less than the actual placed pallet-to-
+  balance distance — never overshooting past the balance. Falls back
+  to the pre-existing cosmetic 85%-of-distance placeholder otherwise,
+  which is what the teaching movement itself still uses: its own
+  `forkActingLength` (4.5mm) does not fit its own placed distance
+  (3.5mm), the same inconsistency ASM-0044 already documented.
+- **Deliberately not drawn:** the crescent's notch profile and the
+  horn's own curved jaws. Both have genuinely derivable angular bounds
+  but no derivable physical outline — drawing a specific curve would
+  mean inventing it, not computing it, which is exactly the line this
+  project's engineering-honesty discipline draws.
+- **Verification.** No new pure functions were added (only new cosmetic
+  visual constants, `ESCAPEMENT_VISUALIZATION.rubyPinRadiusMetres`/
+  `rubyPinThicknessMetres`, under the existing ASM-0012 convention), so
+  no new unit tests were needed — this is viewport-only code, tested
+  the same way the rest of the viewport's mesh-wiring already is: live
+  in a real browser. Verified the ruby pin renders at a stable,
+  correct position (unaffected by unrelated field changes, as
+  expected) and that entering a roller radius visibly adds the disc,
+  with no page errors; separately verified the section-cut view (which
+  consumes the same new `cappableSolids` footprints) renders without
+  error once a roller is entered. 539 unit tests pass (unchanged, no
+  new pure functions); `tsc -b --noEmit` and `eslint` are clean;
+  production build succeeds; full e2e suite (31 tests) passes.
+
+All six sub-items of Phase 7.1.5 ("Fork and roller action", SRC-0036)
+are now done.
+
 ## Phase 7.1.5.5: horn freedom and the derived clearance (ESC-113, ASM-0045)
 
 Fifth of 7.1.5's six sub-items, from SRC-0036's "The Horn" chapter —

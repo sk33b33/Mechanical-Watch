@@ -1264,13 +1264,30 @@
     own separate and partly empirical dart-crescent construction (a
     5° allowance "to ensure sufficient freedom for the dart", not
     reconstructed here) and the horn's own physical length/shape
-    (a visual 2D construction, left to Phase 7.1.5.6) — explicitly out
-    of scope here, scoped as Phase 7.1.5's later sub-items
-    (`docs/ROADMAP.md`) rather than attempted incompletely now. The
+    (a visual 2D construction) — explicitly out of scope here, scoped
+    as Phase 7.1.5's later sub-items (`docs/ROADMAP.md`) rather than
+    attempted incompletely now. The
     CIRCULAR pallet type is named in the domain model (ASM-0037) but not
     implemented: this source states only that its locking offset from
     the tangent shrinks with pallet width, not a closed-form formula for
     it.
+
+    Phase 7.1.5.6 (viewport): the ruby pin and the single roller are now
+    drawn in the 3D viewport (`src/viewport/viewport.ts`) at their real
+    declared/derived positions and sizes — the ruby pin at
+    `impulseRadius` from the balance centre (ASM-0041), the roller disc
+    at `rollerRadius` (ASM-0044) when entered — finally reconciling the
+    fork bar's own drawn length with `forkActingLength` (deferred since
+    the ASM-0041 note above), used only when it fits within the actual
+    placed pallet-to-balance distance so the bar never overshoots past
+    the balance. The ruby pin's own small cylinder size is cosmetic
+    (ASM-0012, `ESCAPEMENT_VISUALIZATION.rubyPinRadiusMetres`), the same
+    convention as the existing pallet-stone/fork-bar visuals. The
+    crescent's notch and the horn's own curved jaws (Fig. 25, viewed
+    directly) are deliberately not drawn: their angular bounds are
+    derived (ASM-0044, ASM-0045) but their physical outline is not —
+    drawing them would mean inventing curvature, not computing it, a
+    scoping choice put to the user and confirmed before implementing.
 
 # Phase 7.5 (docs/ROADMAP.md): nonlinear mainspring torque curve and
 # bridle/slipping behaviour (REF-ENG §11; ASM-0026 currently uses a

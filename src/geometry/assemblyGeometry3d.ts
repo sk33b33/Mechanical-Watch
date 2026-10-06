@@ -136,6 +136,17 @@ export const ESCAPEMENT_VISUALIZATION = {
   balanceArmWidthMetres: 0.3e-3,
   /** Half-angle between the fork's arms when no pallet geometry is entered (visual only). */
   symbolicPalletHalfAngleRadians: 0.45,
+  /**
+   * Ruby pin's own drawn size (ASM-0012): its position (impulse radius from
+   * the balance centre) and the roller's own radius (`Balance.rollerRadius`)
+   * come from the model when entered (ASM-0041, ASM-0044, 7.1.5.6); the
+   * pin's own small cylinder size is cosmetic, the same visual-only
+   * convention as `palletStoneMetres`. The roller's crescent notch and the
+   * fork's horn jaws are not drawn — their physical outline isn't
+   * derivable from the declared angular openings alone (ASM-0044, ASM-0045).
+   */
+  rubyPinRadiusMetres: 0.2e-3,
+  rubyPinThicknessMetres: 0.35e-3,
   assumption: "ASM-0012" satisfies AssumptionId,
 } as const;
 

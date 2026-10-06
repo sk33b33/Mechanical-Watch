@@ -377,9 +377,24 @@ separate (double-roller) worked specification whose own dart/safety-
 roller freedom was likewise 1¼° and whose horn-to-ruby-pin figure was
 exactly 1½°. The horn's own physical length/shape ("should be of such
 a length that... the end of the horn should point to at least the
-center of the ruby pin") is a visual 2D construction, not a scalar —
-left to Phase 7.1.5.6, along with the double roller's own dart-horn
-relationship and the Savage pin roller.
+center of the ruby pin") is a visual 2D construction, not a scalar.
+
+Phase 7.1.5.6 (viewport, grounded slice): the ruby pin and the single
+roller are now drawn in the 3D viewport at their real declared/derived
+positions and sizes — the ruby pin at `impulseRadius` from the balance
+centre, the roller disc at `rollerRadius` when entered — and the
+fork's own drawn bar length now uses the real `forkActingLength` when
+it fits within the actual placed pallet-to-balance distance (never
+overshooting past the balance otherwise). Fig. 25 ("The Horn") was
+fetched and viewed directly, confirming the real shape: curved horn
+jaws cradling a roller with a notch (the crescent) cut into its edge.
+Given no formula exists for either curve's exact profile — only their
+angular bounds are derivable (ASM-0044, ASM-0045) — drawing them would
+mean inventing curvature. This scoping choice (full capstone vs. a
+grounded slice vs. deferring entirely) was put to the user and the
+grounded slice was chosen; the crescent notch and horn jaws remain
+unmodeled, along with the double roller's own dart-horn relationship
+and the Savage pin roller.
 
 ## Mainspring torque curve and bridle slip (REF-ENG §11)
 
