@@ -267,6 +267,12 @@ export const ASSUMPTIONS = {
     scope: "Escapement geometry",
     status: "Active",
   },
+  "ASM-0045": {
+    summary:
+      "PalletGeometry.hornFreedom (optional) and hornClearance (ESC-113): unlike the crescent, the horn's end lies on the same pallet-centred arc as the ruby pin (the fork acting length), so no new radius or cross-centre geometry is needed -- hornClearance reuses the same arc-length formula as dropClearance/guardPointClearance. Must be strictly less than the total lock, same hard necessity as rubyPinEntryFreedom/guardPointFreedom. Cited as 1/4 to 1/2 degree more than the guard-point freedom, checked as a non-blocking advisory. The horn's own physical length/shape is a visual construction, left to Phase 7.1.5.6",
+    scope: "Escapement geometry",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

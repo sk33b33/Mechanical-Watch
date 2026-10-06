@@ -348,6 +348,39 @@ construct at 5° angle... to ensure sufficient freedom for the dart"),
 not reconstructed here — unmodeled, along with the dart's own shape
 and "The Horn" chapter.
 
+Now also used for ASM-0045, from the book's "The Horn" chapter:
+`PalletGeometry.hornFreedom` and `hornClearance` in
+`src/kinematics/palletGeometry.ts` (ESC-113). Unlike the crescent, this
+construction turned out to need no cross-centre geometry at all —
+Playtner's own words make the frame explicit: "the freedom between
+dart and roller, of ruby pin with acting edge of fork and end of horn
+are all measured from the pallet center, while the impulse angle and
+the crescent are measured from the balance center." The horn's end
+lies on the same arc as the ruby pin itself: "we plant the compass on
+the pallet center and the center of the face of the ruby pin and draw
+k k, which will be the path described by the horn. The end of the
+horn is therefore planted upon it from 1½° to 1¾° from the ruby pin;
+this freedom at the end of the horn is therefore from ¼° to ½° more
+than we allow for the guard point." So `hornClearance` reuses the
+already-derived fork acting length as its radius — no new field for
+it, the same "arc length = radius × angle" formula as
+`dropClearance`/`guardPointClearance`. Horn freedom must be strictly
+less than the total lock, the same hard necessity as
+`rubyPinEntryFreedom`/`guardPointFreedom` — "it must in any case be
+less than the lock on the pallets, so that the fork will be drawn back
+against the bank in case the horn be thrown against the ruby pin"
+(ESC-113); the cited "¼° to ½° more than the guard point" relationship
+is checked as a non-blocking advisory when both freedoms are declared.
+The teaching movement's own 1.5° horn freedom combines its own 1¼°
+guard-point freedom with the low end of that cited range, matching a
+separate (double-roller) worked specification whose own dart/safety-
+roller freedom was likewise 1¼° and whose horn-to-ruby-pin figure was
+exactly 1½°. The horn's own physical length/shape ("should be of such
+a length that... the end of the horn should point to at least the
+center of the ruby pin") is a visual 2D construction, not a scalar —
+left to Phase 7.1.5.6, along with the double roller's own dart-horn
+relationship and the Savage pin roller.
+
 ## Mainspring torque curve and bridle slip (REF-ENG §11)
 
 ### Roymech — Springs Spiral (SRC-0037, read)

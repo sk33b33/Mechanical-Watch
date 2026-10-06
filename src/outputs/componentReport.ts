@@ -16,7 +16,7 @@ import { balanceFrequency, beatFrequency, beatsPerEscapeRevolution, impulseFract
 import { isochronismAdjustedRate } from "@/kinematics/balance";
 import { summarizeBalance } from "@/kinematics/balanceSummary";
 import { summarizeEnergy } from "@/kinematics/energySummary";
-import { crescentHalfAngle, dropClearance, forkActingLength, forkRatio, guardPointClearance, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
+import { crescentHalfAngle, dropClearance, forkActingLength, forkRatio, guardPointClearance, hornClearance, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
 import { distance } from "@/math/vec2";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import { toNewtonMillimetres } from "@/units/torque";
@@ -477,6 +477,7 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
         entered("Ruby-pin slot shake", pg.rubyPinSlotShake === null ? "unknown" : angleText(pg.rubyPinSlotShake), pg.rubyPinSlotShake),
         entered("Guard-point freedom", pg.guardPointFreedom === null ? "unknown" : angleText(pg.guardPointFreedom), pg.guardPointFreedom),
         entered("Guard-point radius", optionalMmText(pg.guardPointRadius), pg.guardPointRadius),
+        entered("Horn freedom", pg.hornFreedom === null ? "unknown" : angleText(pg.hornFreedom), pg.hornFreedom),
       ];
   const budget = teethValid ? wheelAngleBudgetPerBeat(w.toothCount) : null;
   const tooth = pg !== null && teethValid ? toothWidthAngle(w.toothCount, pg.widthAngle, pg.dropAngle) : null;
@@ -495,6 +496,8 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
     && b.impulseRadius !== null && b.impulseRadius > 0 && pg.guardPointFreedom !== null && pg.guardPointFreedom > 0
     && centreDistance !== null && forkLength !== null
     ? crescentHalfAngle(centreDistance, esc.leverAngle, pg.guardPointFreedom, forkLength, b.impulseRadius, b.rollerRadius) : null;
+  const hornClearanceValue = pg !== null && pg.hornFreedom !== null && pg.hornFreedom > 0 && forkLength !== null
+    ? hornClearance(forkLength, pg.hornFreedom) : null;
   const palletDerived: ReportValue[] = pg === null ? [] : [
     { label: "Pallet span angle", text: span === null ? "—" : `${toDegrees(span).toFixed(2)}°`, si: span, equation: "span × 2π / z", level: "L1_GEOMETRIC", references: ["ASM-0025"] },
     { label: "Pallet arbor distance for tangential locking", text: needed === null ? "—" : mmText(needed), si: needed, equation: "R_tip / cos(span angle / 2)", level: "L1_GEOMETRIC", references: ["ASM-0025"] },
@@ -508,6 +511,7 @@ function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: E
     { label: "Drop clearance at tip circle", text: clearance === null ? "—" : mmText(clearance), si: clearance, equation: "tip radius × drop angle", level: "L1_GEOMETRIC", references: ["ASM-0036"] },
     { label: "Guard-point clearance (derived)", text: guardClearance === null ? "—" : mmText(guardClearance), si: guardClearance, equation: "guard-point radius × guard-point freedom", level: "L1_GEOMETRIC", references: ["ASM-0043"] },
     { label: "Crescent opening, single roller (derived)", text: crescentHalf === null ? "—" : `${(toDegrees(crescentHalf) * 2).toFixed(2)}°`, si: crescentHalf === null ? null : radians(crescentHalf * 2), equation: "2 × |guard-point direction − ruby-pin direction| at the balance centre", level: "L1_GEOMETRIC", references: ["ASM-0044"] },
+    { label: "Horn clearance (derived)", text: hornClearanceValue === null ? "—" : mmText(hornClearanceValue), si: hornClearanceValue, equation: "fork acting length × horn freedom", level: "L1_GEOMETRIC", references: ["ASM-0045"] },
   ];
   const energy = summarizeEnergy(movement, analysis.train);
   const en = energy?.escapement?.id === esc.id ? energy : null;

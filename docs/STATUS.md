@@ -2,6 +2,68 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 7.1.5.5: horn freedom and the derived clearance (ESC-113, ASM-0045)
+
+Fifth of 7.1.5's six sub-items, from SRC-0036's "The Horn" chapter —
+much simpler than 7.1.5.4's crescent, once read in full: the horn's
+own freedom needs no cross-centre geometry at all.
+
+- **Turned out simpler than scoped.** `docs/ROADMAP.md` had flagged
+  this as "a similar circle-intersection construction" to the
+  crescent. Reading the full chapter showed otherwise: Playtner states
+  outright that "the freedom between dart and roller, of ruby pin with
+  acting edge of fork and end of horn are all measured from the
+  pallet center, while the impulse angle and the crescent are measured
+  from the balance center." The horn's end lies on the *same* arc as
+  the ruby pin — "we plant the compass on the pallet center and the
+  center of the face of the ruby pin and draw k k, which will be the
+  path described by the horn" — so no new radius field and no
+  real-placement dependency were needed, unlike 7.1.5.4.
+- **`PalletGeometry.hornFreedom` (declared, optional °, new field).**
+  "The end of the horn is... planted upon it from 1½° to 1¾° from the
+  ruby pin." Must be strictly less than the total lock, the same hard
+  necessity as `rubyPinEntryFreedom`/`guardPointFreedom`: "it must in
+  any case be less than the lock on the pallets, so that the fork will
+  be drawn back against the bank in case the horn be thrown against
+  the ruby pin" (ESC-113).
+- **`hornClearance` (derived, new function).** Arc length = fork
+  acting length × horn freedom — the horn's end sits on the fork's
+  own already-derived acting length from the pallet centre
+  (`forkActingLength`, ESC-109), so this reuses the same "arc length =
+  radius × angle" formula as `dropClearance`/`guardPointClearance`
+  with no new radius.
+- **Relational advisory.** "This freedom at the end of the horn is...
+  from ¼° to ½° more than we allow for the guard point." Checked as a
+  non-blocking advisory, only when guard-point freedom is also
+  declared.
+- **Teaching movement value, cross-referenced from a different worked
+  example.** Playtner's own 15-tooth single-roller specification
+  (used for most of this movement's other pallet values) doesn't give
+  a horn-freedom number. A separate double-roller specification
+  elsewhere in the same chapter does: "freedom for ruby pin and
+  acting edge of fork is to be 1¼°... space between the end of horn
+  and ruby pin is to be 1½°" — and its own dart/safety-roller freedom
+  (1¼°) exactly matches this movement's own guard-point freedom, so
+  1.5° is used directly: 1.25° + 0.25° (the low end of the cited
+  range) = 1.5°, reproducing Playtner's own number exactly despite
+  being drawn from a different worked example, the same kind of
+  cross-chapter combination already used for 7.1.5.1's impulse
+  radius.
+- **UI and outputs.** A new optional input ("Horn freedom (°)") and a
+  readonly "Horn clearance (derived)" row, next to the crescent row in
+  the pallet geometry section; matching parameter/derived rows in the
+  component report. Left out of the BOM's terse "Pallet fork" row
+  (already just "shape not modeled"), matching the precedent already
+  set for the ruby-pin/guard-point freedoms being left out of
+  "Pallet stones".
+- New tests cover `hornClearance`'s own arithmetic and ESC-113's full
+  behavior (positivity, the lock-angle hard constraint, the relational
+  advisory firing and not firing, and the no-guard-point-freedom
+  no-advisory case). Verified live in a real browser, including the
+  hard-lock error and the relational advisory appearing/disappearing.
+  539 unit tests pass (532 before); `tsc -b --noEmit` and `eslint` are
+  clean; production build succeeds; full e2e suite (31 tests) passes.
+
 ## Phase 7.1.5.4: single-roller crescent angular opening (ESC-112, ASM-0044)
 
 Fourth of 7.1.5's six sub-items, from SRC-0036's "The Crescent"

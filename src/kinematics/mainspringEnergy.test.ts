@@ -454,3 +454,49 @@ describe("single-roller crescent angular opening (ESC-112, ASM-0044)", () => {
     expect(crescentRules(m)).toEqual([]);
   });
 });
+
+describe("horn freedom and the derived clearance (ESC-113, ASM-0045)", () => {
+  const teaching = createTeachingMovement();
+  const esc = Object.values(teaching.escapements)[0];
+  const pallets = esc?.pallets;
+  if (esc === undefined || pallets == null) throw new Error("teaching movement lacks pallets");
+  const hornRules = (m: Movement): string[] =>
+    validateMovement(m).filter((i) => i.rule === "ESC-113").map((i) => `${i.rule}:${i.severity}:${i.id.split(":")[1] ?? ""}`);
+
+  it("the teaching movement's 1.5° horn freedom is exactly the cited ¼° low end above its 1¼° guard-point freedom, so only the clearance reports", () => {
+    expect(hornRules(teaching)).toEqual(["ESC-113:info:horn-clearance"]);
+    const info = validateMovement(teaching).find((i) => i.rule === "ESC-113" && i.id.includes("horn-clearance"));
+    expect(info?.message).toContain("0.1178 mm");
+  });
+
+  it("horn freedom must be positive", () => {
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, hornFreedom: degrees(0) } });
+    expect(hornRules(m)).toContain("ESC-113:error:horn-freedom");
+  });
+
+  it("horn freedom must be less than the total lock (lock + run), or the fork could be fully unlocked instead of drawn back", () => {
+    // Teaching movement: lock 2° + run 0.5° = 2.5° total lock.
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, hornFreedom: degrees(2.5) } });
+    const found = hornRules(m);
+    expect(found).toContain("ESC-113:error:horn-freedom-lock");
+    const err = validateMovement(m).find((i) => i.rule === "ESC-113" && i.id.includes("horn-freedom-lock"));
+    expect(err?.message).toContain("2.50°");
+  });
+
+  it("horn freedom outside the cited ¼°-½° margin above guard-point freedom (but under the total lock) is an advisory", () => {
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, hornFreedom: degrees(1.3) } });
+    const found = hornRules(m);
+    expect(found).toContain("ESC-113:info:horn-freedom-advisory");
+    expect(found.every((r) => !r.includes("error"))).toBe(true);
+  });
+
+  it("the advisory is not checked when guard-point freedom is not entered", () => {
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, hornFreedom: degrees(1.3), guardPointFreedom: null } });
+    expect(hornRules(m)).toEqual(["ESC-113:info:horn-clearance"]);
+  });
+
+  it("nothing is derived for horn freedom when it is not entered", () => {
+    const m = updateEscapement(teaching, esc.id, { pallets: { ...pallets, hornFreedom: null } });
+    expect(hornRules(m)).toEqual([]);
+  });
+});

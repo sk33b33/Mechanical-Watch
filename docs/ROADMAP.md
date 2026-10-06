@@ -174,9 +174,18 @@ level).
       number. Double roller's own "dart" construction (a different,
       partly empirical allowance) is not reconstructed — remains
       unmodeled, with the dart's own shape and "The Horn" chapter.
-    - 7.1.5.5 — Horn length and freedom: a similar circle-intersection
-      construction along the pallet-to-ruby-pin line; freedom 0.25-0.5°
-      more than the guard-point freedom (cited, relational).
+    - 7.1.5.5 — **Done** (see `docs/STATUS.md`). Horn freedom
+      (ASM-0045, ESC-113): turned out simpler than scoped here — the
+      horn's end lies on the *same* pallet-centred arc as the ruby pin
+      (the fork's own acting length), not a cross-centre construction
+      like the crescent, so `hornClearance` reuses
+      `dropClearance`/`guardPointClearance`'s arc-length formula with
+      no new radius or real-placement dependency. Must be strictly
+      less than the total lock, the same hard necessity as
+      `rubyPinEntryFreedom`/`guardPointFreedom`. The cited ¼°-½°
+      margin above the guard-point freedom is a non-blocking advisory.
+      The horn's own physical length/shape remains unmodeled, left to
+      7.1.5.6.
     - 7.1.5.6 — Visual 2D/3D construction for the ruby pin, roller(s),
       crescent and horn shapes, replacing the current symbolic fork bar
       and plain stone-style placeholders — the capstone for this area,

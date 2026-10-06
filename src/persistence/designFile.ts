@@ -38,7 +38,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 15;
+export const DESIGN_SCHEMA_VERSION = 16;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -246,6 +246,21 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
       ]),
     );
     return { ...doc, schemaVersion: 15, movement: { ...movement, escapements } };
+  },
+  /**
+   * v15 → v16: pallet geometry, where given, gains an empty (null) horn
+   * freedom to fill in — entered directly, never guessed (ASM-0045).
+   */
+  15: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.escapements)) return doc;
+    const escapements = Object.fromEntries(
+      Object.entries(movement.escapements).map(([id, e]) => [
+        id,
+        isRecord(e) && isRecord(e.pallets) ? { ...e, pallets: { ...e.pallets, hornFreedom: null } } : e,
+      ]),
+    );
+    return { ...doc, schemaVersion: 16, movement: { ...movement, escapements } };
   },
 };
 
@@ -523,6 +538,7 @@ const pallets: Decoder<PalletGeometry> = (value, path) => {
     rubyPinSlotShake: field(o, "rubyPinSlotShake", nullable(angle), path),
     guardPointFreedom: field(o, "guardPointFreedom", nullable(angle), path),
     guardPointRadius: field(o, "guardPointRadius", nullable(length), path),
+    hornFreedom: field(o, "hornFreedom", nullable(angle), path),
   };
 };
 

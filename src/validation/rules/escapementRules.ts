@@ -6,7 +6,7 @@ import { toBeatsPerHour } from "@/units/frequency";
 import type { EntityId } from "@/domain/ids";
 import { gearZRange, zOverlaps } from "@/assembly/assemblyGeometry";
 import { balanceFrequency, beatFrequency, impulseFraction } from "@/kinematics/escapement";
-import { crescentHalfAngle, dropClearance, forkActingLength, forkRatio, guardPointClearance, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
+import { crescentHalfAngle, dropClearance, forkActingLength, forkRatio, guardPointClearance, hornClearance, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import type { Length } from "@/units/length";
 import type { ValidationIssue } from "../validationIssue";
@@ -269,6 +269,42 @@ export const escapementRules: Rule = ({ movement, placement, train }) => {
                   ["ASM-0043"]),
               );
             }
+          }
+        }
+      }
+
+      // ESC-113: horn freedom (optional), and the derived clearance (ASM-0045, SRC-0036 "The Horn").
+      if (pg.hornFreedom !== null) {
+        if (!positive(pg.hornFreedom)) {
+          issues.push(
+            issue("ESC-113", "horn-freedom", "error", "L1_GEOMETRIC", [esc.id],
+              `${esc.name}: the horn freedom must be positive, or left empty (unknown).`, ["ASM-0045"]),
+          );
+        } else if (totalLock !== null && !(pg.hornFreedom < totalLock)) {
+          issues.push(
+            issue("ESC-113", "horn-freedom-lock", "error", "L1_GEOMETRIC", [esc.id],
+              `${esc.name}: horn freedom (${toDegrees(pg.hornFreedom).toFixed(2)}°) must be less than the total lock (lock + run = ${toDegrees(totalLock).toFixed(2)}°) — the fork must be drawn back against the bank, not fully unlocked, in case the horn strikes the ruby pin (ASM-0045, SRC-0036).`,
+              ["ASM-0045"]),
+          );
+        } else {
+          if (pg.guardPointFreedom !== null && positive(pg.guardPointFreedom)) {
+            const extra = toDegrees(pg.hornFreedom) - toDegrees(pg.guardPointFreedom);
+            if (extra < 0.25 || extra > 0.5) {
+              issues.push(
+                issue("ESC-113", "horn-freedom-advisory", "info", "L1_GEOMETRIC", [esc.id],
+                  `${esc.name}: horn freedom (${toDegrees(pg.hornFreedom).toFixed(2)}°) is ${extra.toFixed(2)}° more than the guard-point freedom, outside the figure Playtner cites (¼° to ½° more, ASM-0045, SRC-0036). An informal reference figure, not a validated limit.`,
+                  ["ASM-0045"]),
+              );
+            }
+          }
+          const forkLength = b.impulseRadius !== null ? forkActingLength(b.impulseRadius, forkRatio(b.liftAngle, esc.leverAngle)) : null;
+          const clearance = forkLength !== null ? hornClearance(forkLength, pg.hornFreedom) : null;
+          if (clearance !== null) {
+            issues.push(
+              issue("ESC-113", "horn-clearance", "info", "L1_GEOMETRIC", [esc.id],
+                `${esc.name}: horn freedom gives ${mm(clearance)} of clearance from the ruby pin (arc length = fork acting length × angle, ASM-0045).`,
+                ["ASM-0045"]),
+            );
           }
         }
       }

@@ -210,6 +210,19 @@ export interface PalletGeometry {
    * Optional; null when not declared.
    */
   guardPointRadius: Length | null;
+  /**
+   * Lever-side angular freedom between the fork's horn and the ruby pin
+   * (ASM-0045, SRC-0036 "The Horn"): "the end of the horn is... planted
+   * upon it from 1½° to 1¾° from the ruby pin; this freedom at the end
+   * of the horn is... from ¼° to ½° more than we allow for the guard
+   * point" — both measured from the same pallet centre, on the horn's
+   * own arc at the fork's acting length (no separate radius needed).
+   * Must be positive and strictly less than the total lock
+   * (`lockAngle + runAngle`), the same hard necessity as
+   * `rubyPinEntryFreedom`/`guardPointFreedom` (ESC-113). Optional; null
+   * when not declared.
+   */
+  hornFreedom: Angle | null;
 }
 
 export interface Escapement {

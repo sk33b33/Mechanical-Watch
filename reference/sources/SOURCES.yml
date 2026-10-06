@@ -1166,6 +1166,10 @@
     - "The Crescent in the roller must be large and deep enough so it will be impossible for the guard point to touch in or on the corners of it; at the same time it must not be too large, as it would necessitate a longer horn on the fork than is necessary." (the purpose `crescentHalfAngle` derives a size for, ASM-0044)
     - "Fig. 24 shows the slot n of the fork standing at the bank. The ruby pin o touches it, but has not as yet acted on it; s s illustrates a single roller, while S2 illustrates the safety roller for a double roller escapement. In order to find the dimensions of the crescent in the single roller we must proceed as follows: WA is in the center of the fork when it rests against the bank, and is, therefore, one of the sides of the fork angle, and is drawn from the pallet center; V A W is an angle of 1¼°, which equals the freedom between the guard point and the roller; g g represents the path of the guard pin u for the single roller, and is drawn at the intersection of VA with the roller. A′ A2 is a line drawn from the balance center through that of the ruby pin, and therefore also passes through the center of the crescent. By planting a compass on this line, where it cuts the periphery of the roller, and locating the point of intersection of VA with the roller, will give us one-half the crescent, the remaining half being transferred to the opposite side of the line A′ A2." (the single-roller crescent construction `crescentHalfAngle`/`ringCrossingAngle`/`rubyPinAngleAtBalance` reconstruct as closed-form trigonometry, ASM-0044, ESC-112 — a verbal compass construction, not a quoted formula, and the author's own reading of it: WA at half the lever angle off the pallet-to-balance centre line, per Playtner's own Fig. 15 commentary quoted above under ASM-0041/ESC-109)
     - "It may be well to say that in our opinion a proportion between the fork and impulse angles in 10° pallets of 3 or 3½ to 1... The angle of opening for the crescent in the double roller escapement is greater than in the single, because it is placed closer to the balance center, and the guard point or dart further from the pallet center... Fig. 24, at ff, shows the path of the dart h, which also has 1¼° freedom between bank and roller. From the balance center we draw A′d touching the center or point of the dart; from this point we construct at 5° angle b A′ d. This is to ensure sufficient freedom for the dart when entering the crescent." (the double roller's own, different and partly empirical dart-crescent construction — not reconstructed here; ASM-0044 is scoped to the single roller only)
+    - "The horn should be of such a length that when the crescent has passed the guard point, the end of the horn should point to at least the center of the ruby pin." (the horn's own physical length/shape requirement — out of scope for ASM-0045, a visual 2D construction left to Phase 7.1.5.6)
+    - "the centers of the ruby pin o and of the crescent being on the line A′ A2, we plant the compass on the pallet center and the center of the face of the ruby pin and draw k k, which will be the path described by the horn. The end of the horn is therefore planted upon it from 1½° to 1¾° from the ruby pin; this freedom at the end of the horn is therefore from ¼° to ½° more than we allow for the guard point; it depends upon the size of the escapement and locking angles which we would choose. It must in any case be less than the lock on the pallets, so that the fork will be drawn back against the bank in case the horn be thrown against the ruby pin." (the construction `PalletGeometry.hornFreedom`/`hornClearance` model, ASM-0045: unlike the crescent, the horn's end lies on the same pallet-centred arc as the ruby pin — "k k" has radius = the fork's own acting length — so no cross-centre geometry or new radius field is needed; the hard necessity ESC-113 checks is the same pattern as ESC-110/ESC-111, horn freedom strictly under the total lock)
+    - "It is well to know that... the angle of motion, the width of slot, the ruby pin and its shake, the freedom between dart and roller, of ruby pin with acting edge of fork and end of horn are all measured from the pallet center, while the impulse angle and the crescent are measured from the balance center." (confirms the horn's freedom, unlike the crescent, needs no balance-centre geometry at all)
+    - "freedom for ruby pin and acting edge of fork is to be 1¼°... space between the end of horn and ruby pin is to be 1½°." (a separate, double-roller worked specification whose own dart/safety-roller freedom was likewise 1¼° — matching the teaching movement's own guard-point freedom — and whose horn-to-ruby-pin figure, 1½°, is exactly the low end of the cited ¼° addition: 1¼° + ¼° = 1½°; reused for the teaching movement's own hornFreedom, ASM-0045)
   claims_to_check: []
   retrieved: true
   accessed: "2026-10-05"
@@ -1192,10 +1196,12 @@
     "Fork and Roller Action" chapter used in this project) and ASM-0043
     (`Balance.rollerKind`, `PalletGeometry.guardPointFreedom`,
     `guardPointRadius`, `guardPointClearance` — drawn from the book's
-    "The Safety Action" chapter) and ASM-0044 (`Balance.rollerRadius`,
+    "The Safety Action" chapter), ASM-0044 (`Balance.rollerRadius`,
     `crescentHalfAngle`/`ringCrossingAngle`/`rubyPinAngleAtBalance` in
     `src/kinematics/palletGeometry.ts` — the single roller's crescent
-    opening, from the book's "The Crescent" chapter), and the
+    opening, from the book's "The Crescent" chapter) and ASM-0045
+    (`PalletGeometry.hornFreedom`, `hornClearance` — from the book's
+    "The Horn" chapter), and the
     ESC-106 (hard geometric budget, derived — not just cited; type-aware
     since ASM-0038) / ESC-107 (informal drop advisory — 1.5° club / 2°
     ratchet, cited; derived tooth width) / ESC-108 (derived escape-tooth
@@ -1208,13 +1214,16 @@
     single-roller fork-ratio-floor advisory) / ESC-112 (the single
     roller's derived crescent opening, or a warning when the entered
     values and the real placement distance do not form a consistent
-    geometry) validation rules. Re-read directly from the same locally
-    cached HTML (no re-fetch needed) for the "The Draw" and "The Fork and
-    Roller Action" chapters' exact language, and this pass additionally
-    fetched two of the chapter's own figures (fig05.png, fig28.png —
-    redirected through www.gutenberg.org, fetched with curl -L) and
-    viewed them directly (the same "fetch the image, read it as an
-    image" workaround already used for SRC-0037's formula images) to
+    geometry) / ESC-113 (horn freedom strictly under the total lock, the
+    same hard necessity again; the derived horn clearance; an advisory
+    when horn freedom is outside the cited ¼°-½° margin above the
+    guard-point freedom) validation rules. Re-read directly from the same
+    locally cached HTML (no re-fetch needed) for the "The Draw" and "The
+    Fork and Roller Action" chapters' exact language, and this pass
+    additionally fetched two of the chapter's own figures (fig05.png,
+    fig28.png — redirected through www.gutenberg.org, fetched with curl
+    -L) and viewed them directly (the same "fetch the image, read it as
+    an image" workaround already used for SRC-0037's formula images) to
     confirm the pallet stone's general block-with-a-leaning-face shape
     before implementing ASM-0040 — not to reverse-engineer the diagrams'
     full construction point-for-point. A later pass re-read the same
@@ -1229,14 +1238,24 @@
     construction with named points, not a stated formula or a single
     worked numeric example), so the derivation is the author's own
     reading of the figure and text, clearly marked as such rather than
-    attributed to Playtner as a formula. Nine pieces of this chapter's
-    material are now used across these nine assumptions (drop; pallet
-    type and width; tooth type; draw/tooth-face angle; the 2D outlines;
-    impulse radius/fork length; ruby-pin entry freedom/slot shake/
-    suggested width; roller kind/guard-point freedom/radius/clearance;
-    the single roller's crescent opening); the book's larger remaining
-    treatment of true lifting-face curvature, the tooth/pallet FACE
-    contact geometry itself, the real/primitive-circle correction, the
+    attributed to Playtner as a formula. The next pass re-read the same
+    cached HTML for "The Horn" chapter: unlike the crescent, this
+    construction turned out to need no new figure and no cross-centre
+    geometry at all — a passage later in the same chapter explicitly
+    confirms "the freedom between dart and roller, of ruby pin with
+    acting edge of fork and end of horn are all measured from the pallet
+    center, while the impulse angle and the crescent are measured from
+    the balance center" — so ASM-0045 reuses the already-derived fork
+    acting length as the horn's own radius, the same pallet-centred
+    pattern as `rubyPinEntryFreedom` (ASM-0042). Ten pieces of this
+    chapter's material are now used across these ten assumptions (drop;
+    pallet type and width; tooth type; draw/tooth-face angle; the 2D
+    outlines; impulse radius/fork length; ruby-pin entry freedom/slot
+    shake/suggested width; roller kind/guard-point freedom/radius/
+    clearance; the single roller's crescent opening; horn freedom/
+    clearance); the book's larger remaining treatment of true
+    lifting-face curvature, the tooth/pallet FACE contact geometry
+    itself, the real/primitive-circle correction, the
     engaging/disengaging asymmetry and the locked-vs-unlocked
     face-position correction remains unmodeled, as does most of "The
     Fork and Roller Action" still (the fuller width/freedom/impulse-
@@ -1244,13 +1263,14 @@
     of "The Safety Action" (the dart's own shape), the double roller's
     own separate and partly empirical dart-crescent construction (a
     5° allowance "to ensure sufficient freedom for the dart", not
-    reconstructed here) and "The Horn" (length, freedom) chapter —
-    explicitly out of scope here, scoped as Phase 7.1.5's later
-    sub-items (`docs/ROADMAP.md`) rather than attempted incompletely
-    now. The CIRCULAR pallet type is named in the domain model
-    (ASM-0037) but not implemented: this source states only that its
-    locking offset from the tangent shrinks with pallet width, not a
-    closed-form formula for it.
+    reconstructed here) and the horn's own physical length/shape
+    (a visual 2D construction, left to Phase 7.1.5.6) — explicitly out
+    of scope here, scoped as Phase 7.1.5's later sub-items
+    (`docs/ROADMAP.md`) rather than attempted incompletely now. The
+    CIRCULAR pallet type is named in the domain model (ASM-0037) but not
+    implemented: this source states only that its locking offset from
+    the tangent shrinks with pallet width, not a closed-form formula for
+    it.
 
 # Phase 7.5 (docs/ROADMAP.md): nonlinear mainspring torque curve and
 # bridle/slipping behaviour (REF-ENG §11; ASM-0026 currently uses a

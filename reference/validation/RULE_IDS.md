@@ -82,6 +82,7 @@ ESC-109 Impulse radius, when entered, must be positive; the fork's real acting l
 ESC-110 Ruby-pin entry freedom, when entered, must be positive and less than the total lock (lock + run); slot shake, when entered, must be positive; outside Playtner's cited figures (1°-1¼° freedom, ¼°-½° shake) is an advisory; the suggested ruby-pin width (half the fork's angular motion) is reported (ASM-0042).
 ESC-111 Guard-point freedom, when entered, must be positive and less than the total lock (lock + run); guard-point radius, when entered, must be positive, and the derived clearance is reported; a single roller with a fork ratio under Playtner's cited floor (3 to 1) is an advisory (ASM-0043).
 ESC-112 Single-roller crescent angular opening: roller radius, when entered, must be positive; with it, the impulse radius and the actual pallet-to-balance distance, the derived crescent opening is reported, or a warning when those lengths do not form a consistent geometry (ASM-0044).
+ESC-113 Horn freedom, when entered, must be positive and less than the total lock (lock + run); the derived horn clearance is reported; outside the cited ¼°-½° range above the guard-point freedom (when both are entered) is an advisory (ASM-0045).
 
 BAL-001 A balance-governed drive needs an escapement with a valid escape wheel and a positive balance inertia and hairspring stiffness; entered inertia and stiffness must be positive.
 BAL-002 The simplified dynamic balance model reports its free frequency, the frequency nominal time needs, and the predicted daily rate, with its assumptions.

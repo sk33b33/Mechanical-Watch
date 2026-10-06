@@ -82,6 +82,20 @@ export function guardPointClearance(guardPointRadius: Length, guardPointFreedom:
 }
 
 /**
+ * Linear clearance a declared horn freedom gives at the ruby pin
+ * (ASM-0045, SRC-0036 "The Horn"): arc length = radius × angle, the same
+ * formula as `dropClearance`/`guardPointClearance`, but on the horn's own
+ * arc — the fork's acting length from the pallet centre (`forkActingLength`),
+ * not a separate radius: "we plant the compass on the pallet center and
+ * the center of the face of the ruby pin and draw k k, which will be the
+ * path described by the horn." Null when the fork acting length is not
+ * positive.
+ */
+export function hornClearance(forkLength: Length, hornFreedom: Angle): Length | null {
+  return forkLength > 0 ? metres(forkLength * hornFreedom) : null;
+}
+
+/**
  * Escape-tooth width (wheel-side), the remainder of the per-beat wheel-angle
  * budget after the pallet's own width and drop (ASM-0037, SRC-0036: "12°
  * for width of tooth, pallet and drop; drop is to be 1½°, the tooth is to

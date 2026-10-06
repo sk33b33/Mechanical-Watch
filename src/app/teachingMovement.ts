@@ -262,11 +262,15 @@ export function createTeachingMovement(): Movement {
   // under this movement's total lock (2° lock + 0.5° run = 2.5°, ESC-110). rubyPinSlotShake: the low
   // end of his cited ¼°-½° range. guardPointFreedom: the same 1¼° figure, reused by Playtner for his
   // worked guard-point example. guardPointRadius: his own worked guard radius, 4 mm (ASM-0043) —
-  // together they reproduce his own computed clearance, 0.0873 mm (ESC-111).
+  // together they reproduce his own computed clearance, 0.0873 mm (ESC-111). hornFreedom: 1½°, his
+  // own worked horn-to-ruby-pin figure from a separate (double-roller) specification whose own
+  // dart/safety-roller freedom was also 1¼° (SRC-0036, ASM-0045) — the low end of his cited "¼° to
+  // ½° more than we allow for the guard point" range, applied to this movement's own 1¼° guard-point
+  // freedom (1.25° + 0.25° = 1.5°, ESC-113).
   const palletGeometry = {
     spanTeeth: 3.5, kind: "EQUIDISTANT" as const, lockAngle: degrees(2), drawAngle: degrees(12), runAngle: degrees(0.5),
     dropAngle: degrees(1.5), widthAngle: degrees(6), rubyPinEntryFreedom: degrees(1.25), rubyPinSlotShake: degrees(0.25),
-    guardPointFreedom: degrees(1.25), guardPointRadius: mm(4),
+    guardPointFreedom: degrees(1.25), guardPointRadius: mm(4), hornFreedom: degrees(1.5),
   };
   const escapeToPallet = tangentialCentreDistance(escapeTipRadius, spanAngle(escapeTeeth, palletGeometry.spanTeeth)) ?? mm(Number.NaN);
   const palletToBalance = mm(3.5);

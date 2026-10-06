@@ -7,6 +7,7 @@ import {
   forkActingLength,
   forkRatio,
   guardPointClearance,
+  hornClearance,
   impulseAngle,
   isHalfToothSpan,
   lockingPoints,
@@ -201,5 +202,13 @@ describe("pallet geometry (ASM-0025)", () => {
     // ruby-pin direction alone is already ungrounded, so the whole construction is null regardless
     // of roller radius.
     expect(crescentHalfAngle(mm(3.5), lever, freedom, forkLength, impulseRadius, rollerRadius)).toBeNull();
+  });
+
+  it("horn clearance is the arc length at the fork's own acting length (ASM-0045, SRC-0036 \"The Horn\")", () => {
+    // The teaching movement's own 4.5mm fork acting length and 1.5° horn freedom.
+    const clearance = hornClearance(mm(4.5), degrees(1.5)) ?? mm(Number.NaN);
+    expect(toMillimetres(clearance)).toBeCloseTo(0.1178, 3);
+    expect(hornClearance(mm(0), degrees(1.5))).toBeNull();
+    expect(hornClearance(mm(-1), degrees(1.5))).toBeNull();
   });
 });

@@ -7,7 +7,7 @@ import { updateCouplingSpring, updateEscapement } from "@/domain/movement";
 import type { MainspringLink, MainspringSpec } from "@/domain/coupling";
 import type { Escapement, PalletGeometry } from "@/domain/escapement";
 import { isValidToothCount } from "@/math/gearMath";
-import { crescentHalfAngle, dropClearance, forkActingLength, forkRatio, guardPointClearance, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
+import { crescentHalfAngle, dropClearance, forkActingLength, forkRatio, guardPointClearance, hornClearance, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
 import { distance } from "@/math/vec2";
 import { isochronismAdjustedRate } from "@/kinematics/balance";
 import { summarizeBalance } from "@/kinematics/balanceSummary";
@@ -96,7 +96,7 @@ function palletRows(store: AppStore, esc: Escapement, edit: (patch: Parameters<t
       readonlyRow("Pallets", "not specified", "The locking geometry is not checked until it is entered (ESC-104…107)."),
       actionRow("Enter pallet geometry", "Adds empty span, lock, draw, run, drop and width fields to fill from a design or source.", () => {
         const empty = degrees(Number.NaN);
-        edit({ pallets: { spanTeeth: Number.NaN, kind: "EQUIDISTANT", lockAngle: empty, drawAngle: empty, runAngle: empty, dropAngle: empty, widthAngle: empty, rubyPinEntryFreedom: null, rubyPinSlotShake: null, guardPointFreedom: null, guardPointRadius: null } });
+        edit({ pallets: { spanTeeth: Number.NaN, kind: "EQUIDISTANT", lockAngle: empty, drawAngle: empty, runAngle: empty, dropAngle: empty, widthAngle: empty, rubyPinEntryFreedom: null, rubyPinSlotShake: null, guardPointFreedom: null, guardPointRadius: null, hornFreedom: null } });
       }),
     );
     return out;
@@ -133,6 +133,8 @@ function palletRows(store: AppStore, esc: Escapement, edit: (patch: Parameters<t
     && b.impulseRadius !== null && positive(b.impulseRadius) && pg.guardPointFreedom !== null && positive(pg.guardPointFreedom)
     && centreDistance !== null && forkLength !== null
     ? crescentHalfAngle(centreDistance, esc.leverAngle, pg.guardPointFreedom, forkLength, b.impulseRadius, b.rollerRadius) : null;
+  const hornClearanceValue = pg.hornFreedom !== null && positive(pg.hornFreedom) && forkLength !== null
+    ? hornClearance(forkLength, pg.hornFreedom) : null;
   out.push(
     readonlyRow("Model", "SIMPLIFIED PALLET GEOMETRY (L1)",
       "Tangential locking on the tip circle, (k+½)-pitch span, lever = lock + impulse + run (ASM-0025); drop and pallet width are declared wheel-side angles (ASM-0036, ASM-0037). Tooth and pallet FACE shapes, impact, sliding contact and recoil are not modeled."),
@@ -190,6 +192,14 @@ function palletRows(store: AppStore, esc: Escapement, edit: (patch: Parameters<t
       "Arc length = guard-point radius × guard-point freedom (ASM-0043)."),
     readonlyRow("Crescent opening, single roller (derived)", crescentHalf === null ? "—" : `${(toDegrees(crescentHalf) * 2).toFixed(2)}°`,
       "Reconstructed from Playtner's own compass construction (ASM-0044): the angle, at the balance centre, between the ruby-pin direction and the guard point's freedom-extreme direction, doubled and mirrored. Needs a single roller, an entered roller radius (set on the balance, above) and impulse radius, guard-point freedom, and the actual placed pallet-to-balance distance to admit a consistent triangle; shown as — otherwise, including when those lengths are geometrically inconsistent (ESC-112 reports that case as a warning)."),
+    inputRow({
+      label: "Horn freedom (°)", value: optionalText(pg.hornFreedom, toDegrees), step: "0.1", placeholder: "unknown",
+      invalid: pg.hornFreedom !== null && !positive(pg.hornFreedom),
+      title: `Angular freedom between the fork's horn and the ruby pin, on the same pallet-centred arc as the ruby pin itself (ASM-0045). Must be positive and less than the total lock${totalLockDeg === null ? "" : ` (lock + run = ${totalLockDeg.toFixed(2)}°)`} (ESC-113). Playtner cites it as ¼° to ½° more than the guard-point freedom. Empty = unknown.`,
+      onCommit: (raw) => { patch({ hornFreedom: raw.trim() === "" ? null : degrees(parseRequired(raw)) }); },
+    }),
+    readonlyRow("Horn clearance (derived)", hornClearanceValue === null ? "—" : formatMm(hornClearanceValue),
+      "Arc length = fork acting length × horn freedom (ASM-0045) — the horn's end sits on the same arc as the ruby pin, no separate radius."),
     readonlyRow("Wheel-angle budget per beat", budget === null ? "—" : `${toDegrees(budget).toFixed(2)}°`, "Half the tooth pitch, π/escapeTeeth (ASM-0021, ASM-0036): shared by the tooth's width, the pallet's width and drop."),
     readonlyRow("Escape-tooth width (derived)", tooth === null ? "—" : `${toDegrees(tooth).toFixed(2)}°`,
       "Budget − pallet width − drop (ASM-0037). Must be positive for a club tooth, or may be zero for a ratchet tooth (ASM-0038)."),
