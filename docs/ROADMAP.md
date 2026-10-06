@@ -227,10 +227,17 @@ level).
   shippable and testable (same incremental pattern as the
   WATCH_SPECIFIC_PROFILE gear work); 7.1.5 and 7.1.6 can run separately,
   in any order, whenever picked up.
-- 7.2 — Impact and sliding-contact dynamics at unlock/impulse (REF-ENG
-  §9: "a simple rigid gear mesh is not an adequate physical model").
-  Candidate sources: SRC-0004/0005/0006 (registered, unused). Builds on
-  7.1; likely L3 idealized bookkeeping before true contact mechanics.
+- 7.2 — **Researched, deliberately not implemented** (see
+  `docs/STATUS.md`). Impact and sliding-contact dynamics at
+  unlock/impulse (REF-ENG §9: "a simple rigid gear mesh is not an
+  adequate physical model"). SRC-0004/0005/0006 registered and corrected
+  (real titles/authors/years via Crossref), but all three remain unread
+  (paywalled); SRC-0041 (Naperkoski 2022, Virginia Tech, open-access) was
+  found and read in full — a dedicated FEM thesis on exactly this
+  mechanism that needed a custom physical rig and over a year of
+  calibration and still couldn't sustain long-term stable operation. A
+  standing research problem, not a sourcing gap; left unimplemented
+  rather than approximated.
 - 7.3 — **Done** (see `docs/STATUS.md`). Amplitude-dependent rate
   (circular error), via a declared/measured isochronism coefficient
   (ASM-0034) rather than a universal formula: no source found gives a
@@ -238,18 +245,25 @@ level).
   zero-error *conditions* for an ideal spring, not a residual for a real
   one), so the model is a first-order local linearization around the
   declared amplitude, same pattern as Q/escapement efficiency.
-- 7.4 — **Partly done** (see `docs/STATUS.md`). Q has an informal
-  ~100-300 advisory (SPR-004, ASM-0035, SRC-0034, Tier 6/secondhand).
-  Escapement efficiency only has a geometric-only upper bound (91%/88%
-  by tooth count, SRC-0035) at two data points, not a general formula —
-  not yet implementable as a rule; remains genuinely open.
-- 7.5 — **Researched, genuinely open** (see `docs/STATUS.md`). Three
-  independent sources (SRC-0037/0038/0039) confirm no accessible
-  closed-form "real" torque curve exists — standard spring theory is
-  itself linear (no improvement on ASM-0026's own two-point line); the
-  real nonlinearity needs measurement, not a formula. Bridle slip
-  (~1.3-1.5×, SRC-0038, unread/unverified) is scoped to automatic
-  winding, which this project doesn't model at all.
+- 7.4 — **Further researched, remains genuinely open** (see
+  `docs/STATUS.md`). Q has an informal ~100-300 advisory (SPR-004,
+  ASM-0035, SRC-0034, Tier 6/secondhand). Escapement efficiency only has
+  a geometric-only upper bound (91%/88% by tooth count, SRC-0035) at two
+  data points, not a general formula. SRC-0041's own author reports that
+  quantifying escapement error/efficiency from this kind of model is
+  "impossible... without a watchmaker's expertise... and data from
+  prolonged stable operation" — not yet implementable as a rule; remains
+  genuinely open.
+- 7.5 — **Researched, genuinely open; reconfirmed** (see
+  `docs/STATUS.md`). Three independent sources (SRC-0037/0038/0039)
+  confirm no accessible closed-form "real" torque curve exists — standard
+  spring theory is itself linear (no improvement on ASM-0026's own
+  two-point line); the real nonlinearity needs measurement, not a
+  formula. Bridle slip (~1.3-1.5×, SRC-0038, unread/unverified) is scoped
+  to automatic winding, which this project doesn't model at all.
+  SRC-0041 independently corroborates the sourcing problem: its author
+  could not find a published mainspring torque figure even for a
+  dedicated thesis, and used an unverified public-forum value instead.
 - 7.6 — **Temperature done; position researched, deliberately not
   implemented** (see `docs/STATUS.md`). A Tier 1 primary source (Gould
   1934, NIST RP670, SRC-0040) gives the same kind of declared/measured

@@ -18,23 +18,42 @@ Useful specialist reference for watchmaking topics, wheel trains, escapements, b
 
 Use as a specialist reference, not as an automatic authority for every numerical value.
 
-## Swiss lever escapement research
+## Swiss lever escapement research (REF-ENG §9, Phase 7.2/7.4)
 
-### Fu & Du — Swiss Lever Escapement Mechanism
-2008, academic chapter.
-DOI: 10.1201/9780849307768-3
+### Fu & Du — Swiss Lever Escapement Mechanism (SRC-0004, unread)
+2008, academic chapter. DOI: 10.1201/9780849307768-3
 
 Useful for mechanism structure, operating principle and dynamic-model concepts.
 
-### Tribology International — Swiss lever escapement
-2017 research on contact instrumentation, FEM and contact dynamics.
+### Rolland, Walter-Le Berre, Saulot & Berthier — Instrumentation of a contact with the Finite Element Method and experimental coupling: the case of the Swiss lever escapement mechanism (SRC-0005, unread, metadata corrected)
+*Tribology International* 111 (2017), 176-183. DOI: 10.1016/j.triboint.2017.03.012.
+Title, authors, volume and pages corrected from Crossref's own bibliographic
+API; still unread (ScienceDirect/Elsevier paywalled, same access block as
+SRC-0038). Useful for understanding why friction/contact modelling is
+substantially more complex than ideal gear kinematics — but not as evidence,
+since it is unread.
 
-Useful for understanding why friction/contact modelling is substantially more complex than ideal gear kinematics.
+### Rolland, Saulot & Berthier — Experimental tribological analysis of the Swiss lever escapement (SRC-0006, unread, metadata corrected)
+*Wear* 376-377 (2017), 1418-1428. DOI: 10.1016/j.wear.2016.12.032 (the
+"2016.12" DOI infix is Elsevier's online-first month, not the April 2017
+citation year — corrected here). Still unread, same paywall. Use for research
+context only; do not copy numerical parameters into generic movements.
 
-### Wear — Experimental tribological analysis
-2017 research on Swiss lever escapement contact, wear and kinematics.
-
-Use for research context; do not copy numerical parameters into generic movements without checking applicability.
+### Naperkoski — Exploring the Dynamics of a Mechanical Watch Lever Escapement Using Finite Element Analysis (SRC-0041, read in full)
+MS thesis, Virginia Tech, 2022. Open-access; fetched and read directly (148
+pages). The most directly relevant source found for Phase 7.2/7.4: a
+dedicated full-FEM simulation of exactly this mechanism, needing a custom
+physical test rig and over a year of calibration, that still only reached two
+seconds of stable operation. Independently confirms (citing Fu's 2008
+dissertation, behind SRC-0004) that even a prior full numerical model could
+not reach a stable balance amplitude at all. Its own author states that
+quantifying escapement timing error from this kind of model is "impossible...
+without a watchmaker's expertise... and data from prolonged stable
+operation" — corroborating, not closing, this project's Phase 7.4 research
+gap. Its fitted FEM contact/damping coefficients are specific to one physical
+movement and not reused here. Also independently corroborates Phase 7.5's
+mainspring-torque sourcing problem: its author used an unverified
+public-forum torque figure for lack of a published one.
 
 ## Gear geometry
 

@@ -2,6 +2,84 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 7.2: impact/sliding-contact dynamics — researched, deliberately not implemented
+
+REF-ENG §9 already flags that "a simple rigid gear mesh is not an
+adequate physical model" at unlock/impulse. This phase's research
+substantially enriched the source base (SRC-0005, SRC-0006 corrected and
+completed; SRC-0041 newly added and read in full) without finding
+anything implementable at this project's L1-L3 level:
+
+- **SRC-0005/SRC-0006** (both Rolland et al., *Tribology International*
+  2017 and *Wear* 2017 respectively) had null/placeholder metadata from
+  an earlier phase. Corrected via Crossref's own bibliographic API (title,
+  full author lists, volume, pages, and the real publication year — the
+  *Wear* paper's DOI carries a "2016.12" infix that is Elsevier's
+  online-first registration month, not its April 2017 citation year).
+  Both remain genuinely unread: ScienceDirect/Elsevier paywalled, and
+  neither WebFetch nor a direct `curl` with a browser user agent could
+  reach the full text — the same access block already hit for SRC-0038.
+- **SRC-0041** (Brian M. Naperkoski, *Exploring the Dynamics of a
+  Mechanical Watch Lever Escapement Using Finite Element Analysis*, MS
+  thesis, Virginia Tech, 2022) is open-access and was fetched and read in
+  full (148 pages). It is the single most directly relevant source found
+  this phase, and it independently confirms the research gap rather than
+  closing it:
+  - A full 3D FEM simulation of the escapement's contact dynamics "would
+    take weeks to analyze tens of milliseconds of simulation time"; even
+    the simplified 2D model needed over a year of calibration against a
+    custom physical test rig, and still only achieved two seconds of
+    stable operation.
+  - Citing Fu's 2008 dissertation (the same study already behind this
+    project's SRC-0004): Fu's own numerical lever-escapement model could
+    not reach a stable balance amplitude at all — only his simplified
+    analytical spring-mass-damper model did. A second, independent
+    full-dynamics attempt landing on the same instability.
+  - The fitted contact parameters (an Abaqus "friction coefficient" of
+    0.00772, a damping coefficient of 1.91 µN·s/rad) are lumped FEM
+    calibration constants for one specific physical movement (an ETA
+    6497-1), not general material or geometric constants — adopting them
+    for this project's generic movements would be exactly the kind of
+    uncited-constant substitution CLAUDE.md prohibits.
+
+Decision: leave 7.2 unimplemented. The evidence this phase found is not
+"no one has looked" — it is "the people who looked needed a custom rig,
+a year of FEM calibration, and still couldn't reach long-term stability."
+That is a standing research problem, not a sourcing gap this project can
+close by reading one more paper. Revisit only if a source supplies a
+validated closed-form (not purely numerical) relationship, or if this
+project itself takes on dedicated contact-mechanics work matching
+SRC-0041's own scope.
+
+## Phase 7.4: escapement efficiency — further researched, remains genuinely open
+
+Already "partly done" (Q's informal advisory, SPR-004/ASM-0035; a
+geometric-only upper bound on escapement efficiency by tooth count,
+SRC-0035). This phase's research (the same SRC-0005/0006/0041 above)
+adds no closed-form efficiency formula, and SRC-0041 explicitly reports
+that the relevant error is not quantifiable from its own kind of model:
+"the amount of timing error that the simulated escapement would
+experience over an extended period is impossible to quantify without a
+watchmaker's expertise, additional information about the design of the
+escapement, and data from prolonged stable operation" — stated by the
+author of a dedicated, full-FEM thesis on exactly this mechanism, about
+their own model. Decision: remains genuinely open, documented rather than
+approximated; no change to the existing geometric-only bound.
+
+## Phase 7.5: mainspring torque curve — reconfirmed, remains genuinely open
+
+Re-checked for new leads; none found (same T = Eεbt²/6 flat-spring
+formula already cited as SRC-0037, already known to be a narrower, not an
+improvement on, this project's own ASM-0026 two-point-line model).
+SRC-0041's own experience independently corroborates the underlying
+sourcing problem: its author, writing a dedicated academic thesis, could
+not find a published mainspring torque value for their own reference
+movement and had to use "20 N-mm" sourced from "a timepiece development
+consultant on a public forum," because "watchmakers seldom use
+conventional torque units" and manufacturers do not publish the figure.
+No change to the existing conclusion (SRC-0037/0038/0039): the real
+nonlinearity needs per-movement measurement, not a formula.
+
 ## Phase 7.6: temperature coefficient implemented; position deliberately not
 
 Found a genuinely actionable Tier 1 primary source: F. A. Gould,

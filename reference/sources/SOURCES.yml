@@ -57,28 +57,60 @@
   notes: Tier 2. Not yet used by any implementation.
 
 - id: SRC-0005
-  title: null  # Tribology International, 2017 — Swiss lever escapement contact instrumentation / FEM / contact dynamics
-  author: null
+  title: "Instrumentation of a contact with the Finite Element Method and experimental coupling: The case of the Swiss lever escapement mechanism"
+  author: J. Rolland, H. Walter-Le Berre, A. Saulot, Y. Berthier
   year: 2017
   type: peer_reviewed
-  url: null
-  topics: [escapement, tribology]
-  claims_supported: []
+  doi: 10.1016/j.triboint.2017.03.012
+  url: https://sciencedirect.com/science/article/abs/pii/S0301679X17301387
+  topics: [escapement, tribology, contact-mechanics, phase-7.2]
+  claims_supported:
+    - "title and bibliographic record only (Crossref metadata): Tribology International, volume 111, pages 176-183, July 2017 — couples an instrumented physical contact rig with a Finite Element model of the Swiss lever escapement's own contact dynamics"
+  claims_to_check:
+    - "the full text, for any closed-form (not purely numerical/FEM) relationship between contact geometry and impact/sliding losses usable at this project's L1-L3 level"
   retrieved: false
-  accessed: null
-  notes: Metadata incomplete in SOURCE_INDEX.md. Not yet used.
+  accessed: "2026-10-06"
+  notes: >
+    Tier 2 (peer-reviewed, but unread). ScienceDirect/Elsevier paywalled;
+    neither WebFetch nor a direct `curl` (browser user agent) could reach
+    the full text — the same real access block already hit for SRC-0038.
+    Title, authors, journal, volume and pages corrected here from
+    Crossref's own API (`api.crossref.org/works/10.1016/j.triboint.2017.03.012`),
+    which is itself only bibliographic metadata, not the paper's content —
+    per CLAUDE_REFERENCE_INSTRUCTIONS.md, recorded as an unread citation,
+    not evidence, and nothing is implemented from it. Found while
+    researching Phase 7.2 (impact/sliding-contact dynamics); the
+    full-FEM-plus-physical-rig methodology it describes (per its title and
+    the comparable published methodology in SRC-0041/Naperkoski 2022,
+    which is read in full) corroborates, rather than closes, the Phase 7.2
+    research gap: this kind of result is not a formula to transcribe.
 
 - id: SRC-0006
-  title: null  # Wear, 2017 — experimental tribological analysis of the Swiss lever escapement
-  author: null
+  title: "Experimental tribological analysis of the Swiss lever escapement"
+  author: J. Rolland, A. Saulot, Y. Berthier
   year: 2017
   type: peer_reviewed
-  url: null
-  topics: [escapement, wear]
-  claims_supported: []
+  doi: 10.1016/j.wear.2016.12.032
+  url: https://sciencedirect.com/science/article/abs/pii/S004316481630833X
+  topics: [escapement, wear, tribology, phase-7.2, phase-7.4]
+  claims_supported:
+    - "title and bibliographic record only (Crossref metadata): Wear, volume 376-377, pages 1418-1428, April 2017 — experimental (not purely simulated) tribological measurement of the Swiss lever escapement's own contact wear"
+  claims_to_check:
+    - "the full text, for any measured friction/wear coefficient or efficiency figure usable, with attribution, at this project's level"
   retrieved: false
-  accessed: null
-  notes: Metadata incomplete in SOURCE_INDEX.md. Not yet used.
+  accessed: "2026-10-06"
+  notes: >
+    Tier 2 (peer-reviewed, but unread). Same ScienceDirect/Elsevier paywall
+    as SRC-0005; the DOI's own "2016.12" infix is Elsevier's online-first
+    registration month, not the citation year — the paper's actual
+    published-print date (confirmed via Crossref) is April 2017, correcting
+    this entry's prior placeholder year. Title, authors, journal, volume
+    and pages likewise corrected from Crossref's API, bibliographic
+    metadata only. Found while researching Phase 7.2 and 7.4 (escapement
+    efficiency); an experimental wear/friction study on the real mechanism
+    is exactly the kind of source this project would need to replace
+    ASM-0023's frictionless assumption, but its content remains unread and
+    unverified, so nothing is implemented from it.
 
 # Candidate sources for the right-angle (stem) mesh relationship, ASM-0019.
 # Found by web search on 2026-09-26. Neither has been read: fetching them
@@ -1382,6 +1414,42 @@
     coil-to-barrel contact as a cause. A third independent source landing
     on the same negative result (no accessible closed-form "real" curve),
     corroborating rather than extending the conclusion.
+
+- id: SRC-0041
+  title: "Exploring the Dynamics of a Mechanical Watch Lever Escapement Using Finite Element Analysis"
+  author: Brian M. Naperkoski
+  year: 2022
+  type: thesis
+  url: https://vtechworks.lib.vt.edu/bitstreams/de16823f-d950-46e5-997c-22a892498e8f/download
+  topics: [escapement, impact, friction, fem, phase-7.2, phase-7.4]
+  claims_supported:
+    - "a full 3D [FEM] simulation would take weeks to analyze tens of milliseconds of simulation time" — a 2D simplification was needed even to reach seconds of simulated time, and the final model achieved only two seconds of stable operation against targets of longer stable/accurate operation (confirms impact/sliding-contact dynamics at this level of fidelity is not a lightweight addition to a kinematic model)
+    - a lumped Abaqus/CAE "Friction Coefficient" of 0.00772 and a damping coefficient of 1.91 µN·s/rad were fitted to this specific physical reference movement (an ETA 6497-1) via a custom experimental rig and a year of calibration — not a general material or geometric constant transferable to another design
+    - citing Fu's 2008 dissertation (the same study behind this project's SRC-0004): Fu's own numerical lever-escapement model could not reach a stable balance amplitude at all, only his simplified analytical (spring-mass-damper) model did — independent confirmation that stable, accurate impact/contact simulation of a real lever escapement is an open, unresolved research problem, not merely an unfound formula
+    - "the amount of timing error that the simulated escapement would experience over an extended period is impossible to quantify without a watchmaker's expertise, additional information about the design of the escapement, and data from prolonged stable operation" — escapement error/efficiency is explicitly reported as not quantifiable from this kind of model, even by its own author
+    - the gear train's own transmission efficiency (distinct from this project's escapement-impulse efficiency, ASM-0026) was an "informed estimate" of 80%, borrowed from an unrelated NASA study of cycloidal gear sets for robotics, because no watch-specific figure existed; the mainspring torque value used (20 N·mm) came from "a timepiece development consultant on a public forum," not a technical specification — independent confirmation of this project's own Phase 7.5 finding that authoritative mainspring torque data is scarce even for dedicated academic study
+  claims_to_check: []
+  retrieved: true
+  accessed: "2026-10-06"
+  notes: >
+    Tier 3 (a university master's thesis, openly published; methodologically
+    serious — custom experimental rig, microscopy-based part reverse
+    engineering, a year of FEM calibration — but a single study, not a
+    peer-reviewed consensus). Freely available (Virginia Tech's VTechWorks
+    institutional repository); fetched directly as a PDF and read in full
+    (148 pages). Found via a web search while researching Phase 7.2
+    (impact/sliding-contact dynamics) and Phase 7.4 (escapement
+    efficiency). The single most directly relevant source found this
+    phase: a dedicated, recent, full FEM simulation of exactly the
+    mechanism this project's ASM-0023 (frictionless, rigid-body escapement)
+    simplifies — and its own conclusion is that full-fidelity simulation
+    remains a multi-month research effort with per-movement-measured
+    inputs, not a closed-form relationship this project could adopt at its
+    L1-L3 level. Used only to corroborate and close the Phase 7.2/7.4/7.5
+    research questions (see `docs/STATUS.md`); nothing implemented from it
+    — adopting its lumped friction/damping coefficients for an unrelated
+    movement would be exactly the uncited-constant substitution
+    CLAUDE.md prohibits.
 
 - id: SRC-0040
   title: "Precision of Watches and the Effect of Temperature upon Their Rate (Bureau of Standards Research Paper RP670)"
