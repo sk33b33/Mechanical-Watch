@@ -118,11 +118,12 @@ level).
     asymmetry remain unmodeled (same gaps ASM-0039 already named) — a
     deliberate, declared simplification rather than an attempt at full
     fidelity without the source's own diagrams fully reverse-engineered.
-  - 7.1.5 — Fork and roller action (ruby pin, safety roller, guard pin,
-    crescent, horn) — REF-ENG §9's "balance interaction," currently
-    modeled only as an abstract `forkRatio` with no actual roller/pin
-    geometry at all. Mostly independent of 7.1.1-7.1.4; could ship
-    separately. Playtner devotes four chapters to this specifically
+  - 7.1.5 — **Done**, all six sub-items (see `docs/STATUS.md`). Fork and
+    roller action (ruby pin, safety roller, guard pin, crescent, horn) —
+    REF-ENG §9's "balance interaction," previously modeled only as an
+    abstract `forkRatio` with no actual roller/pin geometry at all.
+    Mostly independent of 7.1.1-7.1.4; shipped separately. Playtner
+    devotes four chapters to this specifically
     ("The Fork and Roller Action", "The Safety Action", "The Crescent",
     "The Horn") — more raw material than 7.1.1-7.1.4 combined, so
     scoped into its own sub-items, same pattern as 7.1 itself:
