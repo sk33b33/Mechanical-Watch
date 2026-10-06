@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { degrees, toDegrees } from "@/units/angle";
+import { degrees, radians, toDegrees } from "@/units/angle";
 import { metres, millimetres as mm, toMillimetres } from "@/units/length";
 import {
+  crescentHalfAngle,
   dropClearance,
   forkActingLength,
   forkRatio,
@@ -9,6 +10,8 @@ import {
   impulseAngle,
   isHalfToothSpan,
   lockingPoints,
+  ringCrossingAngle,
+  rubyPinAngleAtBalance,
   spanAngle,
   suggestedRubyPinWidth,
   tangentialCentreDistance,
@@ -16,6 +19,20 @@ import {
   toothWidthAngle,
   wheelAngleBudgetPerBeat,
 } from "./palletGeometry";
+
+/** Seeded PRNG, same generator used by the other property tests in this file. */
+function makeRandom(seed: number): () => number {
+  let s = seed;
+  return () => {
+    s = (s * 1103515245 + 12345) % 2147483648;
+    return s / 2147483648;
+  };
+}
+
+/** Absolute angle between two vectors, in [0, π], via atan2(|cross|, dot) — independent of `ringCrossingAngle`'s own law-of-sines derivation. */
+function angleBetween(ax: number, ay: number, bx: number, by: number): number {
+  return Math.atan2(Math.abs(ax * by - ay * bx), ax * bx + ay * by);
+}
 
 describe("pallet geometry (ASM-0025)", () => {
   it("span angle: pitches × 360°/z", () => {
@@ -112,5 +129,77 @@ describe("pallet geometry (ASM-0025)", () => {
     expect(toMillimetres(clearance)).toBeCloseTo(0.0873, 3);
     expect(guardPointClearance(mm(0), degrees(1.25))).toBeNull();
     expect(guardPointClearance(mm(-1), degrees(1.25))).toBeNull();
+  });
+
+  it("property: ringCrossingAngle matches an independent ray-circle intersection (ASM-0044)", () => {
+    const next = makeRandom(23);
+    for (let i = 0; i < 200; i += 1) {
+      const d = 2 + next() * 5; // pallet-to-balance distance, mm (unitless here, formula is scale-free)
+      const rayAngle = (5 + next() * 30) * (Math.PI / 180); // 5°-35°, like a fork rest angle plus freedom
+      const minR = d * Math.sin(rayAngle); // smallest ring radius the ray can still reach
+      // Kept below d (a real roller is always much smaller than the pallet-to-balance distance), so
+      // the nearest ray/circle crossing is always ahead of the pallet centre, not behind it.
+      const R = minR + next() * (d - minR) * 0.8;
+      const result = ringCrossingAngle(metres(d), radians(rayAngle), metres(R));
+      expect(result).not.toBeNull();
+      // Independent construction: A at origin, A' at (d, 0); ray from A at angle `rayAngle`;
+      // nearest forward intersection with the circle of radius R around A'.
+      const cosA = Math.cos(rayAngle);
+      const disc = R * R - d * d * Math.sin(rayAngle) * Math.sin(rayAngle);
+      const t = d * cosA - Math.sqrt(Math.max(disc, 0));
+      const gx = t * cosA;
+      const gy = t * Math.sin(rayAngle);
+      const expected = angleBetween(-d, 0, gx - d, gy);
+      expect(toDegrees(result ?? radians(Number.NaN))).toBeCloseTo((expected * 180) / Math.PI, 6);
+    }
+    // Too small a ring for this angle and distance to reach: null, not a wrong answer.
+    expect(ringCrossingAngle(mm(4), degrees(30), mm(0.5))).toBeNull();
+    expect(ringCrossingAngle(mm(0), degrees(10), mm(1))).toBeNull();
+  });
+
+  it("property: rubyPinAngleAtBalance matches an independent two-circle intersection (ASM-0044)", () => {
+    const next = makeRandom(29);
+    for (let i = 0; i < 200; i += 1) {
+      // Three lengths that satisfy the triangle inequality by construction.
+      const d = 1 + next() * 5;
+      const L = Math.max(0.2, d * (0.3 + next() * 1.2));
+      const R = Math.max(0.2, Math.abs(L - d) + next() * (L + d - Math.abs(L - d)) * 0.98 + 0.01);
+      if (!(R > Math.abs(d - L) && R < d + L)) continue;
+      const result = rubyPinAngleAtBalance(metres(d), metres(L), metres(R));
+      expect(result).not.toBeNull();
+      // Independent construction: A at origin, A' at (d, 0); P on both circles (radius L around A,
+      // radius R around A'), via the standard two-circle intersection.
+      const a = (L * L - R * R + d * d) / (2 * d);
+      const h2 = L * L - a * a;
+      expect(h2).toBeGreaterThanOrEqual(-1e-9);
+      const h = Math.sqrt(Math.max(h2, 0));
+      const expected = angleBetween(-d, 0, a - d, h);
+      expect(toDegrees(result ?? radians(Number.NaN))).toBeCloseTo((expected * 180) / Math.PI, 6);
+    }
+    // Lengths that cannot form a triangle: null, not a wrong answer.
+    expect(rubyPinAngleAtBalance(mm(3.5), mm(4.5), mm(0.9))).toBeNull(); // the teaching movement's own values
+    expect(rubyPinAngleAtBalance(mm(0), mm(4.5), mm(0.9))).toBeNull();
+  });
+
+  it("crescent half-angle composes the ruby-pin and guard-point directions (ASM-0044, SRC-0036 \"The Crescent\")", () => {
+    const d = mm(5);
+    const lever = degrees(10);
+    const freedom = degrees(1.25);
+    const forkLength = mm(4.5);
+    const impulseRadius = mm(0.9);
+    const rollerRadius = mm(1.8);
+    const half = crescentHalfAngle(d, lever, freedom, forkLength, impulseRadius, rollerRadius);
+    const rubyPinAngle = rubyPinAngleAtBalance(d, forkLength, impulseRadius) ?? radians(Number.NaN);
+    const guardAngle = ringCrossingAngle(d, radians(lever / 2 + freedom), rollerRadius) ?? radians(Number.NaN);
+    expect(half).not.toBeNull();
+    expect(toDegrees(half ?? radians(Number.NaN))).toBeCloseTo(Math.abs(toDegrees(guardAngle) - toDegrees(rubyPinAngle)), 9);
+    // Not positive lever angle or guard freedom: null.
+    expect(crescentHalfAngle(d, degrees(0), freedom, forkLength, impulseRadius, rollerRadius)).toBeNull();
+    expect(crescentHalfAngle(d, lever, degrees(0), forkLength, impulseRadius, rollerRadius)).toBeNull();
+    // The teaching movement's own pallet-to-balance distance (3.5mm) does not admit its own fork
+    // acting length (4.5mm) and impulse radius (0.9mm) as a consistent triangle (ASM-0044) — the
+    // ruby-pin direction alone is already ungrounded, so the whole construction is null regardless
+    // of roller radius.
+    expect(crescentHalfAngle(mm(3.5), lever, freedom, forkLength, impulseRadius, rollerRadius)).toBeNull();
   });
 });

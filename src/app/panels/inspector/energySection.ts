@@ -7,7 +7,8 @@ import { updateCouplingSpring, updateEscapement } from "@/domain/movement";
 import type { MainspringLink, MainspringSpec } from "@/domain/coupling";
 import type { Escapement, PalletGeometry } from "@/domain/escapement";
 import { isValidToothCount } from "@/math/gearMath";
-import { dropClearance, forkRatio, guardPointClearance, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
+import { crescentHalfAngle, dropClearance, forkActingLength, forkRatio, guardPointClearance, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
+import { distance } from "@/math/vec2";
 import { isochronismAdjustedRate } from "@/kinematics/balance";
 import { summarizeBalance } from "@/kinematics/balanceSummary";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
@@ -84,10 +85,10 @@ export function palletAndEnergyRows(store: AppStore, esc: Escapement): Section {
   const edit = (patch: Parameters<typeof updateEscapement>[2]): void => {
     store.edit((m) => updateEscapement(m, esc.id, patch));
   };
-  return [...palletRows(esc, edit), ...lossRows(store, esc, edit)];
+  return [...palletRows(store, esc, edit), ...lossRows(store, esc, edit)];
 }
 
-function palletRows(esc: Escapement, edit: (patch: Parameters<typeof updateEscapement>[2]) => void): Section {
+function palletRows(store: AppStore, esc: Escapement, edit: (patch: Parameters<typeof updateEscapement>[2]) => void): Section {
   const pg = esc.pallets;
   const out: Section = [sectionHeader("Pallet geometry (optional)")];
   if (pg === null) {
@@ -124,6 +125,14 @@ function palletRows(esc: Escapement, edit: (patch: Parameters<typeof updateEscap
   const suggestedWidth = positive(esc.leverAngle) ? suggestedRubyPinWidth(esc.leverAngle) : null;
   const guardClearance = pg.guardPointFreedom !== null && positive(pg.guardPointFreedom) && pg.guardPointRadius !== null
     ? guardPointClearance(pg.guardPointRadius, pg.guardPointFreedom) : null;
+  const b = esc.balance;
+  const at = { pallet: store.analysis.placement.shaftPositions.get(esc.palletArborShaftId), balance: store.analysis.placement.shaftPositions.get(esc.balanceShaftId) };
+  const centreDistance = at.pallet !== undefined && at.balance !== undefined ? distance(at.pallet, at.balance) : null;
+  const forkLength = b.impulseRadius !== null ? forkActingLength(b.impulseRadius, ratio) : null;
+  const crescentHalf = b.rollerKind === "SINGLE" && b.rollerRadius !== null && positive(b.rollerRadius)
+    && b.impulseRadius !== null && positive(b.impulseRadius) && pg.guardPointFreedom !== null && positive(pg.guardPointFreedom)
+    && centreDistance !== null && forkLength !== null
+    ? crescentHalfAngle(centreDistance, esc.leverAngle, pg.guardPointFreedom, forkLength, b.impulseRadius, b.rollerRadius) : null;
   out.push(
     readonlyRow("Model", "SIMPLIFIED PALLET GEOMETRY (L1)",
       "Tangential locking on the tip circle, (k+½)-pitch span, lever = lock + impulse + run (ASM-0025); drop and pallet width are declared wheel-side angles (ASM-0036, ASM-0037). Tooth and pallet FACE shapes, impact, sliding contact and recoil are not modeled."),
@@ -179,6 +188,8 @@ function palletRows(esc: Escapement, edit: (patch: Parameters<typeof updateEscap
     }),
     readonlyRow("Guard-point clearance (derived)", guardClearance === null ? "—" : formatMm(guardClearance),
       "Arc length = guard-point radius × guard-point freedom (ASM-0043)."),
+    readonlyRow("Crescent opening, single roller (derived)", crescentHalf === null ? "—" : `${(toDegrees(crescentHalf) * 2).toFixed(2)}°`,
+      "Reconstructed from Playtner's own compass construction (ASM-0044): the angle, at the balance centre, between the ruby-pin direction and the guard point's freedom-extreme direction, doubled and mirrored. Needs a single roller, an entered roller radius (set on the balance, above) and impulse radius, guard-point freedom, and the actual placed pallet-to-balance distance to admit a consistent triangle; shown as — otherwise, including when those lengths are geometrically inconsistent (ESC-112 reports that case as a warning)."),
     readonlyRow("Wheel-angle budget per beat", budget === null ? "—" : `${toDegrees(budget).toFixed(2)}°`, "Half the tooth pitch, π/escapeTeeth (ASM-0021, ASM-0036): shared by the tooth's width, the pallet's width and drop."),
     readonlyRow("Escape-tooth width (derived)", tooth === null ? "—" : `${toDegrees(tooth).toFixed(2)}°`,
       "Budget − pallet width − drop (ASM-0037). Must be positive for a club tooth, or may be zero for a ratchet tooth (ASM-0038)."),

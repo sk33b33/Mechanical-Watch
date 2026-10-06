@@ -302,6 +302,12 @@ export function createTeachingMovement(): Movement {
       // Single roller (ASM-0043) — the only configuration previously assumed. This movement's own
       // 5:1 fork ratio is comfortably above Playtner's cited single-roller floor (3 to 1, ESC-111).
       rollerKind: "SINGLE",
+      // Roller radius (ASM-0044): left unknown. Playtner gives no worked numeric example for it, and
+      // this movement's own placed pallet-to-balance distance (3.5 mm, below) does not geometrically
+      // admit its own 4.5 mm fork acting length and 0.9 mm impulse radius as a consistent triangle
+      // (3.5 mm < |4.5 − 0.9| mm) — entering a roller radius here would only ever report the
+      // crescent construction as not realizable, not a useful demonstration (ESC-112).
+      rollerRadius: null,
     },
     pallets: palletGeometry,
     // Also a loss property, left unknown for the same reason; the amplitude stays the declared one.

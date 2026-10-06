@@ -308,6 +308,46 @@ No separate roller geometry (diameter, the dart's own shape) is
 modeled for either roller kind — unmodeled, same as the rest of "The
 Safety Action", "The Crescent" and "The Horn" chapters.
 
+Now also used for ASM-0044, from the book's "The Crescent" chapter:
+`Balance.rollerRadius` (entered) and `crescentHalfAngle`/
+`ringCrossingAngle`/`rubyPinAngleAtBalance` in
+`src/kinematics/palletGeometry.ts` (ESC-112) reconstruct the single
+roller's crescent-opening construction as closed-form trigonometry.
+This chapter is a genuinely different kind of source from everything
+else drawn from this book so far: a verbal compass-and-protractor
+construction with named points ("WA is in the center of the fork when
+it rests against the bank... V A W is an angle of 1¼°... g g
+represents the path of the guard pin... and is drawn at the
+intersection of VA with the roller. A′ A2 is a line drawn from the
+balance center through that of the ruby pin, and therefore also
+passes through the center of the crescent... will give us one-half
+the crescent, the remaining half being transferred to the opposite
+side of the line A′ A2"), not a stated formula, and with no worked
+numeric example anywhere to verify a reconstruction against. Fig. 14
+and Fig. 24 were fetched and viewed directly (the same workaround used
+for Fig. 5/Fig. 28) before writing the derivation, which is the
+author's own reading of the construction: the ruby pin's own direction
+from the balance centre (Playtner's A′A2) via the law of cosines on
+the already-known fork acting length, impulse radius and the actual
+placed pallet-to-balance distance (the same real distance ESC-103
+already uses, not a separately declared one); the guard point's
+freedom-extreme direction via the law of sines on a ray from the
+pallet centre — leaning half the lever angle (Playtner's own
+"one-half...performed on each side of the line of centers" from his
+Fig. 15 commentary) plus the guard-point freedom — crossing the
+roller's own circle. Because there is no worked example to check the
+combined result against, `rollerRadius` is left unknown everywhere,
+including the teaching movement, whose own placed distance (3.5 mm)
+does not in fact admit its own fork acting length (4.5 mm) and impulse
+radius (0.9 mm) as a consistent triangle — entering a value there
+would only ever report the construction as geometrically unrealizable,
+which ESC-112 does report, as a warning, rather than inventing a
+number. Scoped to the single roller only: the double roller's own dart
+crescent uses a different, partly empirical construction ("we
+construct at 5° angle... to ensure sufficient freedom for the dart"),
+not reconstructed here — unmodeled, along with the dart's own shape
+and "The Horn" chapter.
+
 ## Mainspring torque curve and bridle slip (REF-ENG §11)
 
 ### Roymech — Springs Spiral (SRC-0037, read)

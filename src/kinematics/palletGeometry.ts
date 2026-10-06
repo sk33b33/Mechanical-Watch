@@ -146,3 +146,91 @@ export function suggestedRubyPinWidth(leverAngle: Angle): Angle {
 export function toothDrawAngle(palletDrawAngle: Angle): Angle {
   return radians(2 * palletDrawAngle);
 }
+
+/**
+ * Angle, at the balance centre, between the line to the pallet centre and
+ * the line to the point where a ray from the pallet centre — leaning
+ * `rayAngle` off the pallet-to-balance centre line — first crosses the
+ * circle of `ringRadius` around the balance centre. Found exactly, the
+ * same way as `rayCircleInward` (`src/geometry/assemblyGeometry3d.ts`):
+ * solve the ray/circle quadratic for the nearest forward crossing, then
+ * the law of cosines in the pallet-centre/balance-centre/crossing-point
+ * triangle gives the angle at the balance centre unambiguously (the law
+ * of sines alone would leave which of the two crossings it describes
+ * ambiguous). Used by `crescentHalfAngle` for the guard point's own
+ * freedom-extreme ray (ASM-0044, SRC-0036 "The Crescent": "g g represents
+ * the path of the guard pin... and is drawn at the intersection of VA
+ * with the roller"). Null when the ray misses the circle entirely, the
+ * nearest crossing lies behind the pallet centre, or any input is
+ * non-positive.
+ */
+export function ringCrossingAngle(centreDistance: Length, rayAngle: Angle, ringRadius: Length): Angle | null {
+  if (!(centreDistance > 0) || !(ringRadius > 0) || !(rayAngle > 0 && rayAngle < Math.PI)) return null;
+  const cosRay = Math.cos(rayAngle);
+  const discriminant = ringRadius * ringRadius - centreDistance * centreDistance * Math.sin(rayAngle) * Math.sin(rayAngle);
+  if (discriminant < 0) return null;
+  const sqrtDiscriminant = Math.sqrt(discriminant);
+  // The smaller (nearest) non-negative root; falls back to the larger root when the nearer
+  // crossing is behind the pallet centre (only possible when the ring is bigger than the
+  // pallet-to-balance distance itself — not a real escapement layout, but handled for correctness).
+  const t = centreDistance * cosRay - sqrtDiscriminant >= 0
+    ? centreDistance * cosRay - sqrtDiscriminant
+    : centreDistance * cosRay + sqrtDiscriminant;
+  if (t < 0) return null;
+  const cosAtBalance = (centreDistance * centreDistance + ringRadius * ringRadius - t * t) / (2 * centreDistance * ringRadius);
+  if (!(cosAtBalance >= -1 && cosAtBalance <= 1)) return null;
+  return radians(Math.acos(cosAtBalance));
+}
+
+/**
+ * Angle, at the balance centre, between the line to the pallet centre and
+ * the line to a point whose distance from each centre is already known —
+ * the ruby pin, at the fork's acting length from the pallet centre and the
+ * impulse radius from the balance centre (law of cosines; all three sides
+ * of the pallet-centre/balance-centre/ruby-pin triangle are already-known
+ * lengths). This is the direction SRC-0036 calls A′A2: "a line drawn from
+ * the balance center through that of the ruby pin, and therefore also
+ * passes through the center of the crescent." Null when the three lengths
+ * cannot form a triangle (the fork acting length is too long or short for
+ * the pallet-to-balance distance and impulse radius to reach) or any input
+ * is non-positive.
+ */
+export function rubyPinAngleAtBalance(centreDistance: Length, forkLength: Length, impulseRadius: Length): Angle | null {
+  if (!(centreDistance > 0) || !(forkLength > 0) || !(impulseRadius > 0)) return null;
+  const cosAngle = (centreDistance * centreDistance + impulseRadius * impulseRadius - forkLength * forkLength) / (2 * centreDistance * impulseRadius);
+  if (!(cosAngle >= -1 && cosAngle <= 1)) return null;
+  return radians(Math.acos(cosAngle));
+}
+
+/**
+ * Half the single roller's crescent angular opening (ASM-0044, SRC-0036
+ * "The Crescent"): the angle, at the balance centre, between the ruby-pin
+ * reference direction (A′A2, `rubyPinAngleAtBalance`) and the guard
+ * point's own freedom-extreme direction (`ringCrossingAngle`, using the
+ * fork's rest position — taken as half the lever angle off the pallet-to-
+ * balance centre line, the convention Playtner's own Fig. 15 commentary
+ * states: "with a total motion of the fork of 10½°... one-half... will be
+ * performed on each side of the line of centers" — rotated further by the
+ * guard-point freedom, matching his own "V A W is an angle of 1¼°, which
+ * equals the freedom between the guard point and the roller"). The full
+ * opening is double this value, mirrored to the other side of A′A2, per
+ * Playtner's own construction ("will give us one-half the crescent, the
+ * remaining half being transferred to the opposite side of the line
+ * A′ A2"). Null when either angle is not derivable (the entered lengths
+ * and the actual pallet-to-balance distance do not form a consistent
+ * geometry) or the lever angle/guard freedom are not positive.
+ */
+export function crescentHalfAngle(
+  centreDistance: Length,
+  leverAngle: Angle,
+  guardPointFreedom: Angle,
+  forkLength: Length,
+  impulseRadius: Length,
+  rollerRadius: Length,
+): Angle | null {
+  if (!(leverAngle > 0) || !(guardPointFreedom > 0)) return null;
+  const rubyPinAngle = rubyPinAngleAtBalance(centreDistance, forkLength, impulseRadius);
+  const guardAngle = ringCrossingAngle(centreDistance, radians(leverAngle / 2 + guardPointFreedom), rollerRadius);
+  if (rubyPinAngle === null || guardAngle === null) return null;
+  return radians(Math.abs(guardAngle - rubyPinAngle));
+}

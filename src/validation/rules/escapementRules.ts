@@ -6,7 +6,7 @@ import { toBeatsPerHour } from "@/units/frequency";
 import type { EntityId } from "@/domain/ids";
 import { gearZRange, zOverlaps } from "@/assembly/assemblyGeometry";
 import { balanceFrequency, beatFrequency, impulseFraction } from "@/kinematics/escapement";
-import { dropClearance, forkActingLength, forkRatio, guardPointClearance, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
+import { crescentHalfAngle, dropClearance, forkActingLength, forkRatio, guardPointClearance, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import type { Length } from "@/units/length";
 import type { ValidationIssue } from "../validationIssue";
@@ -359,6 +359,35 @@ export const escapementRules: Rule = ({ movement, placement, train }) => {
             `${esc.name}: fork ratio (${ratio.toFixed(2)}) is below the figure Playtner cites as the lowest for a single roller ("a proportion between the fork and impulse angles in 10° pallets of 3 or 3½ to 1, depending upon the size of the escapement, is the lowest which should be made in single roller") — in a single roller, the safety action and the impulse compete for the same roller size. A double roller decouples them (ASM-0043, SRC-0036).`,
             ["ASM-0043"]),
         );
+      }
+    }
+
+    // ESC-112: single-roller crescent angular opening (optional roller radius; ASM-0044, SRC-0036 "The Crescent").
+    if (b.rollerKind === "SINGLE" && b.rollerRadius !== null) {
+      if (!positive(b.rollerRadius)) {
+        issues.push(
+          issue("ESC-112", "roller-radius", "error", "L1_GEOMETRIC", [esc.id],
+            `${esc.name}: the roller radius must be positive, or left empty (unknown).`, ["ASM-0044"]),
+        );
+      } else if (b.impulseRadius !== null && positive(b.impulseRadius) && pg?.guardPointFreedom != null && at.pallet !== undefined && at.balance !== undefined) {
+        const forkLength = forkActingLength(b.impulseRadius, forkRatio(b.liftAngle, esc.leverAngle));
+        if (forkLength !== null) {
+          const centreDistance = distance(at.pallet, at.balance);
+          const half = crescentHalfAngle(centreDistance, esc.leverAngle, pg.guardPointFreedom, forkLength, b.impulseRadius, b.rollerRadius);
+          if (half === null) {
+            issues.push(
+              issue("ESC-112", "crescent-impossible", "warning", "L1_GEOMETRIC", [esc.id],
+                `${esc.name}: the crescent construction is not geometrically realizable from the entered roller radius, impulse radius and fork acting length together with the actual pallet-to-balance distance (${mm(centreDistance)}) — they do not form a consistent geometry (SRC-0036 "The Crescent").`,
+                ["ASM-0044"]),
+            );
+          } else {
+            issues.push(
+              issue("ESC-112", "crescent-opening", "info", "L1_GEOMETRIC", [esc.id],
+                `${esc.name}: the single roller's crescent needs an angular opening of about ${toDegrees(radians(half * 2)).toFixed(2)}° (derived from the guard-point freedom, the roller and impulse radii, the fork acting length and the actual pallet-to-balance distance of ${mm(centreDistance)}, ASM-0044, SRC-0036 "The Crescent").`,
+                ["ASM-0044"]),
+            );
+          }
+        }
       }
     }
 

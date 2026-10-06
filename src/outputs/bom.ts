@@ -182,7 +182,7 @@ export function buildBom(movement: Movement): BomRow[] {
         b.hairspringStiffness === null ? "not modeled" : `stiffness ${toMicronewtonMillimetresPerRadian(b.hairspringStiffness).toFixed(2)} µN·mm/rad (entered)`,
         "", b.hairspringStiffness === null ? "no restoring torque modeled (ASM-0022)" : "geometry and material not modeled; linear stiffness only (ASM-0024)"],
       ["Roller and impulse pin", "Roller",
-        `${b.rollerKind === "SINGLE" ? "single" : "double"} roller${b.impulseRadius === null ? "" : `, impulse radius ${mmText(b.impulseRadius, 3)} (entered)`}`,
+        `${b.rollerKind === "SINGLE" ? "single" : "double"} roller${b.rollerRadius === null ? "" : `, radius ${mmText(b.rollerRadius, 3)} (entered)`}${b.impulseRadius === null ? "" : `, impulse radius ${mmText(b.impulseRadius, 3)} (entered)`}`,
         "",
         b.impulseRadius === null ? "not modeled" : (() => {
           const length = forkActingLength(b.impulseRadius, forkRatio(b.liftAngle, esc.leverAngle));

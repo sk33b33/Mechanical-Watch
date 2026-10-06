@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { degrees, toDegrees } from "@/units/angle";
+import { degrees, radians, toDegrees } from "@/units/angle";
 import { metres, millimetres } from "@/units/length";
 import { joules } from "@/units/energy";
 import { newtonMillimetres, toNewtonMillimetres } from "@/units/torque";
@@ -12,6 +12,7 @@ import { createTeachingMovement } from "@/app/teachingMovement";
 import { analyzeMovement } from "@/analysis/analyzeMovement";
 import { validateMovement } from "@/validation/validateMovement";
 import { balanceEnergy, energyPerBeat, escapeTorque, powerReserveSeconds, springTorque, steadyAmplitude } from "./mainspringEnergy";
+import { crescentHalfAngle } from "./palletGeometry";
 import { amplitudeAtWind, summarizeEnergy } from "./energySummary";
 
 const spec: MainspringSpec = { usableTurns: 6.5, fullyWoundTorque: newtonMillimetres(10), letDownTorque: newtonMillimetres(6), trainEfficiency: null };
@@ -405,5 +406,51 @@ describe("guard-point freedom, radius and the single-roller fork-ratio floor (ES
   it("a double roller is not subject to the single-roller fork-ratio floor, even at the same ratio", () => {
     const m = updateEscapement(teaching, esc.id, { leverAngle: degrees(20), balance: { ...esc.balance, rollerKind: "DOUBLE" } });
     expect(guardRules(m).some((r) => r.includes("single-roller-ratio"))).toBe(false);
+  });
+});
+
+describe("single-roller crescent angular opening (ESC-112, ASM-0044)", () => {
+  const teaching = createTeachingMovement();
+  const esc = Object.values(teaching.escapements)[0];
+  const pallets = esc?.pallets;
+  if (esc === undefined || pallets == null) throw new Error("teaching movement lacks pallets");
+  const crescentRules = (m: Movement): string[] =>
+    validateMovement(m).filter((i) => i.rule === "ESC-112").map((i) => `${i.rule}:${i.severity}:${i.id.split(":")[1] ?? ""}`);
+
+  it("nothing is reported without an entered roller radius", () => {
+    expect(crescentRules(teaching)).toEqual([]);
+  });
+
+  it("the roller radius must be positive", () => {
+    const m = updateEscapement(teaching, esc.id, { balance: { ...esc.balance, rollerRadius: millimetres(-1) } });
+    expect(crescentRules(m)).toContain("ESC-112:error:roller-radius");
+  });
+
+  it("the teaching movement's own placed pallet-to-balance distance (3.5mm) does not admit its own 4.5mm fork acting length and 0.9mm impulse radius as a consistent triangle, so the construction is reported as not realizable, not a wrong number", () => {
+    const m = updateEscapement(teaching, esc.id, { balance: { ...esc.balance, rollerRadius: millimetres(1) } });
+    expect(crescentRules(m)).toContain("ESC-112:warning:crescent-impossible");
+    const warn = validateMovement(m).find((i) => i.rule === "ESC-112" && i.id.includes("crescent-impossible"));
+    expect(warn?.message).toContain("3.5000 mm");
+  });
+
+  it("derives the crescent's angular opening when the entered values and the actual placed distance do form a consistent triangle", () => {
+    // 0.7mm impulse radius -> 3.5mm fork acting length (5:1 ratio), exactly matching the placed
+    // 3.5mm pallet-to-balance distance -- a genuinely different (if illustrative) escapement from
+    // the teaching movement's own 0.9mm/4.5mm pair, chosen only to admit a valid triangle; Playtner
+    // gives no worked numeric example for the crescent's own opening to otherwise check this against.
+    const m = updateEscapement(teaching, esc.id, {
+      balance: { ...esc.balance, impulseRadius: millimetres(0.7), rollerRadius: millimetres(1) },
+    });
+    expect(crescentRules(m)).toEqual(["ESC-112:info:crescent-opening"]);
+    const half = crescentHalfAngle(millimetres(3.5), degrees(10), degrees(1.25), millimetres(3.5), millimetres(0.7), millimetres(1)) ?? radians(Number.NaN);
+    const info = validateMovement(m).find((i) => i.rule === "ESC-112" && i.id.includes("crescent-opening"));
+    expect(info?.message).toContain(`${(toDegrees(half) * 2).toFixed(2)}°`);
+  });
+
+  it("not reported for a double roller, even with the same roller radius entered", () => {
+    const m = updateEscapement(teaching, esc.id, {
+      balance: { ...esc.balance, impulseRadius: millimetres(0.7), rollerRadius: millimetres(1), rollerKind: "DOUBLE" },
+    });
+    expect(crescentRules(m)).toEqual([]);
   });
 });

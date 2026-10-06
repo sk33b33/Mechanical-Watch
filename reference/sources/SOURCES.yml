@@ -1163,6 +1163,9 @@
     - "in the single roller the safety action is at the mercy of the impulse and pallet angles. We have noticed that in order to favor the impulse we require a large roller, and for the safety action a small one, therefore escapements made on fine principles are supplied with two rollers, one for each action." (the geometric trade-off `Balance.rollerKind` names: SINGLE | DOUBLE, ASM-0043)
     - "It may be well to say that in our opinion a proportion between the fork and impulse angles in 10° pallets of 3 or 3½ to 1, depending upon the size of the escapement, is the lowest which should be made in single roller. We have seen them in proportions of 2 to 1 in single roller—a scientific principle foolishly applied—resulting in an action entirely unsatisfactory." (the cited single-roller fork-ratio floor, ESC-111 — Playtner's own hedged figure, not checked for DOUBLE)
     - "When the guard point is pressed against the roller the escape tooth must still rest on the locking face of the pallet; if the total lock is 2°, by allowing 1¼° freedom for the guard point between the bank and the roller the escapement will still be locked ¾°. How much this shake actually amounts to depends upon the guard radius. Suppose this to be 4 mm., then the freedom would equal 4 × 2 × 3.1416 ÷ 360 × 1.25 = .0873 mm." (the same hard necessity as ESC-110 applied to the guard point — `PalletGeometry.guardPointFreedom` strictly under the total lock — and Playtner's own worked numbers, reproduced exactly by the teaching movement's guardPointFreedom=1¼°/guardPointRadius=4mm, `guardPointClearance`, ASM-0043)
+    - "The Crescent in the roller must be large and deep enough so it will be impossible for the guard point to touch in or on the corners of it; at the same time it must not be too large, as it would necessitate a longer horn on the fork than is necessary." (the purpose `crescentHalfAngle` derives a size for, ASM-0044)
+    - "Fig. 24 shows the slot n of the fork standing at the bank. The ruby pin o touches it, but has not as yet acted on it; s s illustrates a single roller, while S2 illustrates the safety roller for a double roller escapement. In order to find the dimensions of the crescent in the single roller we must proceed as follows: WA is in the center of the fork when it rests against the bank, and is, therefore, one of the sides of the fork angle, and is drawn from the pallet center; V A W is an angle of 1¼°, which equals the freedom between the guard point and the roller; g g represents the path of the guard pin u for the single roller, and is drawn at the intersection of VA with the roller. A′ A2 is a line drawn from the balance center through that of the ruby pin, and therefore also passes through the center of the crescent. By planting a compass on this line, where it cuts the periphery of the roller, and locating the point of intersection of VA with the roller, will give us one-half the crescent, the remaining half being transferred to the opposite side of the line A′ A2." (the single-roller crescent construction `crescentHalfAngle`/`ringCrossingAngle`/`rubyPinAngleAtBalance` reconstruct as closed-form trigonometry, ASM-0044, ESC-112 — a verbal compass construction, not a quoted formula, and the author's own reading of it: WA at half the lever angle off the pallet-to-balance centre line, per Playtner's own Fig. 15 commentary quoted above under ASM-0041/ESC-109)
+    - "It may be well to say that in our opinion a proportion between the fork and impulse angles in 10° pallets of 3 or 3½ to 1... The angle of opening for the crescent in the double roller escapement is greater than in the single, because it is placed closer to the balance center, and the guard point or dart further from the pallet center... Fig. 24, at ff, shows the path of the dart h, which also has 1¼° freedom between bank and roller. From the balance center we draw A′d touching the center or point of the dart; from this point we construct at 5° angle b A′ d. This is to ensure sufficient freedom for the dart when entering the crescent." (the double roller's own, different and partly empirical dart-crescent construction — not reconstructed here; ASM-0044 is scoped to the single roller only)
   claims_to_check: []
   retrieved: true
   accessed: "2026-10-05"
@@ -1189,7 +1192,10 @@
     "Fork and Roller Action" chapter used in this project) and ASM-0043
     (`Balance.rollerKind`, `PalletGeometry.guardPointFreedom`,
     `guardPointRadius`, `guardPointClearance` — drawn from the book's
-    "The Safety Action" chapter), and the
+    "The Safety Action" chapter) and ASM-0044 (`Balance.rollerRadius`,
+    `crescentHalfAngle`/`ringCrossingAngle`/`rubyPinAngleAtBalance` in
+    `src/kinematics/palletGeometry.ts` — the single roller's crescent
+    opening, from the book's "The Crescent" chapter), and the
     ESC-106 (hard geometric budget, derived — not just cited; type-aware
     since ASM-0038) / ESC-107 (informal drop advisory — 1.5° club / 2°
     ratchet, cited; derived tooth width) / ESC-108 (derived escape-tooth
@@ -1199,39 +1205,52 @@
     necessity, not just cited; slot shake; the suggested width) / ESC-111
     (guard-point freedom strictly under the total lock, the same hard
     necessity; guard-point radius; the derived guard-point clearance; the
-    single-roller fork-ratio-floor advisory) validation
-    rules. Re-read directly from the same locally cached HTML (no
-    re-fetch needed) for the "The Draw" and "The Fork and Roller Action"
-    chapters' exact language, and this pass additionally fetched two of
-    the chapter's own figures (fig05.png, fig28.png — redirected through
-    www.gutenberg.org, fetched with curl -L) and viewed them directly
-    (the same "fetch the image, read it as an image" workaround already
-    used for SRC-0037's formula images) to confirm the pallet stone's
-    general block-with-a-leaning-face shape before implementing ASM-0040
-    — not to reverse-engineer the diagrams' full construction
-    point-for-point. A later pass re-read the same cached HTML for "The
-    Safety Action" chapter's exact language (single vs. double roller,
-    guard-point freedom and radius) without re-fetching. Eight pieces of
-    this chapter's material are now used across these eight assumptions
-    (drop; pallet type and width; tooth type; draw/tooth-face angle; the
-    2D outlines; impulse radius/fork length; ruby-pin entry
-    freedom/slot shake/suggested width; roller kind/guard-point
-    freedom/radius/clearance); the book's larger remaining treatment of
-    true lifting-face curvature, the tooth/pallet FACE contact geometry
-    itself, the real/primitive-circle correction, the
+    single-roller fork-ratio-floor advisory) / ESC-112 (the single
+    roller's derived crescent opening, or a warning when the entered
+    values and the real placement distance do not form a consistent
+    geometry) validation rules. Re-read directly from the same locally
+    cached HTML (no re-fetch needed) for the "The Draw" and "The Fork and
+    Roller Action" chapters' exact language, and this pass additionally
+    fetched two of the chapter's own figures (fig05.png, fig28.png —
+    redirected through www.gutenberg.org, fetched with curl -L) and
+    viewed them directly (the same "fetch the image, read it as an
+    image" workaround already used for SRC-0037's formula images) to
+    confirm the pallet stone's general block-with-a-leaning-face shape
+    before implementing ASM-0040 — not to reverse-engineer the diagrams'
+    full construction point-for-point. A later pass re-read the same
+    cached HTML for "The Safety Action" chapter's exact language (single
+    vs. double roller, guard-point freedom and radius) without
+    re-fetching. A further pass fetched and viewed Fig. 14 (fork and
+    roller action) and Fig. 24 (the crescent) directly, the same
+    workaround, before implementing ASM-0044's trigonometric
+    reconstruction of "The Crescent" chapter's own compass-and-protractor
+    construction — a genuinely different kind of source material from
+    every other equation drawn from this book so far (a verbal
+    construction with named points, not a stated formula or a single
+    worked numeric example), so the derivation is the author's own
+    reading of the figure and text, clearly marked as such rather than
+    attributed to Playtner as a formula. Nine pieces of this chapter's
+    material are now used across these nine assumptions (drop; pallet
+    type and width; tooth type; draw/tooth-face angle; the 2D outlines;
+    impulse radius/fork length; ruby-pin entry freedom/slot shake/
+    suggested width; roller kind/guard-point freedom/radius/clearance;
+    the single roller's crescent opening); the book's larger remaining
+    treatment of true lifting-face curvature, the tooth/pallet FACE
+    contact geometry itself, the real/primitive-circle correction, the
     engaging/disengaging asymmetry and the locked-vs-unlocked
     face-position correction remains unmodeled, as does most of "The
     Fork and Roller Action" still (the fuller width/freedom/impulse-
     radius relationship in Figs. 17-20, the Savage pin roller), the rest
-    of "The Safety Action" (the dart's own shape, the fuller
-    roller/crescent geometric relationship), "The Crescent" (angular
-    opening) and "The Horn" (length, freedom) chapters — explicitly out
-    of scope here, scoped as Phase 7.1.5's later sub-items
-    (`docs/ROADMAP.md`) rather than attempted incompletely now. The
-    CIRCULAR pallet type is named in the domain model (ASM-0037) but not
-    implemented: this source states only that its locking offset from
-    the tangent shrinks with pallet width, not a closed-form formula for
-    it.
+    of "The Safety Action" (the dart's own shape), the double roller's
+    own separate and partly empirical dart-crescent construction (a
+    5° allowance "to ensure sufficient freedom for the dart", not
+    reconstructed here) and "The Horn" (length, freedom) chapter —
+    explicitly out of scope here, scoped as Phase 7.1.5's later
+    sub-items (`docs/ROADMAP.md`) rather than attempted incompletely
+    now. The CIRCULAR pallet type is named in the domain model
+    (ASM-0037) but not implemented: this source states only that its
+    locking offset from the tangent shrinks with pallet width, not a
+    closed-form formula for it.
 
 # Phase 7.5 (docs/ROADMAP.md): nonlinear mainspring torque curve and
 # bridle/slipping behaviour (REF-ENG §11; ASM-0026 currently uses a

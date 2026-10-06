@@ -157,15 +157,23 @@ level).
       necessity as 7.1.5.2's ruby-pin entry freedom. The dart's own
       shape and the fuller roller/crescent geometric relationship
       remain unmodeled.
-    - 7.1.5.4 — Crescent angular opening: a genuine geometric
-      construction (the guard point's circular path around the pallet
-      axis intersecting the roller circle around the balance axis),
-      analogous to the existing `tangentialCentreDistance`/
-      `lockingPoints` pallet-locking construction. Needs the source's
-      own figures (Fig. 14, Fig. 24) fetched and viewed first, the same
-      diligence as 7.1.3/7.1.4's fig05/fig28 — this geometry has
-      multiple interacting circles and letters that are hard to get
-      right from text alone.
+    - 7.1.5.4 — **Done** (see `docs/STATUS.md`). Single-roller crescent
+      angular opening (ASM-0044, ESC-112), reconstructed as closed-form
+      trigonometry (`crescentHalfAngle`/`ringCrossingAngle`/
+      `rubyPinAngleAtBalance`) from Fig. 14/Fig. 24 and the chapter's
+      verbal compass construction — this is the author's own reading of
+      a construction with no stated formula and no worked numeric
+      example, not a quoted equation, and clearly marked as such.
+      `Balance.rollerRadius` (new, declared, optional) is left unknown
+      everywhere including the teaching movement, since its own placed
+      pallet-to-balance distance doesn't admit its own fork acting
+      length/impulse radius as a consistent triangle. Uses the actual
+      placed pallet-arbor/balance-staff distance (same source ESC-103
+      already uses) rather than a second, redundant declared figure;
+      an inconsistent triangle is reported as a warning, not a wrong
+      number. Double roller's own "dart" construction (a different,
+      partly empirical allowance) is not reconstructed — remains
+      unmodeled, with the dart's own shape and "The Horn" chapter.
     - 7.1.5.5 — Horn length and freedom: a similar circle-intersection
       construction along the pallet-to-ruby-pin line; freedom 0.25-0.5°
       more than the guard-point freedom (cited, relational).

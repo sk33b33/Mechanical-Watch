@@ -2,6 +2,83 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 7.1.5.4: single-roller crescent angular opening (ESC-112, ASM-0044)
+
+Fourth of 7.1.5's six sub-items, from SRC-0036's "The Crescent"
+chapter — a genuinely different kind of source material from every
+earlier piece of this book used so far: a verbal compass-and-protractor
+construction with named points, not a stated formula, and with no
+worked numeric example anywhere to verify a reconstruction against.
+Fig. 14 and Fig. 24 were fetched and viewed directly before writing
+any code, per the roadmap's own flag that this geometry has multiple
+interacting circles that are risky to get right from text alone.
+
+- **Scoping decision, put to the user first.** Reconstructing the
+  construction exactly requires a new declared field (the roller's own
+  edge radius, which Playtner never gives a number for) and the actual
+  placed pallet-arbor-to-balance-staff distance (which none of
+  7.1.5.1-3 needed). Offered three options — full construction with a
+  new field, a smaller double-roller-only slice, or deferring the
+  whole sub-item — and the user chose the full construction.
+- **`Balance.rollerRadius` (declared, optional mm, new field).**
+  Distinct from `impulseRadius`: the roller's own edge, where the
+  crescent is cut, not the ruby pin's own lever-arm length. Entered
+  directly, same pattern as `impulseRadius`; left unknown (null)
+  everywhere, including the teaching movement, because — unlike every
+  other field added this phase — there is no Playtner worked number
+  for it, and because the teaching movement's own placed pallet-to-
+  balance distance (3.5mm) does not in fact admit its own fork acting
+  length (4.5mm) and impulse radius (0.9mm) as a consistent triangle;
+  entering a value there would only ever report the construction as
+  not realizable.
+- **Three new pure functions (`src/kinematics/palletGeometry.ts`).**
+  `ringCrossingAngle`: where a ray from the pallet centre — leaning an
+  angle off the pallet-to-balance line — first crosses a circle around
+  the balance centre, found via the nearest-root ray/circle quadratic
+  (same method as the existing `rayCircleInward`) then the law of
+  cosines, avoiding the two-root ambiguity a law-of-sines-only approach
+  would leave. A first implementation using only the law of sines
+  picked the *far* crossing instead of the near one; caught by an
+  independent geometric cross-check test before it shipped, not
+  something a plain unit test against a single hand-computed number
+  would have found. `rubyPinAngleAtBalance`: the ruby pin's own
+  direction from the balance centre (Playtner's "A′A2"), via the law
+  of cosines on the three already-known triangle sides (the actual
+  placed centre distance, the fork acting length, the impulse radius).
+  `crescentHalfAngle`: the difference between the two, composing them
+  per Playtner's own construction ("will give us one-half the
+  crescent, the remaining half being transferred to the opposite side
+  of the line A′A2").
+- **ESC-112 (error/warning/info, single roller only).** Roller radius,
+  when entered, must be positive. With it, plus impulse radius,
+  guard-point freedom and the *actual placed* pallet-to-balance
+  distance (the same real distance ESC-103 already uses — reusing real
+  geometry rather than inventing a second, redundant declared one),
+  the crescent's angular opening is derived and reported. When those
+  lengths don't form a consistent triangle, a warning names that
+  plainly rather than a wrong number being shown — a direct instance
+  of this project's own stated mission to detect mechanical
+  inconsistencies, not a bug. Never checked for a double roller: its
+  own "dart" crescent uses a different, additional empirical allowance
+  ("we construct at 5° angle... to ensure sufficient freedom for the
+  dart") that this does not reconstruct — unmodeled, along with the
+  dart's own shape and "The Horn" chapter.
+- **Verification.** New property-based tests cross-check
+  `ringCrossingAngle` and `rubyPinAngleAtBalance` against independent
+  coordinate-geometry constructions (200 random cases each, seeded),
+  not just hand-picked numbers — this is what caught the near/far-root
+  bug above. New ESC-112 tests cover roller-radius positivity, the
+  teaching movement's own geometrically-inconsistent case (reported as
+  a warning, not silently wrong), a separately-chosen self-consistent
+  example that does derive a value, and the single/double roller gate.
+  Verified live in a real browser: the roller-radius input, the
+  "not geometrically realizable" warning on the teaching movement's own
+  values, the derived crescent opening once a consistent impulse
+  radius is entered, and the ESC-112 output disappearing entirely on
+  switching to a double roller. 532 unit tests pass (524 before);
+  `tsc -b --noEmit` and `eslint` are clean; production build succeeds;
+  full e2e suite (31 tests) passes.
+
 ## Phase 7.1.5.3: roller kind, guard-point freedom/radius/clearance (ESC-111, ASM-0043)
 
 Third of 7.1.5's six sub-items: single vs. double roller, and the

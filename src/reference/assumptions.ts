@@ -261,6 +261,12 @@ export const ASSUMPTIONS = {
     scope: "Escapement geometry",
     status: "Active",
   },
+  "ASM-0044": {
+    summary:
+      "Balance.rollerRadius (optional) and crescentHalfAngle/ringCrossingAngle/rubyPinAngleAtBalance (ESC-112): the author's own closed-form reconstruction of SRC-0036's verbal single-roller crescent-opening construction, using the actual placed pallet-to-balance distance (same source as ESC-103), the fork acting length and impulse radius (law of cosines, the ruby-pin reference direction) and the guard-point freedom (law of sines, a ray from the pallet centre crossing the roller). No worked numeric example exists to verify the combined result against, so rollerRadius defaults to unknown everywhere (including the teaching movement, whose own placed distance does not admit its own fork acting length/impulse radius as a consistent triangle); an inconsistent triangle is reported as a warning, not a wrong number. Single roller only — the double roller's own dart construction uses a different empirical allowance, unmodeled",
+    scope: "Escapement geometry",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

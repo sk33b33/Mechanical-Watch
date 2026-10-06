@@ -102,6 +102,18 @@ export interface Balance {
    * either case.
    */
   rollerKind: "SINGLE" | "DOUBLE";
+  /**
+   * The single roller's own edge radius, where the crescent is cut
+   * (ASM-0044, SRC-0036 "The Crescent"). Distinct from `impulseRadius`
+   * (the ruby pin's own radius): the two may coincide on a real roller
+   * table but Playtner gives no number tying them together, so this is
+   * entered directly, like `impulseRadius`, not derived from it. Used
+   * only for the single roller's own crescent-opening construction
+   * (`crescentHalfAngle`, ESC-112); not applicable to a double roller's
+   * separate, smaller safety roller, which is unmodeled. Null when
+   * unknown.
+   */
+  rollerRadius: Length | null;
 }
 
 /**
