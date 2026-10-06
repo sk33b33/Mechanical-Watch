@@ -404,17 +404,46 @@ propagation used everywhere else.
   boundary, not an arbitrary angle), interference between the new discs/
   stars and existing components at their z-height, same discipline as
   the existing GEAR-1xx/ESC-1xx rules.
+- 8.8 — "Leap second" handling — **confirmed out of scope, not
+  reconsidered without the user asking.** Researched fresh (2026-10-06):
+  no mechanical watch, nor any electronic/radio/GPS-synchronized watch,
+  has ever implemented leap-second correction as a physical mechanism.
+  Every real implementation — Seiko Astron (GPS reception, a stepper
+  motor driven to the corrected position only after a firmware
+  correction), Citizen's satellite/radio-controlled calibers (a manual
+  crown-set digital offset, 0 to −90 s), and radio-controlled-watch
+  patents (e.g. US8792308B2, which adds the correction to GPS time in
+  the control circuit *before* the motor ever moves) — applies it as a
+  software/firmware correction to a digital time register, never a
+  gear-train or kinematic event. This is a sharper case than 8.5, not
+  just "data this project lacks": unlike leap year's fixed, internally-
+  computable 4-year arithmetic cycle (8.4, SRC-0044/SRC-0047), a leap
+  second is triggered by irregular, only-externally-measurable Earth-
+  rotation physics (UT1 vs. UTC), decided and announced ad hoc by IERS
+  roughly six months ahead (Bulletin C, ITU-R TF.460-6's 8-week
+  minimum) with no fixed periodicity — spacing from 6 months to over a
+  decade (none since 2016-12-31), and occasionally none at all. There is
+  no channel by which a self-regulating gear train could receive, let
+  alone anticipate, such a correction. The BIPM's 2022 Resolution 4 (27th
+  CGPM) is actively phasing leap seconds out entirely (target by 2035,
+  next review at the 2026 CGPM) specifically because ad hoc insertion
+  "risk[s] causing serious malfunctions in critical digital
+  infrastructure" — and flags an unprecedented, never-tested *negative*
+  leap second (Earth's rotation has been speeding up since the mid-2010s)
+  that existing hardware and software are not generally built to handle
+  either. No sourceable mechanism exists to design against; left
+  deliberately unscoped.
 
 Order: 8.1 first (ships independently, no jump-mechanism risk, proves
 the display groundwork 8.6 needs). 8.2 next (the jump-mechanism design
 decision, needed by everything after it). 8.3 after 8.2. 8.4 after 8.3,
 gated on checking its Geneva-drive kinematics claim against a real
-mechanism-design source first. 8.5 stays out of scope. 8.6/8.7 are
+mechanism-design source first. 8.5 and 8.8 stay out of scope. 8.6/8.7 are
 cross-cutting — do the display groundwork alongside 8.1, and the
 validation rules alongside whichever jump-mechanism item is current.
 
 8.1–8.4 are done (see `docs/STATUS.md` for each). 8.6/8.7's
 cross-cutting work was folded into 8.1–8.4 as they shipped, rather than
-built as separate items. 8.5 remains confirmed out of scope. No further
-Phase 8 sub-item is scoped to start without the user's next explicit
-instruction.
+built as separate items. 8.5 and 8.8 remain confirmed out of scope. No
+further Phase 8 sub-item is scoped to start without the user's next
+explicit instruction.
