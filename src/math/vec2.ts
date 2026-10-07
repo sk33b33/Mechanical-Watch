@@ -49,6 +49,13 @@ export function distanceToSegment(p: Vec2, a: Vec2, b: Vec2): number {
   return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
 }
 
+/** Distance from `p` to the nearest point of an axis-aligned rectangle (0 when `p` is inside it). */
+export function distanceToRectangle(p: Vec2, centre: Vec2, width: number, height: number): Length {
+  const dx = Math.max(Math.abs(p.x - centre.x) - width / 2, 0);
+  const dy = Math.max(Math.abs(p.y - centre.y) - height / 2, 0);
+  return metres(Math.hypot(dx, dy));
+}
+
 /** True if a disc of `radius` around `centre` shares any area with the polygon. */
 export function circleOverlapsPolygon(centre: Vec2, radius: number, polygon: readonly Vec2[]): boolean {
   if (pointInPolygon(centre, polygon)) return true;

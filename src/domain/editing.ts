@@ -175,7 +175,7 @@ export function newDialWindow(movement: Movement): DialWindow {
     dialId: "" as DialId,
     complicationId: "" as EntityId,
     centre: vec2(EMPTY, EMPTY),
-    radius: EMPTY,
+    outline: { kind: "CIRCLE", radius: EMPTY },
   });
 }
 

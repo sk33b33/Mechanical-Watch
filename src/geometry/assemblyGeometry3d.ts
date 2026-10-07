@@ -116,22 +116,44 @@ export function createZCylinder(radius: number, zLo: number, zHi: number, segmen
   return geometry;
 }
 
+/** A `DialWindow`'s own cutout, already in the disc's local frame (see `createDiscWithHolesGeometry`). */
+export type DiscHole =
+  | { kind: "CIRCLE"; x: number; y: number; radius: number }
+  | { kind: "RECTANGLE"; x: number; y: number; width: number; height: number };
+
+function isValidHole(hole: DiscHole): boolean {
+  if (!(Number.isFinite(hole.x) && Number.isFinite(hole.y))) return false;
+  return hole.kind === "CIRCLE"
+    ? Number.isFinite(hole.radius) && hole.radius > 0
+    : Number.isFinite(hole.width) && hole.width > 0 && Number.isFinite(hole.height) && hole.height > 0;
+}
+
 /**
- * A disc's outer circle with zero or more circular holes punched through
- * it (ASM-0051, `DialWindow`) — depth spans z ∈ [0, thickness]; position
- * the mesh at the disc's own zLo afterward, same convention as
+ * A disc's outer circle with zero or more holes punched through it
+ * (ASM-0051, `DialWindow`) — depth spans z ∈ [0, thickness]; position the
+ * mesh at the disc's own zLo afterward, same convention as
  * `createFrameGeometry`. Hole centres are in the same local frame as
  * `radius` (i.e. already relative to the disc's own centre, not
  * movement-plan coordinates — the caller subtracts the disc's own centre
  * first).
  */
-export function createDiscWithHolesGeometry(radius: number, thickness: number, holes: readonly { x: number; y: number; radius: number }[]): THREE.ExtrudeGeometry {
+export function createDiscWithHolesGeometry(radius: number, thickness: number, holes: readonly DiscHole[]): THREE.ExtrudeGeometry {
   const shape = new THREE.Shape();
   shape.absarc(0, 0, radius, 0, Math.PI * 2, false);
   for (const hole of holes) {
-    if (!(Number.isFinite(hole.x) && Number.isFinite(hole.y) && Number.isFinite(hole.radius) && hole.radius > 0)) continue;
+    if (!isValidHole(hole)) continue;
     const path = new THREE.Path();
-    path.absarc(hole.x, hole.y, hole.radius, 0, Math.PI * 2, true);
+    if (hole.kind === "CIRCLE") {
+      path.absarc(hole.x, hole.y, hole.radius, 0, Math.PI * 2, true);
+    } else {
+      const hw = hole.width / 2;
+      const hh = hole.height / 2;
+      path.moveTo(hole.x - hw, hole.y - hh);
+      path.lineTo(hole.x - hw, hole.y + hh);
+      path.lineTo(hole.x + hw, hole.y + hh);
+      path.lineTo(hole.x + hw, hole.y - hh);
+      path.closePath();
+    }
     shape.holes.push(path);
   }
   return new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false, curveSegments: 64 });

@@ -2,6 +2,46 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Dial windows: rectangular month/year windows (follow-up to Phase 8.6)
+
+Requested directly: change the month and leap-year dial windows from
+circles to rectangles, leaving date (and moon phase) circular — a real
+month/year window is usually a rectangle wide enough for a word
+("January") or short label ("Year 4"), which a fixed-radius circle
+cannot show without either clipping the text or revealing its
+neighbours on the ring.
+
+- `DialWindow.radius` became `DialWindow.outline`, a discriminated union
+  (`{ kind: "CIRCLE"; radius }` or `{ kind: "RECTANGLE"; width; height }`),
+  the same tagged-union pattern already used for `ShaftPlacement` and
+  `Frame.outline` in this codebase.
+- `createDiscWithHolesGeometry` (`src/geometry/assemblyGeometry3d.ts`)
+  now punches either shape of hole through the dial mesh.
+- A new pure helper, `distanceToRectangle` in `src/math/vec2.ts`
+  (clamped per-axis distance to an axis-aligned rectangle), lets
+  DIALWIN-002's overlap check and `componentReport.ts`'s derived "Overlap
+  with the complication's own disc" row handle a rectangular window the
+  same way they already handled a circular one (circle-circle distance),
+  without needing a general polygon-overlap routine.
+- Inspector gains a Shape selector (Circle/Rectangle) with the matching
+  dimension fields; switching shape resets dimensions to empty rather
+  than guessing a conversion.
+- Schema 22 → 23: an existing dial window's `radius` becomes
+  `outline: { kind: "CIRCLE", radius }`, preserving its shape and size
+  exactly — the first dial-window schema change since 8.6 shipped.
+- Teaching movement: month and leap-year windows are now rectangles
+  (1.6 × 0.7 mm and 1.2 × 0.55 mm respectively, at the same offset
+  position as before); date and moon phase stay circular. Guided
+  tutorial copy for the month-window step now mentions the shape change.
+
+Verified: typecheck, lint, the full vitest suite (650 tests, 8 new —
+geometry-helper tests for the rectangle hole case, `distanceToRectangle`
+property tests, and DIALWIN-001/002 rectangle-specific cases), a
+production build, a live-browser spot check (confirmed the month and
+leap-year windows render as visibly rectangular cutouts, the date
+window stays round, and the wider month window shows more of its
+printed text than the circular one did), and the full e2e suite.
+
 ## Phase 8.6: dial windows — done
 
 Prompted by a direct question: "how come there's no visual presentation

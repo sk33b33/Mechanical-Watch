@@ -410,7 +410,7 @@ function buildTeachingMovementSteps(): TutorialStep[] {
     {
       id: "add-month-window",
       title: "Cut a window for the month",
-      instructions: "Click “+ Window” once more, the same way as the date window — the month star's own printed names (January–December) pass underneath it as it advances.",
+      instructions: "Click “+ Window” once more — this time a rectangle rather than a circle, wide enough for the month star's own printed names (January–December) to actually read as they pass underneath it, the way a real month window works.",
       targetSelector: '[data-tutorial="add-window"]',
       isComplete: (m) => m.dialWindows[monthWindow.id] !== undefined,
       createOverride: (m) => ({ movement: addDialWindow(m, monthWindow), id: monthWindow.id }),

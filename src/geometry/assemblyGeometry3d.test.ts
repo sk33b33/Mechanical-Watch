@@ -200,8 +200,8 @@ describe("handHubRadius", () => {
 describe("createDiscWithHolesGeometry", () => {
   it("punches one hole per valid entry into the disc's bounding box (ASM-0051)", () => {
     const geometry = createDiscWithHolesGeometry(3e-3, 0.3e-3, [
-      { x: 1e-3, y: 0, radius: 0.3e-3 },
-      { x: -1e-3, y: 0.5e-3, radius: 0.2e-3 },
+      { kind: "CIRCLE", x: 1e-3, y: 0, radius: 0.3e-3 },
+      { kind: "RECTANGLE", x: -1e-3, y: 0.5e-3, width: 0.3e-3, height: 0.2e-3 },
     ]);
     geometry.computeBoundingBox();
     const box = geometry.boundingBox;
@@ -214,14 +214,31 @@ describe("createDiscWithHolesGeometry", () => {
     expect(box?.max.z).toBeCloseTo(0.3e-3, 9);
   });
 
-  it("skips a hole with a non-finite or non-positive radius rather than throwing (DIALWIN-001 leaves the geometry to this)", () => {
+  it("skips a hole with a non-finite or non-positive dimension rather than throwing (DIALWIN-001 leaves the geometry to this)", () => {
     expect(() =>
       createDiscWithHolesGeometry(3e-3, 0.3e-3, [
-        { x: 0, y: 0, radius: Number.NaN },
-        { x: 0, y: 0, radius: 0 },
-        { x: Number.NaN, y: 0, radius: 0.2e-3 },
+        { kind: "CIRCLE", x: 0, y: 0, radius: Number.NaN },
+        { kind: "CIRCLE", x: 0, y: 0, radius: 0 },
+        { kind: "CIRCLE", x: Number.NaN, y: 0, radius: 0.2e-3 },
+        { kind: "RECTANGLE", x: 0, y: 0, width: Number.NaN, height: 0.2e-3 },
+        { kind: "RECTANGLE", x: 0, y: 0, width: 0.2e-3, height: 0 },
       ]),
     ).not.toThrow();
+  });
+
+  it("a rectangle hole is axis-aligned, centred on its own x/y, width along X and height along Y", () => {
+    const geometry = createDiscWithHolesGeometry(3e-3, 0.3e-3, [
+      { kind: "RECTANGLE", x: 0, y: 0, width: 1.6e-3, height: 0.6e-3 },
+    ]);
+    const positions = geometry.attributes.position;
+    if (positions === undefined) throw new Error("geometry has no position attribute");
+    let sawNearCorner = false;
+    for (let i = 0; i < positions.count; i += 1) {
+      const x = positions.getX(i);
+      const y = positions.getY(i);
+      if (Math.abs(x - 0.8e-3) < 1e-9 && Math.abs(y - 0.3e-3) < 1e-9) sawNearCorner = true;
+    }
+    expect(sawNearCorner).toBe(true);
   });
 
   it("produces a plain solid disc when there are no holes at all", () => {

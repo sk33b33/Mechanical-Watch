@@ -27,7 +27,7 @@ import { isochronismAdjustedRate, MIDDLE_TEMPERATURE_CELSIUS, temperatureAdjuste
 import { summarizeBalance } from "@/kinematics/balanceSummary";
 import { summarizeEnergy } from "@/kinematics/energySummary";
 import { crescentHalfAngle, dropClearance, forkActingLength, forkRatio, guardPointClearance, hornClearance, impulseAngle, isHalfToothSpan, spanAngle, suggestedRubyPinWidth, tangentialCentreDistance, toothDrawAngle, toothWidthAngle, wheelAngleBudgetPerBeat } from "@/kinematics/palletGeometry";
-import { distance } from "@/math/vec2";
+import { distance, distanceToRectangle } from "@/math/vec2";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import { toNewtonMillimetres } from "@/units/torque";
 import { toMicrojoules } from "@/units/energy";
@@ -636,25 +636,30 @@ function dialWindowReport(movement: Movement, analysis: MovementAnalysis, win: D
   const discCentre = complication === undefined ? undefined : analysis.placement.shaftPositions.get(complication.shaftId);
   const gap = discCentre === undefined || complication === undefined
     ? null
-    : (win.radius + complication.discRadius - distance(win.centre, discCentre)) as Length;
+    : win.outline.kind === "CIRCLE"
+      ? (win.outline.radius + complication.discRadius - distance(win.centre, discCentre)) as Length
+      : (complication.discRadius - distanceToRectangle(discCentre, win.centre, win.outline.width, win.outline.height)) as Length;
   return {
     id: win.id,
     name: win.name,
     kind: "Window",
-    description: "a circular cutout in the dial, through which a disc complication becomes visible (no kinematic effect of its own)",
+    description: `a ${win.outline.kind === "CIRCLE" ? "circular" : "rectangular"} cutout in the dial, through which a disc complication becomes visible (no kinematic effect of its own)`,
     parameters: [
       entered("Dial", dial?.name ?? "not chosen"),
       entered("Shows", complication?.name ?? "not chosen"),
+      entered("Shape", win.outline.kind === "CIRCLE" ? "circle" : "rectangle"),
       lengthParam("Centre X", win.centre.x),
       lengthParam("Centre Y", win.centre.y),
-      lengthParam("Radius", win.radius),
+      ...(win.outline.kind === "CIRCLE"
+        ? [lengthParam("Radius", win.outline.radius)]
+        : [lengthParam("Width", win.outline.width), lengthParam("Height", win.outline.height)]),
     ],
     derived: [
       {
         label: "Overlap with the complication's own disc",
-        text: gap === null ? "not resolved" : gap > 0 ? `${(toMillimetres(gap)).toFixed(2)} mm radial margin` : "does not overlap (DIALWIN-002)",
+        text: gap === null ? "not resolved" : gap > 0 ? `${(toMillimetres(gap)).toFixed(2)} mm margin` : "does not overlap (DIALWIN-002)",
         si: gap,
-        equation: "window radius + disc radius − centre distance",
+        equation: win.outline.kind === "CIRCLE" ? "window radius + disc radius − centre distance" : "disc radius − distance from disc centre to the window rectangle",
         level: "L1_GEOMETRIC",
         references: ["ASM-0051"],
       },

@@ -7,7 +7,23 @@ import type { DialId } from "./dial";
 export type DialWindowId = EntityId<"dialWindow">;
 
 /**
- * A circular cutout in a dial, through which one of the movement's disc
+ * A window's own cutout shape, centred on its own `centre` — a deliberate
+ * simplification of the full range of real date/month/year window shapes
+ * (ASM-0051, same "visual only, not a manufacturing claim" treatment this
+ * project already gives other cosmetic geometry, ASM-0005, ASM-0020):
+ * - CIRCLE: a real simple-date aperture is usually round.
+ * - RECTANGLE (axis-aligned, `width` along X and `height` along Y): a
+ *   real month/year indicator window is usually a small rectangle — wide
+ *   enough to show a word ("January") or a short label ("Year 4"), which
+ *   a fixed-radius circle cannot do without either clipping the text or
+ *   being wide enough to reveal its neighbours on the ring.
+ */
+export type DialWindowOutline =
+  | { kind: "CIRCLE"; radius: Length }
+  | { kind: "RECTANGLE"; width: Length; height: Length };
+
+/**
+ * A cutout in a dial, through which one of the movement's disc
  * complications (`MoonPhase`, `DateComplication`, `MonthComplication`,
  * `LeapYearComplication` — see `src/domain/discComplication.ts`) is
  * visible from the dial side. This is the display concept Phase 8.6
@@ -17,13 +33,9 @@ export type DialWindowId = EntityId<"dialWindow">;
  * the only way to read a complication's value at all was the
  * inspector's own "Current position" text row.
  *
- * `centre`/`radius` are in the same movement-plan (x, y) coordinates as
- * everything else — not relative to the dial's own centre — matching
- * how every other plan-positioned entity in this project is declared.
- * Circular only: a deliberate simplification of a real date window's
- * usual small-rectangle shape (ASM-0051), the same "visual only, not a
- * manufacturing claim" treatment this project already gives other
- * cosmetic geometry (ASM-0005, ASM-0020).
+ * `centre` is in the same movement-plan (x, y) coordinates as everything
+ * else — not relative to the dial's own centre — matching how every
+ * other plan-positioned entity in this project is declared.
  *
  * A window makes nothing happen kinematically — it is a pure display
  * entity, read only by geometry/rendering and by DIALWIN-001/002
@@ -40,7 +52,7 @@ export interface DialWindow {
   /** The disc complication shown through this window — a MoonPhase, DateComplication, MonthComplication or LeapYearComplication id. */
   complicationId: EntityId;
   centre: Vec2;
-  radius: Length;
+  outline: DialWindowOutline;
 }
 
 export interface CreateDialWindowParams {
@@ -48,7 +60,7 @@ export interface CreateDialWindowParams {
   dialId: DialId;
   complicationId: EntityId;
   centre: Vec2;
-  radius: Length;
+  outline: DialWindowOutline;
 }
 
 export function createDialWindow(params: CreateDialWindowParams): DialWindow {

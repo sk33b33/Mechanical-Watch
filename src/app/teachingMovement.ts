@@ -390,6 +390,9 @@ export function createTeachingMovement(): Movement {
   // time as the ring rotates beneath it, not a wide view of the whole disc. Moonphase prints no
   // labels (continuous, not discrete positions), so its own window is simply a smaller concentric
   // aperture near the top of the disc, the conventional layout for a moonphase window (SRC-0045).
+  // Date stays circular, the usual shape for a simple date aperture; month and leap-year use a
+  // rectangle instead, wide enough for a word ("January") or short label ("Year 4"), which a
+  // fixed-radius circle cannot show without either clipping the text or revealing its neighbours.
   const solved = solvePlacement(m);
   const windowAbove = (shaftId: ShaftId, discRadiusMm: number, labelRadiusFraction: number): { x: Length; y: Length } => {
     const at = solved.shaftPositions.get(shaftId);
@@ -401,28 +404,28 @@ export function createTeachingMovement(): Movement {
     dialId: dial.id,
     complicationId: moonPhase.id,
     centre: windowAbove(moonDiscArbor.id, 3, 0.3),
-    radius: mm(1.5),
+    outline: { kind: "CIRCLE", radius: mm(1.5) },
   }));
   m = addDialWindow(m, createDialWindow({
     name: "Date window",
     dialId: dial.id,
     complicationId: dateComplication.id,
     centre: windowAbove(dateStarArbor.id, 2.5, 0.72),
-    radius: mm(0.6),
+    outline: { kind: "CIRCLE", radius: mm(0.6) },
   }));
   m = addDialWindow(m, createDialWindow({
     name: "Month window",
     dialId: dial.id,
     complicationId: monthComplication.id,
     centre: windowAbove(monthStarArbor.id, 2, 0.72),
-    radius: mm(0.5),
+    outline: { kind: "RECTANGLE", width: mm(1.6), height: mm(0.7) },
   }));
   m = addDialWindow(m, createDialWindow({
     name: "Leap-year window",
     dialId: dial.id,
     complicationId: leapYearComplication.id,
     centre: windowAbove(leapYearWheelArbor.id, 1.5, 0.72),
-    radius: mm(0.45),
+    outline: { kind: "RECTANGLE", width: mm(1.2), height: mm(0.55) },
   }));
 
   // Pallet arbor and balance staff: fixed positions along a line from the escape arbor

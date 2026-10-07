@@ -9,7 +9,7 @@ import { metres } from "@/units/length";
 import type { PlacementSolution } from "@/kinematics/solvePlacement";
 import { isDefinedPinion, mainplateEdgeAlongStem, stemEngagement, stemLine } from "@/kinematics/keylessGeometry";
 import { createGearGeometry } from "@/geometry/gearGeometry";
-import { DIAL_VISUALIZATION, KEYLESS_VISUALIZATION, createDiscWithHolesGeometry, createZCylinder } from "@/geometry/assemblyGeometry3d";
+import { DIAL_VISUALIZATION, KEYLESS_VISUALIZATION, createDiscWithHolesGeometry, createZCylinder, type DiscHole } from "@/geometry/assemblyGeometry3d";
 
 /**
  * Presentation of the keyless works and the dial. Positions, heights and
@@ -133,7 +133,13 @@ export function buildDialMeshes(
   if (ownWindows.length === 0) {
     disc = new THREE.Mesh(createZCylinder(dial.diameter / 2, face, face + dial.thickness, 96), materials.disc);
   } else {
-    const holes = ownWindows.map((w) => ({ x: w.centre.x - centre.x, y: w.centre.y - centre.y, radius: w.radius }));
+    const holes: DiscHole[] = ownWindows.map((w) => {
+      const x = w.centre.x - centre.x;
+      const y = w.centre.y - centre.y;
+      return w.outline.kind === "CIRCLE"
+        ? { kind: "CIRCLE", x, y, radius: w.outline.radius }
+        : { kind: "RECTANGLE", x, y, width: w.outline.width, height: w.outline.height };
+    });
     disc = new THREE.Mesh(createDiscWithHolesGeometry(dial.diameter / 2, dial.thickness, holes), materials.disc);
     disc.position.z = face;
   }

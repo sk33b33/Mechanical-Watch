@@ -13,7 +13,7 @@ import type { MoonPhase } from "@/domain/moonPhase";
 import type { DateComplication } from "@/domain/dateComplication";
 import type { MonthComplication } from "@/domain/monthComplication";
 import type { LeapYearComplication } from "@/domain/leapYearComplication";
-import type { DialWindow } from "@/domain/dialWindow";
+import type { DialWindow, DialWindowOutline } from "@/domain/dialWindow";
 import type { MainspringSpec } from "@/domain/coupling";
 import type { Torque } from "@/units/torque";
 import type { MomentOfInertia, TorsionalStiffness } from "@/units/rotational";
@@ -43,7 +43,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 22;
+export const DESIGN_SCHEMA_VERSION = 23;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -311,6 +311,24 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
     const movement = doc.movement;
     if (!isRecord(movement)) return doc;
     return { ...doc, schemaVersion: 22, movement: { ...movement, dialWindows: {} } };
+  },
+  /**
+   * v22 → v23: a dial window's shape becomes an explicit CIRCLE/RECTANGLE
+   * outline instead of an implicit always-circular `radius` field (ASM-0051,
+   * rectangular month/year windows) — an existing window's own `radius`
+   * becomes `outline: { kind: "CIRCLE", radius }`, preserving its shape and
+   * size exactly.
+   */
+  22: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.dialWindows)) return doc;
+    const dialWindows = Object.fromEntries(
+      Object.entries(movement.dialWindows).map(([id, w]) => [
+        id,
+        isRecord(w) && "radius" in w ? { ...w, outline: { kind: "CIRCLE", radius: w.radius } } : w,
+      ]),
+    );
+    return { ...doc, schemaVersion: 23, movement: { ...movement, dialWindows } };
   },
 };
 
@@ -631,6 +649,14 @@ const leapYearComplication: Decoder<LeapYearComplication> = (value, path) => {
   };
 };
 
+const dialWindowOutline: Decoder<DialWindowOutline> = (value, path) => {
+  const o = object(value, path);
+  const kind = field(o, "kind", oneOf(["CIRCLE", "RECTANGLE"]), path);
+  return kind === "CIRCLE"
+    ? { kind, radius: field(o, "radius", length, path) }
+    : { kind, width: field(o, "width", length, path), height: field(o, "height", length, path) };
+};
+
 const dialWindow: Decoder<DialWindow> = (value, path) => {
   const o = object(value, path);
   return {
@@ -640,7 +666,7 @@ const dialWindow: Decoder<DialWindow> = (value, path) => {
     dialId: field(o, "dialId", id<Dial["id"]>(), path),
     complicationId: field(o, "complicationId", id<DialWindow["complicationId"]>(), path),
     centre: field(o, "centre", vec2, path),
-    radius: field(o, "radius", length, path),
+    outline: field(o, "outline", dialWindowOutline, path),
   };
 };
 
