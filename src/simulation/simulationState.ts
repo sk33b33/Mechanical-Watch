@@ -10,8 +10,8 @@ import type { DateComplicationId } from "@/domain/dateComplication";
 import type { GearTrainSolution } from "@/kinematics/solveGearTrain";
 import { crossesRevolution, dateJumpStepAngle, starPosition } from "@/kinematics/dateComplication";
 import { monthEndCorrection, monthJumpStepAngle, MONTHS_PER_YEAR } from "@/kinematics/monthComplication";
-import { LEAP_YEAR_SLOT_COUNT } from "@/domain/leapYearComplication";
-import { genevaWheelAdvanceAngle } from "@/kinematics/genevaDrive";
+import { LEAP_YEAR_INDEX_STROKE_SECONDS, LEAP_YEAR_SLOT_COUNT } from "@/domain/leapYearComplication";
+import { genevaStrokeDriverAngle, genevaWheelAdvanceAngle, genevaWheelAngle } from "@/kinematics/genevaDrive";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 
 /**
@@ -33,6 +33,15 @@ export interface SimulationState {
   mainspringWind: Readonly<Record<CouplingId, number>>;
   /** Real time received but not yet consumed by a fixed step, in seconds. */
   pendingSeconds: number;
+  /**
+   * Leap-year wheels (ASM-0050) currently mid-index: the wheel's own
+   * angle just before the trigger, and how long the stroke has been
+   * playing, so `stepSimulation` can play out the real Geneva stroke
+   * shape (`genevaWheelAngle`) over `LEAP_YEAR_INDEX_STROKE_SECONDS`
+   * instead of jumping the wheel's angle instantly. Cleared once a
+   * stroke completes.
+   */
+  genevaStrokes: Readonly<Record<ShaftId, { startAngle: Angle; elapsedSeconds: number }>>;
 }
 
 export class NonFiniteSimulationStateError extends Error {}
@@ -53,7 +62,7 @@ export function createSimulationState(movement: Movement): SimulationState {
       mainspringWind[link.id] = link.spring.usableTurns;
     }
   }
-  return { stepCount: 0, time: seconds(0), shaftAngle, stemAngle, mainspringWind, pendingSeconds: 0 };
+  return { stepCount: 0, time: seconds(0), shaftAngle, stemAngle, mainspringWind, pendingSeconds: 0, genevaStrokes: {} };
 }
 
 /**
@@ -154,6 +163,7 @@ export function stepSimulation(
     }
     nextShaftAngle[shaftId] = normalizeAngle(radians(next));
   }
+  const nextGenevaStrokes: Record<ShaftId, { startAngle: Angle; elapsedSeconds: number }> = { ...state.genevaStrokes };
   // Date star arbors (ASM-0048) are not continuous gear-train members, so the loop above never
   // touches them; a jump, when the drive arbor crosses its own revolution, advances the star
   // directly instead. Read from the drive arbor's pre-step angle (`state`, never mutated here),
@@ -182,13 +192,34 @@ export function stepSimulation(
       nextShaftAngle[track.monthCorrection.monthStarShaftId] = normalizeAngle(radians(currentMonth + track.monthCorrection.monthStepAngle));
       // The year wheel (ASM-0050) advances only on the one month-advance each year that wraps
       // the month star from December (its last position) back to January — a calendar-year
-      // event by construction, not a continuously-timed one.
+      // event by construction, not a continuously-timed one. Rather than jumping its angle here,
+      // this starts a Geneva stroke (played out below, over LEAP_YEAR_INDEX_STROKE_SECONDS) at
+      // its own pre-step angle, so the real non-uniform stroke shape is visible.
       const yearCorrection = track.monthCorrection.yearCorrection;
       if (yearCorrection !== null && monthPosition === MONTHS_PER_YEAR - 1) {
         const currentWheel = nextShaftAngle[yearCorrection.wheelShaftId] ?? radians(0);
-        nextShaftAngle[yearCorrection.wheelShaftId] = normalizeAngle(radians(currentWheel + yearCorrection.wheelStepAngle));
+        nextGenevaStrokes[yearCorrection.wheelShaftId] = { startAngle: currentWheel, elapsedSeconds: 0 };
       }
     }
+  }
+  // Plays out any leap-year wheel's Geneva stroke, whether just started above or already in
+  // progress from an earlier step (ASM-0050) — the real stroke shape (genevaWheelAngle, SRC-0047)
+  // over a declared duration (LEAP_YEAR_INDEX_STROKE_SECONDS, not a real continuous driver's own
+  // timing; see that constant's own doc comment). At the stroke's exact midpoint and endpoints
+  // genevaWheelAngle returns 0 and ±advanceAngle/2 respectively, so this reduces to the wheel's
+  // pre-stroke angle at elapsedSeconds = 0 and its post-stroke angle at elapsedSeconds ≥ duration.
+  for (const [wheelShaftId, stroke] of Object.entries(nextGenevaStrokes) as [ShaftId, { startAngle: Angle; elapsedSeconds: number }][]) {
+    const elapsed = stroke.elapsedSeconds + dtSeconds;
+    const advance = genevaWheelAdvanceAngle(LEAP_YEAR_SLOT_COUNT);
+    if (elapsed >= LEAP_YEAR_INDEX_STROKE_SECONDS) {
+      nextShaftAngle[wheelShaftId] = normalizeAngle(radians(stroke.startAngle + advance));
+      Reflect.deleteProperty(nextGenevaStrokes, wheelShaftId);
+      continue;
+    }
+    const driverAngle = genevaStrokeDriverAngle(elapsed, LEAP_YEAR_INDEX_STROKE_SECONDS, LEAP_YEAR_SLOT_COUNT);
+    const wheelAngle = genevaWheelAngle(driverAngle, LEAP_YEAR_SLOT_COUNT);
+    nextShaftAngle[wheelShaftId] = normalizeAngle(radians(stroke.startAngle + advance / 2 + wheelAngle));
+    nextGenevaStrokes[wheelShaftId] = { startAngle: stroke.startAngle, elapsedSeconds: elapsed };
   }
   const nextStemAngle: Record<StemBodyId, Angle> = { ...state.stemAngle };
   for (const [id, angularVelocity] of solution.stemAngularVelocity) {
@@ -216,6 +247,7 @@ export function stepSimulation(
     stemAngle: nextStemAngle,
     mainspringWind: nextWind,
     pendingSeconds: state.pendingSeconds,
+    genevaStrokes: nextGenevaStrokes,
   };
 }
 

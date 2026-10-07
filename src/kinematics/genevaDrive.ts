@@ -87,3 +87,21 @@ export function genevaWheelAngularVelocity(driverAngularVelocity: AngularVelocit
   const cosAlpha = Math.cos(driverAngleFromMidpoint);
   return ((lambda * driverAngularVelocity * (cosAlpha - lambda)) / (1 + lambda * lambda - 2 * lambda * cosAlpha)) as AngularVelocity;
 }
+
+/**
+ * The driver's own angle from the stroke's symmetric midpoint,
+ * `elapsedSeconds` into a stroke lasting `durationSeconds` — linear in
+ * time, sweeping the full driver motion sweep (`genevaDriverMotionAngle`)
+ * from entry to exit at a constant rate. This is a declared playback
+ * timing standing in for a real continuously-rotating driver this
+ * project has no sourced basis for — see the caller's own documentation
+ * for why (e.g. `LEAP_YEAR_INDEX_STROKE_SECONDS`,
+ * `src/domain/leapYearComplication.ts`). Clamped to the stroke's own
+ * bounds, so a caller may pass `elapsedSeconds` beyond `durationSeconds`
+ * (the stroke has finished) without going out of range.
+ */
+export function genevaStrokeDriverAngle(elapsedSeconds: number, durationSeconds: number, slotCount: number): Angle {
+  const half = genevaDriverMotionAngle(slotCount) / 2;
+  const fraction = durationSeconds > 0 ? Math.min(1, Math.max(0, elapsedSeconds / durationSeconds)) : 1;
+  return (-half + fraction * 2 * half) as Angle;
+}

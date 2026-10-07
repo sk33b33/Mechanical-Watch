@@ -441,6 +441,27 @@ propagation used everywhere else.
   that existing hardware and software are not generally built to handle
   either. No sourceable mechanism exists to design against; left
   deliberately unscoped.
+- 8.9 — **Done, leap-year only** (see `docs/STATUS.md`). Visual/mechanical
+  linkage: prompted directly by "why do the date/month/leap-year parts
+  look disconnected from everything" — they are, by construction
+  (DATE-002/MONTH-001/YEAR-001 actually error if their star/wheel arbor
+  is ever meshed into the continuous gear train), since only each jump's
+  net effect is simulated, not the real jumper-spring/cam/finger contact
+  geometry that would visually connect them. Scoped for all three
+  (date's cam+roller+jumper, month's declutching drive wheel, leap
+  year's Geneva drive), but leap year is the only one with a sourced,
+  closed-form motion curve to play (SRC-0047, already implemented and
+  tested since 8.4 but never wired into the simulation or rendered) —
+  date and month have no equivalent sourced profile, only qualitative
+  patent prose, so building their own linkages stays unscoped pending
+  the user's next instruction. For leap year: the real Geneva stroke
+  shape is now simulated (not just the net step, `SimulationState.
+  genevaStrokes`) over a declared playback duration
+  (`LEAP_YEAR_INDEX_STROKE_SECONDS`, ASM-0052 — no real continuously-
+  rotating driver exists in this project's model to time it from), and
+  the wheel itself renders with real radial slots plus a driver-pin
+  assembly that visibly swings into one each trigger
+  (`createGenevaWheelGeometry`).
 
 Order: 8.1 first (ships independently, no jump-mechanism risk, proves
 the display groundwork 8.6 needs). 8.2 next (the jump-mechanism design
@@ -453,9 +474,13 @@ cross-cutting alongside 8.1, but the disc/window display concept it
 named was not actually built then — the discs rotated correctly but
 were invisible, hidden behind an opaque dial with no window to see them
 through; it shipped later as its own real item once that gap was found.
+8.9 shipped the same way: raised as a direct question after 8.1–8.8 were
+otherwise settled, scoped across all three jump mechanisms, but only
+leap year had a sourced basis to actually build on.
 
-8.1–8.4 and 8.6 are done (see `docs/STATUS.md` for each). 8.7's
-cross-cutting validation work was folded into 8.1–8.4/8.6 as they
-shipped, rather than built as a separate item. 8.5 and 8.8 remain
-confirmed out of scope. No further Phase 8 sub-item is scoped to start
-without the user's next explicit instruction.
+8.1–8.4, 8.6 and 8.9 (leap year only) are done (see `docs/STATUS.md` for
+each). 8.7's cross-cutting validation work was folded into 8.1–8.4/8.6 as
+they shipped, rather than built as a separate item. 8.5 and 8.8 remain
+confirmed out of scope. 8.9's date and month linkages remain unscoped
+pending the user's instruction. No further Phase 8 sub-item is scoped to
+start without the user's next explicit instruction.

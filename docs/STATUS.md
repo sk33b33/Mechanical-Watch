@@ -2,6 +2,81 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.9: leap-year visual/mechanical linkage — done (leap year only)
+
+Prompted directly: "why is the date, month and leap year gear not look
+like its connected to anything." Answer: by construction, not a bug —
+DATE-002/MONTH-001/YEAR-001 actually *error* if a star/wheel arbor is
+ever meshed into the continuous gear train, since each complication's
+jump mechanism (ASM-0048/0049/0050) simulates only the net discrete
+effect, not the real jumper-spring/cam/finger/Geneva-drive contact
+geometry a real watch uses to actually connect them. Scoped (requested,
+"scope the visual/mechanical linkage") across all three before building
+anything: date's cam+roller+jumper-spring (SRC-0042) and month's
+declutching drive wheel (SRC-0043) both have only qualitative patent
+prose, no sourced closed-form motion curve to play — building a real
+linkage for either would mean either inventing unsourced cam/contact
+geometry or building a visual-only approximation with no new kinematic
+claim. Leap year is different: its real Geneva-drive stroke kinematics
+(SRC-0047) were already implemented and tested back in Phase 8.4
+(`src/kinematics/genevaDrive.ts`) but never actually wired into the
+simulation or rendered — "shovel-ready." Per the user's own choice
+("Start with leap year"), this item builds leap year's real linkage;
+date's and month's stay unscoped pending the user's next instruction.
+
+- **The real stroke is now simulated, not just the net step.**
+  `SimulationState` gained `genevaStrokes`
+  (`src/simulation/simulationState.ts`): on the December-to-January
+  trigger, instead of jumping the wheel's `shaftAngle` straight to its
+  post-index value, `stepSimulation` starts a stroke and plays out the
+  real β(α) shape (`genevaWheelAngle`, already-tested since 8.4) across
+  subsequent steps, converging to the exact same final angle an instant
+  jump would give. A new pure helper, `genevaStrokeDriverAngle`
+  (`src/kinematics/genevaDrive.ts`), computes the driver's own angle
+  linearly over a declared playback duration,
+  `LEAP_YEAR_INDEX_STROKE_SECONDS` (0.4 s) — a genuinely new kind of
+  declared constant for this project: no continuously-rotating driver
+  exists anywhere in this simplified model to derive a real duration
+  from (only the real stroke *shape* has a sourced basis), registered as
+  a new assumption, ASM-0052, rather than overloading ASM-0050 (which
+  covers the shape) with a claim it doesn't support.
+- **The wheel itself now looks like a Geneva wheel.** A new geometry
+  function, `createGenevaWheelGeometry`
+  (`src/geometry/assemblyGeometry3d.ts`), cuts real radial slots into
+  the wheel's rim instead of rendering a plain disc — oriented so one
+  slot always lines up with the driver at every dwell position, derived
+  from the already-declared wheel/month-star positions (not an invented
+  alignment parameter; see the function's own doc comment for why one
+  alignment condition at shaftAngle 0 holds at every subsequent dwell by
+  construction, a property of equal step/slot spacing).
+- **A driver-pin assembly now visibly swings into the wheel each
+  trigger.** Built in `src/viewport/viewport.ts` (a small carrier disc
+  and pin, both plain `createZCylinder` cylinders — no new geometry
+  function needed), positioned at the month star's own arbor (the real
+  mechanism's own "journalled on the month star" layout, SRC-0044), with
+  its own orbit radius derived from λ × the wheel/driver centre distance
+  (both already-declared positions). Not backed by a declared `ShaftId`
+  (the driver has no arbor of its own), so tracked in a new
+  `genevaDriverPins` map, updated every `applyKinematicRotation()` tick
+  — mid-stroke, swept via the same `genevaStrokeDriverAngle` the wheel's
+  own β is computed from; dwelling, parked at its entry-ready position,
+  since no real continuously-rotating driver's own dwell position exists
+  here to show instead.
+- Corrected every "not simulated" / "reference figures only" claim this
+  upgrade made stale: YEAR-002's own validation message, the leap-year
+  inspector section, `componentReport.ts`'s derived rows, and ASM-0050's
+  own text (which explicitly said the wheel's position "still only ever
+  takes the discrete net step" — no longer true).
+
+Verified: typecheck, lint, the full vitest suite (663 tests, 12 new —
+`genevaStrokeDriverAngle` property tests, `createGenevaWheelGeometry`
+geometry tests, and four `simulationState.test.ts` tests stepping
+through the real stroke a real simulation timestep at a time, confirming
+mid-stroke angles match the pure kinematics functions exactly and the
+stroke clears on completion), a production build, and a live-browser
+spot check (confirmed the leap-year wheel renders as a visibly slotted
+4-slot cross, not a plain disc, with no console or page errors).
+
 ## Month star label texture: 3-letter abbreviations (follow-up to Phase 8.6)
 
 Requested directly: the month star's printed-ring texture used the full

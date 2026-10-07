@@ -5,6 +5,7 @@ import {
   genevaDriverMotionAngle,
   genevaLambda,
   genevaLockingDiscRadiusRatio,
+  genevaStrokeDriverAngle,
   genevaWheelAdvanceAngle,
   genevaWheelAngle,
   genevaWheelAngularVelocity,
@@ -150,5 +151,38 @@ describe("genevaWheelAngularVelocity (ASM-0050, SRC-0047)", () => {
     const afterMid = genevaWheelAngularVelocity(driverOmega, radians(0.1), n);
     expect(atMid).toBeGreaterThan(beforeMid);
     expect(atMid).toBeGreaterThan(afterMid);
+  });
+});
+
+describe("genevaStrokeDriverAngle (ASM-0050)", () => {
+  it("starts at minus half the driver motion sweep and ends at plus half, linear in between", () => {
+    const n = 4;
+    const half = genevaDriverMotionAngle(n) / 2;
+    expect(genevaStrokeDriverAngle(0, 0.4, n)).toBeCloseTo(-half, 12);
+    expect(genevaStrokeDriverAngle(0.2, 0.4, n)).toBeCloseTo(0, 12);
+    expect(genevaStrokeDriverAngle(0.4, 0.4, n)).toBeCloseTo(half, 12);
+  });
+
+  it("clamps elapsed time outside [0, duration] rather than overshooting", () => {
+    const n = 4;
+    const half = genevaDriverMotionAngle(n) / 2;
+    expect(genevaStrokeDriverAngle(-1, 0.4, n)).toBeCloseTo(-half, 12);
+    expect(genevaStrokeDriverAngle(10, 0.4, n)).toBeCloseTo(half, 12);
+  });
+
+  it("a zero duration snaps straight to the end of the stroke, never divides by zero", () => {
+    const n = 4;
+    const half = genevaDriverMotionAngle(n) / 2;
+    expect(genevaStrokeDriverAngle(0, 0, n)).toBeCloseTo(half, 12);
+    expect(Number.isFinite(genevaStrokeDriverAngle(0, 0, n))).toBe(true);
+  });
+
+  it("composed with genevaWheelAngle, reproduces the wheel's own pre- and post-stroke angles exactly", () => {
+    const n = 4;
+    const advanceHalf = genevaWheelAdvanceAngle(n) / 2;
+    const atStart = genevaWheelAngle(genevaStrokeDriverAngle(0, 0.4, n), n);
+    const atEnd = genevaWheelAngle(genevaStrokeDriverAngle(0.4, 0.4, n), n);
+    expect(atStart).toBeCloseTo(-advanceHalf, 9);
+    expect(atEnd).toBeCloseTo(advanceHalf, 9);
   });
 });

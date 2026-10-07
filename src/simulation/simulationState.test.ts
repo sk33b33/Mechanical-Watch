@@ -19,8 +19,8 @@ import { newtonMillimetres } from "@/units/torque";
 import type { DateComplicationId } from "@/domain/dateComplication";
 import { dateJumpStepAngle, starPosition } from "@/kinematics/dateComplication";
 import { monthJumpStepAngle, MONTHS_PER_YEAR } from "@/kinematics/monthComplication";
-import { LEAP_YEAR_SLOT_COUNT } from "@/domain/leapYearComplication";
-import { genevaWheelAdvanceAngle } from "@/kinematics/genevaDrive";
+import { LEAP_YEAR_INDEX_STROKE_SECONDS, LEAP_YEAR_SLOT_COUNT } from "@/domain/leapYearComplication";
+import { genevaStrokeDriverAngle, genevaWheelAdvanceAngle, genevaWheelAngle } from "@/kinematics/genevaDrive";
 
 const shaftId = "shaft_1" as ShaftId;
 const movement = { shafts: { [shaftId]: {} }, keylessWorks: {}, couplings: {} } as unknown as Movement;
@@ -359,5 +359,61 @@ describe("year-wrap correction (ASM-0050)", () => {
     const next = stepSimulation(state, driveSolution(1), 1, [], [noYearTrack]);
     expect(starPosition(next.shaftAngle[monthStarShaftId] ?? radians(0), MONTHS_PER_YEAR)).toBe(0); // January, month still corrects
     expect(starPosition(next.shaftAngle[wheelShaftId] ?? radians(0), LEAP_YEAR_SLOT_COUNT)).toBe(1); // unchanged
+  });
+
+  describe("the real Geneva stroke shape (ASM-0050), a small timestep at a time", () => {
+    const dt = NUMERICAL_PARAMETERS.simulationTimestepSeconds;
+    const driveOmega = 2 * Math.PI; // driveSolution(1): 1 rev/s
+    // crossesRevolution fires once `previousAngle + omega*dt >= 2π` — a small dt only reaches
+    // that boundary from a pre-set drive angle already close to it, unlike the other tests in
+    // this file, which use a one-second step large enough to cross a full revolution on their own.
+    const justBeforeRevolution = radians(2 * Math.PI - (driveOmega * dt) / 2);
+    function triggerState(dayPosition: number, monthIndex: number, yearPosition: number): ReturnType<typeof stateAt> {
+      const state = stateAt(dayPosition, monthIndex, yearPosition);
+      return { ...state, shaftAngle: { ...state.shaftAngle, [driveShaftId]: justBeforeRevolution } };
+    }
+
+    it("a trigger starts a stroke rather than jumping the wheel instantly", () => {
+      const state = triggerState(30, 11, 1);
+      const preStepAngle = state.shaftAngle[wheelShaftId] ?? radians(0);
+      const next = stepSimulation(state, driveSolution(1), dt, [], [track]);
+      expect(next.genevaStrokes[wheelShaftId]).toBeDefined();
+      // One tiny timestep in: the stroke starts with zero velocity (no-shock entry), so the wheel
+      // has barely moved from its pre-trigger angle, nowhere near the full index step.
+      const moved = Math.abs((next.shaftAngle[wheelShaftId] ?? radians(0)) - preStepAngle);
+      expect(moved).toBeGreaterThan(0);
+      expect(moved).toBeLessThan(genevaWheelAdvanceAngle(LEAP_YEAR_SLOT_COUNT) / 100);
+    });
+
+    it("mid-stroke, the wheel's own angle matches genevaWheelAngle(genevaStrokeDriverAngle(...)) exactly", () => {
+      let state: ReturnType<typeof stateAt> = triggerState(30, 11, 1);
+      const preStepAngle = state.shaftAngle[wheelShaftId] ?? radians(0);
+      state = stepSimulation(state, driveSolution(1), dt, [], [track]);
+      // Advance a few more steps while still mid-stroke (well short of the declared duration).
+      for (let i = 0; i < 5; i += 1) state = stepSimulation(state, driveSolution(1), dt, [], []);
+      const stroke = state.genevaStrokes[wheelShaftId];
+      expect(stroke).toBeDefined();
+      if (stroke === undefined) throw new Error("unreachable");
+      const expectedAngle = genevaWheelAdvanceAngle(LEAP_YEAR_SLOT_COUNT) / 2
+        + genevaWheelAngle(genevaStrokeDriverAngle(stroke.elapsedSeconds, LEAP_YEAR_INDEX_STROKE_SECONDS, LEAP_YEAR_SLOT_COUNT), LEAP_YEAR_SLOT_COUNT);
+      expect(state.shaftAngle[wheelShaftId]).toBeCloseTo(preStepAngle + expectedAngle, 12);
+    });
+
+    it("stepping through the whole declared duration converges to the same final angle an instant jump would give, and clears the stroke", () => {
+      let state: ReturnType<typeof stateAt> = triggerState(30, 11, 1);
+      const preStepAngle = state.shaftAngle[wheelShaftId] ?? radians(0);
+      state = stepSimulation(state, driveSolution(1), dt, [], [track]);
+      const steps = Math.ceil(LEAP_YEAR_INDEX_STROKE_SECONDS / dt) + 2;
+      for (let i = 0; i < steps; i += 1) state = stepSimulation(state, driveSolution(1), dt, [], []);
+      expect(state.genevaStrokes[wheelShaftId]).toBeUndefined();
+      expect(state.shaftAngle[wheelShaftId]).toBeCloseTo(preStepAngle + genevaWheelAdvanceAngle(LEAP_YEAR_SLOT_COUNT), 9);
+      expect(starPosition(state.shaftAngle[wheelShaftId] ?? radians(0), LEAP_YEAR_SLOT_COUNT)).toBe(2);
+    });
+
+    it("no stroke starts on a drive-revolution crossing that isn't the December-to-January wrap", () => {
+      const state = triggerState(10, 11, 1); // mid-December, not month-end
+      const next = stepSimulation(state, driveSolution(1), dt, [], [track]);
+      expect(Object.keys(next.genevaStrokes)).toHaveLength(0);
+    });
   });
 });

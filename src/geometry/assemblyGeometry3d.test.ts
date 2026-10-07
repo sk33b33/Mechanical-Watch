@@ -4,11 +4,13 @@ import {
   balanceArmHalfExtents,
   balanceRimInnerRadius,
   createDiscWithHolesGeometry,
+  createGenevaWheelGeometry,
   discLabelPlacements,
   escapeWheelHubRadius,
   generateEscapeWheelOutline,
   generateHandOutline,
   generatePalletStoneOutline,
+  GENEVA_WHEEL_VISUALIZATION,
   handHubRadius,
   rayCircleInward,
   type PalletArm,
@@ -194,6 +196,62 @@ describe("handHubRadius", () => {
   it("is a fixed fraction of the hand's own width", () => {
     expect(handHubRadius("HOURS")).toBeCloseTo(0.6e-3 * 0.2);
     expect(handHubRadius("SECONDS")).toBeCloseTo(0.2e-3 * 0.2);
+  });
+});
+
+describe("createGenevaWheelGeometry", () => {
+  it("stays within the declared tip radius, and is centred on z = 0 spanning [-thickness/2, thickness/2]", () => {
+    const tipRadius = 1.5e-3;
+    const thickness = 0.15e-3;
+    const geometry = createGenevaWheelGeometry(tipRadius, thickness, 4, 0);
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox;
+    expect(box).not.toBeNull();
+    expect(box?.max.x).toBeLessThanOrEqual(tipRadius + 1e-12);
+    expect(box?.max.y).toBeLessThanOrEqual(tipRadius + 1e-12);
+    expect(box?.min.z).toBeCloseTo(-thickness / 2, 9);
+    expect(box?.max.z).toBeCloseTo(thickness / 2, 9);
+  });
+
+  it("actually cuts slots: some rim vertices sit well inside the tip radius, at the declared slot depth", () => {
+    const tipRadius = 1.5e-3;
+    const geometry = createGenevaWheelGeometry(tipRadius, 0.15e-3, 4, 0);
+    const positions = geometry.attributes.position;
+    if (positions === undefined) throw new Error("geometry has no position attribute");
+    let sawSlotBottom = false;
+    const innerRadius = tipRadius * GENEVA_WHEEL_VISUALIZATION.slotInnerRadiusFraction;
+    for (let i = 0; i < positions.count; i += 1) {
+      const radius = Math.hypot(positions.getX(i), positions.getY(i));
+      if (Math.abs(radius - innerRadius) < 1e-9) sawSlotBottom = true;
+    }
+    expect(sawSlotBottom).toBe(true);
+  });
+
+  it("baseAngle rotates the whole slot pattern: a slot sits exactly at baseAngle itself, for any baseAngle", () => {
+    const tipRadius = 1.5e-3;
+    for (const baseAngle of [0, 0.4, Math.PI / 2, 2]) {
+      const geometry = createGenevaWheelGeometry(tipRadius, 0.15e-3, 4, baseAngle);
+      const positions = geometry.attributes.position;
+      if (positions === undefined) throw new Error("geometry has no position attribute");
+      const innerRadius = tipRadius * GENEVA_WHEEL_VISUALIZATION.slotInnerRadiusFraction;
+      let closest = Infinity;
+      for (let i = 0; i < positions.count; i += 1) {
+        const x = positions.getX(i);
+        const y = positions.getY(i);
+        const radius = Math.hypot(x, y);
+        if (Math.abs(radius - innerRadius) > 1e-9) continue;
+        const angle = Math.atan2(y, x);
+        const delta = Math.abs(Math.atan2(Math.sin(angle - baseAngle), Math.cos(angle - baseAngle)));
+        closest = Math.min(closest, delta);
+      }
+      expect(closest).toBeLessThan(1e-6);
+    }
+  });
+
+  it("does not throw for other slot counts", () => {
+    for (const slotCount of [3, 5, 6]) {
+      expect(() => createGenevaWheelGeometry(1.5e-3, 0.15e-3, slotCount, 0)).not.toThrow();
+    }
   });
 });
 

@@ -60,9 +60,9 @@ export const leapYearComplicationRules: Rule = ({ movement, train }) => {
     issues.push(
       issue("YEAR-002", "model", "info", "L2_KINEMATIC", [year.id],
         `${year.name}: driven entirely by the month complication's own December-to-January wrap, once a calendar year, not a continuous arbor of its own. ` +
-        `A real single-pin ${String(n)}-slot Geneva drive (SRC-0047) would index ${indexAngle.toFixed(0)}° per trigger over a ${motionAngle.toFixed(0)}° driver motion sweep ` +
+        `A real single-pin ${String(n)}-slot Geneva drive (SRC-0047) indexes ${indexAngle.toFixed(0)}° per trigger over a ${motionAngle.toFixed(0)}° driver motion sweep ` +
         `(${dwellAngle.toFixed(0)}° dwell the rest of the time), a no-shock pin-radius/centre-distance ratio of ${lambda.toFixed(4)}, and a peak wheel/driver speed ratio of ${peakRatio.toFixed(3)} at mid-stroke ` +
-        `— reference figures only; this project simulates the net ${indexAngle.toFixed(0)}° step, not the continuous indexing motion. ` +
+        `— this project simulates that real stroke shape (not just the net ${indexAngle.toFixed(0)}° step) over a declared playback duration, since no continuously-rotating driver exists at this project's year-scale trigger event to derive a real one from. ` +
         `Does not model leap-year exceptions (e.g. century years): a fixed four-year cycle, same as SRC-0044's own real mechanism.`,
         ["ASM-0050", "SRC-0047"]),
     );

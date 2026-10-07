@@ -18,6 +18,22 @@ export const LEAP_YEAR_SLOT_COUNT = 4;
 export const LEAP_YEAR_LABELS = ["Year 1", "Year 2", "Year 3", "Year 4 (leap)"] as const;
 
 /**
+ * How long the leap-year wheel's own real Geneva-drive index stroke
+ * (SRC-0047) is played out over, in simulated seconds, once triggered —
+ * not derived from any real continuously-rotating driver: this project's
+ * simplified jump-chain model (ASM-0048/0049/0050) has no arbor that
+ * actually spins once a year, so the real mechanism's indexing-stroke
+ * TIMING has no sourced basis here (ASM-0052). The stroke's own SHAPE is
+ * real and simulated exactly (`genevaWheelAngle`,
+ * `src/kinematics/genevaDrive.ts`, SRC-0047); only this duration is a
+ * declared visualization choice, so that real non-uniform motion is
+ * visible instead of an instantaneous jump — the same "illustrative, not
+ * measured" treatment already given other declared visual constants
+ * (e.g. `DIAL_WINDOW_VISUALIZATION`, ASM-0051).
+ */
+export const LEAP_YEAR_INDEX_STROKE_SECONDS = 0.4;
+
+/**
  * A four-year-cycle (leap-year) indicator wheel, driven entirely by its
  * referenced month complication's own December-to-January wrap — one
  * trigger per calendar year by construction (ASM-0050, Phase 8.4).
@@ -36,10 +52,13 @@ export const LEAP_YEAR_LABELS = ["Year 1", "Year 2", "Year 3", "Year 4 (leap)"] 
  * fact, SRC-0047) each time its referenced month complication's own star
  * wraps from December back to January. The real mechanism's own
  * continuous, non-uniform pin/slot contact motion during that index
- * event is not simulated — only its net effect — though the real
- * closed-form kinematics for that motion (`src/kinematics/genevaDrive.ts`)
- * are implemented, tested and cited, and reported as reference figures
- * (YEAR-002).
+ * event IS simulated (`src/simulation/simulationState.ts`'s
+ * `SimulationState.genevaStrokes`, played out via `genevaWheelAngle`
+ * over `LEAP_YEAR_INDEX_STROKE_SECONDS`) — but only the stroke's real
+ * SHAPE, not its real timing, since no continuously-rotating driver
+ * exists at this project's year-scale trigger event to derive a real
+ * duration from (see `LEAP_YEAR_INDEX_STROKE_SECONDS`'s own doc
+ * comment). Also reported as reference figures (YEAR-002).
  *
  * `wheelShaftId` is a separate, declared (FIXED-position) arbor, NOT
  * meshed with anything — same pattern as the date and month stars.

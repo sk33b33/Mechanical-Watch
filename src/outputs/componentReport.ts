@@ -601,8 +601,8 @@ function leapYearComplicationReport(movement: Movement, analysis: MovementAnalys
         references: ["ASM-0050"],
       },
       {
-        label: "Reference Geneva driver motion sweep",
-        text: `${toDegrees(genevaDriverMotionAngle(n)).toFixed(0)}° (of a real single-pin ${String(n)}-slot drive, not simulated)`,
+        label: "Geneva driver motion sweep",
+        text: `${toDegrees(genevaDriverMotionAngle(n)).toFixed(0)}° (real single-pin ${String(n)}-slot drive shape, simulated over a declared playback duration — LEAP_YEAR_INDEX_STROKE_SECONDS)`,
         si: genevaDriverMotionAngle(n),
         equation: "π(n − 2) / n (SRC-0047)",
         level: "L2_KINEMATIC",

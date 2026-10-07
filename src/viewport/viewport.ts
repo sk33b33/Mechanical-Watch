@@ -13,11 +13,13 @@ import {
   balanceRimInnerRadius,
   createDiscLabelTexture,
   createFrameGeometry,
+  createGenevaWheelGeometry,
   createHandGeometry,
   createZCylinder,
   escapeWheelHubRadius,
   generateEscapeWheelOutline,
   generateHandOutline,
+  GENEVA_WHEEL_VISUALIZATION,
   handHubRadius,
   type EscapeToothFace,
 } from "@/geometry/assemblyGeometry3d";
@@ -25,6 +27,9 @@ import { arborZRange, frameZRange, isCompleteFrame } from "@/assembly/assemblyGe
 import { partReferencePoint, type Point3 } from "@/assembly/measure";
 import { stemBodyId, type KeylessWorksId } from "@/domain/keyless";
 import { findDiscComplication } from "@/domain/discComplication";
+import type { LeapYearComplicationId } from "@/domain/leapYearComplication";
+import { LEAP_YEAR_INDEX_STROKE_SECONDS, LEAP_YEAR_SLOT_COUNT } from "@/domain/leapYearComplication";
+import { genevaLambda, genevaStrokeDriverAngle, genevaDriverMotionAngle } from "@/kinematics/genevaDrive";
 import { buildDialMeshes, buildStemMeshes } from "./keylessMeshes";
 import { escapementDisplay, primaryEscapement } from "@/simulation/escapementDisplay";
 import {
@@ -199,6 +204,17 @@ export class Viewport {
   private readonly content = new THREE.Group();
   private readonly shaftGroups = new Map<ShaftId, THREE.Group>();
   private readonly stemSpins = new Map<KeylessWorksId, { stem: THREE.Group; windingPinion: THREE.Group }>();
+  /**
+   * A leap-year wheel's own driver-pin assembly (ASM-0050) — not backed
+   * by a declared `ShaftId` (the driver has no arbor of its own), so
+   * tracked separately from `shaftGroups`. `group` sits at the driver's
+   * own (month star's) position and is NOT parented under the month
+   * star's own shaftGroup, since the pin's own angle is a derived
+   * function of the leap-year wheel's simulation state
+   * (`SimulationState.genevaStrokes`), not the month star's own jump
+   * angle.
+   */
+  private readonly genevaDriverPins = new Map<LeapYearComplicationId, { group: THREE.Group; wheelShaftId: ShaftId; directionWheelFromDriver: number }>();
   private showDial = true;
   private readonly escapementLabel: HTMLDivElement;
   private readonly pickables: THREE.Mesh[] = [];
@@ -366,6 +382,7 @@ export class Viewport {
     this.content.clear();
     this.shaftGroups.clear();
     this.stemSpins.clear();
+    this.genevaDriverPins.clear();
     this.pickables.length = 0;
     this.cappableSolids.length = 0;
     this.sectionCapMeshes.length = 0;
@@ -532,7 +549,21 @@ export class Viewport {
       // same applyKinematicRotation() loop that spins every other shaft group spins this one too.
       const meshZ = this.displayZ(year.wheelZCentre);
       const yearLabels = findDiscComplication(movement, year.id)?.positionLabels ?? null;
-      const mesh = new THREE.Mesh(createZCylinder(year.wheelTipDiameter / 2, meshZ - year.wheelThickness / 2, meshZ + year.wheelThickness / 2, 64), discMaterials(COLORS.leapYearWheel, { metalness: 0.1, roughness: 0.7 }, yearLabels));
+      // The wheel's own local slot pattern is oriented so one slot points at the driver
+      // (direction from wheel to driver) at shaftAngle 0 — see createGenevaWheelGeometry's own
+      // doc comment for why that one alignment condition is enough for every subsequent dwell.
+      const month = movement.monthComplications[year.monthComplicationId];
+      const wheelCentre = positions.get(year.wheelShaftId);
+      const driverCentre = month === undefined ? undefined : positions.get(month.starShaftId);
+      const directionWheelFromDriver = wheelCentre !== undefined && driverCentre !== undefined
+        ? Math.atan2(wheelCentre.y - driverCentre.y, wheelCentre.x - driverCentre.x)
+        : null;
+      const baseAngle = directionWheelFromDriver === null ? 0 : directionWheelFromDriver + Math.PI;
+      const mesh = new THREE.Mesh(
+        createGenevaWheelGeometry(year.wheelTipDiameter / 2, year.wheelThickness, LEAP_YEAR_SLOT_COUNT, baseAngle),
+        discMaterials(COLORS.leapYearWheel, { metalness: 0.1, roughness: 0.7 }, yearLabels),
+      );
+      mesh.position.z = meshZ;
       this.addPickable(group, mesh, { kind: "leapYearWheel", entityId: year.id, baseColor: COLORS.leapYearWheel });
       this.cappableSolids.push({
         positionX: group.position.x,
@@ -540,9 +571,35 @@ export class Viewport {
         rotationGroup: group,
         zLo: meshZ - year.wheelThickness / 2,
         zHi: meshZ + year.wheelThickness / 2,
+        // The slots cut into the rim (createGenevaWheelGeometry) are not reflected here — a
+        // plain-circle footprint is a close enough approximation for the section-view cutaway cap.
         footprint: { kind: "circle", radius: year.wheelTipDiameter / 2, centre: { x: 0, y: 0 } },
         color: COLORS.leapYearWheel,
       });
+
+      // The driver pin assembly (ASM-0050): not backed by its own arbor, so built here directly
+      // rather than via a shaftGroup. Centre distance and pin orbit radius both derive from the
+      // wheel's and driver's own already-declared positions (no invented geometry parameter).
+      if (driverCentre !== undefined && directionWheelFromDriver !== null) {
+        const v = GENEVA_WHEEL_VISUALIZATION;
+        const centreDistance = Math.hypot(wheelCentre !== undefined ? wheelCentre.x - driverCentre.x : 0, wheelCentre !== undefined ? wheelCentre.y - driverCentre.y : 0);
+        const pinOrbitRadius = genevaLambda(LEAP_YEAR_SLOT_COUNT) * centreDistance;
+        const driverGroup = new THREE.Group();
+        driverGroup.position.set(driverCentre.x, driverCentre.y, 0);
+        this.content.add(driverGroup);
+        const carrier = new THREE.Mesh(
+          createZCylinder(pinOrbitRadius * v.driverCarrierRadiusFactor, meshZ - year.wheelThickness / 4, meshZ + year.wheelThickness / 4, 32),
+          material(COLORS.leapYearWheel, { metalness: 0.3, roughness: 0.6 }),
+        );
+        driverGroup.add(carrier);
+        const pin = new THREE.Mesh(
+          createZCylinder(v.pinRadiusMetres, meshZ - year.wheelThickness / 2, meshZ + year.wheelThickness / 2, 16),
+          material(COLORS.leapYearWheel, { metalness: 0.6, roughness: 0.35 }),
+        );
+        pin.position.set(pinOrbitRadius, 0, 0);
+        driverGroup.add(pin);
+        this.genevaDriverPins.set(year.id, { group: driverGroup, wheelShaftId: year.wheelShaftId, directionWheelFromDriver });
+      }
     }
 
     // Hands sit below the dial face, or below the lowest part of the movement if there is no dial (ASM-0016).
@@ -1020,6 +1077,16 @@ export class Viewport {
     for (const [id, spins] of this.stemSpins) {
       spins.stem.rotation.x = this.store.simulation.stemAngle[stemBodyId(id, "STEM")] ?? 0;
       spins.windingPinion.rotation.x = this.store.simulation.stemAngle[stemBodyId(id, "WINDING_PINION")] ?? 0;
+    }
+    // A leap-year wheel's driver pin (ASM-0050): mid-stroke, swept via the same genevaStrokeDriverAngle
+    // the wheel's own β is computed from (SimulationState.genevaStrokes); dwelling, parked at its
+    // entry-ready position (α = −driverMotionAngle/2) rather than at a real continuously-rotating
+    // driver's own dwell position, which this project has no sourced basis for (ASM-0050).
+    const half = genevaDriverMotionAngle(LEAP_YEAR_SLOT_COUNT) / 2;
+    for (const pin of this.genevaDriverPins.values()) {
+      const stroke = simulation.genevaStrokes[pin.wheelShaftId];
+      const alpha = stroke === undefined ? -half : genevaStrokeDriverAngle(stroke.elapsedSeconds, LEAP_YEAR_INDEX_STROKE_SECONDS, LEAP_YEAR_SLOT_COUNT);
+      pin.group.rotation.z = pin.directionWheelFromDriver + alpha;
     }
   }
 

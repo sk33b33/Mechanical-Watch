@@ -247,6 +247,73 @@ export function createDiscLabelTexture(labels: readonly string[]): THREE.CanvasT
 }
 
 /**
+ * A leap-year wheel's own visual linkage to its driving month star
+ * (ASM-0052, Phase 8.9): radial slots cut into the wheel's own rim, so it
+ * reads as an actual Geneva (Maltese-cross) wheel rather than a plain
+ * disc. The driver pin/carrier assembly itself is built inline in
+ * `src/viewport/viewport.ts` (not a dedicated geometry function here,
+ * since both are just small `createZCylinder` cylinders), and visibly
+ * swings into one slot during each index stroke
+ * (`src/simulation/simulationState.ts`'s `genevaStrokes`), parking at
+ * its entry position between strokes. Slot depth/width are declared
+ * visualization choices, not derived from any sourced manufacturing
+ * clearance — same "visual only" treatment already given escape teeth
+ * and pallet stones (ASM-0004, ASM-0039, ASM-0040). The locking-disc
+ * contact surface itself (the crescent recess a real Geneva wheel's rim
+ * also carries, `genevaLockingDiscRadiusRatio`) is not drawn, only
+ * reported numerically (YEAR-002) — this models the slots only.
+ */
+export const GENEVA_WHEEL_VISUALIZATION = {
+  /** Each slot's own angular half-width, in radians. */
+  slotHalfWidthRadians: 0.1,
+  /** How far a slot cuts in, as a fraction of the wheel's own tip radius. */
+  slotInnerRadiusFraction: 0.5,
+  /** Central bore, as a fraction of the wheel's own tip radius. */
+  hubRadiusFraction: 0.18,
+  /** The driver pin's own drawn radius, in metres — cosmetic, like `ESCAPEMENT_VISUALIZATION.palletStoneMetres`. */
+  pinRadiusMetres: 0.15e-3,
+  /** The driver's own carrier disc radius, as a multiple of the pin's own orbit radius (λ × centre distance), just enough to visually contain the pin's full sweep. */
+  driverCarrierRadiusFactor: 1.25,
+  assumption: "ASM-0052" satisfies AssumptionId,
+} as const;
+
+/**
+ * A disc of `tipRadius` with `slotCount` radial notches cut into its rim
+ * (ASM-0050), each centred at `baseAngle + k·(2π / slotCount)` in the
+ * wheel's own local (pre-rotation) frame — so that whichever slot is
+ * `baseAngle` itself lines up with the driver direction at shaftAngle 0,
+ * every other slot automatically lines up too at every subsequent dwell
+ * position, since the slots and the index step share the same angular
+ * spacing (2π / slotCount) by construction. Depth [0, thickness];
+ * position the mesh at the wheel's own zLo afterward, same convention as
+ * `createEscapeWheelGeometry`.
+ */
+export function createGenevaWheelGeometry(tipRadius: number, thickness: number, slotCount: number, baseAngle: number): THREE.ExtrudeGeometry {
+  const v = GENEVA_WHEEL_VISUALIZATION;
+  const innerRadius = tipRadius * v.slotInnerRadiusFraction;
+  const spacing = (2 * Math.PI) / slotCount;
+  const shape = new THREE.Shape();
+  for (let k = 0; k < slotCount; k += 1) {
+    const centreAngle = baseAngle + k * spacing;
+    const leftAngle = centreAngle - v.slotHalfWidthRadians;
+    const rightAngle = centreAngle + v.slotHalfWidthRadians;
+    const nextLeftAngle = baseAngle + (k + 1) * spacing - v.slotHalfWidthRadians;
+    const leftPoint: Point2D = { x: tipRadius * Math.cos(leftAngle), y: tipRadius * Math.sin(leftAngle) };
+    if (k === 0) shape.moveTo(leftPoint.x, leftPoint.y); else shape.lineTo(leftPoint.x, leftPoint.y);
+    shape.lineTo(innerRadius * Math.cos(centreAngle), innerRadius * Math.sin(centreAngle));
+    shape.lineTo(tipRadius * Math.cos(rightAngle), tipRadius * Math.sin(rightAngle));
+    shape.absarc(0, 0, tipRadius, rightAngle, nextLeftAngle, false);
+  }
+  shape.closePath();
+  const hub = new THREE.Path();
+  hub.absarc(0, 0, tipRadius * v.hubRadiusFraction, 0, Math.PI * 2, true);
+  shape.holes.push(hub);
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false, curveSegments: 64 });
+  geometry.translate(0, 0, -thickness / 2);
+  return geometry;
+}
+
+/**
  * Escapement parts are drawn only to show the simplified model's motion
  * (ASM-0023): the escape wheel's tooth form, the fork's shape and the
  * balance's rim and arms are visual (ASM-0012). Only the escape wheel's
