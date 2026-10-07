@@ -77,6 +77,57 @@ stroke clears on completion), a production build, and a live-browser
 spot check (confirmed the leap-year wheel renders as a visibly slotted
 4-slot cross, not a plain disc, with no console or page errors).
 
+## Phase 8.9 follow-up: month declutch-wheel visual linkage
+
+Requested directly ("scope month's linkage too", then "build option 1"
+from the scoping it produced). Scoping surfaced a real architectural
+difference from date: `MonthComplication` has no continuous drive arbor
+at all — it only ever advances in the same instant the date star's own
+jump lands on day 1 (`stepSimulation`'s `monthCorrection`) — so date's
+own trick (hang a cam on an already-spinning shaft) doesn't apply, and
+SRC-0043 (month's own sourced mechanism) describes its drive member only
+as a "declutching drive wheel set," qualitative prose with no numeric
+engagement geometry or timing, same as date's own SRC-0042. Two options
+were put to the user: (1) a static, never-animated declutch wheel parked
+in its idle/disengaged position — zero new simulation state, same cost
+profile as date's linkage; (2) an animated engage/disengage synced to
+the jump instant, which would need a genuinely new declared engagement-
+duration constant with no source behind it at all (unlike leap year's
+duration, which at least times a real sourced stroke shape). The user
+chose option 1.
+
+- **New config**, `MONTH_LINKAGE_VISUALIZATION`
+  (`src/geometry/assemblyGeometry3d.ts`): just two declared values
+  (`wheelRadiusFraction`, `clearanceMetres`) — no new geometry function,
+  since the wheel reuses the already-tested `createZCylinder`.
+- **A small wheel drawn once**, in `src/viewport/viewport.ts`'s month-
+  complication loop: positioned `monthStarTipRadius + wheelRadius +
+  clearanceMetres` from the month star's own centre, in the direction of
+  the date star that drives it — clear of the star's rim (reads as
+  "disengaged," truthfully), offset toward its own real kinematic
+  connection point (SRC-0043 ties the wheel set to the date disc). No
+  tracking map, no per-tick update, no `applyKinematicRotation()` change
+  at all: unlike the date rod (which must re-read the star's live angle
+  every frame) or the leap-year driver pin (which sweeps through a real
+  stroke), this wheel never moves once built — the honest consequence of
+  having neither a continuous member nor a sourced motion to animate.
+- **Registered as ASM-0054**
+  (`reference/assumptions/ASSUMPTION_REGISTER.md`,
+  `src/reference/assumptions.ts`), scoped to the month complication's
+  own visual/mechanical linkage, L0/visual only, parallel to ASM-0053 —
+  and a short note added to `MonthComplication`'s own doc comment
+  (`src/domain/monthComplication.ts`) clarifying the wheel is a visual
+  cue, not a contact-geometry simulation.
+- No dedicated unit test was added: no new pure function was extracted
+  (the placement arithmetic is inline in `viewport.ts`), the same
+  treatment the date linkage's own pivot/cam placement math already
+  got — only `createRodGeometry` (an actual new function) earned its own
+  test in that earlier item, and this item introduces no equivalent.
+
+Verified: typecheck, lint, the full vitest suite, a production build,
+and a live-browser confirmation that the wheel renders at the expected
+position, clear of the month star's rim, with no console or page errors.
+
 ## Phase 8.9 follow-up: date jumper visual linkage
 
 Requested directly ("yes", choosing to build date's linkage now rather

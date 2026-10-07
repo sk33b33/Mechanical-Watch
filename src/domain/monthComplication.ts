@@ -36,6 +36,14 @@ export type MonthComplicationId = EntityId<"monthComplication">;
  * (ETA's own mechanism included) still needs one manual correction a
  * year, after February — this is not a gap this item closes, consistent
  * with how real annual-calendar watches work.
+ *
+ * The viewport draws a small declutch wheel near the star, in its own
+ * idle/disengaged position (ASM-0054) — unlike `DateComplication`, which
+ * has a continuously-driven arbor to hang a cam on (ASM-0053), this
+ * mechanism has no continuous member at all, so the wheel is never
+ * animated; it is a declared visual cue that the star is linked to
+ * something, not a contact-geometry simulation of SRC-0043's own
+ * declutching drive wheel set.
  */
 export interface MonthComplication {
   readonly id: MonthComplicationId;

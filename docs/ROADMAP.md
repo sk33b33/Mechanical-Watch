@@ -441,14 +441,13 @@ propagation used everywhere else.
   that existing hardware and software are not generally built to handle
   either. No sourceable mechanism exists to design against; left
   deliberately unscoped.
-- 8.9 — **Done for leap year and date; month unscoped-but-not-started**
-  (see `docs/STATUS.md`). Visual/mechanical linkage: prompted directly by
-  "why do the date/month/leap-year parts look disconnected from
-  everything" — they are, by construction (DATE-002/MONTH-001/YEAR-001
-  actually error if their star/wheel arbor is ever meshed into the
-  continuous gear train), since only each jump's net effect is
-  simulated, not the real jumper-spring/cam/finger contact geometry that
-  would visually connect them. Scoped for all three (date's
+- 8.9 — **Done for all three** (see `docs/STATUS.md`). Visual/mechanical
+  linkage: prompted directly by "why do the date/month/leap-year parts
+  look disconnected from everything" — they are, by construction
+  (DATE-002/MONTH-001/YEAR-001 actually error if their star/wheel arbor
+  is ever meshed into the continuous gear train), since only each jump's
+  net effect is simulated, not the real jumper-spring/cam/finger contact
+  geometry that would visually connect them. Scoped for all three (date's
   cam+roller+jumper, month's declutching drive wheel, leap year's
   Geneva drive), but leap year is the only one with a sourced,
   closed-form motion curve to play (SRC-0047, already implemented and
@@ -468,9 +467,17 @@ propagation used everywhere else.
   `createRodGeometry`) — honestly kept visual-only (L0) rather than
   treated as a kinematic upgrade, since unlike leap year there is no
   sourced shape to simulate; the star's own jump stays exactly as
-  instantaneous as before. Month's own linkage (its declutching drive
-  wheel, SRC-0043) remains unscoped-but-not-started, pending the user's
-  next instruction.
+  instantaneous as before. For month, scoped separately once date
+  shipped: unlike date, `MonthComplication` has no continuous drive
+  arbor at all (it only advances in the same instant the date star's own
+  jump lands on day 1), so date's "cam rides an existing spinning shaft"
+  trick doesn't apply; two options were put to the user (a static,
+  never-animated declutch wheel vs. an animated engage/disengage needing
+  a wholly invented timing constant), and the user chose the static
+  option. A small declutch wheel (ASM-0054, `MONTH_LINKAGE_VISUALIZATION`)
+  is now drawn once in its idle/disengaged position near the month star,
+  offset toward the date star that drives it — no tracking map, no
+  per-tick update, since nothing about it ever moves.
 
 Order: 8.1 first (ships independently, no jump-mechanism risk, proves
 the display groundwork 8.6 needs). 8.2 next (the jump-mechanism design
@@ -488,12 +495,14 @@ otherwise settled, scoped across all three jump mechanisms. Leap year
 shipped first (the only one with a sourced motion curve); date shipped
 next as a declared visual-only addition per the user's own choice to
 build it despite having no sourced curve, kept honestly distinct (L0,
-ASM-0053) from leap year's L2 kinematic upgrade.
+ASM-0053) from leap year's L2 kinematic upgrade; month shipped last,
+scoped on its own once date was done, choosing the static (never
+animated) of two offered options specifically to avoid inventing an
+engagement-timing constant with no source behind it at all (ASM-0054).
 
-8.1–8.4, 8.6 and 8.9 (leap year and date) are done (see `docs/STATUS.md`
-for each). 8.7's cross-cutting validation work was folded into
-8.1–8.4/8.6 as they shipped, rather than built as a separate item. 8.5
-and 8.8 remain confirmed out of scope. 8.9's month linkage remains
-unscoped-but-not-started pending the user's instruction. No further
-Phase 8 sub-item is scoped to start without the user's next explicit
+8.1–8.4, 8.6 and 8.9 (all three complications) are done (see
+`docs/STATUS.md` for each). 8.7's cross-cutting validation work was
+folded into 8.1–8.4/8.6 as they shipped, rather than built as a separate
+item. 8.5 and 8.8 remain confirmed out of scope. No further Phase 8
+sub-item is scoped to start without the user's next explicit
 instruction.

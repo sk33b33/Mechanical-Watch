@@ -363,6 +363,40 @@ export function createRodGeometry(width: number, thickness: number): THREE.BoxGe
 }
 
 /**
+ * A month complication's own visual linkage to the date complication that
+ * drives it (ASM-0054, Phase 8.9). Unlike `DateComplication` (which has a
+ * continuously-driven arbor of its own to hang a cam on, ASM-0053) or
+ * `LeapYearComplication` (whose real Geneva-drive motion has a sourced
+ * closed-form shape, ASM-0050), a month complication has no continuous
+ * arbor at all — it only ever advances in the same instant the date
+ * star's own jump lands on day 1 (`stepSimulation`'s `monthCorrection`,
+ * `src/simulation/simulationState.ts`) — and SRC-0043 (the sourced real
+ * mechanism) describes its own drive member only as a "declutching drive
+ * wheel set" that engages the month star's teeth at month-end and is
+ * otherwise "occup[ying] a first position in which it has no effect,"
+ * with no numeric engagement geometry or timing given.
+ *
+ * With no continuous member to animate and no sourced motion to play,
+ * this draws the declutch wheel in its own idle (disengaged) position
+ * only, never animated — the same "park at rest rather than invent motion
+ * with no basis" treatment the leap-year driver pin already gets between
+ * its own real strokes. It sits just clear of the month star's own rim,
+ * offset toward the date star (the real wheel set's own kinematic
+ * connection point, SRC-0043), so it reads as "linked to this star, not
+ * currently engaged" rather than a contact-geometry claim. Position and
+ * size are both DERIVED from the date/month stars' own already-declared
+ * positions and the month star's own tip diameter — no new `ShaftId`, no
+ * new domain fields, no new simulation state.
+ */
+export const MONTH_LINKAGE_VISUALIZATION = {
+  /** The declutch wheel's own radius, as a fraction of the month star's own tip radius. */
+  wheelRadiusFraction: 0.3,
+  /** The visible gap between the wheel's own rim and the month star's own rim, showing it disengaged. */
+  clearanceMetres: 0.3e-3,
+  assumption: "ASM-0054" satisfies AssumptionId,
+} as const;
+
+/**
  * Escapement parts are drawn only to show the simplified model's motion
  * (ASM-0023): the escape wheel's tooth form, the fork's shape and the
  * balance's rim and arms are visual (ASM-0012). Only the escape wheel's

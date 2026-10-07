@@ -23,6 +23,7 @@ import {
   generateHandOutline,
   GENEVA_WHEEL_VISUALIZATION,
   handHubRadius,
+  MONTH_LINKAGE_VISUALIZATION,
   type EscapeToothFace,
 } from "@/geometry/assemblyGeometry3d";
 import { arborZRange, frameZRange, isCompleteFrame } from "@/assembly/assemblyGeometry";
@@ -587,6 +588,34 @@ export class Viewport {
         footprint: { kind: "circle", radius: month.starTipDiameter / 2, centre: { x: 0, y: 0 } },
         color: COLORS.monthStar,
       });
+
+      // The month's own visual linkage (ASM-0054): a small declutch wheel, idle/disengaged,
+      // positioned just clear of the month star's own rim, on the side facing the date star
+      // that drives it. No continuous arbor to animate (unlike date's cam, ASM-0053) and no
+      // sourced motion to play (unlike leap year's real Geneva stroke, ASM-0050), so it is
+      // drawn once here, in its own rest position, and never animated.
+      const date = movement.dateComplications[month.dateComplicationId];
+      const monthCentre = positions.get(month.starShaftId);
+      const dateCentre = date === undefined ? undefined : positions.get(date.starShaftId);
+      if (monthCentre !== undefined && dateCentre !== undefined) {
+        const v = MONTH_LINKAGE_VISUALIZATION;
+        const dx = dateCentre.x - monthCentre.x;
+        const dy = dateCentre.y - monthCentre.y;
+        const distance = Math.hypot(dx, dy);
+        const towardDate = distance > 0 ? { x: dx / distance, y: dy / distance } : { x: 1, y: 0 };
+        const monthTipRadius = month.starTipDiameter / 2;
+        const wheelRadius = monthTipRadius * v.wheelRadiusFraction;
+        const wheelCentre = {
+          x: monthCentre.x + towardDate.x * (monthTipRadius + wheelRadius + v.clearanceMetres),
+          y: monthCentre.y + towardDate.y * (monthTipRadius + wheelRadius + v.clearanceMetres),
+        };
+        const wheel = new THREE.Mesh(
+          createZCylinder(wheelRadius, meshZ - month.starThickness / 2, meshZ + month.starThickness / 2, 24),
+          material(COLORS.monthStar, { metalness: 0.3, roughness: 0.6 }),
+        );
+        wheel.position.set(wheelCentre.x, wheelCentre.y, 0);
+        this.content.add(wheel);
+      }
     }
 
     for (const year of Object.values(movement.leapYearComplications)) {

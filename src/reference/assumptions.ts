@@ -321,6 +321,12 @@ export const ASSUMPTIONS = {
     scope: "DateComplication's own visual/mechanical linkage (Phase 8.9, visual/L0 display only)",
     status: "Active",
   },
+  "ASM-0054": {
+    summary:
+      "Month visual/mechanical linkage (Phase 8.9): a small declutch wheel drawn in its own idle (disengaged) position, just clear of the month star's own rim, offset toward the date star that drives it. Unlike DateComplication (which has a continuously-driven arbor to hang a cam on, ASM-0053) or LeapYearComplication (whose real Geneva-drive motion has a sourced closed-form shape, ASM-0050), MonthComplication has no continuous arbor at all -- it only ever advances in the same instant the date star's own jump lands on day 1 (stepSimulation's monthCorrection, src/simulation/simulationState.ts) -- and SRC-0043 (the sourced real mechanism) describes its own drive member only as a 'declutching drive wheel set' that engages the month star's teeth at month-end and is otherwise 'occupying a first position in which it has no effect,' with no numeric engagement geometry or timing given. With no continuous member to animate and no sourced motion to play, this wheel is drawn once, in its idle position, and never animated -- the same 'park at rest rather than invent motion with no basis' treatment the leap-year driver pin already gets between its own real strokes (ASM-0052). Wheel radius and position are both DERIVED from the date/month stars' own already-declared positions and the month star's own tip diameter (MONTH_LINKAGE_VISUALIZATION, src/geometry/assemblyGeometry3d.ts) -- a declared visible clearance gap (not a sourced manufacturing figure) keeps it visibly clear of the month star's rim, the same 'visual only' treatment already given escape teeth and pallet stones (ASM-0004, ASM-0039, ASM-0040). No new domain fields, no new ShaftId, no new simulation state, no schema change: everything needed already existed on MonthComplication and DateComplication.",
+    scope: "MonthComplication's own visual/mechanical linkage (Phase 8.9, visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;
