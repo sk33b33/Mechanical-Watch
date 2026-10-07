@@ -8,7 +8,7 @@ import { windowsPerRevolution } from "./moonPhase";
 import type { DateComplicationId } from "./dateComplication";
 import type { MonthComplicationId } from "./monthComplication";
 import { LEAP_YEAR_LABELS, LEAP_YEAR_SLOT_COUNT, type LeapYearComplicationId } from "./leapYearComplication";
-import { MONTHS_PER_YEAR, MONTH_NAMES } from "@/kinematics/monthComplication";
+import { MONTHS_PER_YEAR, MONTH_ABBREVIATIONS, MONTH_NAMES } from "@/kinematics/monthComplication";
 import { moonPhaseFraction } from "@/kinematics/moonPhase";
 import { starPosition } from "@/kinematics/dateComplication";
 
@@ -58,7 +58,7 @@ export function findDiscComplication(movement: Movement, id: EntityId): DiscComp
       kind: "MonthComplication", id: month.id, name: month.name, shaftId: month.starShaftId,
       discRadius: (month.starTipDiameter / 2) as Length,
       zLo: (month.starZCentre - month.starThickness / 2) as Length, zHi: (month.starZCentre + month.starThickness / 2) as Length,
-      positionLabels: MONTH_NAMES,
+      positionLabels: MONTH_ABBREVIATIONS,
     };
   }
   const year = movement.leapYearComplications[id as LeapYearComplicationId];

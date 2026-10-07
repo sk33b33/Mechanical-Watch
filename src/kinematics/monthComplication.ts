@@ -22,6 +22,17 @@ export const GREGORIAN_MONTH_LENGTHS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 
 /** January first, 0-indexed — the same indexing `starPosition` reads a month star's position as. */
 export const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] as const;
 
+/**
+ * The conventional 3-letter month abbreviations, same indexing as
+ * `MONTH_NAMES`. Used only for the month star's own printed-ring texture
+ * (ASM-0051): 12 full names crowd a disc only a few millimetres across —
+ * every real month indicator uses a short form (Jan, Feb, ...) for
+ * exactly this reason. `MONTH_NAMES` stays the full word everywhere
+ * else (inspector rows, validation messages, correction-schedule text),
+ * since nothing crowds there.
+ */
+export const MONTH_ABBREVIATIONS = MONTH_NAMES.map((name) => name.slice(0, 3));
+
 /** Days in the given month (0-indexed, January = 0), wrapping into range. */
 export function daysInMonth(monthIndex: number): number {
   const wrapped = ((monthIndex % MONTHS_PER_YEAR) + MONTHS_PER_YEAR) % MONTHS_PER_YEAR;

@@ -391,8 +391,12 @@ export function createTeachingMovement(): Movement {
   // labels (continuous, not discrete positions), so its own window is simply a smaller concentric
   // aperture near the top of the disc, the conventional layout for a moonphase window (SRC-0045).
   // Date stays circular, the usual shape for a simple date aperture; month and leap-year use a
-  // rectangle instead, wide enough for a word ("January") or short label ("Year 4"), which a
-  // fixed-radius circle cannot show without either clipping the text or revealing its neighbours.
+  // rectangle instead, sized for a short label ("Jan", "Year 4"), which a fixed-radius circle
+  // cannot show without either clipping the text or revealing its neighbours. The month star's
+  // own disc prints MONTH_ABBREVIATIONS, not MONTH_NAMES (src/kinematics/monthComplication.ts):
+  // 12 full words crowd a disc a few millimetres across, so this window's own width is also kept
+  // under one label's own rim spacing (2π × discRadius × labelRadiusFraction / 12 positions), the
+  // same "catch one label at a time" reasoning as the comment above.
   const solved = solvePlacement(m);
   const windowAbove = (shaftId: ShaftId, discRadiusMm: number, labelRadiusFraction: number): { x: Length; y: Length } => {
     const at = solved.shaftPositions.get(shaftId);
@@ -418,7 +422,7 @@ export function createTeachingMovement(): Movement {
     dialId: dial.id,
     complicationId: monthComplication.id,
     centre: windowAbove(monthStarArbor.id, 2, 0.72),
-    outline: { kind: "RECTANGLE", width: mm(1.6), height: mm(0.7) },
+    outline: { kind: "RECTANGLE", width: mm(0.65), height: mm(0.6) },
   }));
   m = addDialWindow(m, createDialWindow({
     name: "Leap-year window",

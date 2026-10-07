@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { daysInMonth, GREGORIAN_MONTH_LENGTHS, MONTHS_PER_YEAR, monthEndCorrection, monthJumpStepAngle } from "./monthComplication";
+import { daysInMonth, GREGORIAN_MONTH_LENGTHS, MONTH_ABBREVIATIONS, MONTH_NAMES, MONTHS_PER_YEAR, monthEndCorrection, monthJumpStepAngle } from "./monthComplication";
 
 describe("daysInMonth (ASM-0049)", () => {
   it("returns the Gregorian length of each month, January first", () => {
@@ -54,5 +54,14 @@ describe("GREGORIAN_MONTH_LENGTHS (ASM-0049)", () => {
   it("has 12 entries summing to 365 (non-leap year)", () => {
     expect(GREGORIAN_MONTH_LENGTHS).toHaveLength(12);
     expect(GREGORIAN_MONTH_LENGTHS.reduce((a, b) => a + b, 0)).toBe(365);
+  });
+});
+
+describe("MONTH_ABBREVIATIONS (ASM-0051)", () => {
+  it("is the first 3 letters of each full month name, same order and length as MONTH_NAMES", () => {
+    expect(MONTH_ABBREVIATIONS).toHaveLength(12);
+    expect(MONTH_ABBREVIATIONS).toEqual(MONTH_NAMES.map((name) => name.slice(0, 3)));
+    expect(MONTH_ABBREVIATIONS[0]).toBe("Jan");
+    expect(MONTH_ABBREVIATIONS[8]).toBe("Sep");
   });
 });

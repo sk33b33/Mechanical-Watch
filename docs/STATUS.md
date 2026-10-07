@@ -2,6 +2,30 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Month star label texture: 3-letter abbreviations (follow-up to Phase 8.6)
+
+Requested directly: the month star's printed-ring texture used the full
+word ("January", "February", ...) for each of its 12 positions, visibly
+crowding a disc only a few millimetres across — exactly the kind of
+clogging a real month indicator avoids by using a short form.
+
+- New `MONTH_ABBREVIATIONS` in `src/kinematics/monthComplication.ts`:
+  the first 3 letters of each `MONTH_NAMES` entry ("Jan", "Feb", ...),
+  same order and indexing.
+- `src/domain/discComplication.ts`'s `findDiscComplication` now feeds
+  `MONTH_ABBREVIATIONS` (not `MONTH_NAMES`) as the month star's
+  `positionLabels` — the field that reaches `createDiscLabelTexture`
+  and is baked onto the disc. Every other month-name display (the
+  inspector's "Current position" row, `discComplicationLabel`'s own
+  "Currently shows" reading, validation messages, the correction-
+  schedule list) keeps the full word, since none of those are painted
+  onto a crowded disc.
+
+Verified: typecheck, lint, the full vitest suite (651 tests, 1 new), a
+production build, a live-browser spot check (confirmed the month
+window's texture now reads "Jul Aug" rather than overlapping full
+words), and the full e2e suite.
+
 ## Dial windows: rectangular month/year windows (follow-up to Phase 8.6)
 
 Requested directly: change the month and leap-year dial windows from
