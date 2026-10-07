@@ -29,11 +29,13 @@ export type MonthComplicationId = EntityId<"monthComplication">;
  * about the Gregorian calendar this project assumes, not a per-movement
  * design choice.
  *
- * February is fixed at 28 days (`GREGORIAN_MONTH_LENGTHS`): leap-year
- * awareness is Phase 8.4, not yet implemented. A real annual calendar in
- * this same sense (ETA's own mechanism included) still needs one manual
- * correction a year, after February — this is not a gap this item
- * closes, consistent with how real annual-calendar watches work.
+ * February is fixed at 28 days (`GREGORIAN_MONTH_LENGTHS`): `LeapYearComplication`
+ * (Phase 8.4, ASM-0050) tracks the 4-year cycle as an indicator wheel
+ * only — it is not wired back into this correction schedule, so February
+ * never becomes 29 days here. A real annual calendar in this same sense
+ * (ETA's own mechanism included) still needs one manual correction a
+ * year, after February — this is not a gap this item closes, consistent
+ * with how real annual-calendar watches work.
  */
 export interface MonthComplication {
   readonly id: MonthComplicationId;

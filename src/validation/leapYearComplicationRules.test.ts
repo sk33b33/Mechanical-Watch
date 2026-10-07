@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { millimetres as mm } from "@/units/length";
-import { addGear, addGearMesh, addLeapYearComplication, updateLeapYearComplication, type Movement } from "@/domain/movement";
+import { addDateComplication, addGear, addGearMesh, addLeapYearComplication, addMonthComplication, addShaft, updateLeapYearComplication, type Movement } from "@/domain/movement";
 import { createLeapYearComplication } from "@/domain/leapYearComplication";
+import { createMonthComplication } from "@/domain/monthComplication";
+import { createDateComplication } from "@/domain/dateComplication";
+import { createShaft, fixedAt } from "@/domain/shaft";
 import { createGear } from "@/domain/gear";
 import { createGearMesh } from "@/domain/gearMesh";
 import { removeEntity } from "@/domain/editing";
@@ -42,8 +45,29 @@ describe("leap-year complication rules", () => {
   });
 
   it("YEAR-001: several leap-year complications are each checked independently", () => {
+    const month = teaching.monthComplications[year.monthComplicationId];
+    const date = month === undefined ? undefined : teaching.dateComplications[month.dateComplicationId];
+    if (month === undefined || date === undefined) throw new Error("teaching movement's leap-year complication references no month/date complication");
+    // Its own date complication, month complication and wheel arbor, distinct from the teaching
+    // movement's own — otherwise this would trip the duplicate-reference checks, not stay error-free.
+    const secondDate = createDateComplication({ ...date, name: "Second date" });
+    const secondMonthArbor = createShaft("Second month star", fixedAt(mm(-20), mm(0)));
+    const secondMonth = createMonthComplication({ ...month, name: "Second month", dateComplicationId: secondDate.id, starShaftId: secondMonthArbor.id });
+    const secondYearArbor = createShaft("Second leap-year wheel", fixedAt(mm(-20), mm(-5)));
+    let m = addDateComplication(teaching, secondDate);
+    m = addShaft(m, secondMonthArbor);
+    m = addMonthComplication(m, secondMonth);
+    m = addShaft(m, secondYearArbor);
+    const second = createLeapYearComplication({ ...year, name: "Second leap year", monthComplicationId: secondMonth.id, wheelShaftId: secondYearArbor.id });
+    expect(found(addLeapYearComplication(m, second), "YEAR-001")).toEqual([]);
+  });
+
+  it("YEAR-001: two leap-year complications referencing the same month complication are each flagged", () => {
     const second = createLeapYearComplication({ ...year, name: "Second leap year" });
-    expect(found(addLeapYearComplication(teaching, second), "YEAR-001")).toEqual([]);
+    expect(found(addLeapYearComplication(teaching, second), "YEAR-001")).toEqual([
+      "YEAR-001:error:another leap-year complication already references this same month complication — only one can be driven by its wrap, so one of them never advances",
+      "YEAR-001:error:another leap-year complication already references this same month complication — only one can be driven by its wrap, so one of them never advances",
+    ]);
   });
 
   it("YEAR-001: the wheel arbor must not also be reached by the continuous gear train", () => {

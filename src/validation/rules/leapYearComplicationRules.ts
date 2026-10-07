@@ -18,6 +18,16 @@ import { issue, type Rule } from "./context";
  */
 export const leapYearComplicationRules: Rule = ({ movement, train }) => {
   const issues: ValidationIssue[] = [];
+  // Only one leap-year complication can actually be wired into the live jump chain per month
+  // complication (`dateJumpTracks` in src/simulation/simulationState.ts picks the first found);
+  // a second one referencing the same month complication would pass every other check silently
+  // and simply never advance.
+  const yearsByMonth = new Map<string, number>();
+  for (const year of Object.values(movement.leapYearComplications)) {
+    if (year.monthComplicationId in movement.monthComplications) {
+      yearsByMonth.set(year.monthComplicationId, (yearsByMonth.get(year.monthComplicationId) ?? 0) + 1);
+    }
+  }
   for (const year of Object.values(movement.leapYearComplications)) {
     const month = movement.monthComplications[year.monthComplicationId];
     const problems: string[] = [];
@@ -27,6 +37,9 @@ export const leapYearComplicationRules: Rule = ({ movement, train }) => {
     if (!(year.wheelShaftId in movement.shafts)) problems.push("its wheel arbor does not exist");
     if (month === undefined) problems.push("it does not reference an existing month complication");
     if (month?.starShaftId === year.wheelShaftId) problems.push("its wheel arbor must be different from the month complication's own star arbor");
+    if (month !== undefined && (yearsByMonth.get(year.monthComplicationId) ?? 0) > 1) {
+      problems.push("another leap-year complication already references this same month complication — only one can be driven by its wrap, so one of them never advances");
+    }
     for (const problem of problems) {
       issues.push(issue("YEAR-001", problem, "error", "L1_GEOMETRIC", [year.id], `${year.name}: ${problem}.`, ["ASM-0050"]));
     }

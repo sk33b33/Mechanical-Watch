@@ -11,6 +11,16 @@ const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "Ju
  */
 export const monthComplicationRules: Rule = ({ movement, train }) => {
   const issues: ValidationIssue[] = [];
+  // Only one month complication can actually be wired into the live jump chain per date
+  // complication (`dateJumpTracks` in src/simulation/simulationState.ts picks the first found);
+  // a second one referencing the same date complication would pass every other check silently
+  // and simply never advance.
+  const monthsByDate = new Map<string, number>();
+  for (const month of Object.values(movement.monthComplications)) {
+    if (month.dateComplicationId in movement.dateComplications) {
+      monthsByDate.set(month.dateComplicationId, (monthsByDate.get(month.dateComplicationId) ?? 0) + 1);
+    }
+  }
   for (const month of Object.values(movement.monthComplications)) {
     const date = movement.dateComplications[month.dateComplicationId];
     const problems: string[] = [];
@@ -20,6 +30,9 @@ export const monthComplicationRules: Rule = ({ movement, train }) => {
     if (!(month.starShaftId in movement.shafts)) problems.push("its star arbor does not exist");
     if (date === undefined) problems.push("it does not reference an existing date complication");
     if (date?.starShaftId === month.starShaftId) problems.push("its star arbor must be different from the date complication's own star arbor");
+    if (date !== undefined && (monthsByDate.get(month.dateComplicationId) ?? 0) > 1) {
+      problems.push("another month complication already references this same date complication — only one can be driven by its jumps, so one of them never advances");
+    }
     for (const problem of problems) {
       issues.push(issue("MONTH-001", problem, "error", "L1_GEOMETRIC", [month.id], `${month.name}: ${problem}.`, ["ASM-0049"]));
     }
@@ -37,7 +50,7 @@ export const monthComplicationRules: Rule = ({ movement, train }) => {
     const summary = shortMonths.map((m) => `${m.name} (${String(m.days)} days, +${String(31 - m.days)})`).join(", ");
     issues.push(
       issue("MONTH-002", "schedule", "info", "L2_KINEMATIC", [month.id],
-        `${month.name}: the date complication gets an extra step at the end of ${summary} — every other month needs none. February is fixed at 28 days; leap years are not modeled (Phase 8.4), so a real annual calendar in this same sense still needs one manual correction a year after February.`,
+        `${month.name}: the date complication gets an extra step at the end of ${summary} — every other month needs none. February is fixed at 28 days; a leap-year complication, where present (Phase 8.4), tracks the 4-year cycle as an indicator only and is not wired back into this schedule, so a real annual calendar in this same sense still needs one manual correction a year after February.`,
         ["ASM-0049"]),
     );
   }

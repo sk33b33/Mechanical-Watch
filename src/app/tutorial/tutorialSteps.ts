@@ -68,7 +68,7 @@ function couplingOfKind(record: Record<string, Coupling>, kind: Coupling["kind"]
   return found;
 }
 
-/** Builds the ~51-step walkthrough from a real teaching movement (createTeachingMovement()), read once at module load. */
+/** Builds the 67-step walkthrough from a real teaching movement (createTeachingMovement()), read once at module load. */
 function buildTeachingMovementSteps(): TutorialStep[] {
   const ref = createTeachingMovement();
   const placement = solvePlacement(ref);
@@ -420,9 +420,9 @@ function buildTeachingMovementSteps(): TutorialStep[] {
 
 /**
  * Covers the whole teaching movement: going train, motion works, keyless
- * works, mainspring, dial, escapement, moonphase disc and the date
- * complication — everything createTeachingMovement() builds. Extending it
- * further (a second design, or a from-scratch design
+ * works, mainspring, dial, escapement, moonphase disc, and the date,
+ * month and leap-year complications — everything createTeachingMovement()
+ * builds. Extending it further (a second design, or a from-scratch design
  * with genuinely invented — i.e. user-declared-as-they-go — dimensions)
  * follows the same pattern.
  */

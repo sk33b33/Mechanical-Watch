@@ -3,7 +3,7 @@ import { millimetres } from "@/units/length";
 import { radians } from "@/units/angle";
 import { updateMonthComplication } from "@/domain/movement";
 import type { MonthComplication } from "@/domain/monthComplication";
-import { GREGORIAN_MONTH_LENGTHS } from "@/kinematics/monthComplication";
+import { GREGORIAN_MONTH_LENGTHS, MONTHS_PER_YEAR } from "@/kinematics/monthComplication";
 import type { DateComplicationId } from "@/domain/dateComplication";
 import type { ShaftId } from "@/domain/shaft";
 import { starPosition } from "@/kinematics/dateComplication";
@@ -31,7 +31,7 @@ export function monthComplicationSection(store: AppStore, month: MonthComplicati
     "The month star's own arbor. Must NOT be meshed with anything (MONTH-001) — it advances only by the jump, never by continuous gear-train propagation.");
 
   const position = month.starShaftId in movement.shafts
-    ? starPosition(store.simulation.shaftAngle[month.starShaftId] ?? radians(0), 12)
+    ? starPosition(store.simulation.shaftAngle[month.starShaftId] ?? radians(0), MONTHS_PER_YEAR)
     : null;
 
   const shortMonths = GREGORIAN_MONTH_LENGTHS
@@ -59,7 +59,7 @@ export function monthComplicationSection(store: AppStore, month: MonthComplicati
     readonlyRow("Model", "driven by the date complication's own jumps, one step per month (ASM-0049)",
       "No jumper-spring energy storage or finger/cam contact geometry is modeled — only the net kinematic effect: one discrete step once a month, timed by the date star's own enlarged end-of-month jump (SRC-0043)."),
     readonlyRow("Correction schedule", scheduleSummary === "" ? "—" : scheduleSummary,
-      "Months shorter than 31 days, and the extra date-star step each gets at month end. February is fixed at 28 days — leap years are Phase 8.4, not yet modeled (MONTH-002)."),
+      "Months shorter than 31 days, and the extra date-star step each gets at month end. February is fixed at 28 days — a leap-year complication, where present (Phase 8.4), tracks the 4-year cycle as an indicator only and is not wired back into this schedule (MONTH-002)."),
     readonlyRow("Current position", position === null ? "—" : MONTH_NAMES[position] ?? String(position + 1),
       "Position 0 reads as January, an arbitrary reference like the date star's own day 1."),
     deleteRow(store, month.id, "Delete month complication", "The referenced date complication and star arbor are not removed."),

@@ -11,10 +11,11 @@ export const MONTHS_PER_YEAR = 12;
 
 /**
  * Non-leap-year Gregorian month lengths, January first. February is
- * fixed at 28 days: leap-year awareness is Phase 8.4, not yet
- * implemented. A real calendar fact, named here rather than invented or
- * declared per movement (CLAUDE.md: "engineering constants belong in
- * named configuration objects").
+ * fixed at 28 days: `LeapYearComplication` (Phase 8.4, ASM-0050) tracks
+ * the 4-year cycle as an indicator only and is not wired back into this
+ * table, so February never becomes 29 days here. A real calendar fact,
+ * named here rather than invented or declared per movement (CLAUDE.md:
+ * "engineering constants belong in named configuration objects").
  */
 export const GREGORIAN_MONTH_LENGTHS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
 

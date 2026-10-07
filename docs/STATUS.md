@@ -2,6 +2,55 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8: post-shipment audit — done
+
+Before starting Phase 9, audited every touchpoint of all four Phase 8
+entities (MoonPhase, DateComplication, MonthComplication,
+LeapYearComplication) against each other for staleness and gaps —
+domain layer, `Movement`/`editing`/`lookup` wiring, persistence
+decoders/migrations, inspector/componentTree/componentReport/viewport,
+validation rules and their KIN-001 exemptions, the assumption/rule-ID
+registers, the teaching movement, the guided tutorial, and the
+simulation jump-chain logic end to end. Found and fixed:
+
+- **Stale "leap years not modeled (Phase 8.4)" text**, left over from
+  when 8.3 shipped before 8.4 existed, in 8 places (domain/kinematics
+  doc comments, the live MONTH-002 validation message, the inspector's
+  "Correction schedule" row, two `componentReport.ts` derived values,
+  ASM-0049's own text in both `assumptions.ts` and
+  `ASSUMPTION_REGISTER.md`, and a `TRACEABILITY.md` row) — reworded to
+  state the real, still-true fact accurately: `LeapYearComplication`
+  (Phase 8.4) tracks the 4-year cycle as an indicator wheel only and is
+  not wired back into `daysInMonth`/`monthEndCorrection`, so February
+  stays fixed at 28 days every year (a stated simplification, ASM-0050
+  — the "year cam" that would carry real Feb-29 logic is explicitly out
+  of scope, matching SRC-0044's own real mechanism). Not a bug; the
+  surrounding text just read as if Phase 8.4 hadn't happened yet.
+- Two magic-number `12`s (should be `MONTHS_PER_YEAR`) in
+  `monthComplicationSection.ts` and `componentReport.ts`, against
+  CLAUDE.md's own "engineering constants belong in named configuration
+  objects" rule.
+- The guided tutorial's step-count comment ("~51-step") was stale from
+  before Phase 8 — the real, measured count is 67 — and its closing
+  "covers the whole teaching movement" doc comment omitted the month
+  and leap-year complications it does in fact walk through.
+- **A real, previously-undetected design gap**: `dateJumpTracks()` in
+  `src/simulation/simulationState.ts` picks the *first* `MonthComplication`
+  referencing a given `DateComplication` (and the first
+  `LeapYearComplication` referencing a given `MonthComplication`) via
+  `Array.find`. Nothing validated 1:1 cardinality, so a second
+  complication referencing the same target passed every check and
+  silently never advanced in simulation. Fixed with new MONTH-001/
+  YEAR-001 duplicate-reference checks (`monthsByDate`/`yearsByMonth`
+  count maps in `monthComplicationRules.ts`/`leapYearComplicationRules.ts`),
+  each flagging every complication sharing a duplicated reference as an
+  error, with dedicated tests for both the new error and the
+  (corrected) independent-entities case.
+
+Verified: typecheck, lint, the full vitest suite (627 tests, two new),
+a production build, a live-browser spot check of the reworded
+MONTH-002 message, and the full e2e suite.
+
 ## Phase 8.4: leap year / four-year cycle — done
 
 Implemented per the Phase 8 scoping, after first clearing its own research

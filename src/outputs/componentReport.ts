@@ -16,7 +16,7 @@ import { windowsPerRevolution } from "@/domain/moonPhase";
 import { impliedLunationDays, lunationDriftMinutes, SYNODIC_MONTH_DAYS } from "@/kinematics/moonPhase";
 import type { DateComplication } from "@/domain/dateComplication";
 import type { MonthComplication } from "@/domain/monthComplication";
-import { GREGORIAN_MONTH_LENGTHS } from "@/kinematics/monthComplication";
+import { GREGORIAN_MONTH_LENGTHS, MONTHS_PER_YEAR } from "@/kinematics/monthComplication";
 import { LEAP_YEAR_SLOT_COUNT, type LeapYearComplication } from "@/domain/leapYearComplication";
 import { genevaDriverMotionAngle, genevaLambda, genevaWheelAdvanceAngle, genevaWheelAngularVelocity } from "@/kinematics/genevaDrive";
 import { toBeatsPerHour } from "@/units/frequency";
@@ -552,17 +552,17 @@ function monthComplicationReport(movement: Movement, analysis: MovementAnalysis,
     derived: [
       {
         label: "Jump step",
-        text: `${(360 / 12).toFixed(2)}°`,
-        si: (2 * Math.PI) / 12,
-        equation: "2π / 12 (MONTHS_PER_YEAR)",
+        text: `${(360 / MONTHS_PER_YEAR).toFixed(2)}°`,
+        si: (2 * Math.PI) / MONTHS_PER_YEAR,
+        equation: "2π / MONTHS_PER_YEAR",
         level: "L2_KINEMATIC",
         references: ["ASM-0049"],
       },
       {
         label: "Months needing a date-star correction",
-        text: `${String(shortMonths.length)} of 12 (all but 31-day months)`,
+        text: `${String(shortMonths.length)} of ${String(MONTHS_PER_YEAR)} (all but 31-day months)`,
         si: shortMonths.length,
-        equation: "count of GREGORIAN_MONTH_LENGTHS < 31; February fixed at 28 days, leap years not modeled (Phase 8.4)",
+        equation: "count of GREGORIAN_MONTH_LENGTHS < 31; February fixed at 28 days — a leap-year complication, where present (Phase 8.4), tracks the 4-year cycle as an indicator only and is not wired back into this count",
         level: "L2_KINEMATIC",
         references: ["ASM-0049"],
       },

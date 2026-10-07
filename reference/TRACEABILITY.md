@@ -212,8 +212,10 @@ rev/min exist only at the UI boundary (`src/units/`).
 | Date complication drive arbor's implied period more than ±10% from one day | DATE-003 warning instead of info; not itself sourced, a round generous margin. |
 | Month complication star dimensions non-positive/non-finite, star arbor missing, referenced date complication missing, star arbor same as the date complication's own star arbor | MONTH-001 error, one per problem. |
 | Month complication star arbor also reached by the continuous gear train | MONTH-001 error (`star-also-geared`) — a jump mechanism's star must not be meshed. |
+| Two month complications reference the same date complication | MONTH-001 error, both flagged — `dateJumpTracks` wires in only the first found, so the other would otherwise silently never advance. |
 | Leap-year complication wheel dimensions non-positive/non-finite, wheel arbor missing, referenced month complication missing, wheel arbor same as the month complication's own star arbor | YEAR-001 error, one per problem. |
 | Leap-year complication wheel arbor also reached by the continuous gear train | YEAR-001 error (`wheel-also-geared`) — a jump mechanism's wheel must not be meshed. |
+| Two leap-year complications reference the same month complication | YEAR-001 error, both flagged — same silent-first-wins risk as the month-complication case above. |
 | New escapement (all empty, no arbors chosen) | Kept empty; ESC-101 lists what is missing; nothing ticks or swings. |
 | Amplitude not above half the lift angle | ESC-101 error; no impulse window, so the display shows nothing ticking. |
 | Pallet arbor or balance staff gear-driven | ESC-102 error. |
@@ -303,9 +305,9 @@ rev/min exist only at the UI boundary (`src/units/`).
 | DATE-001 | error | L1 | date complication star dimensions positive/finite, tooth count a positive integer, drive and star arbors exist and are distinct (project addition, ASM-0048) |
 | DATE-002 | error | L2 | the star arbor must not also be reached by the continuous gear train (project addition, ASM-0048) |
 | DATE-003 | info / warning | L2 | implied jump period from the drive arbor's own solved angular velocity, reported against one day; warning outside ±10% (project addition, ASM-0048, SRC-0042) |
-| MONTH-001 | error | L1 / L2 | month complication star dimensions positive/finite, star and referenced date complication exist and are distinct from the date star, and the star arbor must not also be reached by the continuous gear train (project addition, ASM-0049) |
-| MONTH-002 | info | L2 | the correction schedule this mechanism applies: which months get an extra date-star step and by how many, flagging February's fixed 28-day length and the Phase 8.4 leap-year deferral (project addition, ASM-0049) |
-| YEAR-001 | error | L1 / L2 | leap-year complication wheel dimensions positive/finite, wheel and referenced month complication exist and are distinct from the month's own star arbor, and the wheel arbor must not also be reached by the continuous gear train (project addition, ASM-0050) |
+| MONTH-001 | error | L1 / L2 | month complication star dimensions positive/finite, star and referenced date complication exist and are distinct from the date star, the star arbor must not also be reached by the continuous gear train, and no two month complications may reference the same date complication (project addition, ASM-0049) |
+| MONTH-002 | info | L2 | the correction schedule this mechanism applies: which months get an extra date-star step and by how many, flagging February's fixed 28-day length and that a leap-year complication (Phase 8.4), where present, tracks the 4-year cycle as an indicator only and is not wired back into this schedule (project addition, ASM-0049) |
+| YEAR-001 | error | L1 / L2 | leap-year complication wheel dimensions positive/finite, wheel and referenced month complication exist and are distinct from the month's own star arbor, the wheel arbor must not also be reached by the continuous gear train, and no two leap-year complications may reference the same month complication (project addition, ASM-0050) |
 | YEAR-002 | info | L2 | the drive model (driven by the month complication's own December-to-January wrap) and reference Geneva-mechanism figures (4-slot index angle, motion/dwell split, no-shock pin-radius ratio, peak speed ratio) this mechanism's real indexing stroke would have (project addition, ASM-0050, SRC-0047) |
 | TOL-001 | error / warning | L1 | tolerance definition: target exists, one per dimension, finite limits, lower ≤ upper, positive size limit (project addition) |
 | TOL-002 | warning | L1 | a nominally positive side shake, endshake or gear-mesh centre distance that can close within declared tolerances (project addition) |

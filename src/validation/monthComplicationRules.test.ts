@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { millimetres as mm } from "@/units/length";
-import { addGear, addGearMesh, addMonthComplication, updateMonthComplication, type Movement } from "@/domain/movement";
+import { addDateComplication, addGear, addGearMesh, addMonthComplication, addShaft, updateMonthComplication, type Movement } from "@/domain/movement";
 import { createMonthComplication } from "@/domain/monthComplication";
+import { createDateComplication } from "@/domain/dateComplication";
+import { createShaft, fixedAt } from "@/domain/shaft";
 import { createGear } from "@/domain/gear";
 import { createGearMesh } from "@/domain/gearMesh";
 import { removeEntity } from "@/domain/editing";
@@ -42,8 +44,24 @@ describe("month complication rules", () => {
   });
 
   it("MONTH-001: several month complications are each checked independently", () => {
+    const date = teaching.dateComplications[month.dateComplicationId];
+    if (date === undefined) throw new Error("teaching movement's month complication references no date complication");
+    // Its own date complication and star arbor, distinct from the teaching movement's own —
+    // otherwise this would trip the new duplicate-reference check below, not stay error-free.
+    const secondDate = createDateComplication({ ...date, name: "Second date" });
+    const secondArbor = createShaft("Second month star", fixedAt(mm(-20), mm(0)));
+    let m = addDateComplication(teaching, secondDate);
+    m = addShaft(m, secondArbor);
+    const second = createMonthComplication({ ...month, name: "Second month", dateComplicationId: secondDate.id, starShaftId: secondArbor.id });
+    expect(found(addMonthComplication(m, second), "MONTH-001")).toEqual([]);
+  });
+
+  it("MONTH-001: two month complications referencing the same date complication are each flagged", () => {
     const second = createMonthComplication({ ...month, name: "Second month" });
-    expect(found(addMonthComplication(teaching, second), "MONTH-001")).toEqual([]);
+    expect(found(addMonthComplication(teaching, second), "MONTH-001")).toEqual([
+      "MONTH-001:error:another month complication already references this same date complication — only one can be driven by its jumps, so one of them never advances",
+      "MONTH-001:error:another month complication already references this same date complication — only one can be driven by its jumps, so one of them never advances",
+    ]);
   });
 
   it("MONTH-001: the star arbor must not also be reached by the continuous gear train", () => {
@@ -60,7 +78,7 @@ describe("month complication rules", () => {
     expect(info?.severity).toBe("info");
     expect(info?.message).toContain("February (28 days, +3)");
     expect(info?.message).toContain("April (30 days, +1)");
-    expect(info?.message).toContain("leap years are not modeled");
+    expect(info?.message).toContain("tracks the 4-year cycle as an indicator only");
     expect(info?.references).toContain("ASM-0049");
   });
 });
