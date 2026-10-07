@@ -5,6 +5,7 @@ import {
   balanceRimInnerRadius,
   createDiscWithHolesGeometry,
   createGenevaWheelGeometry,
+  createRodGeometry,
   discLabelPlacements,
   escapeWheelHubRadius,
   generateEscapeWheelOutline,
@@ -252,6 +253,30 @@ describe("createGenevaWheelGeometry", () => {
     for (const slotCount of [3, 5, 6]) {
       expect(() => createGenevaWheelGeometry(1.5e-3, 0.15e-3, slotCount, 0)).not.toThrow();
     }
+  });
+});
+
+describe("createRodGeometry", () => {
+  it("spans from the local origin (the pivot) to x = 1 (the unscaled tip), centred in y/z", () => {
+    const width = 0.2e-3;
+    const thickness = 0.12e-3;
+    const geometry = createRodGeometry(width, thickness);
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox;
+    expect(box?.min.x).toBeCloseTo(0, 9);
+    expect(box?.max.x).toBeCloseTo(1, 9);
+    expect(box?.min.y).toBeCloseTo(-width / 2, 9);
+    expect(box?.max.y).toBeCloseTo(width / 2, 9);
+    expect(box?.min.z).toBeCloseTo(-thickness / 2, 9);
+    expect(box?.max.z).toBeCloseTo(thickness / 2, 9);
+  });
+
+  it("scaling mesh.scale.x reaches any declared tip distance, the technique DATE_LINKAGE_VISUALIZATION's jumper rod relies on", () => {
+    const geometry = createRodGeometry(0.2e-3, 0.12e-3);
+    geometry.computeBoundingBox();
+    const unscaledMax = geometry.boundingBox?.max.x ?? 0;
+    const distance = 2.3e-3;
+    expect(unscaledMax * distance).toBeCloseTo(distance, 9);
   });
 });
 

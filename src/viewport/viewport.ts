@@ -15,7 +15,9 @@ import {
   createFrameGeometry,
   createGenevaWheelGeometry,
   createHandGeometry,
+  createRodGeometry,
   createZCylinder,
+  DATE_LINKAGE_VISUALIZATION,
   escapeWheelHubRadius,
   generateEscapeWheelOutline,
   generateHandOutline,
@@ -27,6 +29,7 @@ import { arborZRange, frameZRange, isCompleteFrame } from "@/assembly/assemblyGe
 import { partReferencePoint, type Point3 } from "@/assembly/measure";
 import { stemBodyId, type KeylessWorksId } from "@/domain/keyless";
 import { findDiscComplication } from "@/domain/discComplication";
+import type { DateComplicationId } from "@/domain/dateComplication";
 import type { LeapYearComplicationId } from "@/domain/leapYearComplication";
 import { LEAP_YEAR_INDEX_STROKE_SECONDS, LEAP_YEAR_SLOT_COUNT } from "@/domain/leapYearComplication";
 import { genevaLambda, genevaStrokeDriverAngle, genevaDriverMotionAngle } from "@/kinematics/genevaDrive";
@@ -215,6 +218,14 @@ export class Viewport {
    * angle.
    */
   private readonly genevaDriverPins = new Map<LeapYearComplicationId, { group: THREE.Group; wheelShaftId: ShaftId; directionWheelFromDriver: number }>();
+  /**
+   * A date complication's own jumper rod (ASM-0053): its nose tracks a
+   * point on the star's own rim, read fresh from the star's own already-
+   * simulated `shaftAngle` every frame — no stroke state to track (the
+   * jump itself stays instantaneous, ASM-0048), just a fixed pivot and
+   * a star centre to compute the rod's current angle/length from.
+   */
+  private readonly dateJumperLinkages = new Map<DateComplicationId, { rod: THREE.Mesh; pivot: { x: number; y: number }; starCentre: { x: number; y: number }; starShaftId: ShaftId; noseRadius: number; z: number }>();
   private showDial = true;
   private readonly escapementLabel: HTMLDivElement;
   private readonly pickables: THREE.Mesh[] = [];
@@ -383,6 +394,7 @@ export class Viewport {
     this.shaftGroups.clear();
     this.stemSpins.clear();
     this.genevaDriverPins.clear();
+    this.dateJumperLinkages.clear();
     this.pickables.length = 0;
     this.cappableSolids.length = 0;
     this.sectionCapMeshes.length = 0;
@@ -518,6 +530,42 @@ export class Viewport {
         footprint: { kind: "circle", radius: date.starTipDiameter / 2, centre: { x: 0, y: 0 } },
         color: COLORS.dateStar,
       });
+
+      // The date's own visual linkage (ASM-0053): a cam fixed to the continuously-driven drive
+      // shaft (turns for free — it's just another child of that arbor's own shaftGroup, no new
+      // tracking needed) and a jumper rod whose nose tracks the star's own already-simulated
+      // shaftAngle every frame (dateJumperLinkages, applyKinematicRotation()).
+      const driveGroup = this.shaftGroups.get(date.driveShaftId);
+      const starCentre = positions.get(date.starShaftId);
+      const driveCentre = positions.get(date.driveShaftId);
+      if (driveGroup !== undefined && starCentre !== undefined && driveCentre !== undefined) {
+        const v = DATE_LINKAGE_VISUALIZATION;
+        const centreDistance = Math.hypot(starCentre.x - driveCentre.x, starCentre.y - driveCentre.y);
+        const cam = new THREE.Mesh(
+          createZCylinder(v.camRadiusFraction * centreDistance, meshZ - date.starThickness / 4, meshZ + date.starThickness / 4, 24),
+          material(COLORS.dateStar, { metalness: 0.3, roughness: 0.6 }),
+        );
+        driveGroup.add(cam);
+
+        const starTipRadius = date.starTipDiameter / 2;
+        const awayFromDrive = centreDistance > 0
+          ? { x: (starCentre.x - driveCentre.x) / centreDistance, y: (starCentre.y - driveCentre.y) / centreDistance }
+          : { x: 1, y: 0 };
+        const pivot = {
+          x: starCentre.x + awayFromDrive.x * starTipRadius * v.pivotDistanceFraction,
+          y: starCentre.y + awayFromDrive.y * starTipRadius * v.pivotDistanceFraction,
+        };
+        const pivotKnob = new THREE.Mesh(
+          createZCylinder(v.pivotKnobRadiusMetres, meshZ - date.starThickness / 2, meshZ + date.starThickness / 2, 16),
+          material(COLORS.dateStar, { metalness: 0.5, roughness: 0.4 }),
+        );
+        pivotKnob.position.set(pivot.x, pivot.y, 0);
+        this.content.add(pivotKnob);
+
+        const rod = new THREE.Mesh(createRodGeometry(v.rodWidthMetres, v.rodThicknessMetres), material(COLORS.dateStar, { metalness: 0.4, roughness: 0.5 }));
+        this.content.add(rod);
+        this.dateJumperLinkages.set(date.id, { rod, pivot, starCentre, starShaftId: date.starShaftId, noseRadius: starTipRadius * v.noseRadiusFraction, z: meshZ });
+      }
     }
 
     for (const month of Object.values(movement.monthComplications)) {
@@ -1087,6 +1135,23 @@ export class Viewport {
       const stroke = simulation.genevaStrokes[pin.wheelShaftId];
       const alpha = stroke === undefined ? -half : genevaStrokeDriverAngle(stroke.elapsedSeconds, LEAP_YEAR_INDEX_STROKE_SECONDS, LEAP_YEAR_SLOT_COUNT);
       pin.group.rotation.z = pin.directionWheelFromDriver + alpha;
+    }
+    // A date jumper's own rod (ASM-0053): its nose reads the star's own already-simulated
+    // shaftAngle directly, every frame — a real position, not an invented animation — so it
+    // swings in exact sync with the star; it snaps together with the star's own still-
+    // instantaneous jump rather than easing, since no sourced release-velocity profile exists
+    // to play out (unlike the leap-year Geneva drive's real stroke, ASM-0050/0052).
+    for (const link of this.dateJumperLinkages.values()) {
+      const starAngle = simulation.shaftAngle[link.starShaftId] ?? 0;
+      const nose = {
+        x: link.starCentre.x + link.noseRadius * Math.cos(starAngle),
+        y: link.starCentre.y + link.noseRadius * Math.sin(starAngle),
+      };
+      const dx = nose.x - link.pivot.x;
+      const dy = nose.y - link.pivot.y;
+      link.rod.position.set(link.pivot.x, link.pivot.y, link.z);
+      link.rod.rotation.z = Math.atan2(dy, dx);
+      link.rod.scale.x = Math.hypot(dx, dy);
     }
   }
 

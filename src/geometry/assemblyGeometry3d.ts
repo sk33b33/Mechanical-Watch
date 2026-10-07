@@ -314,6 +314,55 @@ export function createGenevaWheelGeometry(tipRadius: number, thickness: number, 
 }
 
 /**
+ * A date complication's own visual linkage to its continuously-driven
+ * arbor (ASM-0053, Phase 8.9): a small cam disc fixed to the drive
+ * shaft's own axis (so it turns for free with the shaft's own already-
+ * simulated continuous rotation, no new tracking needed) and a jumper
+ * rod from a fixed pivot to a point on the star's own rim, which tracks
+ * the star's own already-simulated `shaftAngle` exactly — not an
+ * invented motion, a real position read each frame
+ * (`src/viewport/viewport.ts`'s `dateJumperLinkages`). The cam is drawn
+ * as a plain disc, not SRC-0042's own undisclosed cam profile, and the
+ * rod as a rigid lever, not a real flexible spring blade — both visual
+ * only (ASM-0004), the same treatment as the escapement's own symbolic
+ * pallet arms. Since this project's jump mechanisms (ASM-0048) still
+ * jump the star's own angle instantaneously (no sourced release-velocity
+ * profile to play out, unlike the Geneva drive's real β(α), ASM-0050),
+ * the rod snaps together with the star rather than easing — a true
+ * depiction of the real mechanism's own character (a real date's
+ * midnight jump is also effectively instantaneous to the eye), not a
+ * shortcut.
+ */
+export const DATE_LINKAGE_VISUALIZATION = {
+  /** The cam disc's own radius, as a fraction of the distance between the drive shaft and the star. */
+  camRadiusFraction: 0.35,
+  /** Where the jumper's nose rides on the star's own rim, as a fraction of the star's own tip radius. */
+  noseRadiusFraction: 0.85,
+  /** The jumper's own fixed pivot, this many star-tip-radii out from the star's centre, in the direction away from the drive shaft. */
+  pivotDistanceFraction: 1.2,
+  rodWidthMetres: 0.2e-3,
+  rodThicknessMetres: 0.12e-3,
+  pivotKnobRadiusMetres: 0.18e-3,
+  noseKnobRadiusMetres: 0.15e-3,
+  assumption: "ASM-0053" satisfies AssumptionId,
+} as const;
+
+/**
+ * A unit-length rod: a thin box with one end (the pivot) at the local
+ * origin, extending along local +X. Scale `mesh.scale.x` to the actual
+ * pivot-to-tip distance and set `mesh.rotation.z` to point it, both
+ * recomputed every frame for a tip that moves (e.g. `DATE_LINKAGE_
+ * VISUALIZATION`'s jumper rod) — the same "unit shape, scaled and
+ * oriented per frame" technique a billboard or bone link uses, cheaper
+ * than rebuilding geometry every tick.
+ */
+export function createRodGeometry(width: number, thickness: number): THREE.BoxGeometry {
+  const geometry = new THREE.BoxGeometry(1, width, thickness);
+  geometry.translate(0.5, 0, 0);
+  return geometry;
+}
+
+/**
  * Escapement parts are drawn only to show the simplified model's motion
  * (ASM-0023): the escape wheel's tooth form, the fork's shape and the
  * balance's rim and arms are visual (ASM-0012). Only the escape wheel's

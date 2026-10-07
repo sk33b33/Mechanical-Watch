@@ -30,6 +30,14 @@ export type DateComplicationId = EntityId<"dateComplication">;
  * action), so only forward crossings count (`crossesRevolution`,
  * `src/kinematics/dateComplication.ts`).
  *
+ * The viewport draws a plain cam on `driveShaftId` and a rigid jumper rod
+ * whose nose tracks the star's own already-simulated angle (ASM-0053), so
+ * the mechanism no longer looks unconnected in the 3D view — but this is
+ * a declared visual-only addition, not a contact-geometry simulation: the
+ * cam and rod do not drive the jump, they only read its already-computed
+ * result each frame, and the jump itself stays the instantaneous,
+ * contact-geometry-free model this comment describes above.
+ *
  * `starToothCount` is the number of discrete positions (31 for a date,
  * SRC-0042's own worked example — "a calendar mobile 1... bearing the
  * numerals 0 to 31... with an inner toothing 1a of thirty-one teeth");

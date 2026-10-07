@@ -315,6 +315,12 @@ export const ASSUMPTIONS = {
     scope: "LeapYearComplication's own visual/mechanical linkage (Phase 8.9, visual/L0 display plus a declared simulation-timing choice)",
     status: "Active",
   },
+  "ASM-0053": {
+    summary:
+      "Date visual/mechanical linkage (Phase 8.9): a small cam disc fixed to the drive shaft's own axis (turns for free with the shaft's own already-simulated continuous rotation -- no new timing or tracking needed, unlike the leap-year wheel, ASM-0052) and a jumper rod from a fixed pivot to a point on the date star's own rim. SRC-0042 (the sourced real mechanism) describes a cam-and-roller trigger that winds an instantaneous-jump spring, released when the roller passes the cam's tip, held between jumps by a spring-loaded jumper -- but gives no numeric cam profile and no spring-stiffness/moment-of-inertia data, so unlike the leap-year Geneva drive (which has a real, sourced, closed-form stroke shape, SRC-0047) there is no real motion curve here to simulate. The cam is therefore drawn as a plain disc, not SRC-0042's own undisclosed profile, and the jumper as a rigid lever, not a real flexible spring blade -- both visual only (ASM-0004), the same 'visual only, no true contact geometry' treatment already given the escapement's own symbolic pallet arms (ASM-0039, ASM-0040). What IS real: the jumper's own nose position is read directly from the star's own already-simulated shaftAngle every frame (src/viewport/viewport.ts's dateJumperLinkages), not an invented animation, so the rod visibly swings in exact sync with the star -- it just snaps together with the star's own still-instantaneous jump (ASM-0048 is unchanged: no sourced release-velocity profile exists to ease that jump the way the Geneva drive's real stroke could), which is a true depiction of the real mechanism's own character (a real date's midnight jump is also effectively instantaneous to the eye) rather than a shortcut. Cam radius, nose radius and pivot distance are declared fractions of already-declared positions/dimensions (the drive-shaft/star centre distance, the star's own tip radius) -- DERIVED scale, not an invented absolute size (DATE_LINKAGE_VISUALIZATION, src/geometry/assemblyGeometry3d.ts). No new domain fields, no schema change: everything needed already existed on DateComplication.",
+    scope: "DateComplication's own visual/mechanical linkage (Phase 8.9, visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

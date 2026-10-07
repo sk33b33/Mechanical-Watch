@@ -77,6 +77,71 @@ stroke clears on completion), a production build, and a live-browser
 spot check (confirmed the leap-year wheel renders as a visibly slotted
 4-slot cross, not a plain disc, with no console or page errors).
 
+## Phase 8.9 follow-up: date jumper visual linkage
+
+Requested directly ("yes", choosing to build date's linkage now rather
+than scoping both date and month first). Unlike leap year, date has no
+sourced closed-form motion curve to play (SRC-0042's cam+roller+jumper-
+spring description is qualitative prose only, per the original Phase 8.9
+scoping), so this is a declared visual-only addition, not a new
+kinematic claim: the star's own jump (ASM-0048) stays exactly as
+instantaneous as before — no release-velocity profile exists to play out
+— and the cam/rod only read that already-computed result each frame,
+never drive it.
+
+- **New geometry helpers**, `createRodGeometry` and
+  `DATE_LINKAGE_VISUALIZATION` (`src/geometry/assemblyGeometry3d.ts`): a
+  unit-length rod (pivot at the local origin, extending along local +X,
+  scaled via `mesh.scale.x` and rotated via `mesh.rotation.z` each frame
+  to reach any declared tip distance/angle — a reusable "bone-link"
+  technique) plus the fractions/sizes the linkage's geometry is derived
+  from.
+- **A cam on the drive arbor and a jumper rod at the star**, built in
+  `src/viewport/viewport.ts`: a plain disc cam, radius
+  `camRadiusFraction × centreDistance`, parented directly to the drive
+  shaft's own already-existing `shaftGroup` (turns for free, no new
+  tracking needed); a pivot point `pivotDistanceFraction × starTipRadius`
+  beyond the star's rim (away from the drive arbor) and a rigid rod from
+  that pivot to a "nose" that reads the star's own live `shaftAngle`
+  every frame via the same `applyKinematicRotation()` loop every other
+  shaft uses — a new `dateJumperLinkages` map tracks the rod mesh/pivot
+  per date complication, mirroring the leap-year driver-pin's own
+  tracking-map pattern. Zero new domain fields and no schema bump: every
+  dimension is derived from the drive/star arbors' own already-declared
+  positions and the star's own already-declared tip diameter.
+- **Registered as ASM-0053** (`reference/assumptions/ASSUMPTION_REGISTER.md`,
+  `src/reference/assumptions.ts`), scoped to the date complication's own
+  visual/mechanical linkage, L0/visual only — kept separate from
+  ASM-0048 (the date jump's own kinematics, unchanged) exactly as the
+  leap-year work kept ASM-0052 (declared stroke timing) separate from
+  ASM-0050 (the stroke's sourced shape).
+- Verified the linkage actually renders and is positioned sensibly by
+  inspecting the live THREE.js scene graph directly in a Playwright test
+  (world positions, visibility, mesh scale) rather than relying on
+  screenshot pixel-peeping alone, since the cam/rod sit tucked among a
+  dense gear cluster and are easy to miss or misjudge in a flat
+  screenshot; confirmed separately via the viewport's own Explode control
+  (unrelated existing feature, used here only to pull overlapping parts
+  apart for inspection) that the elements are not occluded or
+  mispositioned, just naturally nested among the gear train the way a
+  real date-jumper mechanism usually is. A design bug found in the
+  process — `pivotDistanceFraction` originally placed the pivot a
+  further `0.6 × starTipRadius` outside the mainplate's own 15 mm radius
+  than intended — was fixed before committing.
+- Added a short note to `DateComplication`'s own doc comment
+  (`src/domain/dateComplication.ts`) clarifying that the new cam/rod are
+  a declared visual addition, not a contact-geometry simulation, so the
+  comment's existing "no finger/cam contact geometry... are modeled"
+  claim about the kinematic model still reads as true.
+
+Verified: typecheck, lint, the full vitest suite (665 tests, 2 new —
+`createRodGeometry`'s own geometry tests), a production build, and a
+live-browser confirmation (both a direct scene-graph inspection and an
+exploded-view screenshot) that the cam, pivot and rod render at the
+correct positions with no console or page errors. Month's own linkage
+remains unscoped-but-not-started, unchanged from Phase 8.9's own
+scoping.
+
 ## Month star label texture: 3-letter abbreviations (follow-up to Phase 8.6)
 
 Requested directly: the month star's printed-ring texture used the full
