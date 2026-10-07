@@ -2,13 +2,14 @@ import * as THREE from "three";
 import type { Movement } from "@/domain/movement";
 import type { KeylessWorks, StemPinion, StemPosition } from "@/domain/keyless";
 import type { Dial } from "@/domain/dial";
+import type { DialWindow } from "@/domain/dialWindow";
 import type { ShaftId } from "@/domain/shaft";
 import { createGear } from "@/domain/gear";
 import { metres } from "@/units/length";
 import type { PlacementSolution } from "@/kinematics/solvePlacement";
 import { isDefinedPinion, mainplateEdgeAlongStem, stemEngagement, stemLine } from "@/kinematics/keylessGeometry";
 import { createGearGeometry } from "@/geometry/gearGeometry";
-import { DIAL_VISUALIZATION, KEYLESS_VISUALIZATION, createZCylinder } from "@/geometry/assemblyGeometry3d";
+import { DIAL_VISUALIZATION, KEYLESS_VISUALIZATION, createDiscWithHolesGeometry, createZCylinder } from "@/geometry/assemblyGeometry3d";
 
 /**
  * Presentation of the keyless works and the dial. Positions, heights and
@@ -108,12 +109,18 @@ export function buildStemMeshes(
   return { root, stemSpin, windingSpin, pickMeshes };
 }
 
-/** The dial disc with twelve hour markers on its face (the −Z side). */
+/**
+ * The dial disc with twelve hour markers on its face (the −Z side), and a
+ * hole punched for each of the dial's own windows (ASM-0051) — through
+ * which a disc complication becomes visible, where without one it would
+ * be fully occluded by this otherwise-opaque disc.
+ */
 export function buildDialMeshes(
   dial: Dial,
   placement: PlacementSolution,
   displayZ: (z: number) => number,
   materials: { disc: THREE.Material; marker: THREE.Material },
+  windows: readonly DialWindow[] = [],
 ): { root: THREE.Group; disc: THREE.Mesh } | null {
   const centre = placement.shaftPositions.get(dial.centreShaftId);
   const valid = Number.isFinite(dial.diameter) && dial.diameter > 0 && Number.isFinite(dial.thickness) && dial.thickness > 0 && Number.isFinite(dial.faceHeight);
@@ -121,7 +128,15 @@ export function buildDialMeshes(
   const root = new THREE.Group();
   root.position.set(centre.x, centre.y, 0);
   const face = displayZ(dial.faceHeight);
-  const disc = new THREE.Mesh(createZCylinder(dial.diameter / 2, face, face + dial.thickness, 96), materials.disc);
+  const ownWindows = windows.filter((w) => w.dialId === dial.id);
+  let disc: THREE.Mesh;
+  if (ownWindows.length === 0) {
+    disc = new THREE.Mesh(createZCylinder(dial.diameter / 2, face, face + dial.thickness, 96), materials.disc);
+  } else {
+    const holes = ownWindows.map((w) => ({ x: w.centre.x - centre.x, y: w.centre.y - centre.y, radius: w.radius }));
+    disc = new THREE.Mesh(createDiscWithHolesGeometry(dial.diameter / 2, dial.thickness, holes), materials.disc);
+    disc.position.z = face;
+  }
   root.add(disc);
   const d = DIAL_VISUALIZATION;
   const r = dial.diameter / 2;

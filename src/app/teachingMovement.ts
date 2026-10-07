@@ -12,7 +12,7 @@ import {
   updateShaft,
   type Movement,
 } from "@/domain/movement";
-import { createShaft, fixedAt, type HandFunction, type Shaft, type ShaftSupport } from "@/domain/shaft";
+import { createShaft, fixedAt, type HandFunction, type Shaft, type ShaftId, type ShaftSupport } from "@/domain/shaft";
 import { createGear, type Gear } from "@/domain/gear";
 import { createGearMesh, type GearMesh } from "@/domain/gearMesh";
 import { createFrame } from "@/domain/frame";
@@ -20,11 +20,13 @@ import { createJewel } from "@/domain/jewel";
 import { createFrictionClutch, createMainspring } from "@/domain/coupling";
 import { createKeylessWorks } from "@/domain/keyless";
 import { createDial } from "@/domain/dial";
-import { addDateComplication, addDial, addEscapement, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, setBalanceDrive } from "@/domain/movement";
+import { addDateComplication, addDial, addDialWindow, addEscapement, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, setBalanceDrive } from "@/domain/movement";
 import { createMoonPhase } from "@/domain/moonPhase";
 import { createDateComplication } from "@/domain/dateComplication";
 import { createMonthComplication } from "@/domain/monthComplication";
 import { createLeapYearComplication } from "@/domain/leapYearComplication";
+import { createDialWindow } from "@/domain/dialWindow";
+import { solvePlacement } from "@/kinematics/solvePlacement";
 import { micronewtonMillimetresPerRadian, milligramSquareCentimetres } from "@/units/rotational";
 import { newtonMillimetres } from "@/units/torque";
 import { spanAngle, tangentialCentreDistance } from "@/kinematics/palletGeometry";
@@ -328,15 +330,16 @@ export function createTeachingMovement(): Movement {
     settingWheelGearId: settingWheel.id,
     ratchetGearId: ratchetWheel.id,
   }));
-  m = addDial(m, createDial({
+  const dial = createDial({
     name: "Dial",
     centreShaftId: centre.id,
     diameter: mm(28),
     thickness: mm(0.4),
     // Below the lowest motion-works part (−1.2 mm) with 0.2 mm clear.
     faceHeight: mm(-1.8),
-  }));
-  m = addMoonPhase(m, createMoonPhase({
+  });
+  m = addDial(m, dial);
+  const moonPhase = createMoonPhase({
     name: "Moon phase",
     shaftId: moonDiscArbor.id,
     diameter: mm(6),
@@ -344,7 +347,8 @@ export function createTeachingMovement(): Movement {
     // Clear of moon wheel 2 (−1.26 ± 0.03 mm) and the dial's own back (−1.4 mm).
     faceHeight: mm(-1.35),
     windowCount: "DOUBLE",
-  }));
+  });
+  m = addMoonPhase(m, moonPhase);
   const dateComplication = createDateComplication({
     name: "Date",
     driveShaftId: twentyFourHourArbor.id,
@@ -367,7 +371,7 @@ export function createTeachingMovement(): Movement {
     starZCentre: mm(-1.2),
   });
   m = addMonthComplication(m, monthComplication);
-  m = addLeapYearComplication(m, createLeapYearComplication({
+  const leapYearComplication = createLeapYearComplication({
     name: "Leap year",
     monthComplicationId: monthComplication.id,
     wheelShaftId: leapYearWheelArbor.id,
@@ -375,6 +379,50 @@ export function createTeachingMovement(): Movement {
     wheelTipDiameter: mm(3),
     wheelThickness: mm(0.15),
     wheelZCentre: mm(-1.2),
+  });
+  m = addLeapYearComplication(m, leapYearComplication);
+
+  // Dial windows (Phase 8.6, ASM-0051): without one, every disc complication above sits fully
+  // hidden behind the dial's own opaque disc. Each window is offset from its complication's own
+  // rotation axis by (illustrative) the radius its position labels print at
+  // (DIAL_WINDOW_VISUALIZATION.labelRadiusFraction × disc radius, src/geometry/assemblyGeometry3d.ts)
+  // — the same real-watch convention as a date window: a small aperture catching one label at a
+  // time as the ring rotates beneath it, not a wide view of the whole disc. Moonphase prints no
+  // labels (continuous, not discrete positions), so its own window is simply a smaller concentric
+  // aperture near the top of the disc, the conventional layout for a moonphase window (SRC-0045).
+  const solved = solvePlacement(m);
+  const windowAbove = (shaftId: ShaftId, discRadiusMm: number, labelRadiusFraction: number): { x: Length; y: Length } => {
+    const at = solved.shaftPositions.get(shaftId);
+    if (at === undefined) throw new Error(`teaching movement: no solved position for arbor ${shaftId}`);
+    return { x: metres(at.x), y: metres(at.y + mm(discRadiusMm * labelRadiusFraction)) };
+  };
+  m = addDialWindow(m, createDialWindow({
+    name: "Moon phase window",
+    dialId: dial.id,
+    complicationId: moonPhase.id,
+    centre: windowAbove(moonDiscArbor.id, 3, 0.3),
+    radius: mm(1.5),
+  }));
+  m = addDialWindow(m, createDialWindow({
+    name: "Date window",
+    dialId: dial.id,
+    complicationId: dateComplication.id,
+    centre: windowAbove(dateStarArbor.id, 2.5, 0.72),
+    radius: mm(0.6),
+  }));
+  m = addDialWindow(m, createDialWindow({
+    name: "Month window",
+    dialId: dial.id,
+    complicationId: monthComplication.id,
+    centre: windowAbove(monthStarArbor.id, 2, 0.72),
+    radius: mm(0.5),
+  }));
+  m = addDialWindow(m, createDialWindow({
+    name: "Leap-year window",
+    dialId: dial.id,
+    complicationId: leapYearComplication.id,
+    centre: windowAbove(leapYearWheelArbor.id, 1.5, 0.72),
+    radius: mm(0.45),
   }));
 
   // Pallet arbor and balance staff: fixed positions along a line from the escape arbor

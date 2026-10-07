@@ -13,6 +13,7 @@ import type { MoonPhase } from "@/domain/moonPhase";
 import type { DateComplication } from "@/domain/dateComplication";
 import type { MonthComplication } from "@/domain/monthComplication";
 import type { LeapYearComplication } from "@/domain/leapYearComplication";
+import type { DialWindow } from "@/domain/dialWindow";
 import type { MainspringSpec } from "@/domain/coupling";
 import type { Torque } from "@/units/torque";
 import type { MomentOfInertia, TorsionalStiffness } from "@/units/rotational";
@@ -42,7 +43,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 21;
+export const DESIGN_SCHEMA_VERSION = 22;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -304,6 +305,12 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
     const movement = doc.movement;
     if (!isRecord(movement)) return doc;
     return { ...doc, schemaVersion: 21, movement: { ...movement, leapYearComplications: {} } };
+  },
+  /** v21 → v22: movements gain empty `dialWindows` (ASM-0051, Phase 8.6). */
+  21: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement)) return doc;
+    return { ...doc, schemaVersion: 22, movement: { ...movement, dialWindows: {} } };
   },
 };
 
@@ -624,6 +631,19 @@ const leapYearComplication: Decoder<LeapYearComplication> = (value, path) => {
   };
 };
 
+const dialWindow: Decoder<DialWindow> = (value, path) => {
+  const o = object(value, path);
+  return {
+    id: field(o, "id", id<DialWindow["id"]>(), path),
+    type: field(o, "type", literal("DialWindow"), path),
+    name: field(o, "name", string, path),
+    dialId: field(o, "dialId", id<Dial["id"]>(), path),
+    complicationId: field(o, "complicationId", id<DialWindow["complicationId"]>(), path),
+    centre: field(o, "centre", vec2, path),
+    radius: field(o, "radius", length, path),
+  };
+};
+
 const pallets: Decoder<PalletGeometry> = (value, path) => {
   const o = object(value, path);
   return {
@@ -706,6 +726,7 @@ const movement: Decoder<Movement> = (value, path) => {
     dateComplications: field(o, "dateComplications", entityRecord(dateComplication), path),
     monthComplications: field(o, "monthComplications", entityRecord(monthComplication), path),
     leapYearComplications: field(o, "leapYearComplications", entityRecord(leapYearComplication), path),
+    dialWindows: field(o, "dialWindows", entityRecord(dialWindow), path),
     drive: field(o, "drive", nullable(drive), path),
   };
 };

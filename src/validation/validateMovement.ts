@@ -19,6 +19,7 @@ import { moonPhaseRules } from "./rules/moonPhaseRules";
 import { dateComplicationRules } from "./rules/dateComplicationRules";
 import { monthComplicationRules } from "./rules/monthComplicationRules";
 import { leapYearComplicationRules } from "./rules/leapYearComplicationRules";
+import { dialWindowRules } from "./rules/dialWindowRules";
 
 /** Rule families, in the order their issues are reported. */
 const RULES: readonly Rule[] = [
@@ -42,6 +43,7 @@ const RULES: readonly Rule[] = [
   dateComplicationRules,
   monthComplicationRules,
   leapYearComplicationRules,
+  dialWindowRules,
 ];
 
 /**

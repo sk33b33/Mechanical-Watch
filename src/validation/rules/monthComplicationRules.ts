@@ -1,8 +1,6 @@
-import { GREGORIAN_MONTH_LENGTHS } from "@/kinematics/monthComplication";
+import { GREGORIAN_MONTH_LENGTHS, MONTH_NAMES } from "@/kinematics/monthComplication";
 import type { ValidationIssue } from "../validationIssue";
 import { issue, type Rule } from "./context";
-
-const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 /**
  * MONTH-001 (dimensions, references and the star arbor must not also be

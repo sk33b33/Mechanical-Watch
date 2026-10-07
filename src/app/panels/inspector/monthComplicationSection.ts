@@ -3,14 +3,12 @@ import { millimetres } from "@/units/length";
 import { radians } from "@/units/angle";
 import { updateMonthComplication } from "@/domain/movement";
 import type { MonthComplication } from "@/domain/monthComplication";
-import { GREGORIAN_MONTH_LENGTHS, MONTHS_PER_YEAR } from "@/kinematics/monthComplication";
+import { GREGORIAN_MONTH_LENGTHS, MONTHS_PER_YEAR, MONTH_NAMES } from "@/kinematics/monthComplication";
 import type { DateComplicationId } from "@/domain/dateComplication";
 import type { ShaftId } from "@/domain/shaft";
 import { starPosition } from "@/kinematics/dateComplication";
 import { inputRow, mmText, parseRequired, readonlyRow, sectionHeader, selectRow, textRow } from "./fields";
 import { deleteRow, positive, type Section } from "./common";
-
-const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 export function monthComplicationSection(store: AppStore, month: MonthComplication): Section {
   const { movement } = store;

@@ -1,6 +1,6 @@
 import type { EntityId } from "@/domain/ids";
 import type { Movement } from "@/domain/movement";
-import { addDateComplication, addDial, addEscapement, addFrame, addGear, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addShaft } from "@/domain/movement";
+import { addDateComplication, addDial, addDialWindow, addEscapement, addFrame, addGear, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addShaft } from "@/domain/movement";
 import type { Frame } from "@/domain/frame";
 import type { Gear } from "@/domain/gear";
 import type { Coupling } from "@/domain/coupling";
@@ -68,7 +68,7 @@ function couplingOfKind(record: Record<string, Coupling>, kind: Coupling["kind"]
   return found;
 }
 
-/** Builds the 67-step walkthrough from a real teaching movement (createTeachingMovement()), read once at module load. */
+/** Builds the 71-step walkthrough from a real teaching movement (createTeachingMovement()), read once at module load. */
 function buildTeachingMovementSteps(): TutorialStep[] {
   const ref = createTeachingMovement();
   const placement = solvePlacement(ref);
@@ -198,6 +198,10 @@ function buildTeachingMovementSteps(): TutorialStep[] {
   const dateComplication = only(ref.dateComplications);
   const monthComplication = only(ref.monthComplications);
   const leapYearComplication = only(ref.leapYearComplications);
+  const moonPhaseWindow = byName(ref.dialWindows, "Moon phase window");
+  const dateWindow = byName(ref.dialWindows, "Date window");
+  const monthWindow = byName(ref.dialWindows, "Month window");
+  const leapYearWindow = byName(ref.dialWindows, "Leap-year window");
 
   return [
     {
@@ -359,6 +363,15 @@ function buildTeachingMovementSteps(): TutorialStep[] {
       isComplete: (m) => m.moonPhases[moonPhase.id] !== undefined,
       createOverride: (m) => ({ movement: addMoonPhase(m, moonPhase), id: moonPhase.id }),
     },
+    {
+      id: "add-moon-phase-window",
+      title: "Cut a window for it in the dial",
+      instructions:
+        "Click “+ Window” — without one, the dial's own opaque disc fully hides the moonphase disc behind it. This one's a small aperture near the top of the disc, the conventional moonphase layout (SRC-0045), with the dial and disc already chosen.",
+      targetSelector: '[data-tutorial="add-window"]',
+      isComplete: (m) => m.dialWindows[moonPhaseWindow.id] !== undefined,
+      createOverride: (m) => ({ movement: addDialWindow(m, moonPhaseWindow), id: moonPhaseWindow.id }),
+    },
 
     gearStep("add-twenty-four-hour-pinion", "Add the date mechanism's drive pinion", "Back on the hour wheel arbor once more, click “Add gear”: an 8-tooth pinion — the “24-hour wheel” SRC-0042 describes.", twentyFourHourPinionGear, "add-hour-wheel-arbor"),
     arborStep("add-twenty-four-hour-arbor", "Add the 24-hour arbor", "Click “+ Arbor” for a new arbor, 9 o'clock from the hour wheel.", twentyFourHourArbor, solvedFixed(twentyFourHourArbor)),
@@ -374,6 +387,15 @@ function buildTeachingMovementSteps(): TutorialStep[] {
       isComplete: (m) => m.dateComplications[dateComplication.id] !== undefined,
       createOverride: (m) => ({ movement: addDateComplication(m, dateComplication), id: dateComplication.id }),
     },
+    {
+      id: "add-date-window",
+      title: "Cut a window for the date",
+      instructions:
+        "Click “+ Window” again — a small aperture offset from the star's own axis by its printed numerals' own radius, so only one number shows at a time as the star jumps underneath it, the same way a real date window works.",
+      targetSelector: '[data-tutorial="add-window"]',
+      isComplete: (m) => m.dialWindows[dateWindow.id] !== undefined,
+      createOverride: (m) => ({ movement: addDialWindow(m, dateWindow), id: dateWindow.id }),
+    },
 
     arborStep("add-month-star-arbor", "Add the month star's own arbor", "Click “+ Arbor” — like the date star, its position is declared, not derived: it is not meshed with anything either (ASM-0049).", monthStarArbor, solvedFixed(monthStarArbor)),
     {
@@ -385,6 +407,14 @@ function buildTeachingMovementSteps(): TutorialStep[] {
       isComplete: (m) => m.monthComplications[monthComplication.id] !== undefined,
       createOverride: (m) => ({ movement: addMonthComplication(m, monthComplication), id: monthComplication.id }),
     },
+    {
+      id: "add-month-window",
+      title: "Cut a window for the month",
+      instructions: "Click “+ Window” once more, the same way as the date window — the month star's own printed names (January–December) pass underneath it as it advances.",
+      targetSelector: '[data-tutorial="add-window"]',
+      isComplete: (m) => m.dialWindows[monthWindow.id] !== undefined,
+      createOverride: (m) => ({ movement: addDialWindow(m, monthWindow), id: monthWindow.id }),
+    },
 
     arborStep("add-leap-year-wheel-arbor", "Add the leap-year wheel's own arbor", "Click “+ Arbor” — like the date and month stars, its position is declared, not derived: it is not meshed with anything either (ASM-0050).", leapYearWheelArbor, solvedFixed(leapYearWheelArbor)),
     {
@@ -395,6 +425,14 @@ function buildTeachingMovementSteps(): TutorialStep[] {
       targetSelector: '[data-tutorial="add-leap-year"]',
       isComplete: (m) => m.leapYearComplications[leapYearComplication.id] !== undefined,
       createOverride: (m) => ({ movement: addLeapYearComplication(m, leapYearComplication), id: leapYearComplication.id }),
+    },
+    {
+      id: "add-leap-year-window",
+      title: "Cut a window for the leap-year wheel",
+      instructions: "One last window, the same way — the real design's dial now has all four: moonphase, date, month and leap year, each showing its own complication through its own cutout (ASM-0051).",
+      targetSelector: '[data-tutorial="add-window"]',
+      isComplete: (m) => m.dialWindows[leapYearWindow.id] !== undefined,
+      createOverride: (m) => ({ movement: addDialWindow(m, leapYearWindow), id: leapYearWindow.id }),
     },
 
     {
@@ -420,10 +458,11 @@ function buildTeachingMovementSteps(): TutorialStep[] {
 
 /**
  * Covers the whole teaching movement: going train, motion works, keyless
- * works, mainspring, dial, escapement, moonphase disc, and the date,
- * month and leap-year complications — everything createTeachingMovement()
- * builds. Extending it further (a second design, or a from-scratch design
- * with genuinely invented — i.e. user-declared-as-they-go — dimensions)
- * follows the same pattern.
+ * works, mainspring, dial, escapement, moonphase disc, the date, month and
+ * leap-year complications, and a dial window for each of the four disc
+ * complications — everything createTeachingMovement() builds. Extending it
+ * further (a second design, or a from-scratch design with genuinely
+ * invented — i.e. user-declared-as-they-go — dimensions) follows the same
+ * pattern.
  */
 export const TUTORIAL_STEPS: TutorialStep[] = buildTeachingMovementSteps();

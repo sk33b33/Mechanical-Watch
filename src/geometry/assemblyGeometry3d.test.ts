@@ -3,6 +3,8 @@ import type { Point2D } from "./gearOutline";
 import {
   balanceArmHalfExtents,
   balanceRimInnerRadius,
+  createDiscWithHolesGeometry,
+  discLabelPlacements,
   escapeWheelHubRadius,
   generateEscapeWheelOutline,
   generateHandOutline,
@@ -192,5 +194,70 @@ describe("handHubRadius", () => {
   it("is a fixed fraction of the hand's own width", () => {
     expect(handHubRadius("HOURS")).toBeCloseTo(0.6e-3 * 0.2);
     expect(handHubRadius("SECONDS")).toBeCloseTo(0.2e-3 * 0.2);
+  });
+});
+
+describe("createDiscWithHolesGeometry", () => {
+  it("punches one hole per valid entry into the disc's bounding box (ASM-0051)", () => {
+    const geometry = createDiscWithHolesGeometry(3e-3, 0.3e-3, [
+      { x: 1e-3, y: 0, radius: 0.3e-3 },
+      { x: -1e-3, y: 0.5e-3, radius: 0.2e-3 },
+    ]);
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox;
+    expect(box).not.toBeNull();
+    // The holes sit well inside the outer disc, so they must not enlarge its bounding box.
+    expect(box?.max.x).toBeLessThanOrEqual(3e-3 + 1e-9);
+    expect(box?.min.x).toBeGreaterThanOrEqual(-3e-3 - 1e-9);
+    // Depth spans [0, thickness], not centred on it (same convention as createFrameGeometry).
+    expect(box?.min.z).toBeCloseTo(0, 9);
+    expect(box?.max.z).toBeCloseTo(0.3e-3, 9);
+  });
+
+  it("skips a hole with a non-finite or non-positive radius rather than throwing (DIALWIN-001 leaves the geometry to this)", () => {
+    expect(() =>
+      createDiscWithHolesGeometry(3e-3, 0.3e-3, [
+        { x: 0, y: 0, radius: Number.NaN },
+        { x: 0, y: 0, radius: 0 },
+        { x: Number.NaN, y: 0, radius: 0.2e-3 },
+      ]),
+    ).not.toThrow();
+  });
+
+  it("produces a plain solid disc when there are no holes at all", () => {
+    const withHoles = createDiscWithHolesGeometry(3e-3, 0.3e-3, []);
+    withHoles.computeBoundingBox();
+    const box = withHoles.boundingBox;
+    expect(box?.max.x).toBeCloseTo(3e-3, 6);
+    expect(box?.min.x).toBeCloseTo(-3e-3, 6);
+  });
+});
+
+describe("discLabelPlacements", () => {
+  it("places labels evenly around the rim, each oriented radially outward (ASM-0051)", () => {
+    const placements = discLabelPlacements(["Jan", "Feb", "Mar", "Apr"]);
+    expect(placements).toHaveLength(4);
+    const centre = 512 / 2;
+    for (const [i, placement] of placements.entries()) {
+      expect(placement.label).toBe(["Jan", "Feb", "Mar", "Apr"][i]);
+      const radius = Math.hypot(placement.x - centre, placement.y - centre);
+      expect(radius).toBeCloseTo(centre * 0.72, 6);
+      const angle = (i / 4) * Math.PI * 2;
+      expect(placement.rotation).toBeCloseTo(angle + Math.PI / 2, 9);
+    }
+    // Evenly spaced: the first and third labels sit on opposite sides of the centre.
+    expect(placements[0]?.x).toBeCloseTo(2 * centre - (placements[2]?.x ?? 0), 6);
+    expect(placements[0]?.y).toBeCloseTo(2 * centre - (placements[2]?.y ?? 0), 6);
+  });
+
+  it("returns an empty array for an empty label set, same as createDiscLabelTexture returning null", () => {
+    expect(discLabelPlacements([])).toHaveLength(0);
+  });
+
+  it("places a single label at angle 0 (texture-space +X from the centre)", () => {
+    const [placement] = discLabelPlacements(["only"]);
+    const centre = 512 / 2;
+    expect(placement?.x).toBeCloseTo(centre + centre * 0.72, 6);
+    expect(placement?.y).toBeCloseTo(centre, 6);
   });
 });

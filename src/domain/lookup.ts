@@ -11,8 +11,9 @@ import type { MoonPhase, MoonPhaseId } from "./moonPhase";
 import type { DateComplication, DateComplicationId } from "./dateComplication";
 import type { MonthComplication, MonthComplicationId } from "./monthComplication";
 import type { LeapYearComplication, LeapYearComplicationId } from "./leapYearComplication";
+import type { DialWindow, DialWindowId } from "./dialWindow";
 
-export type SelectableEntity = Gear | Shaft | Frame | Jewel | KeylessWorks | Dial | Escapement | MoonPhase | DateComplication | MonthComplication | LeapYearComplication;
+export type SelectableEntity = Gear | Shaft | Frame | Jewel | KeylessWorks | Dial | Escapement | MoonPhase | DateComplication | MonthComplication | LeapYearComplication | DialWindow;
 
 export function findEntity(movement: Movement, id: EntityId): SelectableEntity | undefined {
   return (
@@ -26,6 +27,7 @@ export function findEntity(movement: Movement, id: EntityId): SelectableEntity |
     movement.moonPhases[id as MoonPhaseId] ??
     movement.dateComplications[id as DateComplicationId] ??
     movement.monthComplications[id as MonthComplicationId] ??
-    movement.leapYearComplications[id as LeapYearComplicationId]
+    movement.leapYearComplications[id as LeapYearComplicationId] ??
+    movement.dialWindows[id as DialWindowId]
   );
 }

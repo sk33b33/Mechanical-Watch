@@ -15,6 +15,7 @@ import type { MoonPhase, MoonPhaseId } from "./moonPhase";
 import type { DateComplication, DateComplicationId } from "./dateComplication";
 import type { MonthComplication, MonthComplicationId } from "./monthComplication";
 import type { LeapYearComplication, LeapYearComplicationId } from "./leapYearComplication";
+import type { DialWindow, DialWindowId } from "./dialWindow";
 import type { ValidationLevel } from "@/reference/validationLevels";
 
 export type MovementId = EntityId<"movement">;
@@ -69,6 +70,8 @@ export interface Movement {
   monthComplications: Record<MonthComplicationId, MonthComplication>;
   /** Zero or more; each driven by its referenced month complication's own December-to-January wrap, not a continuous arbor (ASM-0050, Phase 8.4). */
   leapYearComplications: Record<LeapYearComplicationId, LeapYearComplication>;
+  /** Zero or more; a pure display entity, kinematically inert (ASM-0051, Phase 8.6). */
+  dialWindows: Record<DialWindowId, DialWindow>;
   drive: Drive | null;
   /**
    * The level this design's model targets (REFERENCE_ENGINEERING.md §15).
@@ -101,6 +104,7 @@ export function createMovement(
     dateComplications: {},
     monthComplications: {},
     leapYearComplications: {},
+    dialWindows: {},
     drive: null,
   };
 }
@@ -228,6 +232,18 @@ export function updateLeapYearComplication(movement: Movement, id: LeapYearCompl
     throw new Error(`Unknown leap-year complication id: ${id}`);
   }
   return { ...movement, leapYearComplications: { ...movement.leapYearComplications, [id]: { ...existing, ...patch } } };
+}
+
+export function addDialWindow(movement: Movement, window: DialWindow): Movement {
+  return { ...movement, dialWindows: { ...movement.dialWindows, [window.id]: window } };
+}
+
+export function updateDialWindow(movement: Movement, id: DialWindowId, patch: Partial<Omit<DialWindow, "id" | "type">>): Movement {
+  const existing = movement.dialWindows[id];
+  if (existing === undefined) {
+    throw new Error(`Unknown dial window id: ${id}`);
+  }
+  return { ...movement, dialWindows: { ...movement.dialWindows, [id]: { ...existing, ...patch } } };
 }
 
 /**

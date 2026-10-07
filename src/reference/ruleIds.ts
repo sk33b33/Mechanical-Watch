@@ -78,6 +78,8 @@ export const RULE_IDS = [
   "MONTH-002",
   "YEAR-001",
   "YEAR-002",
+  "DIALWIN-001",
+  "DIALWIN-002",
 ] as const;
 
 export type RuleId = (typeof RULE_IDS)[number];

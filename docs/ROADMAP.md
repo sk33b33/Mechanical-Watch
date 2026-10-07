@@ -393,12 +393,20 @@ propagation used everywhere else.
   every other item here, "rarely featured in a wristwatch" even among
   grand complications, and would need real analemma/equation-of-time
   data this project has not sourced. Left deliberately unscoped.
-- 8.6 — Display/UI groundwork (cross-cutting, needed by 8.1-8.4): a new
-  disc/window display concept distinct from the continuously-rotating
-  `HandFunction` hands (`src/kinematics/timeDisplay.ts`,
-  `HAND_VISUALIZATION` in `src/geometry/assemblyGeometry3d.ts`), dial
-  windows or sub-dials to show it through, in both the inspector and the
-  3D viewport.
+- 8.6 — **Done** (see `docs/STATUS.md`). Display/UI groundwork: a new
+  `DialWindow` domain entity (a circular cutout in a `Dial`, referencing
+  any disc complication — MoonPhase, DateComplication, MonthComplication
+  or LeapYearComplication — via a unified `findDiscComplication`
+  lookup), rendered as a real hole punched through the dial mesh
+  (`createDiscWithHolesGeometry`) with the complication's own position
+  baked onto its disc as a label ring (`createDiscLabelTexture`/
+  `discLabelPlacements`), wired through the inspector, componentTree,
+  componentReport, validation (DIALWIN-001/002, ASM-0051), the teaching
+  movement (one real window per disc complication) and the guided
+  tutorial. Distinct from the continuously-rotating `HandFunction` hands
+  (`src/kinematics/timeDisplay.ts`, `HAND_VISUALIZATION` in
+  `src/geometry/assemblyGeometry3d.ts`), which needed no display
+  groundwork of their own.
 - 8.7 — Validation rules (cross-cutting, needed by 8.2-8.4): jump-timing
   sanity (a trigger genuinely near the driving wheel's own period
   boundary, not an arbitrary angle), interference between the new discs/
@@ -438,12 +446,16 @@ Order: 8.1 first (ships independently, no jump-mechanism risk, proves
 the display groundwork 8.6 needs). 8.2 next (the jump-mechanism design
 decision, needed by everything after it). 8.3 after 8.2. 8.4 after 8.3,
 gated on checking its Geneva-drive kinematics claim against a real
-mechanism-design source first. 8.5 and 8.8 stay out of scope. 8.6/8.7 are
-cross-cutting — do the display groundwork alongside 8.1, and the
-validation rules alongside whichever jump-mechanism item is current.
+mechanism-design source first. 8.5 and 8.8 stay out of scope. 8.7 is
+cross-cutting — its validation rules shipped alongside whichever
+jump-mechanism item was current. 8.6 was originally meant the same way,
+cross-cutting alongside 8.1, but the disc/window display concept it
+named was not actually built then — the discs rotated correctly but
+were invisible, hidden behind an opaque dial with no window to see them
+through; it shipped later as its own real item once that gap was found.
 
-8.1–8.4 are done (see `docs/STATUS.md` for each). 8.6/8.7's
-cross-cutting work was folded into 8.1–8.4 as they shipped, rather than
-built as separate items. 8.5 and 8.8 remain confirmed out of scope. No
-further Phase 8 sub-item is scoped to start without the user's next
-explicit instruction.
+8.1–8.4 and 8.6 are done (see `docs/STATUS.md` for each). 8.7's
+cross-cutting validation work was folded into 8.1–8.4/8.6 as they
+shipped, rather than built as a separate item. 8.5 and 8.8 remain
+confirmed out of scope. No further Phase 8 sub-item is scoped to start
+without the user's next explicit instruction.

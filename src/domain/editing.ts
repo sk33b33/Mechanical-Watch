@@ -14,8 +14,11 @@ import { createMoonPhase, type MoonPhase } from "./moonPhase";
 import { createDateComplication, type DateComplication } from "./dateComplication";
 import { createMonthComplication, type MonthComplication } from "./monthComplication";
 import { createLeapYearComplication, type LeapYearComplication } from "./leapYearComplication";
+import { createDialWindow, type DialWindow, type DialWindowId } from "./dialWindow";
 import { radians } from "@/units/angle";
+import { vec2 } from "@/math/vec2";
 import type { ToleranceId } from "./tolerance";
+import type { DialId } from "./dial";
 
 /**
  * Structural editing: creating and deleting parts.
@@ -165,6 +168,17 @@ export function newLeapYearComplication(movement: Movement): LeapYearComplicatio
   });
 }
 
+/** A dial window with no dial/complication chosen yet and an empty centre/radius (DIALWIN-001 lists what is missing). */
+export function newDialWindow(movement: Movement): DialWindow {
+  return createDialWindow({
+    name: nextName(Object.values(movement.dialWindows), "Window"),
+    dialId: "" as DialId,
+    complicationId: "" as EntityId,
+    centre: vec2(EMPTY, EMPTY),
+    radius: EMPTY,
+  });
+}
+
 /** An escapement with every dimension empty and no arbors chosen yet (ESC-101 lists what is missing). */
 export function newEscapement(movement: Movement): Escapement {
   const none = "" as ShaftId;
@@ -202,9 +216,11 @@ export interface RemovalResult {
  * - a frame owns the bearings seated in it;
  * - a shaft owns its gears, bearings and clutches (and is no longer the drive);
  * - a gear owns the meshes it takes part in;
+ * - a dial owns the windows cut into it;
  * - every entity owns the tolerances declared on its dimensions.
- * The keyless works, the dial and the escapement own nothing: removing a wheel they refer
- * to leaves the reference in place for validation to report.
+ * The keyless works, the dial (its own complication reference, not its windows) and the
+ * escapement own nothing: removing a wheel they refer to leaves the reference in place for
+ * validation to report.
  * References that are not ownership, such as another shaft's placement
  * constraint pointing at a removed shaft or mesh, are left in place and
  * reported by validation (ASSY-001). Nothing else is changed silently.
@@ -216,6 +232,8 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
   const meshes = new Set<GearMeshId>();
   const jewels = new Set<JewelId>();
   const couplings = new Set<CouplingId>();
+  const dials = new Set<DialId>();
+  const dialWindows = new Set<DialWindowId>();
 
   if (id in movement.frames) frames.add(id as FrameId);
   if (id in movement.shafts) shafts.add(id as ShaftId);
@@ -223,6 +241,8 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
   if (id in movement.gearMeshes) meshes.add(id as GearMeshId);
   if (id in movement.jewels) jewels.add(id as JewelId);
   if (id in movement.couplings) couplings.add(id as CouplingId);
+  if (id in movement.dials) dials.add(id as DialId);
+  if (id in movement.dialWindows) dialWindows.add(id as DialWindowId);
 
   for (const gear of Object.values(movement.gears)) {
     if (shafts.has(gear.shaftId)) gears.add(gear.id);
@@ -236,6 +256,9 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
   for (const coupling of Object.values(movement.couplings)) {
     if (shafts.has(coupling.shaftAId) || shafts.has(coupling.shaftBId)) couplings.add(coupling.id);
   }
+  for (const window of Object.values(movement.dialWindows)) {
+    if (dials.has(window.dialId)) dialWindows.add(window.id);
+  }
 
   const tolerances = new Set<ToleranceId>();
   if (id in movement.tolerances) tolerances.add(id as ToleranceId);
@@ -247,7 +270,7 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
   const others = new Set<string>();
   if (id in movement.keylessWorks || id in movement.dials || id in movement.escapements || id in movement.moonPhases || id in movement.dateComplications || id in movement.monthComplications || id in movement.leapYearComplications) others.add(id);
 
-  const removed = new Set<string>([...frames, ...shafts, ...gears, ...meshes, ...jewels, ...couplings, ...tolerances, ...others]);
+  const removed = new Set<string>([...frames, ...shafts, ...gears, ...meshes, ...jewels, ...couplings, ...tolerances, ...others, ...dialWindows]);
   const drive = movement.drive;
   return {
     movement: {
@@ -266,6 +289,7 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
       dateComplications: without(movement.dateComplications, removed),
       monthComplications: without(movement.monthComplications, removed),
       leapYearComplications: without(movement.leapYearComplications, removed),
+      dialWindows: without(movement.dialWindows, removed),
       drive: drive?.kind === "PRESCRIBED" && removed.has(drive.shaftId) ? null : drive,
     },
     removedIds: [...removed] as EntityId[],

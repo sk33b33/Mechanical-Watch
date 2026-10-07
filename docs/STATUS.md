@@ -2,6 +2,85 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.6: dial windows — done
+
+Prompted by a direct question: "how come there's no visual presentation
+of the year, month and season on the dial." Season was correctly out of
+scope (8.5), but year and month turned out to be a real gap, not a false
+alarm — `MonthComplication` and `LeapYearComplication` (8.3/8.4) rotate
+their star/wheel correctly, but nothing made that rotation visible: the
+`Dial` had no window concept, its mesh was an opaque solid disc with no
+cutout, and even a cutout would have shown a plain-colored disc with no
+printed position to read. `docs/ROADMAP.md`'s 8.6 bullet claimed this
+cross-cutting display groundwork had shipped "folded into 8.1-8.4" —
+that was an overstatement; it had not been built. This item builds it
+for real, as its own entity:
+
+- **`DialWindow`** (`src/domain/dialWindow.ts`): a circular cutout in a
+  named `Dial`, at its own movement-plan (x, y) and radius, referencing
+  any disc complication by a generic `EntityId` — deliberately simpler
+  than a general `Outline` cutout (no need to generalize `Frame`'s
+  polygon-point-editor UI for one circle), and deliberately not
+  concentric with its complication's own rotation axis: real date
+  windows sit off-centre, over where the printed ring actually is, so
+  exactly one label shows at a time as the disc turns underneath, not
+  the whole ring at once or nothing at all.
+- **`src/domain/discComplication.ts`**: a `findDiscComplication`/
+  `discComplicationLabel` pair unifying MoonPhase/DateComplication/
+  MonthComplication/LeapYearComplication's differently-named fields
+  (`shaftId` vs `starShaftId` vs `wheelShaftId`, etc.) into one shape, so
+  a dial window can reference any of the four without knowing which.
+- **Geometry**: `createDiscWithHolesGeometry` (`THREE.Shape` +
+  `shape.holes`) punches real holes through the dial mesh at the
+  window's own position; `createDiscLabelTexture`/`discLabelPlacements`
+  bake each complication's own position labels (month names, "Year 1..4
+  (leap)", date numerals, moonphase percentage) onto a canvas texture
+  applied to the disc's dial-facing cap, generated once from the domain
+  model, not re-synchronized per frame — the existing kinematic rotation
+  (8.1-8.4) carries the right label past the window on its own, the same
+  way a real printed ring works.
+- **A real rendering bug, caught by the live-browser check, not a test**:
+  the first version left the label texture's unpainted pixels fully
+  transparent. `MeshStandardMaterial.map` is not alpha-blended unless the
+  material also declares `transparent: true`, so those pixels still
+  contributed their RGB — black — to the lit result, darkening almost
+  the entire disc toward black and leaving the (also dark) label text
+  essentially invisible against it. Fixed by filling the canvas with an
+  opaque near-white background before drawing the glyphs, the same way a
+  real printed disc has a pale background under dark numerals.
+- **Validation** (DIALWIN-001/002, ASM-0051): dimensions and references
+  must be valid; the window must actually geometrically overlap its
+  referenced complication's own disc in plan (a warning instead of an
+  error while the complication's own arbor position isn't resolved yet,
+  an error once it is and there's still no overlap) — otherwise nothing
+  would be visible through it, caught before it ships silently broken.
+- **A new cascade-delete relationship**: removing a `Dial` now removes
+  the windows cut into it (`removeEntity` in `src/domain/editing.ts`) —
+  the first ownership cascade in this codebase beyond
+  frame/shaft/gear/jewel/coupling/tolerance.
+- **A selection-highlighting generalization**: making complication discs
+  carry a second material (for the label-texture cap) would have broken
+  `viewport.ts`'s `applySelection`/`addPickable`, which assumed a single
+  `MeshStandardMaterial` per mesh. Generalized both to handle
+  `Material | Material[]` uniformly before this was ever actually
+  broken.
+- The teaching movement gains one real window per disc complication
+  (moon phase, date, month, leap year), each positioned via
+  `solvePlacement` at its own complication's actual solved rotation axis
+  plus the label ring's own offset; the guided tutorial gains a matching
+  step after each complication's own "add" step (71 steps total, up from
+  67).
+- Schema 21 → 22 (`dialWindows: {}` on migration, ASM-0051).
+
+Verified: typecheck, lint, the full vitest suite (642 tests, 30 new —
+geometry-helper tests for `createDiscWithHolesGeometry`/
+`discLabelPlacements`, and `dialWindowRules.test.ts` for DIALWIN-001/002
+against the teaching movement's own four windows), a production build, a
+live-browser spot check (which caught and led to fixing the label-
+contrast bug above, confirmed the four windows report live correct
+readings and that selection still highlights correctly on the
+now-multi-material discs), and the full e2e suite.
+
 ## Phase 8: post-shipment audit — done
 
 Before starting Phase 9, audited every touchpoint of all four Phase 8

@@ -18,6 +18,8 @@ import type { DateComplication } from "@/domain/dateComplication";
 import type { MonthComplication } from "@/domain/monthComplication";
 import { GREGORIAN_MONTH_LENGTHS, MONTHS_PER_YEAR } from "@/kinematics/monthComplication";
 import { LEAP_YEAR_SLOT_COUNT, type LeapYearComplication } from "@/domain/leapYearComplication";
+import type { DialWindow } from "@/domain/dialWindow";
+import { findDiscComplication } from "@/domain/discComplication";
 import { genevaDriverMotionAngle, genevaLambda, genevaWheelAdvanceAngle, genevaWheelAngularVelocity } from "@/kinematics/genevaDrive";
 import { toBeatsPerHour } from "@/units/frequency";
 import { balanceFrequency, beatFrequency, beatsPerEscapeRevolution, impulseFraction } from "@/kinematics/escapement";
@@ -72,7 +74,7 @@ export interface ToleranceRow {
   scope: string;
 }
 
-export type ComponentKind = "Frame" | "Arbor" | "Gear" | "Bearing" | "Keyless works" | "Dial" | "Escapement" | "Moon phase" | "Date" | "Month" | "Leap year";
+export type ComponentKind = "Frame" | "Arbor" | "Gear" | "Bearing" | "Keyless works" | "Dial" | "Escapement" | "Moon phase" | "Date" | "Month" | "Leap year" | "Window";
 
 export interface ComponentReport {
   id: EntityId;
@@ -628,6 +630,40 @@ function leapYearComplicationReport(movement: Movement, analysis: MovementAnalys
   };
 }
 
+function dialWindowReport(movement: Movement, analysis: MovementAnalysis, win: DialWindow): ComponentReport {
+  const dial = movement.dials[win.dialId];
+  const complication = findDiscComplication(movement, win.complicationId);
+  const discCentre = complication === undefined ? undefined : analysis.placement.shaftPositions.get(complication.shaftId);
+  const gap = discCentre === undefined || complication === undefined
+    ? null
+    : (win.radius + complication.discRadius - distance(win.centre, discCentre)) as Length;
+  return {
+    id: win.id,
+    name: win.name,
+    kind: "Window",
+    description: "a circular cutout in the dial, through which a disc complication becomes visible (no kinematic effect of its own)",
+    parameters: [
+      entered("Dial", dial?.name ?? "not chosen"),
+      entered("Shows", complication?.name ?? "not chosen"),
+      lengthParam("Centre X", win.centre.x),
+      lengthParam("Centre Y", win.centre.y),
+      lengthParam("Radius", win.radius),
+    ],
+    derived: [
+      {
+        label: "Overlap with the complication's own disc",
+        text: gap === null ? "not resolved" : gap > 0 ? `${(toMillimetres(gap)).toFixed(2)} mm radial margin` : "does not overlap (DIALWIN-002)",
+        si: gap,
+        equation: "window radius + disc radius − centre distance",
+        level: "L1_GEOMETRIC",
+        references: ["ASM-0051"],
+      },
+    ],
+    tolerances: [],
+    issues: issuesFor(analysis, win.id),
+  };
+}
+
 function escapementReport(movement: Movement, analysis: MovementAnalysis, esc: Escapement): ComponentReport {
   const w = esc.escapeWheel;
   const b = esc.balance;
@@ -802,6 +838,7 @@ export function componentReports(movement: Movement, analysis: MovementAnalysis)
     ...Object.values(movement.dateComplications).sort(byName).map((d) => dateComplicationReport(movement, analysis, d)),
     ...Object.values(movement.monthComplications).sort(byName).map((m) => monthComplicationReport(movement, analysis, m)),
     ...Object.values(movement.leapYearComplications).sort(byName).map((y) => leapYearComplicationReport(movement, analysis, y)),
+    ...Object.values(movement.dialWindows).sort(byName).map((w) => dialWindowReport(movement, analysis, w)),
   ];
 }
 

@@ -14,6 +14,9 @@ export type LeapYearComplicationId = EntityId<"leapYearComplication">;
  */
 export const LEAP_YEAR_SLOT_COUNT = 4;
 
+/** Position labels 0–3; position 3 is the leap year, by this entity's own convention (see below). */
+export const LEAP_YEAR_LABELS = ["Year 1", "Year 2", "Year 3", "Year 4 (leap)"] as const;
+
 /**
  * A four-year-cycle (leap-year) indicator wheel, driven entirely by its
  * referenced month complication's own December-to-January wrap — one

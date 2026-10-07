@@ -11,6 +11,7 @@ import {
   HAND_VISUALIZATION,
   balanceArmHalfExtents,
   balanceRimInnerRadius,
+  createDiscLabelTexture,
   createFrameGeometry,
   createHandGeometry,
   createZCylinder,
@@ -23,6 +24,7 @@ import {
 import { arborZRange, frameZRange, isCompleteFrame } from "@/assembly/assemblyGeometry";
 import { partReferencePoint, type Point3 } from "@/assembly/measure";
 import { stemBodyId, type KeylessWorksId } from "@/domain/keyless";
+import { findDiscComplication } from "@/domain/discComplication";
 import { buildDialMeshes, buildStemMeshes } from "./keylessMeshes";
 import { escapementDisplay, primaryEscapement } from "@/simulation/escapementDisplay";
 import {
@@ -160,6 +162,22 @@ interface CappableSolid {
 /** Double-sided so the inside of a part shows where the section plane cuts it. */
 function material(color: number, extra: THREE.MeshStandardMaterialParameters = {}): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ color, metalness: 0.35, roughness: 0.55, side: THREE.DoubleSide, ...extra });
+}
+
+/**
+ * Materials for a disc complication built on `createZCylinder` — three
+ * CylinderGeometry face groups (side, then its two caps). With position
+ * labels (ASM-0051, date/month/leap-year, not moonphase), the cap facing
+ * −Z (toward the dial, ASM-0014) carries them as a texture; the same
+ * plain colour otherwise. Three entries always, matching the geometry's
+ * own three material groups regardless.
+ */
+function discMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, labels: readonly string[] | null): THREE.MeshStandardMaterial[] {
+  const plain = material(color, extra);
+  const texture = labels === null ? null : createDiscLabelTexture(labels);
+  const labeled = texture === null ? plain : material(color, { ...extra, map: texture });
+  // CylinderGeometry's own group order after createZCylinder's rotateX(π/2): [side, +Z cap, −Z cap].
+  return [plain, plain, labeled];
 }
 
 /**
@@ -327,10 +345,11 @@ export class Viewport {
   }
 
   private addPickable(parent: THREE.Object3D, mesh: THREE.Mesh, pick: Omit<Pickable, "baseRenderOrder" | "baseDepthWrite">): void {
+    const firstMaterial = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
     mesh.userData = {
       ...pick,
       baseRenderOrder: mesh.renderOrder,
-      baseDepthWrite: (mesh.material as THREE.MeshStandardMaterial).depthWrite,
+      baseDepthWrite: (firstMaterial as THREE.MeshStandardMaterial).depthWrite,
     } satisfies Pickable;
     parent.add(mesh);
     this.pickables.push(mesh);
@@ -470,7 +489,8 @@ export class Viewport {
       // applyKinematicRotation() loop that spins every other shaft group spins this one too, since
       // the jump writes straight into simulation.shaftAngle; no special-case rotation code needed.
       const meshZ = this.displayZ(date.starZCentre);
-      const mesh = new THREE.Mesh(createZCylinder(date.starTipDiameter / 2, meshZ - date.starThickness / 2, meshZ + date.starThickness / 2, 64), material(COLORS.dateStar, { metalness: 0.1, roughness: 0.7 }));
+      const dateLabels = findDiscComplication(movement, date.id)?.positionLabels ?? null;
+      const mesh = new THREE.Mesh(createZCylinder(date.starTipDiameter / 2, meshZ - date.starThickness / 2, meshZ + date.starThickness / 2, 64), discMaterials(COLORS.dateStar, { metalness: 0.1, roughness: 0.7 }, dateLabels));
       this.addPickable(group, mesh, { kind: "dateStar", entityId: date.id, baseColor: COLORS.dateStar });
       this.cappableSolids.push({
         positionX: group.position.x,
@@ -490,7 +510,8 @@ export class Viewport {
       // Driven entirely by the date complication's own jumps (ASM-0049) — same applyKinematicRotation()
       // loop that spins every other shaft group spins this one too; no special-case rotation code needed.
       const meshZ = this.displayZ(month.starZCentre);
-      const mesh = new THREE.Mesh(createZCylinder(month.starTipDiameter / 2, meshZ - month.starThickness / 2, meshZ + month.starThickness / 2, 64), material(COLORS.monthStar, { metalness: 0.1, roughness: 0.7 }));
+      const monthLabels = findDiscComplication(movement, month.id)?.positionLabels ?? null;
+      const mesh = new THREE.Mesh(createZCylinder(month.starTipDiameter / 2, meshZ - month.starThickness / 2, meshZ + month.starThickness / 2, 64), discMaterials(COLORS.monthStar, { metalness: 0.1, roughness: 0.7 }, monthLabels));
       this.addPickable(group, mesh, { kind: "monthStar", entityId: month.id, baseColor: COLORS.monthStar });
       this.cappableSolids.push({
         positionX: group.position.x,
@@ -510,7 +531,8 @@ export class Viewport {
       // Driven entirely by the month complication's own December-to-January wrap (ASM-0050) —
       // same applyKinematicRotation() loop that spins every other shaft group spins this one too.
       const meshZ = this.displayZ(year.wheelZCentre);
-      const mesh = new THREE.Mesh(createZCylinder(year.wheelTipDiameter / 2, meshZ - year.wheelThickness / 2, meshZ + year.wheelThickness / 2, 64), material(COLORS.leapYearWheel, { metalness: 0.1, roughness: 0.7 }));
+      const yearLabels = findDiscComplication(movement, year.id)?.positionLabels ?? null;
+      const mesh = new THREE.Mesh(createZCylinder(year.wheelTipDiameter / 2, meshZ - year.wheelThickness / 2, meshZ + year.wheelThickness / 2, 64), discMaterials(COLORS.leapYearWheel, { metalness: 0.1, roughness: 0.7 }, yearLabels));
       this.addPickable(group, mesh, { kind: "leapYearWheel", entityId: year.id, baseColor: COLORS.leapYearWheel });
       this.cappableSolids.push({
         positionX: group.position.x,
@@ -588,7 +610,7 @@ export class Viewport {
         const built = buildDialMeshes(dial, analysis.placement, (z) => this.displayZ(z), {
           disc: material(COLORS.dial, { metalness: 0.05, roughness: 0.8 }),
           marker: material(COLORS.dialMarker, { metalness: 0.2, roughness: 0.5 }),
-        });
+        }, Object.values(movement.dialWindows));
         if (built === null) continue;
         this.content.add(built.root);
         built.disc.userData = {
@@ -956,15 +978,20 @@ export class Viewport {
   private applySelection(): void {
     for (const mesh of this.pickables) {
       const pick = mesh.userData as Pickable;
-      const mat = mesh.material as THREE.MeshStandardMaterial;
       const selected = pick.entityId === this.store.selectedId;
-      mat.color.set(selected ? COLORS.selected : pick.baseColor);
-      if (pick.kind === "frame") mat.opacity = selected ? FRAME_OPACITY.selected : FRAME_OPACITY.normal;
-      // Draw through occluding geometry when selected (e.g. an arbor hidden inside a large wheel);
-      // depthWrite off too while selected, so this doesn't corrupt the depth buffer for what's
-      // drawn after it (restored to its own original value, e.g. frames already draw with it off).
-      mat.depthTest = !selected;
-      mat.depthWrite = selected ? false : pick.baseDepthWrite;
+      // A disc complication's own label-texture cap (ASM-0051) is a second material slot on the
+      // same mesh (one per CylinderGeometry face group); every slot tints together so the whole
+      // part highlights consistently, texture and all.
+      for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+        const mat = m as THREE.MeshStandardMaterial;
+        mat.color.set(selected ? COLORS.selected : pick.baseColor);
+        if (pick.kind === "frame") mat.opacity = selected ? FRAME_OPACITY.selected : FRAME_OPACITY.normal;
+        // Draw through occluding geometry when selected (e.g. an arbor hidden inside a large wheel);
+        // depthWrite off too while selected, so this doesn't corrupt the depth buffer for what's
+        // drawn after it (restored to its own original value, e.g. frames already draw with it off).
+        mat.depthTest = !selected;
+        mat.depthWrite = selected ? false : pick.baseDepthWrite;
+      }
       mesh.renderOrder = selected ? SELECTION_RENDER_ORDER : pick.baseRenderOrder;
     }
   }

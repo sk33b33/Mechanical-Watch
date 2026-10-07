@@ -303,6 +303,12 @@ export const ASSUMPTIONS = {
     scope: "LeapYearComplication (Phase 8.4, kinematic, L2)",
     status: "Active",
   },
+  "ASM-0051": {
+    summary:
+      "DialWindow (Phase 8.6, now actually done): a circular cutout in a Dial, through which a disc complication (MoonPhase, DateComplication, MonthComplication or LeapYearComplication) becomes visible from the dial side -- the display concept Phase 8.6 scoped (\"dial windows or sub-dials\") but, despite STATUS.md's earlier claim that it was 'folded into 8.1-8.4', was never actually built; this item corrects that overstatement by building it. Without a window, every disc complication sits behind the dial's own opaque disc (closer to the mainplate, at a less negative z than the dial's own faceHeight, ASM-0014) and is fully occluded, so the only way to read a complication's current value was the inspector's text-only 'Current position' row. Circular only, not a real date window's usual small-rectangle shape: a deliberate simplification, the same 'visual only, not a manufacturing claim' treatment this project already gives other cosmetic geometry (tooth proportions, ASM-0005; dial hour markers, ASM-0020). A window's centre/radius are declared in the same movement-plan (x, y) coordinates as every other plan-positioned entity, not relative to the dial's own centre. DIALWIN-001/002 (src/validation/rules/dialWindowRules.ts) check that a window actually overlaps its referenced complication's own disc -- geometrically, in plan, via circle-circle distance -- since a non-overlapping window shows nothing through it, a real design error this project can and does catch, unlike a kinematic error. For date/month/leap-year complications (not moonphase, which stays a plain disc), the disc's own dial-facing face additionally carries its position labels (1-31, month names, or year 1-4) painted around its rim as a texture -- generated once from the domain model's own declared tooth/position count, not re-synchronised per frame: the labels are baked onto the rotating disc exactly once, and the existing kinematic rotation (already correct since Phase 8.1-8.4) carries the right label past the window on its own, the same way a real printed date ring works.",
+    scope: "DialWindow (Phase 8.6, visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

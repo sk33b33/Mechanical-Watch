@@ -1,7 +1,7 @@
 import type { AppStore } from "@/app/store";
 import type { EntityId } from "@/domain/ids";
-import { addDateComplication, addDial, addEscapement, addFrame, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
-import { newDateComplication, newDial, newEscapement, newFrame, newKeylessWorks, newLeapYearComplication, newMonthComplication, newMoonPhase, newShaft } from "@/domain/editing";
+import { addDateComplication, addDial, addDialWindow, addEscapement, addFrame, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
+import { newDateComplication, newDial, newDialWindow, newEscapement, newFrame, newKeylessWorks, newLeapYearComplication, newMonthComplication, newMoonPhase, newShaft } from "@/domain/editing";
 import { listAssumptions } from "@/reference/assumptions";
 
 export function mountComponentTree(container: HTMLElement, store: AppStore): () => void {
@@ -108,6 +108,10 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
         const year = newLeapYearComplication(m);
         return { movement: addLeapYearComplication(m, year), id: year.id };
       }, "add-leap-year"),
+      addButton("+ Window", "Add a dial window with no dial or complication chosen yet", (m) => {
+        const win = newDialWindow(m);
+        return { movement: addDialWindow(m, win), id: win.id };
+      }, "add-window"),
     );
     container.appendChild(actions);
 
@@ -166,6 +170,11 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
     if (Object.keys(movement.leapYearComplications).length > 0) {
       container.appendChild(header("Leap year"));
       for (const year of Object.values(movement.leapYearComplications)) container.appendChild(item(year.name, year.id, 0, "(driven by month wrap)"));
+    }
+
+    if (Object.keys(movement.dialWindows).length > 0) {
+      container.appendChild(header("Dial windows"));
+      for (const win of Object.values(movement.dialWindows)) container.appendChild(item(win.name, win.id, 0));
     }
 
     container.appendChild(header("Assumptions"));

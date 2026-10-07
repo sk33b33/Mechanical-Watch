@@ -117,6 +117,114 @@ export function createZCylinder(radius: number, zLo: number, zHi: number, segmen
 }
 
 /**
+ * A disc's outer circle with zero or more circular holes punched through
+ * it (ASM-0051, `DialWindow`) — depth spans z ∈ [0, thickness]; position
+ * the mesh at the disc's own zLo afterward, same convention as
+ * `createFrameGeometry`. Hole centres are in the same local frame as
+ * `radius` (i.e. already relative to the disc's own centre, not
+ * movement-plan coordinates — the caller subtracts the disc's own centre
+ * first).
+ */
+export function createDiscWithHolesGeometry(radius: number, thickness: number, holes: readonly { x: number; y: number; radius: number }[]): THREE.ExtrudeGeometry {
+  const shape = new THREE.Shape();
+  shape.absarc(0, 0, radius, 0, Math.PI * 2, false);
+  for (const hole of holes) {
+    if (!(Number.isFinite(hole.x) && Number.isFinite(hole.y) && Number.isFinite(hole.radius) && hole.radius > 0)) continue;
+    const path = new THREE.Path();
+    path.absarc(hole.x, hole.y, hole.radius, 0, Math.PI * 2, true);
+    shape.holes.push(path);
+  }
+  return new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false, curveSegments: 64 });
+}
+
+/**
+ * Position labels painted radially around a disc's rim, for a disc
+ * complication's own dial-facing face (ASM-0051) — generated once from
+ * the domain model's own declared position count, not re-synchronised
+ * per frame: baked onto the rotating disc, the existing kinematic
+ * rotation (ASM-0048/0049/0050) carries the right label past a window on
+ * its own, the same way a real printed date/month/year ring works. Each
+ * label is oriented radially (its own "up" pointing away from the
+ * centre), a standard, legible convention for ring-printed numerals —
+ * visual only (ASM-0012-style placeholder, no manufacturing claim).
+ */
+export const DIAL_WINDOW_VISUALIZATION = {
+  textureSizePx: 512,
+  labelRadiusFraction: 0.72,
+  fontSizePx: 34,
+  textColor: "#1a1e22",
+  /**
+   * An opaque fill behind the glyphs. `MeshStandardMaterial.map` is not
+   * alpha-blended unless the material is also marked `transparent`, so an
+   * unpainted (fully transparent) canvas pixel still contributes its RGB
+   * — black — to the lit result; left unfilled, that multiplies almost
+   * the entire disc toward black instead of leaving it the complication's
+   * own base colour, with only the glyphs reading dark. A light,
+   * near-white fill keeps the rest of the disc at its own colour (white
+   * multiplies as a no-op) and gives `textColor` real contrast, the same
+   * way a real printed numeral sits on bare metal.
+   */
+  backgroundColor: "#eee8da",
+  assumption: "ASM-0051" satisfies AssumptionId,
+} as const;
+
+export interface DiscLabelPlacement {
+  readonly label: string;
+  readonly x: number;
+  readonly y: number;
+  /** Rotation to apply before drawing, so the label's own "up" points away from the disc centre. */
+  readonly rotation: number;
+}
+
+/**
+ * The pure layout math behind {@link createDiscLabelTexture}, split out so
+ * it can be unit tested without a DOM `canvas` (this project's test
+ * environment has none) — evenly spaced around the rim at
+ * `labelRadiusFraction`, each oriented radially per ASM-0051's own doc
+ * comment above.
+ */
+export function discLabelPlacements(labels: readonly string[]): DiscLabelPlacement[] {
+  const v = DIAL_WINDOW_VISUALIZATION;
+  const centre = v.textureSizePx / 2;
+  const labelRadius = centre * v.labelRadiusFraction;
+  return labels.map((label, i) => {
+    const angle = (i / labels.length) * Math.PI * 2;
+    return {
+      label,
+      x: centre + labelRadius * Math.cos(angle),
+      y: centre + labelRadius * Math.sin(angle),
+      rotation: angle + Math.PI / 2,
+    };
+  });
+}
+
+export function createDiscLabelTexture(labels: readonly string[]): THREE.CanvasTexture | null {
+  if (labels.length === 0) return null;
+  const v = DIAL_WINDOW_VISUALIZATION;
+  const canvas = document.createElement("canvas");
+  canvas.width = v.textureSizePx;
+  canvas.height = v.textureSizePx;
+  const ctx = canvas.getContext("2d");
+  if (ctx === null) return null;
+  ctx.fillStyle = v.backgroundColor;
+  ctx.fillRect(0, 0, v.textureSizePx, v.textureSizePx);
+  ctx.fillStyle = v.textColor;
+  ctx.font = `bold ${String(v.fontSizePx)}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const placement of discLabelPlacements(labels)) {
+    ctx.save();
+    ctx.translate(placement.x, placement.y);
+    ctx.rotate(placement.rotation);
+    ctx.fillText(placement.label, 0, 0);
+    ctx.restore();
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/**
  * Escapement parts are drawn only to show the simplified model's motion
  * (ASM-0023): the escape wheel's tooth form, the fork's shape and the
  * balance's rim and arms are visual (ASM-0012). Only the escape wheel's

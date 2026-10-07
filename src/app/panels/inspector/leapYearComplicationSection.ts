@@ -3,15 +3,13 @@ import { millimetres } from "@/units/length";
 import { radians, toDegrees } from "@/units/angle";
 import { radiansPerSecond } from "@/units/angularVelocity";
 import { updateLeapYearComplication } from "@/domain/movement";
-import { LEAP_YEAR_SLOT_COUNT, type LeapYearComplication } from "@/domain/leapYearComplication";
+import { LEAP_YEAR_LABELS, LEAP_YEAR_SLOT_COUNT, type LeapYearComplication } from "@/domain/leapYearComplication";
 import type { MonthComplicationId } from "@/domain/monthComplication";
 import type { ShaftId } from "@/domain/shaft";
 import { starPosition } from "@/kinematics/dateComplication";
 import { genevaDriverMotionAngle, genevaLambda, genevaWheelAdvanceAngle, genevaWheelAngularVelocity } from "@/kinematics/genevaDrive";
 import { inputRow, mmText, parseRequired, readonlyRow, sectionHeader, selectRow, textRow } from "./fields";
 import { deleteRow, positive, type Section } from "./common";
-
-const YEAR_LABELS = ["Year 1", "Year 2", "Year 3", "Year 4 (leap)"];
 
 export function leapYearComplicationSection(store: AppStore, year: LeapYearComplication): Section {
   const { movement } = store;
@@ -62,7 +60,7 @@ export function leapYearComplicationSection(store: AppStore, year: LeapYearCompl
       "Only the net kinematic effect is simulated: one discrete step once a year. SRC-0044's real mechanism is a year cam plus a Maltese cross; only the Geneva-drive component is modeled here."),
     readonlyRow("Reference Geneva figures", `${String(n)}-slot: ${indexAngle.toFixed(0)}° index / ${motionAngle.toFixed(0)}° driver motion, λ = ${lambda.toFixed(4)}, peak speed ratio ${peakRatio.toFixed(3)}`,
       "A real single-pin Geneva drive's own closed-form reference figures (SRC-0047) — not simulated continuously here, only reported (YEAR-002)."),
-    readonlyRow("Current position", position === null ? "—" : YEAR_LABELS[position] ?? String(position + 1),
+    readonlyRow("Current position", position === null ? "—" : LEAP_YEAR_LABELS[position] ?? String(position + 1),
       "Position 0 reads as Year 1, an arbitrary reference; position 3 is the leap year by this entity's own convention. Century-exception leap-year rules are not modeled."),
     deleteRow(store, year.id, "Delete leap-year complication", "The referenced month complication and wheel arbor are not removed."),
   ];

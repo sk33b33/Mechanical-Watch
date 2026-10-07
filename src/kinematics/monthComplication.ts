@@ -19,6 +19,9 @@ export const MONTHS_PER_YEAR = 12;
  */
 export const GREGORIAN_MONTH_LENGTHS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
 
+/** January first, 0-indexed — the same indexing `starPosition` reads a month star's position as. */
+export const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"] as const;
+
 /** Days in the given month (0-indexed, January = 0), wrapping into range. */
 export function daysInMonth(monthIndex: number): number {
   const wrapped = ((monthIndex % MONTHS_PER_YEAR) + MONTHS_PER_YEAR) % MONTHS_PER_YEAR;
