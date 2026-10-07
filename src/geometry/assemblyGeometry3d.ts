@@ -310,7 +310,54 @@ export function createGenevaWheelGeometry(tipRadius: number, thickness: number, 
   shape.holes.push(hub);
   const geometry = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false, curveSegments: 64 });
   geometry.translate(0, 0, -thickness / 2);
+  reshapeCapGroupsForDiscMaterials(geometry);
   return geometry;
+}
+
+/**
+ * `ExtrudeGeometry`'s own default material groups are `[caps (front and
+ * back combined), sides]` — not `CylinderGeometry`'s `[sides, +Z cap, −Z
+ * cap]` that `discMaterials` (`src/viewport/viewport.ts`) is built
+ * around to put a position-label texture on the dial-facing (−Z) cap
+ * only (ASM-0051). Passed an `ExtrudeGeometry`'s default groups,
+ * `discMaterials`'s 3-entry array silently never reaches the labeled
+ * entry: index 0 (plain) lands on the combined caps group, index 1
+ * (also plain) lands on the sides, and index 2 (the actual label
+ * texture) matches no group at all, so nothing ever renders it.
+ *
+ * `createGenevaWheelGeometry` is this project's only `ExtrudeGeometry`
+ * used with `discMaterials`, so the fix lives here rather than in
+ * `discMaterials` itself: split the combined caps group back into its
+ * own front/back halves (found by where the caps run's own z value
+ * changes — `ExtrudeGeometry` lays the front cap down as one contiguous
+ * triangle run and the back cap as a second, not interleaved, so a
+ * single scan for the first z change finds the exact boundary) and
+ * relabel all three groups to match `CylinderGeometry`'s own index
+ * convention, so `discMaterials`'s existing 3-entry array works
+ * unchanged for this geometry too.
+ */
+function reshapeCapGroupsForDiscMaterials(geometry: THREE.ExtrudeGeometry): void {
+  const [capsGroup, sidesGroup] = geometry.groups;
+  if (capsGroup === undefined || sidesGroup === undefined) return;
+  const position = geometry.attributes.position;
+  if (position === undefined) return;
+  const firstCapZ = position.getZ(capsGroup.start);
+  let splitAt = capsGroup.start + capsGroup.count;
+  for (let i = capsGroup.start; i < capsGroup.start + capsGroup.count; i += 3) {
+    if (position.getZ(i) !== firstCapZ) {
+      splitAt = i;
+      break;
+    }
+  }
+  // CylinderGeometry/discMaterials convention: index 1 is the +Z cap (plain), index 2 is the
+  // −Z cap (dial-facing, carries the label texture — ASM-0014/ASM-0051).
+  const firstCapMaterialIndex = firstCapZ < 0 ? 2 : 1;
+  const secondCapMaterialIndex = firstCapMaterialIndex === 2 ? 1 : 2;
+  geometry.groups = [
+    { start: sidesGroup.start, count: sidesGroup.count, materialIndex: 0 },
+    { start: capsGroup.start, count: splitAt - capsGroup.start, materialIndex: firstCapMaterialIndex },
+    { start: splitAt, count: capsGroup.start + capsGroup.count - splitAt, materialIndex: secondCapMaterialIndex },
+  ];
 }
 
 /**

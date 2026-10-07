@@ -2,6 +2,56 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Bugfix: leap-year wheel's own position-label texture never rendered
+
+Reported directly ("the leap year text is not showing on gear"). Root
+cause: `createGenevaWheelGeometry` (Phase 8.9) returns a
+`THREE.ExtrudeGeometry`, but `discMaterials` (`src/viewport/viewport.ts`,
+which builds the 3-entry label-texture material array) assumes
+`CylinderGeometry`'s own group layout — `[sides, +Z cap, −Z cap]`, three
+separate groups, the layout every other labeled disc (date, month) uses
+via `createZCylinder`. `ExtrudeGeometry` actually produces only two
+groups by default — `[caps (front and back combined), sides]` — so
+`discMaterials`' labeled material (array index 2) matched no face group
+at all: the wheel always rendered in its plain colour, the label texture
+silently never drawn. Pre-existing since Phase 8.9 shipped, not
+introduced by this session's date/month linkage work.
+
+- Fixed in `createGenevaWheelGeometry` itself (not `discMaterials`,
+  since this is the project's only `ExtrudeGeometry` ever passed to it):
+  a new `reshapeCapGroupsForDiscMaterials` helper splits the combined
+  caps group back into its own front/back halves — found by scanning
+  for where the group's own z value changes, since `ExtrudeGeometry`
+  lays the front cap down as one contiguous triangle run followed by
+  the back cap as a second, not interleaved — and relabels all three
+  groups to match `CylinderGeometry`'s own convention, so
+  `discMaterials`' existing 3-entry array now works unchanged.
+- Added a regression test asserting the 3 groups exist with the right
+  material indices and that each group's triangles sit on the correct
+  face (both caps uniform, the sides group spanning both).
+- Verified live: inspected the mesh's own material array and geometry
+  groups directly in the browser (not a screenshot) — the labeled
+  material (index 2, `materialHasMap: true`) now lands on the −Z
+  (dial-facing) cap, exactly as ASM-0051 intends.
+
+## Non-bug: centre wheel appearing to "touch" the barrel's upper jewel
+
+Reported alongside the above ("the center wheel looks like its touching
+the barrel pin"). Investigated and confirmed NOT a geometry or domain
+bug: the red peg in question is the Barrel's own upper jewel, mounted in
+the Train bridge (z ≈ 4.0–4.8 mm); the centre wheel sits at z ≈ 1.9–2.1
+mm (axial position 2 mm, thickness 0.2 mm) — about 2 mm apart in height,
+and the barrel/centre arbors are 5.04 mm apart in plan (the gear-mesh
+centre distance) — nowhere near touching in real 3D. Confirmed visually
+by rotating the live viewport toward a top-down angle: the apparent
+contact disappears completely, since it was only ever a 2D screen-space
+alignment from the original oblique camera angle (two parts at very
+different heights can still project to the same screen position from
+some angles — the same thing a real angled photo of a movement would
+show). No code change made; `src/validation/rules/interferenceRules.ts`
+already checks gear-to-gear axial/radial overlap and reported no errors
+for this design.
+
 ## Phase 8.9: leap-year visual/mechanical linkage — done (leap year only)
 
 Prompted directly: "why is the date, month and leap year gear not look

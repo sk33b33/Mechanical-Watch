@@ -254,6 +254,37 @@ describe("createGenevaWheelGeometry", () => {
       expect(() => createGenevaWheelGeometry(1.5e-3, 0.15e-3, slotCount, 0)).not.toThrow();
     }
   });
+
+  it("reshapes its own material groups into CylinderGeometry's [sides, +Z cap, -Z cap] convention, so discMaterials' label texture (index 2) actually lands on a face", () => {
+    // ExtrudeGeometry's own default groups are [caps combined, sides] -- not this 3-group
+    // split -- so discMaterials' labeled material (array index 2) previously matched no group
+    // at all and the leap-year wheel's position labels silently never rendered. Regression
+    // coverage for that bug.
+    const thickness = 0.15e-3;
+    const geometry = createGenevaWheelGeometry(1.5e-3, thickness, 4, 0);
+    expect(geometry.groups).toHaveLength(3);
+    const indices = geometry.groups.map((g) => g.materialIndex).sort();
+    expect(indices).toEqual([0, 1, 2]);
+
+    const position = geometry.attributes.position;
+    if (position === undefined) throw new Error("geometry has no position attribute");
+    for (const group of geometry.groups) {
+      const zValues = new Set<number>();
+      for (let i = group.start; i < group.start + group.count; i += 1) {
+        zValues.add(Math.sign(Math.round(position.getZ(i) * 1e9)));
+      }
+      if (group.materialIndex === 1) {
+        // +Z cap: every triangle sits entirely on the +Z face.
+        expect([...zValues]).toEqual([1]);
+      } else if (group.materialIndex === 2) {
+        // -Z cap (dial-facing, carries the label texture): every triangle sits entirely on -Z.
+        expect([...zValues]).toEqual([-1]);
+      } else {
+        // Sides: each wall triangle spans both z extremes, so both signs appear somewhere.
+        expect(zValues.has(1) && zValues.has(-1)).toBe(true);
+      }
+    }
+  });
 });
 
 describe("createRodGeometry", () => {
