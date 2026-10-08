@@ -1,5 +1,7 @@
 import * as THREE from "three";
 import type { Outline } from "@/domain/frame";
+import type { MoonPhaseWindowCount } from "@/domain/moonPhase";
+import { windowsPerRevolution } from "@/domain/moonPhase";
 import type { AssumptionId } from "@/reference/assumptions";
 import type { Point2D } from "./gearOutline";
 
@@ -241,6 +243,168 @@ export function createDiscLabelTexture(labels: readonly string[]): THREE.CanvasT
     ctx.fillText(placement.label, 0, 0);
     ctx.restore();
   }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/**
+ * A moon-phase disc's own sky-and-moon illustration (ASM-0055, Phase
+ * 8.9 follow-up). `MoonPhase` was built (Phase 8.1) with "moon/star
+ * artwork is not modeled, only the disc itself" as a deliberate scope
+ * cut — the kinematics (`moonPhaseFraction`, already correct and
+ * tested) had nothing to show through the dial window built later
+ * (Phase 8.6). SRC-0045 (a granted patent, Fig. 4) confirms the real,
+ * conventional design this draws: a dark sky with one or two pale moon
+ * images (`DOUBLE`, two 180° apart, the teaching movement's own
+ * choice; `SINGLE`, one, per `windowsPerRevolution`).
+ *
+ * The phase reveal itself needs no new simulation code at all: the
+ * dial window (`DialWindow`, Phase 8.6) is already a *fixed* aperture
+ * offset from the disc's own rotation axis, and the disc already
+ * rotates correctly (same `applyKinematicRotation()` every other
+ * shaft uses) — painting a moon image at the right position and
+ * letting ordinary 3D occlusion do the rest reproduces the same
+ * optical trick the real mechanism's own window uses: as two circles
+ * (the fixed window, the moving moon image) slide past each other,
+ * their overlap traces new moon → crescent → full → crescent → new
+ * moon, exactly matching `moonPhaseFraction`'s own 0↔0.5↔0 cycle.
+ *
+ * Getting the two circles' sizes/positions to actually produce that
+ * clean reveal (full overlap at the real full-moon instant, zero
+ * overlap at the real new-moon instant) is the one genuinely new piece
+ * of math here — see `moonImageLocalAngle`'s own doc comment for the
+ * derivation. It depends on `windowWorldAngleRadians` matching the
+ * dial window's own actual position: every dial window in this
+ * project is placed via `windowAbove` (`src/app/teachingMovement.ts`),
+ * i.e. straight up (+Y) from its complication's own arbor — if a
+ * window were ever placed elsewhere, this constant (and the teaching
+ * movement's own window radius/offset, tuned to match it exactly)
+ * would need to move with it.
+ */
+export const MOON_PHASE_VISUALIZATION = {
+  /** The dial window's own fixed world angle relative to its complication's arbor — "straight up" (+Y), matching `windowAbove` (`src/app/teachingMovement.ts`). */
+  windowWorldAngleRadians: Math.PI / 2,
+  /** Each moon image's own centre, as a fraction of the disc's own radius. */
+  moonPositionRadiusFraction: 0.4,
+  /** Each moon image's own radius, as a fraction of the disc's own radius. */
+  moonImageRadiusFraction: 0.25,
+  skyColor: "#12223a",
+  moonColor: "#f0ead9",
+  starColor: "#cfd8e6",
+  /**
+   * Fixed, declared star positions (fraction of the disc's own radius,
+   * angle in radians, dot radius in px at `DIAL_WINDOW_VISUALIZATION`'s
+   * own texture size) — decorative only (ASM-0004), not a real star
+   * chart or a claim about any actual night sky.
+   */
+  starPositions: [
+    { radiusFraction: 0.85, angle: 0.4, sizePx: 3 },
+    { radiusFraction: 0.65, angle: 1.1, sizePx: 2 },
+    { radiusFraction: 0.9, angle: 2.0, sizePx: 2 },
+    { radiusFraction: 0.7, angle: 2.8, sizePx: 3 },
+    { radiusFraction: 0.5, angle: 3.5, sizePx: 2 },
+    { radiusFraction: 0.88, angle: 4.1, sizePx: 2 },
+    { radiusFraction: 0.6, angle: 4.9, sizePx: 3 },
+    { radiusFraction: 0.78, angle: 5.6, sizePx: 2 },
+    { radiusFraction: 0.45, angle: 6.0, sizePx: 2 },
+    { radiusFraction: 0.93, angle: 1.6, sizePx: 2 },
+  ] as readonly { radiusFraction: number; angle: number; sizePx: number }[],
+  assumption: "ASM-0055" satisfies AssumptionId,
+} as const;
+
+/**
+ * The angle (radians, in the disc's own local frame) that puts the
+ * `k`-th of `n` evenly-spaced moon images exactly under the dial
+ * window at that image's own full-moon instant.
+ *
+ * Derived from `moonPhaseFraction`'s own convention
+ * (`src/kinematics/moonPhase.ts`): fraction = (turns × n) mod 1, so
+ * fraction = 0.5 (full moon) at `shaftAngle = 2π(k + 0.5)/n` for each
+ * `k` in `[0, n)`. A world-frame feature painted at local angle `a`
+ * appears at world angle `a + shaftAngle` once the shaft group
+ * rotates (the same convention `createGenevaWheelGeometry`'s own
+ * `baseAngle` relies on). Setting that equal to the window's own fixed
+ * world angle and solving for `a` gives this formula. For `n = 2`
+ * (`DOUBLE`), this places the two images at local 0 and π — exactly
+ * "two moon images 180° apart" (SRC-0045's own Fig. 4) — for any
+ * `windowWorldAngleRadians`, not just the teaching movement's own
+ * choice of "straight up".
+ */
+export function moonImageLocalAngle(k: number, n: number): number {
+  return MOON_PHASE_VISUALIZATION.windowWorldAngleRadians - (2 * Math.PI * (k + 0.5)) / n;
+}
+
+/**
+ * Where to draw a feature on a disc's own texture canvas so it lands at
+ * a *chosen mesh-local angle* once mapped onto `createZCylinder`'s own
+ * −Z (dial-facing) cap (ASM-0051's convention).
+ *
+ * `createDiscLabelTexture`'s own ring of labels, drawn at `centre +
+ * radius·(cos θ, sin θ)`, works for date/month/leap-year because a
+ * label only needs to pass under *some* fixed window at *roughly* even
+ * intervals — correctness there never depended on one label landing at
+ * one exact angle. The moon-phase reveal does: a moon image must align
+ * with the dial window at one *exact* instant (`moonImageLocalAngle`'s
+ * own derivation). Naively drawing at canvas angle θ expecting it to
+ * land at mesh-local angle θ is wrong: `createZCylinder`'s own −Z-cap
+ * UV formula (`u = 0.5 − y/2r`, `v = 0.5 − x/2r`, empirically derived
+ * — see `reshapeCapGroupsForDiscMaterials`'s own doc comment for the
+ * same formula used on the leap-year wheel) is a *reflection*, not a
+ * rotation: a feature drawn at canvas angle θ actually lands at mesh
+ * angle `−π/2 − θ` (verified directly against a real built disc's own
+ * vertex UVs, not just algebra). Reflections are their own inverse, so
+ * solving for the canvas angle that lands at a desired mesh angle `a`
+ * gives the same formula back: `θ = −π/2 − a`.
+ */
+export function discCapCanvasAngleForMeshAngle(meshAngle: number): number {
+  return -Math.PI / 2 - meshAngle;
+}
+
+/**
+ * The dark-sky-and-moon-images texture for a `MoonPhase` disc's own
+ * dial-facing face (ASM-0055) — see `MOON_PHASE_VISUALIZATION`'s own
+ * doc comment for the sourcing and the reveal mechanism,
+ * `moonImageLocalAngle` for where each image must sit (in true
+ * mesh-local terms), and `discCapCanvasAngleForMeshAngle` for why that
+ * angle must be transformed before it is usable as a canvas-drawing
+ * angle.
+ */
+export function createMoonPhaseTexture(windowCount: MoonPhaseWindowCount): THREE.CanvasTexture | null {
+  const v = MOON_PHASE_VISUALIZATION;
+  const size = DIAL_WINDOW_VISUALIZATION.textureSizePx;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (ctx === null) return null;
+  const centre = size / 2;
+
+  ctx.fillStyle = v.skyColor;
+  ctx.fillRect(0, 0, size, size);
+
+  ctx.fillStyle = v.starColor;
+  for (const star of v.starPositions) {
+    const x = centre + star.radiusFraction * centre * Math.cos(star.angle);
+    const y = centre + star.radiusFraction * centre * Math.sin(star.angle);
+    ctx.beginPath();
+    ctx.arc(x, y, star.sizePx, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const n = windowsPerRevolution(windowCount);
+  const moonPosPx = v.moonPositionRadiusFraction * centre;
+  const moonRadiusPx = v.moonImageRadiusFraction * centre;
+  ctx.fillStyle = v.moonColor;
+  for (let k = 0; k < n; k += 1) {
+    const canvasAngle = discCapCanvasAngleForMeshAngle(moonImageLocalAngle(k, n));
+    const x = centre + moonPosPx * Math.cos(canvasAngle);
+    const y = centre + moonPosPx * Math.sin(canvasAngle);
+    ctx.beginPath();
+    ctx.arc(x, y, moonRadiusPx, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
   return texture;

@@ -15,6 +15,7 @@ import {
   createFrameGeometry,
   createGenevaWheelGeometry,
   createHandGeometry,
+  createMoonPhaseTexture,
   createRodGeometry,
   createZCylinder,
   DATE_LINKAGE_VISUALIZATION,
@@ -30,6 +31,7 @@ import { arborZRange, frameZRange, isCompleteFrame } from "@/assembly/assemblyGe
 import { partReferencePoint, type Point3 } from "@/assembly/measure";
 import { stemBodyId, type KeylessWorksId } from "@/domain/keyless";
 import { findDiscComplication } from "@/domain/discComplication";
+import type { MoonPhaseWindowCount } from "@/domain/moonPhase";
 import type { DateComplicationId } from "@/domain/dateComplication";
 import type { LeapYearComplicationId } from "@/domain/leapYearComplication";
 import { LEAP_YEAR_INDEX_STROKE_SECONDS, LEAP_YEAR_SLOT_COUNT } from "@/domain/leapYearComplication";
@@ -187,6 +189,14 @@ function discMaterials(color: number, extra: THREE.MeshStandardMaterialParameter
   const labeled = texture === null ? plain : material(color, { ...extra, map: texture });
   // CylinderGeometry's own group order after createZCylinder's rotateX(π/2): [side, +Z cap, −Z cap].
   return [plain, plain, labeled];
+}
+
+/** Same 3-group convention as `discMaterials`, with the moon-phase disc's own sky/moon illustration (ASM-0055) on the −Z (dial-facing) cap instead of a position-label ring. */
+function moonPhaseMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, windowCount: MoonPhaseWindowCount): THREE.MeshStandardMaterial[] {
+  const plain = material(color, extra);
+  const texture = createMoonPhaseTexture(windowCount);
+  const illustrated = texture === null ? plain : material(color, { ...extra, map: texture });
+  return [plain, plain, illustrated];
 }
 
 /**
@@ -498,7 +508,7 @@ export class Viewport {
       // same applyKinematicRotation() loop that spins every other shaft group spins this one too.
       const zLo = this.displayZ(moon.faceHeight);
       const zHi = zLo + moon.thickness;
-      const mesh = new THREE.Mesh(createZCylinder(moon.diameter / 2, zLo, zHi, 64), material(COLORS.moonPhase, { metalness: 0.1, roughness: 0.7 }));
+      const mesh = new THREE.Mesh(createZCylinder(moon.diameter / 2, zLo, zHi, 64), moonPhaseMaterials(COLORS.moonPhase, { metalness: 0.1, roughness: 0.7 }, moon.windowCount));
       this.addPickable(group, mesh, { kind: "moonPhase", entityId: moon.id, baseColor: COLORS.moonPhase });
       this.cappableSolids.push({
         positionX: group.position.x,

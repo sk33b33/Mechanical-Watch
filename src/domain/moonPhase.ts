@@ -25,9 +25,14 @@ export type MoonPhaseWindowCount = "SINGLE" | "DOUBLE";
  * phase" is not a claim this component makes.
  *
  * Mounted like the dial (ASM-0014): on the dial side, at `faceHeight`,
- * occupying [faceHeight, faceHeight + thickness]. Moon/star artwork is
- * not modeled, only the disc itself (same "visual only" scope as the
- * dial's hour markers, ASM-0020).
+ * occupying [faceHeight, faceHeight + thickness]. The viewport paints a
+ * declared dark-sky-and-moon-image illustration on the disc's own
+ * dial-facing face (ASM-0055, `createMoonPhaseTexture` in
+ * `src/geometry/assemblyGeometry3d.ts`) — visual only, the same "visual
+ * only" scope as the dial's hour markers (ASM-0020); the phase reveal
+ * itself needs no new kinematic claim, since it comes from the disc's
+ * own already-correct rotation passing a painted moon image under the
+ * dial window's own already-declared, fixed position.
  */
 export interface MoonPhase {
   readonly id: MoonPhaseId;

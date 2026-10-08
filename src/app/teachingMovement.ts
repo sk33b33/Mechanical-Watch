@@ -388,9 +388,11 @@ export function createTeachingMovement(): Movement {
   // (DIAL_WINDOW_VISUALIZATION.labelRadiusFraction × disc radius, src/geometry/assemblyGeometry3d.ts)
   // — the same real-watch convention as a date window: a small aperture catching one label at a
   // time as the ring rotates beneath it, not a wide view of the whole disc. Moonphase prints no
-  // labels (continuous, not discrete positions), so its own window is simply a smaller concentric
-  // aperture near the top of the disc, the conventional layout for a moonphase window (SRC-0045).
-  // Date stays circular, the usual shape for a simple date aperture; month and leap-year use a
+  // labels (continuous, not discrete positions); its own window radius/offset are instead tuned
+  // to MOON_PHASE_VISUALIZATION's own moon-image geometry (ASM-0055, assemblyGeometry3d.ts) so
+  // the window and a painted moon image are exactly concentric at the real full-moon instant and
+  // clear of each other at the real new-moon instant — see that constant's own doc comment for
+  // the derivation. Date stays circular, the usual shape for a simple date aperture; month and leap-year use a
   // rectangle instead, sized for a short label ("Jan", "Year 4"), which a fixed-radius circle
   // cannot show without either clipping the text or revealing its neighbours. The month star's
   // own disc prints MONTH_ABBREVIATIONS, not MONTH_NAMES (src/kinematics/monthComplication.ts):
@@ -407,8 +409,14 @@ export function createTeachingMovement(): Movement {
     name: "Moon phase window",
     dialId: dial.id,
     complicationId: moonPhase.id,
-    centre: windowAbove(moonDiscArbor.id, 3, 0.3),
-    outline: { kind: "CIRCLE", radius: mm(1.5) },
+    // Offset matches MOON_PHASE_VISUALIZATION.moonPositionRadiusFraction (0.4) × this disc's own
+    // 3mm radius = 1.2mm, so a painted moon image is exactly concentric with this window at the
+    // real full-moon instant. Radius (0.7mm) is small enough that, summed with the moon image's
+    // own radius (0.75mm = moonImageRadiusFraction × 3mm), the two stay clear of each other
+    // (0.7+0.75=1.45mm) at the real new-moon instant, when their centres are offset×√2≈1.70mm
+    // apart — a genuinely dark window, not just a dim one. ASM-0055.
+    centre: windowAbove(moonDiscArbor.id, 3, 0.4),
+    outline: { kind: "CIRCLE", radius: mm(0.7) },
   }));
   m = addDialWindow(m, createDialWindow({
     name: "Date window",

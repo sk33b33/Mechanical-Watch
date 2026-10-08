@@ -6,6 +6,8 @@ import {
   createDiscWithHolesGeometry,
   createGenevaWheelGeometry,
   createRodGeometry,
+  createZCylinder,
+  discCapCanvasAngleForMeshAngle,
   discLabelPlacements,
   escapeWheelHubRadius,
   generateEscapeWheelOutline,
@@ -13,6 +15,8 @@ import {
   generatePalletStoneOutline,
   GENEVA_WHEEL_VISUALIZATION,
   handHubRadius,
+  moonImageLocalAngle,
+  MOON_PHASE_VISUALIZATION,
   rayCircleInward,
   type PalletArm,
 } from "./assemblyGeometry3d";
@@ -420,5 +424,125 @@ describe("discLabelPlacements", () => {
     const centre = 512 / 2;
     expect(placement?.x).toBeCloseTo(centre + centre * 0.72, 6);
     expect(placement?.y).toBeCloseTo(centre, 6);
+  });
+});
+
+describe("moonImageLocalAngle", () => {
+  // createMoonPhaseTexture itself touches `document` (a Canvas2D context), which this project's
+  // vitest environment ("node") does not provide — the same already-accepted limitation
+  // createDiscLabelTexture has (untested directly; discLabelPlacements, its own pure placement
+  // math, is). moonImageLocalAngle is pure, so it's tested directly here; the texture's own
+  // actual pixels are confirmed live in the browser instead (see STATUS.md).
+
+  it("places a DOUBLE disc's two moon images at local 0 and π (SRC-0045's own 'two moons 180° apart')", () => {
+    const a0 = moonImageLocalAngle(0, 2);
+    const a1 = moonImageLocalAngle(1, 2);
+    expect(((a0 % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)).toBeCloseTo(0, 9);
+    expect(((a1 % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)).toBeCloseTo(Math.PI, 9);
+  });
+
+  it("puts each moon image exactly under the window (world angle) at its own real full-moon instant", () => {
+    // moonPhaseFraction's own convention (src/kinematics/moonPhase.ts): fraction = (turns × n)
+    // mod 1, so fraction = 0.5 (full moon) at shaftAngle = 2π(k + 0.5)/n for each k in [0, n).
+    // A feature painted at local angle `a` appears at world angle `a + shaftAngle` once the
+    // shaft group rotates by shaftAngle (the same convention createGenevaWheelGeometry's own
+    // baseAngle relies on) -- this is the geometric claim moonImageLocalAngle is built from.
+    for (const n of [1, 2]) {
+      for (let k = 0; k < n; k += 1) {
+        const shaftAngleAtFull = (2 * Math.PI * (k + 0.5)) / n;
+        const worldAngle = moonImageLocalAngle(k, n) + shaftAngleAtFull;
+        const normalized = ((worldAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+        const expected = ((MOON_PHASE_VISUALIZATION.windowWorldAngleRadians % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+        expect(normalized).toBeCloseTo(expected, 9);
+      }
+    }
+  });
+
+  it("leaves the window clear of any moon image at the real new-moon instant, using the teaching movement's own declared disc/window geometry", () => {
+    // Mirrors src/app/teachingMovement.ts's own declared moon-phase disc (3mm radius) and dial
+    // window (1.2mm offset, 0.7mm radius) -- if either changes, this and that file's own
+    // explanatory comment should be updated together (ASM-0055).
+    const discRadius = 3e-3;
+    const windowOffset = 1.2e-3;
+    const windowRadius = 0.7e-3;
+    const v = MOON_PHASE_VISUALIZATION;
+    const moonPosRadius = v.moonPositionRadiusFraction * discRadius;
+    const moonRadius = v.moonImageRadiusFraction * discRadius;
+    expect(moonPosRadius).toBeCloseTo(windowOffset, 9); // concentric with the window at full moon
+
+    const windowWorld = { x: windowOffset * Math.cos(v.windowWorldAngleRadians), y: windowOffset * Math.sin(v.windowWorldAngleRadians) };
+    const n = 2; // DOUBLE, the teaching movement's own choice
+    for (let k = 0; k < n; k += 1) {
+      // The real new-moon instant for image k's own "slot": halfway between its own full-moon
+      // instant and the next, i.e. shaftAngle = 2π(k + 1)/n (where moonPhaseFraction reports 0).
+      const shaftAngleAtNew = (2 * Math.PI * (k + 1)) / n;
+      const worldAngle = moonImageLocalAngle(k, n) + shaftAngleAtNew;
+      const moonWorld = { x: moonPosRadius * Math.cos(worldAngle), y: moonPosRadius * Math.sin(worldAngle) };
+      const distance = Math.hypot(moonWorld.x - windowWorld.x, moonWorld.y - windowWorld.y);
+      expect(distance).toBeGreaterThan(windowRadius + moonRadius);
+    }
+  });
+});
+
+describe("discCapCanvasAngleForMeshAngle", () => {
+  it("is self-inverse (a reflection applied twice returns the original angle)", () => {
+    for (const meshAngle of [0, 0.7, Math.PI / 2, 2, Math.PI]) {
+      const canvasAngle = discCapCanvasAngleForMeshAngle(meshAngle);
+      const roundTrip = discCapCanvasAngleForMeshAngle(canvasAngle);
+      const normalize = (a: number): number => (((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI));
+      expect(normalize(roundTrip)).toBeCloseTo(normalize(meshAngle), 9);
+    }
+  });
+
+  it("drawing at the corrected canvas angle actually lands at the intended mesh-local angle on a real createZCylinder -Z cap (regression: the naive, uncorrected angle landed 'reflected', not at the intended angle)", () => {
+    // A direct, from-scratch rebuild of CylinderGeometry's own -Z cap UV formula (u = 0.5 -
+    // y/2r, v = 0.5 - x/2r), empirically re-derived from a real built disc's own vertex data
+    // here -- the same formula reshapeCapGroupsForDiscMaterials relies on for the leap-year
+    // wheel fix. This closes the loop between the abstract moonImageLocalAngle/
+    // discCapCanvasAngleForMeshAngle math (tested above in isolation) and the real geometry.
+    const r = 3e-3;
+    const disc = createZCylinder(r, -0.02e-3, 0.02e-3, 128);
+    const pos = disc.attributes.position;
+    const uv = disc.attributes.uv;
+    const index = disc.index;
+    if (pos === undefined || uv === undefined || index === null) throw new Error("disc is missing an attribute");
+    const dialFacingCap = disc.groups[2];
+    if (dialFacingCap === undefined) throw new Error("no -Z cap group");
+
+    // Confirm the formula against a handful of real rim vertices before relying on it below.
+    let checked = 0;
+    for (let i = dialFacingCap.start; i < dialFacingCap.start + dialFacingCap.count; i += 3) {
+      const vi = index.getX(i);
+      const x = pos.getX(vi);
+      const y = pos.getY(vi);
+      if (Math.hypot(x, y) < r * 0.9) continue; // only check rim-ish vertices
+      const expectedU = 0.5 - y / (2 * r);
+      const expectedV = 0.5 - x / (2 * r);
+      expect(uv.getX(vi)).toBeCloseTo(expectedU, 5);
+      expect(uv.getY(vi)).toBeCloseTo(expectedV, 5);
+      checked += 1;
+      if (checked > 5) break;
+    }
+    expect(checked).toBeGreaterThan(0);
+
+    const size = 512;
+    const centre = size / 2;
+    const n = 2;
+    for (let k = 0; k < n; k += 1) {
+      const desiredMeshAngle = moonImageLocalAngle(k, n);
+      const canvasAngle = discCapCanvasAngleForMeshAngle(desiredMeshAngle);
+      const moonPosPx = MOON_PHASE_VISUALIZATION.moonPositionRadiusFraction * centre;
+      const px = centre + moonPosPx * Math.cos(canvasAngle);
+      const py = centre + moonPosPx * Math.sin(canvasAngle);
+      const u = px / size;
+      const v = py / size;
+      // Invert the same formula just confirmed against the real disc, to find which mesh-local
+      // point this canvas pixel actually lands on.
+      const xMesh = r * (1 - 2 * v);
+      const yMesh = r * (1 - 2 * u);
+      const actualMeshAngle = Math.atan2(yMesh, xMesh);
+      const normalize = (a: number): number => (((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI));
+      expect(normalize(actualMeshAngle)).toBeCloseTo(normalize(desiredMeshAngle), 6);
+    }
   });
 });

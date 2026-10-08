@@ -2,6 +2,100 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.9 follow-up: moon-phase disc illustration (ASM-0055)
+
+Requested after scoping ("Yes" to scope, then "2 and 3" — the real
+crescent reveal plus decorative stars, not just a static marker).
+`MoonPhase` was built (Phase 8.1, ASM-0047) with "moon/star artwork is
+not modeled" as a deliberate scope cut; with the dial window built
+later (Phase 8.6), the window had nothing to actually reveal — a plain
+disc, same colour everywhere, even though the phase fraction itself
+(`moonPhaseFraction`) was already correct and tested.
+
+- **New texture generator**, `createMoonPhaseTexture` +
+  `MOON_PHASE_VISUALIZATION` (`src/geometry/assemblyGeometry3d.ts`): a
+  dark sky, one or two pale moon images (`windowsPerRevolution` — SINGLE
+  or DOUBLE, SRC-0045's own "two moons 180° apart" Fig. 4), and a fixed,
+  declared set of decorative stars (ASM-0004, not a real star chart).
+- **No new simulation code needed for the reveal itself.** The dial
+  window is already a fixed aperture offset from the disc's own
+  rotation axis (Phase 8.6); the disc already rotates correctly. Two
+  circles — the fixed window, a moving moon image — sliding past each
+  other as the disc turns traces new moon → crescent → full → crescent
+  → new moon from ordinary 3D occlusion, the same optical trick the
+  real mechanism's own window uses.
+- **A genuine, now-fixed bug found via rigorous unit testing**: getting
+  that reveal to actually line up required a new pure function,
+  `moonImageLocalAngle`, deriving exactly where each moon image must
+  sit in the disc's own local frame from `moonPhaseFraction`'s own
+  convention. Drawing at that angle directly (the same technique
+  `discLabelPlacements` uses for date/month/leap-year's own labels)
+  turned out to be wrong: `createZCylinder`'s own −Z-cap UV formula
+  (`u = 0.5 − y/2r`, `v = 0.5 − x/2r`, the same formula
+  `reshapeCapGroupsForDiscMaterials` already relies on for the leap-year
+  wheel) is a *reflection*, not a rotation — a feature drawn at canvas
+  angle θ actually lands at mesh angle `−π/2 − θ`, verified directly
+  against a real built disc's own vertex UVs, not just algebra. This
+  never mattered for date/month/leap-year, since their own correctness
+  only ever needed "some label passes under the window at roughly even
+  intervals," never exact alignment with one fixed feature. A new pure
+  function, `discCapCanvasAngleForMeshAngle` (self-inverse, since
+  reflections are their own inverse), corrects for it.
+- **Window geometry retuned to match** (`src/app/teachingMovement.ts`):
+  the moon-phase window's own offset and radius were chosen for "a
+  smaller aperture near the top," not for a clean reveal; retuned to
+  `MOON_PHASE_VISUALIZATION`'s own declared fractions so the window and
+  a painted moon image are exactly concentric at the real full-moon
+  instant and clear of each other (offset × √2 > their summed radii) at
+  the real new-moon instant — the same kind of geometry fix the date
+  linkage's own `pivotDistanceFraction` needed.
+- Registered as **ASM-0055**
+  (`reference/assumptions/ASSUMPTION_REGISTER.md`,
+  `src/reference/assumptions.ts`), and `MoonPhase`'s own doc comment
+  (`src/domain/moonPhase.ts`) updated — no longer "moon/star artwork is
+  not modeled."
+
+**Verification.** Three regression tests cover the math: evenly-spaced
+local angles for SINGLE/DOUBLE, world-position alignment with the
+window at every real full-moon instant, and clearance at every real
+new-moon instant (the last one using the teaching movement's own actual
+declared disc/window numbers, not abstract values, so a future edit to
+either without the other would be caught). A fourth test cross-checks
+`discCapCanvasAngleForMeshAngle` against a real `createZCylinder`
+disc's own vertex UV data (not just the algebra it was derived from).
+
+Live-browser confirmation took real effort to get right: an initial
+pixel-level check (reading back the WebGL canvas via `drawImage`)
+repeatedly found nothing where the moon images should be, even for the
+already-shipped, already-correct date star — that control result
+showed the *readback technique itself* was unreliable (almost certainly
+a `preserveDrawingBuffer` timing gap), not the product. Switching to
+Playwright's own native screenshot capture (reliable, confirmed against
+the same date-star control) showed a uniform grey disc at first, two
+different ways in turn — before realizing why: selecting the disc's own
+complication enables the viewport's "draw through occluding geometry"
+mode (`applySelection`), which also retints every material to
+`COLORS.selected`, washing out the texture's own contrast; leaving it
+unselected instead let the dial's own opaque disc legitimately occlude
+the moon disc outside its tiny declared window, since that's exactly
+what the real window geometry is for. Hiding the dial (the viewport's
+own "Dial" visibility toggle) removed both confounds at once and showed
+the disc exactly as built: dark sky, two pale moon images, stars,
+rotating correctly with `shaftAngle` — matching the fix. Getting a
+clean screenshot through the window itself specifically (at its real,
+tiny 0.7 mm scale) stayed short of fully conclusive, most likely a
+parallax/projection detail in the verification script's own screen-space
+math (the window sits at the dial's own z, the content it reveals at
+the disc's, several mm further back) rather than the product; the
+math-and-geometry proof above does not depend on getting that last
+screenshot.
+
+Verified: typecheck, lint, full vitest suite (672 tests, 4 new),
+a production build, and the live-browser checks described above. Full
+e2e suite run (known layout/presets/tolerances flakiness under
+2-worker parallelism in this sandbox reconfirmed as non-regression via
+an isolated `--workers=1` rerun, all 8 passing).
+
 ## Bugfix: leap-year wheel's own position-label texture never rendered
 
 Reported directly ("the leap year text is not showing on gear"), twice —
