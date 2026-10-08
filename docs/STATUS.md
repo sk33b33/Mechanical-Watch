@@ -169,6 +169,73 @@ printed-ring texture via `findDiscComplication`
 full "Year N" text everywhere else (inspector, validation,
 `discComplicationLabel`), unchanged.
 
+## Bugfix (cause 3): leap-year labels landed exactly on the wheel's own slot cutouts
+
+Reported a third time ("no text showing on leap year gear") after causes 1
+and 2 above were both fixed and verified — a live screenshot of the real
+teaching movement's own leap-year wheel, framed correctly this time (the
+two causes above were each confirmed via indirect means: a live material/
+group inspection for cause 1, a direct texture-canvas extraction for cause
+2 — neither actually screenshotted the rendered wheel itself), showed the
+wheel still perfectly flat, no digits anywhere.
+
+**Root cause.** `discLabelPlacements` (date/month/leap-year's shared label-
+ring layout) places labels at canvas angle `(i / n) · 2π` — phase 0, always
+— while `createGenevaWheelGeometry`'s own rim slots (ASM-0050) sit at mesh
+angle `baseAngle + k · spacing`. The −Z-cap UV reflection
+(`discCapCanvasAngleForMeshAngle`, added during the moon-phase work above)
+maps a 4-fold-symmetric angle set onto itself, so whenever `baseAngle`
+itself is close to a multiple of the slot spacing — which it is, in the
+teaching movement's own actual component layout, to within the slot's own
+half-width — every one of the four labels lands exactly in a slot's own
+cutout. The slot cuts the rim inward to half the tip radius there; the
+label ring sits further out (0.72 of the tip radius); there is simply no
+geometry at that position for the label's own UV coordinate to land on.
+Not a texture, UV-normalization, or material-group problem (all already
+fixed) — the texture is correctly drawn, correctly mapped, and correctly
+bound, onto a part of the disc that the slot itself had already cut away.
+
+Found by direct, non-destructive live inspection rather than guesswork:
+with a temporary debug hook exposing the running `Viewport`, the camera
+was moved to sit very close to the wheel along its own existing viewing
+direction (bypassing the unreliable mouse-wheel-zoom-toward-cursor
+approach, which drifted unpredictably instead of converging on the
+target). A diagnostic swap of the labeled material's own texture image for
+a flat red/blue test pattern rendered sharp and correctly positioned,
+proving the geometry/UV/material pipeline itself was sound and ruling out
+mipmap blur, backface culling, and stale-shader theories in one step. With
+the pipeline cleared, a per-angle scan of the wheel's own real vertex data
+(bucketing every cap vertex by angle, recording the maximum radius seen at
+each) showed the wheel's own material genuinely has no geometry at
+±5–10° around 0°, 90°, 180°, 270° past 0.5 of the tip radius — exactly
+where the four labels, placed via `discLabelPlacements`'s own default
+phase, were computed to land.
+
+- Fixed by giving `discLabelPlacements`/`createDiscLabelTexture` an
+  optional `canvasAngleOffset` parameter (default 0 — date/month, which
+  have no slots to avoid, call them unchanged). The leap-year wheel's own
+  viewport code now computes an offset of half a slot's own spacing past
+  `baseAngle`, converted through `discCapCanvasAngleForMeshAngle` the same
+  way `moonImageLocalAngle` converts a desired mesh angle into a canvas
+  one, so every label is centred between two slots — on the rim's own
+  full, uncut tip radius — instead of on one.
+- Two regression tests build the real `createGenevaWheelGeometry` geometry
+  (not just the angle algebra) and confirm both halves directly: the bug
+  reproduces at the label ring's own default phase for `baseAngle` at a
+  slot-spacing multiple (available material radius at each label's own
+  angle is capped at the slot's own inner radius, below the label ring),
+  and the fix's own offset formula avoids it across a representative range
+  of `baseAngle` values (available radius at each label's own angle is the
+  full, uncut tip radius).
+- Verified live: with the fix applied, a closeup screenshot (camera placed
+  directly via the same debug-hook technique) shows all four digits
+  ("1", "2", "3", "4") clearly legible, each centred in solid material
+  between two rim slots.
+
+Verified: typecheck, lint, full vitest suite (675 tests, 3 new), a
+production build, and the live-browser diagnosis/confirmation above. Full
+e2e suite (31 tests) passed under `--workers=1`.
+
 ## Non-bug: centre wheel appearing to "touch" the barrel's upper jewel
 
 Reported alongside the above ("the center wheel looks like its touching

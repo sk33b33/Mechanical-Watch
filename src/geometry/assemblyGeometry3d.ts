@@ -206,13 +206,28 @@ export interface DiscLabelPlacement {
  * environment has none) — evenly spaced around the rim at
  * `labelRadiusFraction`, each oriented radially per ASM-0051's own doc
  * comment above.
+ *
+ * `canvasAngleOffset` rotates the whole ring in canvas-drawing space
+ * (added to each label's own `(i / n) · 2π` angle), default 0 — the
+ * date/month discs never pass it, so their own layout is unchanged.
+ * `createGenevaWheelGeometry`'s own rim slots (ASM-0050) cut the leap-year
+ * wheel's material away in four angular bands; left at the default ring
+ * phase, those bands land exactly under each label (`baseAngle` and the
+ * `(i / n) · 2π` label phase both start at angle 0, and the reflection
+ * `discCapCanvasAngleForMeshAngle` is its own inverse on a 4-fold-symmetric
+ * set — see that function's own doc comment — so it maps the label set
+ * onto itself rather than off of it), so every label is drawn onto
+ * material that the slot cutting already removed — invisible regardless of
+ * the texture's own content. The viewport passes a `baseAngle`-derived
+ * offset there (half a slot's own spacing) to centre each label between
+ * two slots instead.
  */
-export function discLabelPlacements(labels: readonly string[]): DiscLabelPlacement[] {
+export function discLabelPlacements(labels: readonly string[], canvasAngleOffset = 0): DiscLabelPlacement[] {
   const v = DIAL_WINDOW_VISUALIZATION;
   const centre = v.textureSizePx / 2;
   const labelRadius = centre * v.labelRadiusFraction;
   return labels.map((label, i) => {
-    const angle = (i / labels.length) * Math.PI * 2;
+    const angle = (i / labels.length) * Math.PI * 2 + canvasAngleOffset;
     return {
       label,
       x: centre + labelRadius * Math.cos(angle),
@@ -222,7 +237,7 @@ export function discLabelPlacements(labels: readonly string[]): DiscLabelPlaceme
   });
 }
 
-export function createDiscLabelTexture(labels: readonly string[]): THREE.CanvasTexture | null {
+export function createDiscLabelTexture(labels: readonly string[], canvasAngleOffset = 0): THREE.CanvasTexture | null {
   if (labels.length === 0) return null;
   const v = DIAL_WINDOW_VISUALIZATION;
   const canvas = document.createElement("canvas");
@@ -236,7 +251,7 @@ export function createDiscLabelTexture(labels: readonly string[]): THREE.CanvasT
   ctx.font = `bold ${String(v.fontSizePx)}px sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  for (const placement of discLabelPlacements(labels)) {
+  for (const placement of discLabelPlacements(labels, canvasAngleOffset)) {
     ctx.save();
     ctx.translate(placement.x, placement.y);
     ctx.rotate(placement.rotation);

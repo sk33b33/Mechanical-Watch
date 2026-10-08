@@ -19,6 +19,7 @@ import {
   createRodGeometry,
   createZCylinder,
   DATE_LINKAGE_VISUALIZATION,
+  discCapCanvasAngleForMeshAngle,
   escapeWheelHubRadius,
   generateEscapeWheelOutline,
   generateHandOutline,
@@ -183,9 +184,9 @@ function material(color: number, extra: THREE.MeshStandardMaterialParameters = {
  * plain colour otherwise. Three entries always, matching the geometry's
  * own three material groups regardless.
  */
-function discMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, labels: readonly string[] | null): THREE.MeshStandardMaterial[] {
+function discMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, labels: readonly string[] | null, labelCanvasAngleOffset = 0): THREE.MeshStandardMaterial[] {
   const plain = material(color, extra);
-  const texture = labels === null ? null : createDiscLabelTexture(labels);
+  const texture = labels === null ? null : createDiscLabelTexture(labels, labelCanvasAngleOffset);
   const labeled = texture === null ? plain : material(color, { ...extra, map: texture });
   // CylinderGeometry's own group order after createZCylinder's rotateX(π/2): [side, +Z cap, −Z cap].
   return [plain, plain, labeled];
@@ -646,9 +647,16 @@ export class Viewport {
         ? Math.atan2(wheelCentre.y - driverCentre.y, wheelCentre.x - driverCentre.x)
         : null;
       const baseAngle = directionWheelFromDriver === null ? 0 : directionWheelFromDriver + Math.PI;
+      // Centre each position label between two slots (ASM-0050's own rim cutouts), not on one —
+      // left at the label ring's own default phase, every label lands exactly on a slot's own
+      // cutout (see `discLabelPlacements`'s own doc comment), invisible regardless of texture
+      // content. `discCapCanvasAngleForMeshAngle` converts the desired mesh-local mid-gap angle
+      // into the matching canvas-drawing angle (ASM-0051's own −Z-cap UV reflection).
+      const slotSpacing = (2 * Math.PI) / LEAP_YEAR_SLOT_COUNT;
+      const labelCanvasAngleOffset = discCapCanvasAngleForMeshAngle(baseAngle + slotSpacing / 2);
       const mesh = new THREE.Mesh(
         createGenevaWheelGeometry(year.wheelTipDiameter / 2, year.wheelThickness, LEAP_YEAR_SLOT_COUNT, baseAngle),
-        discMaterials(COLORS.leapYearWheel, { metalness: 0.1, roughness: 0.7 }, yearLabels),
+        discMaterials(COLORS.leapYearWheel, { metalness: 0.1, roughness: 0.7 }, yearLabels, labelCanvasAngleOffset),
       );
       mesh.position.z = meshZ;
       this.addPickable(group, mesh, { kind: "leapYearWheel", entityId: year.id, baseColor: COLORS.leapYearWheel });

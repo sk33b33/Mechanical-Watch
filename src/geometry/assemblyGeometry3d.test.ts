@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type * as THREE from "three";
 import type { Point2D } from "./gearOutline";
 import {
   balanceArmHalfExtents,
@@ -424,6 +425,95 @@ describe("discLabelPlacements", () => {
     const centre = 512 / 2;
     expect(placement?.x).toBeCloseTo(centre + centre * 0.72, 6);
     expect(placement?.y).toBeCloseTo(centre, 6);
+  });
+
+  it("canvasAngleOffset rotates the whole ring by that amount, default 0 leaving existing callers (date/month) unchanged", () => {
+    const base = discLabelPlacements(["Jan", "Feb", "Mar", "Apr"]);
+    const baseDefault = discLabelPlacements(["Jan", "Feb", "Mar", "Apr"], 0);
+    expect(baseDefault).toEqual(base);
+
+    const offset = 0.9;
+    const rotated = discLabelPlacements(["Jan", "Feb", "Mar", "Apr"], offset);
+    const centre = 512 / 2;
+    for (const [i, placement] of rotated.entries()) {
+      const angle = (i / 4) * Math.PI * 2 + offset;
+      expect(placement.x).toBeCloseTo(centre + centre * 0.72 * Math.cos(angle), 6);
+      expect(placement.y).toBeCloseTo(centre + centre * 0.72 * Math.sin(angle), 6);
+      expect(placement.rotation).toBeCloseTo(angle + Math.PI / 2, 9);
+    }
+  });
+});
+
+describe("leap-year label/slot alignment (regression)", () => {
+  // Reported live: "no text showing on leap year gear". Root cause, found by direct live-browser
+  // inspection (not just algebra): discLabelPlacements' own default label ring (phase 0, i.e.
+  // canvas angle (i/n)*2*PI) and createGenevaWheelGeometry's own rim slots (phase baseAngle, i.e.
+  // mesh angle baseAngle + k*spacing) are BOTH 4-fold symmetric and the −Z-cap UV reflection
+  // (discCapCanvasAngleForMeshAngle) maps a 4-fold-symmetric angle set onto itself -- so whenever
+  // baseAngle is itself a multiple of the slot spacing (as it happened to be, to within the
+  // slot's own half-width, in the teaching movement's actual geometry), every label lands exactly
+  // on a slot's own cutout: there is no geometry there for the label's own UV position to land on,
+  // so it is invisible regardless of the texture's own content. viewport.ts now offsets the label
+  // ring by half a slot's own spacing (converted through discCapCanvasAngleForMeshAngle) so every
+  // label is centred between two slots instead. This directly builds the real geometry (not just
+  // the abstract angle math) to confirm both halves: the bug reproduces at the default phase, and
+  // the fix's own offset formula avoids it, for a representative range of baseAngle values.
+  function maxRadiusNearAngle(geometry: THREE.BufferGeometry, targetAngle: number, toleranceRadians: number): number {
+    const position = geometry.attributes.position;
+    if (position === undefined) throw new Error("geometry has no position attribute");
+    let maxRadius = 0;
+    for (let i = 0; i < position.count; i += 1) {
+      const x = position.getX(i);
+      const y = position.getY(i);
+      const angle = Math.atan2(y, x);
+      const delta = Math.abs(Math.atan2(Math.sin(angle - targetAngle), Math.cos(angle - targetAngle)));
+      if (delta > toleranceRadians) continue;
+      maxRadius = Math.max(maxRadius, Math.hypot(x, y));
+    }
+    return maxRadius;
+  }
+
+  it("reproduces the bug at the label ring's own default phase: when baseAngle is a slot-spacing multiple, every label's own mesh angle lands in a slot cutout (no material out to the label radius)", () => {
+    const tipRadius = 1.5e-3;
+    const slotCount = 4;
+    const thickness = 0.15e-3;
+    const labelRadiusFraction = 0.72;
+    const spacing = (2 * Math.PI) / slotCount;
+    for (const baseAngle of [0, spacing, 2 * spacing]) {
+      const geometry = createGenevaWheelGeometry(tipRadius, thickness, slotCount, baseAngle);
+      const placements = discLabelPlacements(["1", "2", "3", "4"]); // default phase, no offset
+      const centre = 512 / 2;
+      for (const placement of placements) {
+        const canvasAngle = Math.atan2(placement.y - centre, placement.x - centre);
+        const meshAngle = discCapCanvasAngleForMeshAngle(canvasAngle);
+        const available = maxRadiusNearAngle(geometry, meshAngle, 1e-6);
+        // The slot cuts all the way to slotInnerRadiusFraction at its own exact centre angle.
+        expect(available).toBeLessThanOrEqual(tipRadius * GENEVA_WHEEL_VISUALIZATION.slotInnerRadiusFraction + 1e-9);
+        expect(available).toBeLessThan(tipRadius * labelRadiusFraction);
+      }
+    }
+  });
+
+  it("the fix's own offset (half a slot's own spacing, via discCapCanvasAngleForMeshAngle) centres every label between two slots, on full-tip-radius material, for a range of baseAngle values", () => {
+    const tipRadius = 1.5e-3;
+    const slotCount = 4;
+    const thickness = 0.15e-3;
+    const labelRadiusFraction = 0.72;
+    const spacing = (2 * Math.PI) / slotCount;
+    for (const baseAngle of [0, 0.4, Math.PI / 2, 2, spacing, 2 * spacing]) {
+      const geometry = createGenevaWheelGeometry(tipRadius, thickness, slotCount, baseAngle);
+      const labelCanvasAngleOffset = discCapCanvasAngleForMeshAngle(baseAngle + spacing / 2);
+      const placements = discLabelPlacements(["1", "2", "3", "4"], labelCanvasAngleOffset);
+      const centre = 512 / 2;
+      for (const placement of placements) {
+        const canvasAngle = Math.atan2(placement.y - centre, placement.x - centre);
+        const meshAngle = discCapCanvasAngleForMeshAngle(canvasAngle);
+        const available = maxRadiusNearAngle(geometry, meshAngle, 1e-6);
+        // Midway between two slots the rim sits at the full, uncut tip radius.
+        expect(available).toBeCloseTo(tipRadius, 6);
+        expect(available).toBeGreaterThan(tipRadius * labelRadiusFraction);
+      }
+    }
   });
 });
 
