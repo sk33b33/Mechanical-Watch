@@ -18,6 +18,20 @@ export const LEAP_YEAR_SLOT_COUNT = 4;
 export const LEAP_YEAR_LABELS = ["Year 1", "Year 2", "Year 3", "Year 4 (leap)"] as const;
 
 /**
+ * `LEAP_YEAR_LABELS`, shortened to plain digits for the wheel's own
+ * printed-ring texture (`findDiscComplication`, `src/domain/
+ * discComplication.ts`) — the same "clogging a small disc" problem
+ * `MONTH_ABBREVIATIONS` (`src/kinematics/monthComplication.ts`) already
+ * fixes for the month star, worse here: this wheel's own declared tip
+ * diameter (3 mm) is the smallest of the three labeled discs (date
+ * 5 mm, month 4 mm), yet "Year 4 (leap)" is by far the longest label of
+ * the three. `LEAP_YEAR_LABELS` itself stays the full, descriptive text
+ * everywhere else (inspector, validation messages, `discComplicationLabel`)
+ * for exactly this reason.
+ */
+export const LEAP_YEAR_SHORT_LABELS = LEAP_YEAR_LABELS.map((_, i) => String(i + 1));
+
+/**
  * How long the leap-year wheel's own real Geneva-drive index stroke
  * (SRC-0047) is played out over, in simulated seconds, once triggered —
  * not derived from any real continuously-rotating driver: this project's

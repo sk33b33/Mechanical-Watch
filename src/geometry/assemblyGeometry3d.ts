@@ -310,7 +310,7 @@ export function createGenevaWheelGeometry(tipRadius: number, thickness: number, 
   shape.holes.push(hub);
   const geometry = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false, curveSegments: 64 });
   geometry.translate(0, 0, -thickness / 2);
-  reshapeCapGroupsForDiscMaterials(geometry);
+  reshapeCapGroupsForDiscMaterials(geometry, tipRadius);
   return geometry;
 }
 
@@ -325,22 +325,35 @@ export function createGenevaWheelGeometry(tipRadius: number, thickness: number, 
  * (also plain) lands on the sides, and index 2 (the actual label
  * texture) matches no group at all, so nothing ever renders it.
  *
+ * Fixing the groups alone is not enough, either: `ExtrudeGeometry`'s own
+ * default UVs are each cap vertex's raw local (x, y) position (in
+ * metres, so values like ±0.0015), not `CylinderGeometry`'s own caps,
+ * which normalize radius into the unit square `createDiscLabelTexture`
+ * draws its ring of labels into. Left as-is, the whole label texture
+ * gets sampled from the razor-thin sliver of UV space between 0 and
+ * ~0.003 — invisible in practice. This also rewrites each cap's own UVs
+ * to match `CylinderGeometry`'s own formula exactly (empirically
+ * derived from a built `createZCylinder` disc: −Z cap `u = 0.5 − y/2r`,
+ * `v = 0.5 − x/2r`; +Z cap the same `u`, `v` sign-flipped), so a wheel
+ * built from this function reads identically to the date/month discs
+ * that already use `createZCylinder` + `discMaterials` correctly.
+ *
  * `createGenevaWheelGeometry` is this project's only `ExtrudeGeometry`
- * used with `discMaterials`, so the fix lives here rather than in
+ * used with `discMaterials`, so both fixes live here rather than in
  * `discMaterials` itself: split the combined caps group back into its
  * own front/back halves (found by where the caps run's own z value
  * changes — `ExtrudeGeometry` lays the front cap down as one contiguous
  * triangle run and the back cap as a second, not interleaved, so a
- * single scan for the first z change finds the exact boundary) and
- * relabel all three groups to match `CylinderGeometry`'s own index
- * convention, so `discMaterials`'s existing 3-entry array works
- * unchanged for this geometry too.
+ * single scan for the first z change finds the exact boundary), relabel
+ * all three groups to match `CylinderGeometry`'s own index convention,
+ * and rewrite each cap's own UVs in place.
  */
-function reshapeCapGroupsForDiscMaterials(geometry: THREE.ExtrudeGeometry): void {
+function reshapeCapGroupsForDiscMaterials(geometry: THREE.ExtrudeGeometry, tipRadius: number): void {
   const [capsGroup, sidesGroup] = geometry.groups;
   if (capsGroup === undefined || sidesGroup === undefined) return;
   const position = geometry.attributes.position;
-  if (position === undefined) return;
+  const uv = geometry.attributes.uv;
+  if (position === undefined || uv === undefined) return;
   const firstCapZ = position.getZ(capsGroup.start);
   let splitAt = capsGroup.start + capsGroup.count;
   for (let i = capsGroup.start; i < capsGroup.start + capsGroup.count; i += 3) {
@@ -358,6 +371,16 @@ function reshapeCapGroupsForDiscMaterials(geometry: THREE.ExtrudeGeometry): void
     { start: capsGroup.start, count: splitAt - capsGroup.start, materialIndex: firstCapMaterialIndex },
     { start: splitAt, count: capsGroup.start + capsGroup.count - splitAt, materialIndex: secondCapMaterialIndex },
   ];
+  for (const group of geometry.groups) {
+    if (group.materialIndex !== 1 && group.materialIndex !== 2) continue;
+    const vSign = group.materialIndex === 2 ? -1 : 1;
+    for (let i = group.start; i < group.start + group.count; i += 1) {
+      const x = position.getX(i);
+      const y = position.getY(i);
+      uv.setXY(i, 0.5 - y / (2 * tipRadius), 0.5 + vSign * (x / (2 * tipRadius)));
+    }
+  }
+  uv.needsUpdate = true;
 }
 
 /**

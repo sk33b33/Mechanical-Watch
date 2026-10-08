@@ -4,18 +4,21 @@ Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
 ## Bugfix: leap-year wheel's own position-label texture never rendered
 
-Reported directly ("the leap year text is not showing on gear"). Root
-cause: `createGenevaWheelGeometry` (Phase 8.9) returns a
-`THREE.ExtrudeGeometry`, but `discMaterials` (`src/viewport/viewport.ts`,
-which builds the 3-entry label-texture material array) assumes
-`CylinderGeometry`'s own group layout — `[sides, +Z cap, −Z cap]`, three
-separate groups, the layout every other labeled disc (date, month) uses
-via `createZCylinder`. `ExtrudeGeometry` actually produces only two
-groups by default — `[caps (front and back combined), sides]` — so
-`discMaterials`' labeled material (array index 2) matched no face group
-at all: the wheel always rendered in its plain colour, the label texture
-silently never drawn. Pre-existing since Phase 8.9 shipped, not
-introduced by this session's date/month linkage work.
+Reported directly ("the leap year text is not showing on gear"), twice —
+the first fix below was real but incomplete; the user's follow-up
+report ("the leap year is still not showing") caught the second,
+independent cause.
+
+**Cause 1 — wrong material group.** `createGenevaWheelGeometry` (Phase
+8.9) returns a `THREE.ExtrudeGeometry`, but `discMaterials`
+(`src/viewport/viewport.ts`, which builds the 3-entry label-texture
+material array) assumes `CylinderGeometry`'s own group layout —
+`[sides, +Z cap, −Z cap]`, three separate groups, the layout every
+other labeled disc (date, month) uses via `createZCylinder`.
+`ExtrudeGeometry` actually produces only two groups by default —
+`[caps (front and back combined), sides]` — so `discMaterials`' labeled
+material (array index 2) matched no face group at all: the wheel always
+rendered in its plain colour, the label texture silently never drawn.
 
 - Fixed in `createGenevaWheelGeometry` itself (not `discMaterials`,
   since this is the project's only `ExtrudeGeometry` ever passed to it):
@@ -26,13 +29,51 @@ introduced by this session's date/month linkage work.
   the back cap as a second, not interleaved — and relabels all three
   groups to match `CylinderGeometry`'s own convention, so
   `discMaterials`' existing 3-entry array now works unchanged.
-- Added a regression test asserting the 3 groups exist with the right
-  material indices and that each group's triangles sit on the correct
-  face (both caps uniform, the sides group spanning both).
-- Verified live: inspected the mesh's own material array and geometry
-  groups directly in the browser (not a screenshot) — the labeled
-  material (index 2, `materialHasMap: true`) now lands on the −Z
-  (dial-facing) cap, exactly as ASM-0051 intends.
+- Verified live by inspecting the mesh's own material array and
+  geometry groups directly in the browser: the labeled material (index
+  2, `materialHasMap: true`) landed on the correct (−Z, dial-facing)
+  face group — but this alone turned out not to be sufficient, below.
+
+**Cause 2 — unnormalized UVs (the actual remaining cause).**
+`ExtrudeGeometry`'s own default UVs are each cap vertex's raw local
+(x, y) position in metres (e.g. ±0.0015), not normalized into the
+`[0, 1]` unit square `createDiscLabelTexture`'s ring-of-labels drawing
+assumes — `CylinderGeometry`'s own caps normalize by radius instead.
+With cause 1 fixed but this left alone, the label material was on the
+right face but the entire texture sampled from a razor-thin sliver of
+UV space near the origin: in practice, invisible. Found by comparing
+the Geneva wheel's own UV range (≈ ±0.0015) against a `createZCylinder`
+disc's (exactly `[0, 1]`), then empirically deriving `CylinderGeometry`'s
+own exact −Z-cap formula (`u = 0.5 − y/2r`, `v = 0.5 − x/2r`; the +Z cap
+sign-flips `v`) from a real built disc.
+
+- Fixed in the same `reshapeCapGroupsForDiscMaterials`: after
+  reassigning the groups, it now also rewrites every cap vertex's own
+  UV using that exact formula (now taking `tipRadius` as a parameter),
+  so a Geneva wheel built from this function reads identically to the
+  `createZCylinder` discs that already worked.
+- Verified live by extracting the mesh's own label-texture canvas
+  directly (`material.map.image.toDataURL()`) rather than trying to
+  screenshot the 3D scene — the canvas itself showed each label legible
+  and correctly placed around the ring, not overlapping.
+- Added two regression tests: one for the group/face assignment (cause
+  1), one asserting every dial-facing-cap vertex's UV matches
+  `CylinderGeometry`'s own formula exactly and stays within `[0, 1]`
+  (cause 2).
+
+**Follow-up — labels shortened to match the month precedent.** Even
+correctly mapped, `LEAP_YEAR_LABELS` ("Year 1" … "Year 4 (leap)") are
+the longest labels of the three labeled discs, printed on the smallest
+wheel (3 mm tip diameter, vs. date's 5 mm and month's 4 mm) — on a real
+3D screenshot the ring read as an illegible blur, the same "clogging a
+small disc" problem the user already asked to fix for month's own
+labels (`MONTH_ABBREVIATIONS`, Phase 8.6 follow-up). Applied the same
+treatment: a new `LEAP_YEAR_SHORT_LABELS` (`src/domain/
+leapYearComplication.ts`, plain digits "1"–"4") feeds the wheel's own
+printed-ring texture via `findDiscComplication`
+(`src/domain/discComplication.ts`); `LEAP_YEAR_LABELS` itself stays the
+full "Year N" text everywhere else (inspector, validation,
+`discComplicationLabel`), unchanged.
 
 ## Non-bug: centre wheel appearing to "touch" the barrel's upper jewel
 

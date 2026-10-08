@@ -285,6 +285,36 @@ describe("createGenevaWheelGeometry", () => {
       }
     }
   });
+
+  it("normalizes its -Z cap's own UVs into CylinderGeometry's own [0, 1] convention, matching its formula exactly", () => {
+    // ExtrudeGeometry's own default UVs are each vertex's raw local (x, y) position in metres
+    // (e.g. +/-0.0015), not normalized -- even with the material-group fix above, the whole
+    // label texture would sample from a razor-thin sliver of UV space and never actually be
+    // visible. Regression coverage for that (separate, second) bug.
+    const tipRadius = 1.5e-3;
+    const geometry = createGenevaWheelGeometry(tipRadius, 0.15e-3, 4, 0);
+    const position = geometry.attributes.position;
+    const uv = geometry.attributes.uv;
+    if (position === undefined || uv === undefined) throw new Error("geometry is missing an attribute");
+    const dialFacingCap = geometry.groups.find((g) => g.materialIndex === 2);
+    if (dialFacingCap === undefined) throw new Error("no -Z cap group");
+
+    expect(dialFacingCap.count).toBeGreaterThan(0);
+    for (let i = dialFacingCap.start; i < dialFacingCap.start + dialFacingCap.count; i += 1) {
+      const x = position.getX(i);
+      const y = position.getY(i);
+      const u = uv.getX(i);
+      const v = uv.getY(i);
+      // CylinderGeometry's own -Z cap formula, empirically derived from createZCylinder.
+      // (UV is a Float32Array, so this only needs float32, not float64, precision.)
+      expect(u).toBeCloseTo(0.5 - y / (2 * tipRadius), 6);
+      expect(v).toBeCloseTo(0.5 - x / (2 * tipRadius), 6);
+      expect(u).toBeGreaterThanOrEqual(0);
+      expect(u).toBeLessThanOrEqual(1);
+      expect(v).toBeGreaterThanOrEqual(0);
+      expect(v).toBeLessThanOrEqual(1);
+    }
+  });
 });
 
 describe("createRodGeometry", () => {

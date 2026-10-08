@@ -7,7 +7,7 @@ import type { MoonPhaseId } from "./moonPhase";
 import { windowsPerRevolution } from "./moonPhase";
 import type { DateComplicationId } from "./dateComplication";
 import type { MonthComplicationId } from "./monthComplication";
-import { LEAP_YEAR_LABELS, LEAP_YEAR_SLOT_COUNT, type LeapYearComplicationId } from "./leapYearComplication";
+import { LEAP_YEAR_LABELS, LEAP_YEAR_SHORT_LABELS, LEAP_YEAR_SLOT_COUNT, type LeapYearComplicationId } from "./leapYearComplication";
 import { MONTHS_PER_YEAR, MONTH_ABBREVIATIONS, MONTH_NAMES } from "@/kinematics/monthComplication";
 import { moonPhaseFraction } from "@/kinematics/moonPhase";
 import { starPosition } from "@/kinematics/dateComplication";
@@ -67,7 +67,7 @@ export function findDiscComplication(movement: Movement, id: EntityId): DiscComp
       kind: "LeapYearComplication", id: year.id, name: year.name, shaftId: year.wheelShaftId,
       discRadius: (year.wheelTipDiameter / 2) as Length,
       zLo: (year.wheelZCentre - year.wheelThickness / 2) as Length, zHi: (year.wheelZCentre + year.wheelThickness / 2) as Length,
-      positionLabels: LEAP_YEAR_LABELS,
+      positionLabels: LEAP_YEAR_SHORT_LABELS,
     };
   }
   return undefined;
