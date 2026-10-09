@@ -53,7 +53,7 @@ export function bootstrapApp(root: HTMLElement): void {
   toolbar.addFileAction("Projects…", "Designs saved in this browser", () => { projects.open(); });
   const outputs = mountOutputsDialog(root, store, (message, kind) => { toolbar.notify(message, kind); });
   toolbar.addFileAction("Outputs…", "Engineering report, BOM, drawings and exports", () => { outputs.open(); });
-  mountTutorialBanner(root, store);
+  mountTutorialBanner(store, storage);
   toolbar.addFileAction("Tutorial…", "Guided walkthrough: build a movement from scratch", () => { store.startTutorial(); });
 
   if (saved.status === "UNREADABLE") {

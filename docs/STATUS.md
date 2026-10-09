@@ -2,6 +2,82 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Guided tutorial: driver.js spotlight + built-in speech narration
+
+Requested directly ("add driver.js ... and edge tts for my tutorial
+section"). UI tooling, not an engineering change — no new ASM/RULE IDs.
+
+**Spotlight (driver.js).** The tutorial's own custom banner+CSS-pulse
+highlight (`tutorialBanner.ts`) is replaced with `driver.js`: a dimmed
+overlay with a cutout around the current step's own target, and a popover
+(title, instructions, Next/Skip, Exit) anchored to it. `TUTORIAL_STEPS`'s
+own data (`tutorialSteps.ts`) and the store's own step-advancement logic
+(`store.ts`, still the single source of truth for *when* a step completes)
+are unchanged — only the rendering layer moved.
+
+**Narration: the browser's own speech synthesis, not Microsoft's edge-tts
+service.** Investigated first: edge-tts's own WebSocket now requires a
+header browsers cannot set themselves, so direct-from-browser calls only
+work from within Edge itself; reaching it from any other browser needs a
+server, and this project has none (a static Vite build, no backend).
+Confirmed with the user, who chose the browser's own built-in
+`SpeechSynthesis` API instead — zero backend, zero network call, works
+offline, and already exposes the same high-quality online voices on
+Windows/Edge that edge-tts itself uses.
+`tutorialNarration.ts`'s `pickPreferredVoiceIndex` (pure, unit-tested)
+prefers an English voice whose own name advertises "Natural"/"Neural"
+synthesis over a plain English voice over anything else. A small
+body-level toggle button (shown only while the tutorial is active) mutes
+narration, persisted across sessions the same way autosave's own
+`KeyValueStore` is used elsewhere.
+
+**Two real bugs found integrating a third-party overlay library with this
+app's own reactive rendering, not just test artifacts** — each would have
+affected a real user, not only the e2e suite:
+
+- **The narration toggle was unclickable.** `driver.js`'s own stylesheet
+  sets `.driver-active * { pointer-events: none }` on the whole `<body>`
+  subtree while a tour is active, re-enabling it only for its own popover
+  and the highlighted element. The toggle, a sibling of `.driver-overlay`
+  with a *higher* z-index, still inherited `pointer-events: none` from
+  this blanket rule — z-index decides paint order, not whether an element
+  receives pointer events at all. Fixed with an explicit
+  `pointer-events: auto !important` on the toggle.
+- **Driver.js's own cached element reference can go stale.** Clicking a
+  step's own target (e.g. "+ Bridge") completes the step and re-renders
+  the Components tree panel, tearing down and rebuilding its buttons —
+  driver.js caches the *element it was given*, and its own next internal
+  refresh (scheduled via `requestAnimationFrame`, independent of this
+  app's own render calls) can end up measuring a now-detached node,
+  collapsing the spotlight's cutout to zero size and silently blocking
+  the real click underneath the now-solid overlay. Found by comparing the
+  overlay's own SVG cutout path immediately after a click (correct) against
+  one animation frame later (collapsed to a near-origin sliver) while a
+  `MutationObserver` confirmed no second `highlight()` call from this
+  app's own code. Fixed by re-asserting the highlight (re-querying the
+  selector fresh) one frame after the first, consistent with CLAUDE.md's
+  "verify against real data, not just algebra" — this was found by
+  inspecting the library's own compiled output and live DOM state, not
+  by guessing from its documented API.
+- A third, narrower positioning issue (the popover opening on top of a
+  target in the narrow left-hand Components panel) was fixed by preferring
+  `side: "right"` for every tutorial popover (driver.js still falls back
+  to another side on its own when "right" has no room, e.g. an
+  Inspector-panel target) and disabling driver.js's own 400 ms transition
+  animation (its position math measures a popover mid-transition
+  otherwise, not the final settled target).
+
+**Verification.** 6 new unit tests for `pickPreferredVoiceIndex` (pure);
+`createTutorialNarrator`'s own `window.speechSynthesis` calls are untested
+directly (this project's vitest environment is Node, no DOM — the same
+already-accepted limitation canvas-texture code has), confirmed live
+instead. `tutorial.spec.ts` updated for driver.js's own DOM
+(`.driver-popover`, `.driver-active-element`) in place of the old
+`.tutorial-banner`/`.tutorial-target`; a new test covers the narration
+toggle's own visibility and mute/unmute behaviour. Full vitest suite (681
+tests, 6 new), typecheck, lint, production build, and the full e2e suite
+(33 tests, 1 new) all pass under `--workers=1`.
+
 ## Phase 8.9 follow-up: moon-phase disc illustration (ASM-0055)
 
 Requested after scoping ("Yes" to scope, then "2 and 3" — the real

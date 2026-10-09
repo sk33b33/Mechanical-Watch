@@ -845,75 +845,93 @@ button.active {
 }
 
 /*
- * Guided walkthrough (tutorialBanner.ts). The pulsing highlight is an
+ * Guided walkthrough (tutorialBanner.ts): driver.js draws the dimmed
+ * overlay, spotlight and popover; this just re-themes its popover into the
+ * app's own dark palette and styles the narration mute toggle. An
  * explicit, confirmed exception to this app's usual "no decorative UI":
- * everywhere else avoids animation, but a first-build tutorial is the one
- * place motion earns its place, to draw the eye to the next control.
+ * everywhere else avoids animation and audio, but a first-build tutorial
+ * is exactly the case a spotlight and a spoken description earn their
+ * place — drawing the eye (and the ear) to the one control that matters
+ * right now.
  */
-.tutorial-banner {
-  position: fixed;
-  left: 50%;
-  bottom: 16px;
-  transform: translateX(-50%);
-  z-index: 40;
-  width: min(520px, calc(100vw - 32px));
+.mw-tutorial-popover.driver-popover {
   background: var(--bg-1);
+  color: var(--text-0);
   border: 1px solid var(--accent);
   border-radius: 8px;
-  padding: 12px 14px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
 }
 
-.tutorial-banner[hidden] {
-  display: none;
-}
-
-.tutorial-progress {
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 4px;
-}
-
-.tutorial-title {
-  font-weight: 600;
+.mw-tutorial-popover .driver-popover-title {
+  color: var(--text-0);
   font-size: 14px;
-  margin-bottom: 4px;
 }
 
-.tutorial-instructions {
+.mw-tutorial-popover .driver-popover-description {
   color: var(--text-1);
   font-size: 12px;
   line-height: 1.5;
-  margin-bottom: 10px;
 }
 
-.tutorial-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+.mw-tutorial-popover .driver-popover-progress-text {
+  color: var(--accent);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-.tutorial-exit {
-  background: transparent;
-  border-color: var(--border);
+.mw-tutorial-popover .driver-popover-footer-btn {
+  background: var(--bg-2);
+  color: var(--text-0);
+  border: 1px solid var(--border);
+  text-shadow: none;
+}
+
+.mw-tutorial-popover .driver-popover-next-btn {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #06111f;
+}
+
+.mw-tutorial-popover .driver-popover-close-btn {
   color: var(--text-1);
 }
 
-@keyframes tutorial-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(79, 163, 255, 0.65);
-  }
-  50% {
-    box-shadow: 0 0 0 6px rgba(79, 163, 255, 0);
-  }
+.mw-tutorial-popover .driver-popover-arrow-side-left.driver-popover-arrow {
+  border-left-color: var(--bg-1);
+}
+.mw-tutorial-popover .driver-popover-arrow-side-right.driver-popover-arrow {
+  border-right-color: var(--bg-1);
+}
+.mw-tutorial-popover .driver-popover-arrow-side-top.driver-popover-arrow {
+  border-top-color: var(--bg-1);
+}
+.mw-tutorial-popover .driver-popover-arrow-side-bottom.driver-popover-arrow {
+  border-bottom-color: var(--bg-1);
 }
 
-.tutorial-target {
-  outline: 2px solid var(--accent) !important;
-  outline-offset: 2px;
-  border-radius: 4px;
-  animation: tutorial-pulse 1.2s ease-in-out infinite;
+.tutorial-narration-toggle {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 10001; /* above driver.js's own overlay (z-index 10000) */
+  /* driver.js's own stylesheet sets `.driver-active * { pointer-events: none }` on body's whole
+     subtree while a tour is active (re-enabling it only for its own popover and the highlighted
+     element) — without this override, a real click on this toggle would silently hit nothing. */
+  pointer-events: auto !important;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  color: var(--text-1);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+.tutorial-narration-toggle.active {
+  border-color: var(--accent);
+  color: var(--text-0);
+}
+
+.tutorial-narration-toggle[hidden] {
+  display: none;
 }
