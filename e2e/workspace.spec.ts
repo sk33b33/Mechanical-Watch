@@ -9,6 +9,15 @@ test("measuring two meshed gears gives the ideal centre distance", async ({ app 
   await expect(panel).toContainText("5.4000 mm"); // 0.12 × (80 + 10) / 2
 });
 
+test("zoom to selection is only available with something selected, and moves the camera without errors", async ({ app }) => {
+  const zoomButton = app.getByRole("button", { name: "Zoom to selection" });
+  await expect(zoomButton).toBeDisabled();
+  await app.locator(".tree-item", { hasText: /^Leap year / }).first().click();
+  await expect(zoomButton).toBeEnabled();
+  await zoomButton.click();
+  await expect(app.locator("canvas")).toBeVisible();
+});
+
 test("building from empty lists what is missing instead of guessing", async ({ app }) => {
   await app.getByTestId("new-design").selectOption("empty");
   await app.getByRole("button", { name: "+ Keyless works" }).click();

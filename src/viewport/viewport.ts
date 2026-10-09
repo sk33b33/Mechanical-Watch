@@ -1127,6 +1127,33 @@ export class Viewport {
     return point.x * Math.cos(angle) + point.y * Math.sin(angle);
   }
 
+  /**
+   * Moves the camera in tight on the selected part, close enough to read a
+   * small disc's own printed labels (ASM-0051) — e.g. the leap-year
+   * wheel, the smallest of the three labeled discs at 3 mm.
+   * `OrbitControls`' own scroll-wheel zoom dollies toward `controls.target`
+   * (fixed at the whole assembly's own centre by `frameCamera`, never the
+   * cursor or the current selection), so without this there is no way to
+   * reach a small part: it drifts toward the frame's edge, shrinking, long
+   * before it is close enough to read. Keeps the camera's own current
+   * viewing direction, just moves along it.
+   */
+  zoomToSelection(): boolean {
+    const id = this.store.selectedId;
+    if (id === null) return false;
+    const mesh = this.pickables.find((m) => (m.userData as Pickable).entityId === id);
+    if (mesh === undefined) return false;
+    const box = new THREE.Box3().setFromObject(mesh);
+    if (box.isEmpty()) return false;
+    const sphere = box.getBoundingSphere(new THREE.Sphere());
+    const dist = sphere.radius / Math.sin(THREE.MathUtils.degToRad(this.camera.fov / 2));
+    const direction = this.camera.position.clone().sub(this.controls.target).normalize();
+    this.camera.position.copy(sphere.center).addScaledVector(direction, dist * 1.2);
+    this.controls.target.copy(sphere.center);
+    this.controls.update();
+    return true;
+  }
+
   private applySelection(): void {
     for (const mesh of this.pickables) {
       const pick = mesh.userData as Pickable;

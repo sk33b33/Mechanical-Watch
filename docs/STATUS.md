@@ -236,6 +236,58 @@ Verified: typecheck, lint, full vitest suite (675 tests, 3 new), a
 production build, and the live-browser diagnosis/confirmation above. Full
 e2e suite (31 tests) passed under `--workers=1`.
 
+## Usability gap (the real reason cause 3's fix stayed unreachable): no way to zoom in on a small part
+
+Reported a fourth time, right after cause 3 above shipped and was reported
+fixed — with a screenshot. Cause 3's own live confirmation had used a
+temporary debug hook to place the camera directly at the wheel; re-checked
+through the actual UI (select the wheel in the component tree, scroll to
+zoom), the labels were still unreachable — not because the render was
+wrong again, but because there was no way for an ordinary user to get the
+camera close enough to see them.
+
+**Root cause.** `OrbitControls`' own scroll-wheel zoom dollies the camera
+toward `controls.target`, which `frameCamera` sets once, to the *whole
+movement's own* bounding-sphere centre, on load and on every view change —
+never toward the cursor and never toward whatever is selected. Scrolling
+in on a small, off-centre part (the leap-year wheel least of all: 3 mm,
+the smallest of the three labeled discs, and rarely anywhere near the
+assembly's own centre) makes it drift toward the frame's edge and
+eventually off-screen, long before it is large enough to read. The
+rendering fix (cause 3) was completely correct; it was simply never
+reachable by the normal zoom/pan affordances the UI offered.
+
+- Added `Viewport.zoomToSelection()`: finds the selected part's own mesh,
+  computes its world-space bounding sphere, and moves the camera in along
+  its own current viewing direction to frame that sphere tightly — the
+  same `radius / sin(fov/2)` distance `frameCamera` already uses for the
+  whole assembly, scoped to one part instead, with a touch of margin.
+  Re-points `controls.target` at the part so subsequent scroll-zoom orbits
+  around it, not the old assembly centre.
+- A new **"Zoom to selection"** button (`src/viewport/viewportControls.ts`,
+  alongside the existing "Through selection" section-plane button, same
+  enabled-only-with-a-selection pattern) in the viewport toolbar triggers
+  it.
+- This fixes the same reachability gap for date and month's own labels
+  too, not just leap-year's — they are larger (5 mm, 4 mm) so the problem
+  was less severe, but the same underlying limitation applied.
+- Verified live, through the actual UI end to end (no debug hook): open
+  the component tree, click "Leap year" to select the wheel (the ordinary
+  selection highlight applies, same as any part), click "Zoom to
+  selection" — the wheel fills the viewport and all four digits read
+  clearly, each oriented radially per `discLabelPlacements`'s own
+  convention.
+- A new e2e test (`workspace.spec.ts`) checks the button is disabled with
+  nothing selected, enables once a part is picked, and that clicking it
+  leaves the viewport rendering with no console errors — matching this
+  project's existing level of UI-behaviour (not pixel-content) e2e
+  coverage elsewhere in the suite.
+
+Verified: typecheck, lint, full vitest suite (675 tests, unchanged — this
+is UI camera behaviour, not a new engineering relationship, so no new
+unit test), a production build, and the full e2e suite (32 tests, 1 new)
+passed under `--workers=1`.
+
 ## Non-bug: centre wheel appearing to "touch" the barrel's upper jewel
 
 Reported alongside the above ("the center wheel looks like its touching

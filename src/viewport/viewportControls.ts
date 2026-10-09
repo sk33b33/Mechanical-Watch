@@ -65,6 +65,14 @@ export function mountViewportControls(container: HTMLElement, viewport: Viewport
     applySection();
   });
 
+  const zoomToSelection = document.createElement("button");
+  zoomToSelection.type = "button";
+  zoomToSelection.textContent = "Zoom to selection";
+  zoomToSelection.title = "Move the camera in close on the selected part — the only way to get close enough to read a small disc's own printed labels";
+  zoomToSelection.addEventListener("click", () => {
+    viewport.zoomToSelection();
+  });
+
   const dialOn = document.createElement("input");
   dialOn.type = "checkbox";
   dialOn.checked = true;
@@ -80,6 +88,7 @@ export function mountViewportControls(container: HTMLElement, viewport: Viewport
 
   bar.append(
     measure,
+    zoomToSelection,
     labelled("Explode", explode),
     labelled("Dial", dialOn),
     labelled("Section", sectionOn),
@@ -93,6 +102,7 @@ export function mountViewportControls(container: HTMLElement, viewport: Viewport
   const refresh = (): void => {
     measure.textContent = store.measuring ? "Stop measuring" : "Measure";
     measure.classList.toggle("active", store.measuring);
+    zoomToSelection.disabled = store.selectedId === null;
     through.disabled = store.selectedId === null;
   };
   refresh();
