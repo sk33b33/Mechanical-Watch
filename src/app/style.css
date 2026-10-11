@@ -910,21 +910,36 @@ button.active {
   border-bottom-color: var(--bg-1);
 }
 
-.tutorial-narration-toggle {
+.tutorial-narration-controls {
   position: fixed;
   right: 16px;
   bottom: 16px;
   z-index: 10001; /* above driver.js's own overlay (z-index 10000) */
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
   /* driver.js's own stylesheet sets `.driver-active * { pointer-events: none }` on body's whole
      subtree while a tour is active (re-enabling it only for its own popover and the highlighted
-     element) — without this override, a real click on this toggle would silently hit nothing. */
+     element) — without this override, a real click on these controls would silently hit nothing. */
   pointer-events: auto !important;
+}
+
+.tutorial-narration-controls[hidden] {
+  display: none;
+}
+
+.tutorial-narration-toggle,
+.tutorial-voice-picker {
   background: var(--bg-1);
   border: 1px solid var(--border);
   color: var(--text-1);
   border-radius: 6px;
   padding: 6px 10px;
   font-size: 11px;
+  /* `.driver-active *` (driver.css) matches every descendant directly, not just by inheriting
+     the parent's computed value — the wrapper's own override above does not cover these. */
+  pointer-events: auto !important;
 }
 
 .tutorial-narration-toggle.active {
@@ -932,6 +947,10 @@ button.active {
   color: var(--text-0);
 }
 
-.tutorial-narration-toggle[hidden] {
+.tutorial-voice-picker {
+  color: var(--text-0);
+}
+
+.tutorial-voice-picker[hidden] {
   display: none;
 }

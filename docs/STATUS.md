@@ -78,6 +78,100 @@ toggle's own visibility and mute/unmute behaviour. Full vitest suite (681
 tests, 6 new), typecheck, lint, production build, and the full e2e suite
 (33 tests, 1 new) all pass under `--workers=1`.
 
+## Tutorial narration follow-up: real edge-tts via a separate Supabase proxy
+
+Follow-up to the above, in two rounds. First: "change the voice to Morgan
+Free[man]" — declined outright, not a scope question. Cloning a specific,
+identifiable real person's voice without their consent is impersonation,
+independent of the use being an internal tutorial; offered a voice picker
+over the browser's own voices instead. Second: "is it possible to import
+a voice" → "can we use supabase as a backend", landing on reviving the
+original edge-tts request properly this time, now that real backend
+infrastructure is on the table — not a cloned/custom voice, genuine
+Microsoft neural voices (the same family edge-tts always offered), reached
+through a backend that can actually call it.
+
+**Why a backend fixes this now.** The original blocker (documented above)
+was specifically a *browser* restriction: edge-tts's WebSocket needs a
+header (`Sec-WebSocket-Version`) browser JavaScript cannot set. That
+restriction does not exist server-side. A Supabase Edge Function runs on
+Deno — full control over its own WebSocket headers — so it can call
+Microsoft's real service directly and stream the audio back.
+
+**Isolation from the user's own existing Supabase-hosted web portal**
+(their explicit concern, "I don't want to corrupt it"): the function is
+meant to be deployed to its own, separate, newly-created Supabase
+project — its own database, auth and functions, nothing shared with any
+other project. `supabase/functions/tts-proxy/README.md` spells out the
+exact steps (new project, CLI link, deploy, copy the new project's own
+URL/anon key into `.env.local`). Nothing in this repo references any
+particular Supabase project; it is entirely opt-in via two Vite env vars
+(`.env.example`), unset by default, and the app has always worked without
+them (the browser's own `speechSynthesis` fallback, already built).
+
+**What's implemented:**
+
+- `supabase/functions/tts-proxy/index.ts` — the Deno Edge Function.
+  Validates its own request body, calls `edge-tts-universal`'s
+  `IsomorphicEdgeTTS` (the variant built on Web-standard APIs only,
+  confirmed via that package's own compiled type declarations to be the
+  one that actually runs under Deno — its default `EdgeTTS` export is
+  Node-only and explicitly documented as unsupported there), and returns
+  the synthesized audio bytes directly. CORS-open; access-gated by
+  Supabase's own default per-function JWT check (the project's anon key),
+  not a secret of its own.
+- `tutorialNarration.ts` extended: `createTutorialNarrator` now tries the
+  proxy first (when `VITE_SUPABASE_TTS_URL`/`VITE_SUPABASE_TTS_ANON_KEY`
+  are set), with an 8s timeout and automatic fallback to the existing
+  local `speechSynthesis` path on *any* failure — unconfigured, network
+  error, non-2xx response, or timeout — since this proxies an unofficial,
+  unversioned API that could change without notice (the proxy's own
+  README says so). A request-token guard discards a stale in-flight
+  response if a newer `speak()` call (the user advancing steps quickly)
+  has already superseded it.
+- `REMOTE_VOICE_OPTIONS` — a curated list of six real, standard Microsoft
+  voice names (not custom or cloned), each one a widely documented,
+  stable identifier. A voice picker (`tutorialBanner.ts`) appears next to
+  the existing mute toggle, but *only* once the proxy is actually
+  configured — nothing new shows up for anyone who hasn't set it up.
+- `src/vite-env.d.ts` added (typed `import.meta.env` for the two new
+  Vite env vars) — this project had never needed Vite's own client types
+  before.
+
+**A third real bug, same root cause as the first two.** The new voice
+picker and its wrapping control div hit the exact same
+`.driver-active * { pointer-events: none }` issue documented above for
+the narration toggle — except this time the override had been applied to
+the *wrapper* div only, not the button/select inside it.
+`.driver-active *` matches every descendant directly (its own selector,
+not inheritance), so a `pointer-events: auto` override on a parent does
+not reach its children at all; each interactive element needs its own.
+Found immediately by the same e2e test that already covered the toggle,
+now failing with the wrapper itself named as the thing intercepting
+clicks. Fixed by moving the override onto `.tutorial-narration-toggle`/
+`.tutorial-voice-picker` directly (kept on the wrapper too, since it does
+no harm and documents the intent there as well).
+
+**Verification.** 2 new unit tests for `buildTtsRequest` (the exact
+fetch call, pure and testable without real network IO) plus a sanity
+test for `REMOTE_VOICE_OPTIONS`'s own uniqueness (683 tests total, 2
+new since the driver.js/narration round). `eslint.config.js` now
+excludes `supabase/functions/**` — Deno code, a different runtime and
+type system, deployed independently of this Vite/Node project, was
+never part of its TS program and typed linting cannot run on it as this
+project's own config is scoped. Two new e2e tests: the voice picker's
+visibility (hidden without the env vars — the default, and the only
+configuration exercised in CI, since no deployed proxy exists here) and
+a regression test for the pointer-events bug via the existing toggle
+test. Full vitest suite (683 tests), typecheck, lint, production build
+(confirms the app still builds and runs with the env vars unset), and
+the full e2e suite (34 tests, 1 new) all pass under `--workers=1`. The
+proxy itself has not been deployed or called live from here — no
+Supabase project exists in this environment to deploy to — so the
+*proxy call itself* is verified by code review and the package's own
+type declarations, not a live round-trip; the fallback path (what every
+e2e test actually exercises) is fully verified.
+
 ## Phase 8.9 follow-up: moon-phase disc illustration (ASM-0055)
 
 Requested after scoping ("Yes" to scope, then "2 and 3" — the real

@@ -76,3 +76,8 @@ test("narration toggle appears only while the tutorial is active, and mutes/unmu
   await app.getByRole("button", { name: "Exit tutorial", exact: true }).click();
   await expect(toggle).toBeHidden();
 });
+
+test("the voice picker stays hidden when no Supabase edge-tts proxy is configured (the default, env-var-free setup)", async ({ app }) => {
+  await app.getByRole("button", { name: "Tutorial…", exact: true }).click();
+  await expect(app.locator(".tutorial-voice-picker")).toHaveCount(0);
+});

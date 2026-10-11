@@ -2,7 +2,7 @@ import { driver, type Driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import type { AppStore } from "@/app/store";
 import { TUTORIAL_STEPS } from "@/app/tutorial/tutorialSteps";
-import { createTutorialNarrator } from "@/app/tutorial/tutorialNarration";
+import { createTutorialNarrator, REMOTE_VOICE_OPTIONS } from "@/app/tutorial/tutorialNarration";
 import type { KeyValueStore } from "@/persistence/autosave";
 
 const POPOVER_CLASS = "mw-tutorial-popover";
@@ -20,32 +20,59 @@ const POPOVER_CLASS = "mw-tutorial-popover";
 export function mountTutorialBanner(store: AppStore, storage: KeyValueStore | null): () => void {
   const narrator = createTutorialNarrator(storage);
 
+  const narrationControls = document.createElement("div");
+  narrationControls.className = "tutorial-narration-controls";
+  narrationControls.hidden = true;
+
   const narrationToggle = document.createElement("button");
   narrationToggle.type = "button";
   narrationToggle.className = "tutorial-narration-toggle";
-  narrationToggle.hidden = true;
   narrationToggle.addEventListener("click", () => {
     narrator.setEnabled(!narrator.isEnabled());
     renderNarrationToggle();
   });
+  narrationControls.appendChild(narrationToggle);
+
+  // Only shown once a Supabase edge-tts proxy is actually configured (REMOTE_VOICE_OPTIONS has
+  // no effect on the browser's own fallback voices, which pick themselves automatically) — see
+  // tutorialNarration.ts's own doc comment and supabase/functions/tts-proxy/README.md.
+  let voicePicker: HTMLSelectElement | null = null;
+  if (narrator.remoteConfigured) {
+    voicePicker = document.createElement("select");
+    voicePicker.className = "tutorial-voice-picker";
+    voicePicker.title = "Narration voice (Microsoft edge-tts)";
+    for (const voice of REMOTE_VOICE_OPTIONS) {
+      const option = document.createElement("option");
+      option.value = voice.id;
+      option.textContent = voice.label;
+      voicePicker.appendChild(option);
+    }
+    voicePicker.value = narrator.getVoiceId();
+    voicePicker.addEventListener("change", () => {
+      if (voicePicker !== null) narrator.setVoiceId(voicePicker.value);
+    });
+    narrationControls.appendChild(voicePicker);
+  }
+
   // Appended to <body>, not the app's own root (#app): a child element's z-index only competes
   // against other elements *within its own nearest stacking-context ancestor*. #app never
-  // establishes one of its own, so a toggle nested inside it would always lose to driver.js's
+  // establishes one of its own, so controls nested inside it would always lose to driver.js's
   // overlay/popover (both appended to <body> directly, each creating its own stacking context
-  // there) no matter how high its own z-index — a real, confirmed click-blocking bug, not just a
-  // cosmetic one.
-  document.body.appendChild(narrationToggle);
+  // there) no matter how high their own z-index — a real, confirmed click-blocking bug, not just
+  // a cosmetic one.
+  document.body.appendChild(narrationControls);
 
   function renderNarrationToggle(): void {
-    if (!narrator.supported) {
-      narrationToggle.hidden = true;
+    if (!narrator.supported && !narrator.remoteConfigured) {
+      narrationControls.hidden = true;
       return;
     }
-    narrationToggle.hidden = !store.tutorialActive;
+    narrationControls.hidden = !store.tutorialActive;
     const on = narrator.isEnabled();
     narrationToggle.textContent = on ? "🔊 Narration on" : "🔇 Narration off";
     narrationToggle.title = on ? "Stop reading each step aloud" : "Read each step aloud as it appears";
     narrationToggle.classList.toggle("active", on);
+    if (voicePicker !== null) voicePicker.hidden = !on;
   }
 
   let tourDriver: Driver | null = null;
