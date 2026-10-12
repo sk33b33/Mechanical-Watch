@@ -14,6 +14,7 @@ import { dateComplicationSection } from "./dateComplicationSection";
 import { monthComplicationSection } from "./monthComplicationSection";
 import { leapYearComplicationSection } from "./leapYearComplicationSection";
 import { dialWindowSection } from "./dialWindowSection";
+import { screwSection } from "./screwSection";
 
 const TYPE_LABEL: Record<SelectableEntity["type"], string> = {
   Gear: "Gear",
@@ -28,6 +29,7 @@ const TYPE_LABEL: Record<SelectableEntity["type"], string> = {
   MonthComplication: "Month",
   LeapYearComplication: "Leap year",
   DialWindow: "Window",
+  Screw: "Screw",
 };
 
 /** Entities whose issues bear on the selected one's status. */
@@ -53,6 +55,8 @@ function relatedIds(entity: SelectableEntity): EntityId[] {
       return [entity.id, entity.wheelShaftId, entity.monthComplicationId];
     case "DialWindow":
       return [entity.id, entity.dialId, entity.complicationId];
+    case "Screw":
+      return [entity.id, entity.frameId];
     default:
       return [entity.id];
   }
@@ -105,6 +109,7 @@ export function mountInspector(
       : entity.type === "MonthComplication" ? monthComplicationSection(store, entity)
       : entity.type === "LeapYearComplication" ? leapYearComplicationSection(store, entity)
       : entity.type === "DialWindow" ? dialWindowSection(store, entity)
+      : entity.type === "Screw" ? screwSection(store, entity)
       : frameSection(store, entity, storage, notify);
     container.append(...section);
 

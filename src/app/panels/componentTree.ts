@@ -1,7 +1,7 @@
 import type { AppStore } from "@/app/store";
 import type { EntityId } from "@/domain/ids";
-import { addDateComplication, addDial, addDialWindow, addEscapement, addFrame, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
-import { newDateComplication, newDial, newDialWindow, newEscapement, newFrame, newKeylessWorks, newLeapYearComplication, newMonthComplication, newMoonPhase, newShaft } from "@/domain/editing";
+import { addDateComplication, addDial, addDialWindow, addEscapement, addFrame, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addScrew, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
+import { newDateComplication, newDial, newDialWindow, newEscapement, newFrame, newKeylessWorks, newLeapYearComplication, newMonthComplication, newMoonPhase, newScrew, newShaft } from "@/domain/editing";
 import { listAssumptions } from "@/reference/assumptions";
 
 export function mountComponentTree(container: HTMLElement, store: AppStore): () => void {
@@ -112,6 +112,10 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
         const win = newDialWindow(m);
         return { movement: addDialWindow(m, win), id: win.id };
       }, "add-window"),
+      addButton("+ Screw", "Add a screw with no frame chosen yet", (m) => {
+        const screw = newScrew(m);
+        return { movement: addScrew(m, screw), id: screw.id };
+      }, "add-screw"),
     );
     container.appendChild(actions);
 
@@ -175,6 +179,11 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
     if (Object.keys(movement.dialWindows).length > 0) {
       container.appendChild(header("Dial windows"));
       for (const win of Object.values(movement.dialWindows)) container.appendChild(item(win.name, win.id, 0));
+    }
+
+    if (Object.keys(movement.screws).length > 0) {
+      container.appendChild(header("Screws"));
+      for (const screw of Object.values(movement.screws)) container.appendChild(item(screw.name, screw.id, 0));
     }
 
     container.appendChild(header("Assumptions"));

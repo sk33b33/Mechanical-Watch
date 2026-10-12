@@ -2,6 +2,87 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.10: `Screw`, and bearing/screw holes on existing frames
+
+Requested directly: "there's missing baseplates that the parts get
+screwed on to" — raised against a real gap, with a second question
+("will the plate automatically get edited to make space for it") about
+auto-resizing an outline, deliberately **not** built here (see below).
+
+**Scoping first.** `Mainplate`/`Bridge` (`Frame` entities) already
+existed and were already used by the teaching movement — not actually
+missing. What was genuinely missing: `Screw`, listed in CLAUDE.md's own
+"Core component model" from the start but never built, and no bearing or
+screw holes of any kind in frame geometry (a plain solid extruded slab).
+Offered three scopes; the user chose "bearing + screw holes on existing
+plates" over "fit outline to parts" (the auto-resize half of the original
+question) or both together.
+
+**`Screw` (ASM-0056):** a plain circular through-hole of declared
+`diameter`, at a declared plan `position`, through one chosen `Frame` —
+wired through every generic dispatcher a new selectable entity type
+needs in this codebase: `movement.ts` (collection, `addScrew`/`updateScrew`),
+`editing.ts` (`newScrew`, cascade-delete when its frame is removed),
+`lookup.ts` (`findEntity`/`SelectableEntity`), `measure.ts` (`axisOf`/
+`zRangeOf` — caught automatically by `tsc`'s own exhaustiveness check once
+`Screw` joined the union), `inspector/index.ts` + the new `screwSection.ts`,
+`componentTree.ts` ("+ Screw" button and a "Screws" list), and
+`designFile.ts` (decoder + a v23→v24 migration, following the exact
+`dialWindows` precedent). SCREW-001 (position finite, diameter positive,
+frame exists) and SCREW-002 (position falls within its own frame's
+outline) follow `dialWindowRules.ts`'s own structure exactly.
+
+**Bearing holes are not a new concept bolted on separately — they reuse
+the same "declared, never defaulted" rule `Jewel.boreDiameter` already
+had.** `frameBearingHoles` (`src/assembly/assemblyGeometry.ts`) punches
+one hole per jewel seated in a frame whose own `boreDiameter` is declared
+(non-null) and whose shaft's axis is resolved; a jewel with an unknown
+bore is skipped outright, not given an invented size. `frameScrewHoles`
+does the equivalent for `Screw`. `createFrameGeometry`
+(`src/geometry/assemblyGeometry3d.ts`) gained an optional
+`holes: FrameHole[]` parameter, punched via `THREE.Path.absarc` directly
+in the same movement-plan (x, y) coordinates the outline itself already
+uses — no local-frame translation needed, unlike `createDiscWithHolesGeometry`'s
+disc-local convention. `viewport.ts`'s frame-mesh loop now computes
+`[...frameBearingHoles(...), ...frameScrewHoles(...)]` per frame and
+passes it through. Same "visual only, no manufacturing claim" treatment
+already given other declared/cosmetic geometry (ASM-0004, ASM-0051): no
+thread, head, countersink/counterbore, clamping-torque or
+thread-engagement data, and a real screw's second clamped part isn't
+modeled either.
+
+**Outline auto-resize deliberately not built.** CLAUDE.md states "never
+silently alter user dimensions" as a project principle; a plate that
+resizes itself whenever a part is added would violate exactly that, so
+this stays a distinct, explicit, user-triggered action (e.g. a future
+"Fit outline to parts" button) rather than an automatic side effect of
+adding a part — not implemented in this phase.
+
+**Teaching movement:** five illustrative screws added (three on the
+mainplate, one on the train bridge, one on the balance cock) — declared
+positions within each frame's own outline, not a complete, sourced screw
+layout for a real caliber (ASM-0009, same illustrative-input treatment as
+the rest of the teaching movement's own dimensions). Jewel bore diameters
+are still left unknown on purpose (a separate, already-tracked gap,
+BRG-005/006/007) — bearing holes exist in the geometry now but won't
+visually appear in the teaching movement until those are filled in
+separately; `frameBearingHoles` is exercised by its own unit tests with
+a declared bore instead.
+
+Added: `src/domain/screw.ts`, `src/app/panels/inspector/screwSection.ts`,
+`src/validation/rules/screwRules.ts`. Registered ASM-0056,
+SCREW-001/002 (markdown + TS mirrors, `registers.test.ts` passes) and a
+`TRACEABILITY.md` row for the hole geometry. Tests: `screwRules.test.ts`
+(8 cases), new `createFrameGeometry` hole-punching cases in
+`assemblyGeometry3d.test.ts`, new `frameBearingHoles`/`frameScrewHoles`
+cases in `assemblyRules.test.ts`, and `e2e/screw.spec.ts`. Full suite
+green: `tsc -b`, `eslint`, 698 Vitest tests, production build, and the
+Playwright suite. The "frames are solid slabs without bearing holes"
+line in Known limitations below is now stale for the 3D viewport and
+narrowed to note it still holds for the STL export only (`stl.ts` calls
+`createFrameGeometry` without the new `holes` argument — not touched in
+this phase).
+
 ## Guided tutorial: driver.js spotlight + built-in speech narration
 
 Requested directly ("add driver.js ... and edge tts for my tutorial
@@ -3603,7 +3684,8 @@ dimensions round-trip, and picking and issue selection work.
   dimensions carry a tolerance annotation. Dimensions can crowd where
   several axes are close.
 - The STL leaves out arbors and jewels (placeholder sizes, ASM-0012), and
-  frames are solid slabs without bearing holes.
+  (unlike the 3D viewport, which now punches bearing and screw holes,
+  ASM-0056) still exports frames as solid slabs without them.
 
 ## Next (see `docs/ROADMAP.md`)
 

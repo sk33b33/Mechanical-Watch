@@ -16,6 +16,7 @@ import type { DateComplication, DateComplicationId } from "./dateComplication";
 import type { MonthComplication, MonthComplicationId } from "./monthComplication";
 import type { LeapYearComplication, LeapYearComplicationId } from "./leapYearComplication";
 import type { DialWindow, DialWindowId } from "./dialWindow";
+import type { Screw, ScrewId } from "./screw";
 import type { ValidationLevel } from "@/reference/validationLevels";
 
 export type MovementId = EntityId<"movement">;
@@ -72,6 +73,8 @@ export interface Movement {
   leapYearComplications: Record<LeapYearComplicationId, LeapYearComplication>;
   /** Zero or more; a pure display entity, kinematically inert (ASM-0051, Phase 8.6). */
   dialWindows: Record<DialWindowId, DialWindow>;
+  /** Zero or more; holds one frame in place, a plain declared through-hole (ASM-0056). */
+  screws: Record<ScrewId, Screw>;
   drive: Drive | null;
   /**
    * The level this design's model targets (REFERENCE_ENGINEERING.md §15).
@@ -105,6 +108,7 @@ export function createMovement(
     monthComplications: {},
     leapYearComplications: {},
     dialWindows: {},
+    screws: {},
     drive: null,
   };
 }
@@ -244,6 +248,18 @@ export function updateDialWindow(movement: Movement, id: DialWindowId, patch: Pa
     throw new Error(`Unknown dial window id: ${id}`);
   }
   return { ...movement, dialWindows: { ...movement.dialWindows, [id]: { ...existing, ...patch } } };
+}
+
+export function addScrew(movement: Movement, screw: Screw): Movement {
+  return { ...movement, screws: { ...movement.screws, [screw.id]: screw } };
+}
+
+export function updateScrew(movement: Movement, id: ScrewId, patch: Partial<Omit<Screw, "id" | "type">>): Movement {
+  const existing = movement.screws[id];
+  if (existing === undefined) {
+    throw new Error(`Unknown screw id: ${id}`);
+  }
+  return { ...movement, screws: { ...movement.screws, [id]: { ...existing, ...patch } } };
 }
 
 /**

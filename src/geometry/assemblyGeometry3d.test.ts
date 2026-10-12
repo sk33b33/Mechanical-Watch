@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type * as THREE from "three";
+import { metres } from "@/units/length";
 import type { Point2D } from "./gearOutline";
 import {
   balanceArmHalfExtents,
   balanceRimInnerRadius,
   createDiscWithHolesGeometry,
+  createFrameGeometry,
   createGenevaWheelGeometry,
   createRodGeometry,
   createZCylinder,
@@ -396,6 +398,40 @@ describe("createDiscWithHolesGeometry", () => {
     const box = withHoles.boundingBox;
     expect(box?.max.x).toBeCloseTo(3e-3, 6);
     expect(box?.min.x).toBeCloseTo(-3e-3, 6);
+  });
+});
+
+describe("createFrameGeometry", () => {
+  it("produces a plain solid slab when no holes are given (the default)", () => {
+    const geometry = createFrameGeometry({ kind: "CIRCLE", centre: { x: metres(0), y: metres(0) }, radius: metres(5e-3) }, 1e-3);
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox;
+    expect(box?.max.x).toBeCloseTo(5e-3, 6);
+    expect(box?.min.z).toBeCloseTo(0, 9);
+    expect(box?.max.z).toBeCloseTo(1e-3, 9);
+  });
+
+  it("punches a hole in the same (x, y) coordinates as the outline itself — not relative to a local origin (ASM-0056)", () => {
+    const geometry = createFrameGeometry(
+      { kind: "CIRCLE", centre: { x: metres(2.5e-3), y: metres(0) }, radius: metres(15e-3) },
+      1e-3,
+      [{ x: 10e-3, y: 0, radius: 1e-3 }],
+    );
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox;
+    // The outer bounding box stays the full outline's — the hole sits well inside it.
+    expect(box?.max.x).toBeCloseTo(17.5e-3, 6);
+    expect(box?.min.x).toBeCloseTo(-12.5e-3, 6);
+  });
+
+  it("skips a hole with a non-finite or non-positive radius rather than throwing", () => {
+    expect(() =>
+      createFrameGeometry({ kind: "CIRCLE", centre: { x: metres(0), y: metres(0) }, radius: metres(5e-3) }, 1e-3, [
+        { x: 0, y: 0, radius: Number.NaN },
+        { x: 0, y: 0, radius: 0 },
+        { x: Number.NaN, y: 0, radius: 1e-3 },
+      ]),
+    ).not.toThrow();
   });
 });
 

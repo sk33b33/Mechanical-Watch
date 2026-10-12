@@ -6,6 +6,7 @@ import type { Frame, Outline } from "@/domain/frame";
 import type { Gear } from "@/domain/gear";
 import type { Jewel } from "@/domain/jewel";
 import type { Shaft, ShaftEnd, ShaftId } from "@/domain/shaft";
+import type { FrameHole } from "@/geometry/assemblyGeometry3d";
 
 /** Closed-open axial interval [lo, hi] in metres. */
 export interface ZRange {
@@ -153,4 +154,33 @@ export function arborZRange(movement: Movement, shaftId: ShaftId): ZRange | null
   }
   if (ranges.length === 0) return null;
   return { lo: Math.min(...ranges.map((r) => r.lo)), hi: Math.max(...ranges.map((r) => r.hi)) };
+}
+
+/**
+ * Bearing clearance holes to punch through one frame: one per jewel seated
+ * in it whose `boreDiameter` is declared and whose shaft axis is resolved.
+ * A jewel with an unknown bore (`boreDiameter: null`, never defaulted) or
+ * an unresolved shaft position is skipped — no hole is invented for it
+ * (ASM-0056).
+ */
+export function frameBearingHoles(movement: Movement, frame: Frame, shaftPositions: ReadonlyMap<ShaftId, Vec2>): FrameHole[] {
+  const holes: FrameHole[] = [];
+  for (const jewel of Object.values(movement.jewels)) {
+    if (jewel.frameId !== frame.id || jewel.boreDiameter === null || !isPositiveLength(jewel.boreDiameter)) continue;
+    const position = shaftPositions.get(jewel.shaftId);
+    if (position === undefined) continue;
+    holes.push({ x: position.x, y: position.y, radius: jewel.boreDiameter / 2 });
+  }
+  return holes;
+}
+
+/** Screw clearance holes to punch through one frame: one per screw declared against it (ASM-0056). */
+export function frameScrewHoles(movement: Movement, frame: Frame): FrameHole[] {
+  const holes: FrameHole[] = [];
+  for (const screw of Object.values(movement.screws)) {
+    if (screw.frameId !== frame.id || !isPositiveLength(screw.diameter)) continue;
+    if (!Number.isFinite(screw.position.x) || !Number.isFinite(screw.position.y)) continue;
+    holes.push({ x: screw.position.x, y: screw.position.y, radius: screw.diameter / 2 });
+  }
+  return holes;
 }

@@ -112,3 +112,6 @@ YEAR-002 The leap-year complication's drive model and reference Geneva-mechanism
 
 DIALWIN-001 A dial window's own shape dimensions (a circle's radius, or a rectangle's width and height) must be positive/finite, its centre must be finite, and it must reference an existing dial and an existing disc complication (MoonPhase, DateComplication, MonthComplication or LeapYearComplication) (ASM-0051).
 DIALWIN-002 A dial window must actually overlap its referenced complication's own disc in plan (circle-circle distance for a circular window, circle-rectangle distance for a rectangular one), else nothing is visible through it (ASM-0051).
+
+SCREW-001 A screw's position must be finite, its diameter a positive length, and it must reference an existing frame (ASM-0056).
+SCREW-002 A screw's position must fall within its own frame's outline, or its hole would not actually punch through the plate (ASM-0056).

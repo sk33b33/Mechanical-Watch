@@ -55,6 +55,9 @@ function axisOf(placement: PlacementSolution, entity: SelectableEntity): Vec2 | 
     case "DialWindow":
       // A fixed plan position of its own, not tied to any shaft's rotation axis.
       return Number.isFinite(entity.centre.x) && Number.isFinite(entity.centre.y) ? entity.centre : null;
+    case "Screw":
+      // A fixed plan position of its own, not tied to any shaft's rotation axis (same as DialWindow).
+      return Number.isFinite(entity.position.x) && Number.isFinite(entity.position.y) ? entity.position : null;
     case "Frame":
     case "KeylessWorks":
       return "none";
@@ -109,6 +112,11 @@ function zRangeOf(movement: Movement, entity: SelectableEntity): ZRange | null {
       return Number.isFinite(entity.wheelZCentre) && Number.isFinite(entity.wheelThickness) && entity.wheelThickness > 0
         ? { lo: entity.wheelZCentre - entity.wheelThickness / 2, hi: entity.wheelZCentre + entity.wheelThickness / 2 }
         : null;
+    case "Screw": {
+      // A screw exists at its own frame's z-range — it is a hole through the frame, not a part with its own thickness.
+      const frame = movement.frames[entity.frameId];
+      return frame !== undefined && isCompleteFrame(frame) ? frameZRange(frame) : null;
+    }
   }
 }
 

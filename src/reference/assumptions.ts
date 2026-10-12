@@ -333,6 +333,12 @@ export const ASSUMPTIONS = {
     scope: "MoonPhase's own dial-facing illustration (Phase 8.9 follow-up, visual/L0 display only)",
     status: "Active",
   },
+  "ASM-0056": {
+    summary:
+      "Screw (Phase 8.10): a plain circular through-hole of declared diameter, at a declared plan position, punched through one chosen Frame (a Mainplate or Bridge). CLAUDE.md's own 'Core component model' listed Screw as a planned entity from the start, but it was never built -- frames were plain solid extruded slabs with no bearing or screw holes at all. Alongside Screw, bearing clearance holes are now also punched into a frame wherever a seated Jewel's own boreDiameter is declared (non-null) and its shaft's axis is resolved (frameBearingHoles, src/assembly/assemblyGeometry.ts) -- a jewel with an unknown bore is skipped, never given an invented hole size, the same 'declared, never defaulted' treatment boreDiameter already had. A screw's hole, likewise, is exactly its declared diameter: no thread, head, countersink/counterbore, or clamping-torque/thread-engagement data is modeled, and the second frame or bridge foot a real screw also clamps is not represented either -- only the hole itself, in the one frame it is declared against. Same 'visual only, no manufacturing claim' treatment this project already gives other cosmetic/declared geometry (ASM-0004, ASM-0051). createFrameGeometry (src/geometry/assemblyGeometry3d.ts) now takes an optional holes: FrameHole[] list, punched via THREE.Path.absarc directly in the same movement-plan (x, y) coordinates the frame's own outline already uses -- no local-frame translation needed. Frame outlines themselves remain 100% manually drawn: no auto-fit/auto-resize of a plate to the parts placed on it was added here, since silently resizing a user's declared outline would conflict with this project's own 'never silently alter user dimensions' principle; that remains a distinct, not-yet-built feature.",
+    scope: "Screw entity + bearing/screw hole geometry on existing frames (Phase 8.10, visual/L0 display plus L1_GEOMETRIC placement checks)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

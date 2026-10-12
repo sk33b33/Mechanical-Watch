@@ -14,6 +14,7 @@ import type { DateComplication } from "@/domain/dateComplication";
 import type { MonthComplication } from "@/domain/monthComplication";
 import type { LeapYearComplication } from "@/domain/leapYearComplication";
 import type { DialWindow, DialWindowOutline } from "@/domain/dialWindow";
+import type { Screw } from "@/domain/screw";
 import type { MainspringSpec } from "@/domain/coupling";
 import type { Torque } from "@/units/torque";
 import type { MomentOfInertia, TorsionalStiffness } from "@/units/rotational";
@@ -43,7 +44,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 23;
+export const DESIGN_SCHEMA_VERSION = 24;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -329,6 +330,12 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
       ]),
     );
     return { ...doc, schemaVersion: 23, movement: { ...movement, dialWindows } };
+  },
+  /** v23 → v24: movements gain empty `screws` (ASM-0056, Phase 8.7). */
+  23: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement)) return doc;
+    return { ...doc, schemaVersion: 24, movement: { ...movement, screws: {} } };
   },
 };
 
@@ -670,6 +677,18 @@ const dialWindow: Decoder<DialWindow> = (value, path) => {
   };
 };
 
+const screw: Decoder<Screw> = (value, path) => {
+  const o = object(value, path);
+  return {
+    id: field(o, "id", id<Screw["id"]>(), path),
+    type: field(o, "type", literal("Screw"), path),
+    name: field(o, "name", string, path),
+    frameId: field(o, "frameId", id<Frame["id"]>(), path),
+    position: field(o, "position", vec2, path),
+    diameter: field(o, "diameter", length, path),
+  };
+};
+
 const pallets: Decoder<PalletGeometry> = (value, path) => {
   const o = object(value, path);
   return {
@@ -753,6 +772,7 @@ const movement: Decoder<Movement> = (value, path) => {
     monthComplications: field(o, "monthComplications", entityRecord(monthComplication), path),
     leapYearComplications: field(o, "leapYearComplications", entityRecord(leapYearComplication), path),
     dialWindows: field(o, "dialWindows", entityRecord(dialWindow), path),
+    screws: field(o, "screws", entityRecord(screw), path),
     drive: field(o, "drive", nullable(drive), path),
   };
 };

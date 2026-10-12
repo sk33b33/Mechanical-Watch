@@ -12,8 +12,9 @@ import type { DateComplication, DateComplicationId } from "./dateComplication";
 import type { MonthComplication, MonthComplicationId } from "./monthComplication";
 import type { LeapYearComplication, LeapYearComplicationId } from "./leapYearComplication";
 import type { DialWindow, DialWindowId } from "./dialWindow";
+import type { Screw, ScrewId } from "./screw";
 
-export type SelectableEntity = Gear | Shaft | Frame | Jewel | KeylessWorks | Dial | Escapement | MoonPhase | DateComplication | MonthComplication | LeapYearComplication | DialWindow;
+export type SelectableEntity = Gear | Shaft | Frame | Jewel | KeylessWorks | Dial | Escapement | MoonPhase | DateComplication | MonthComplication | LeapYearComplication | DialWindow | Screw;
 
 export function findEntity(movement: Movement, id: EntityId): SelectableEntity | undefined {
   return (
@@ -28,6 +29,7 @@ export function findEntity(movement: Movement, id: EntityId): SelectableEntity |
     movement.dateComplications[id as DateComplicationId] ??
     movement.monthComplications[id as MonthComplicationId] ??
     movement.leapYearComplications[id as LeapYearComplicationId] ??
-    movement.dialWindows[id as DialWindowId]
+    movement.dialWindows[id as DialWindowId] ??
+    movement.screws[id as ScrewId]
   );
 }

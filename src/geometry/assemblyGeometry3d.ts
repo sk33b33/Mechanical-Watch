@@ -101,9 +101,23 @@ export function outlineShape(outline: Outline): THREE.Shape {
   return shape;
 }
 
+/** A circular hole punched through a frame slab, in the same movement-plan (x, y) coordinates as the frame's own `outline` (ASM-0056: bearing and screw clearance holes). */
+export interface FrameHole {
+  readonly x: number;
+  readonly y: number;
+  readonly radius: number;
+}
+
 /** Slab geometry spanning z ∈ [0, thickness]; position it at the frame's zBottom. */
-export function createFrameGeometry(outline: Outline, thickness: number): THREE.ExtrudeGeometry {
-  return new THREE.ExtrudeGeometry(outlineShape(outline), {
+export function createFrameGeometry(outline: Outline, thickness: number, holes: readonly FrameHole[] = []): THREE.ExtrudeGeometry {
+  const shape = outlineShape(outline);
+  for (const hole of holes) {
+    if (!Number.isFinite(hole.x) || !Number.isFinite(hole.y) || !Number.isFinite(hole.radius) || hole.radius <= 0) continue;
+    const path = new THREE.Path();
+    path.absarc(hole.x, hole.y, hole.radius, 0, Math.PI * 2, true);
+    shape.holes.push(path);
+  }
+  return new THREE.ExtrudeGeometry(shape, {
     depth: thickness,
     bevelEnabled: false,
     curveSegments: 64,

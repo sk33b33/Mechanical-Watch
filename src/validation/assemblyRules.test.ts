@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { millimetres as mm, toMillimetres } from "@/units/length";
+import { millimetres as mm, metres, toMillimetres } from "@/units/length";
 import { degrees } from "@/units/angle";
 import { vec2 } from "@/math/vec2";
 import {
+  addFrame,
+  addJewel,
+  addScrew,
+  addShaft,
+  createMovement,
   updateFrame,
   updateGear,
   updateJewel,
@@ -10,12 +15,13 @@ import {
   type Movement,
 } from "@/domain/movement";
 import type { Gear } from "@/domain/gear";
-import type { Shaft } from "@/domain/shaft";
-import type { Frame } from "@/domain/frame";
-import type { Jewel } from "@/domain/jewel";
+import { createShaft, fixedAt, type Shaft } from "@/domain/shaft";
+import { createFrame, type Frame } from "@/domain/frame";
+import { createJewel, type Jewel } from "@/domain/jewel";
+import { createScrew } from "@/domain/screw";
 import { createDemoMovement } from "@/app/demoMovement";
 import { createTeachingMovement } from "@/app/teachingMovement";
-import { endshake, shaftSupport, sideShake } from "@/assembly/assemblyGeometry";
+import { endshake, frameBearingHoles, frameScrewHoles, shaftSupport, sideShake } from "@/assembly/assemblyGeometry";
 import { validateMovement } from "./validateMovement";
 import type { ValidationIssue } from "./validationIssue";
 
@@ -60,6 +66,66 @@ describe("bearing geometry (REF-ENG §12)", () => {
     const m = updateShaft(demo, a.id, { shoulderSpan: mm(1.98) });
     const e = endshake(m, shaft(m, "Arbor A"), shaftSupport(m, a.id));
     expect(e.status === "KNOWN" ? toMillimetres(e.value) : Number.NaN).toBeCloseTo(0.02, 12);
+  });
+});
+
+describe("frame bearing and screw holes (ASM-0056)", () => {
+  function buildMovement(): { movement: Movement; plate: Frame } {
+    let m = createMovement("Test", false);
+    const plate = createFrame({
+      kind: "MAINPLATE",
+      name: "Plate",
+      outline: { kind: "CIRCLE", centre: vec2(mm(0), mm(0)), radius: mm(10) },
+      zBottom: mm(0),
+      thickness: mm(1),
+    });
+    m = addFrame(m, plate);
+    return { movement: m, plate };
+  }
+
+  it("punches one hole per jewel with a declared bore and a resolved shaft position, skipping an unknown bore", () => {
+    const { movement, plate } = buildMovement();
+    let m = movement;
+    const shaftA = createShaft("Shaft A", fixedAt(mm(2), mm(3)));
+    const shaftB = createShaft("Shaft B", fixedAt(mm(-2), mm(-3)));
+    m = addShaft(m, shaftA);
+    m = addShaft(m, shaftB);
+    m = addJewel(m, createJewel({ name: "Known jewel", kind: "HOLE_JEWEL", frameId: plate.id, shaftId: shaftA.id, end: "LOWER", boreDiameter: mm(0.5) }));
+    m = addJewel(m, createJewel({ name: "Unknown jewel", kind: "HOLE_JEWEL", frameId: plate.id, shaftId: shaftB.id, end: "LOWER" }));
+    const positions = new Map([
+      [shaftA.id, vec2(mm(2), mm(3))],
+      [shaftB.id, vec2(mm(-2), mm(-3))],
+    ]);
+    const holes = frameBearingHoles(m, plate, positions);
+    expect(holes).toHaveLength(1);
+    expect(toMillimetres(metres(holes[0]?.x ?? Number.NaN))).toBeCloseTo(2, 9);
+    expect(toMillimetres(metres(holes[0]?.y ?? Number.NaN))).toBeCloseTo(3, 9);
+    expect(toMillimetres(metres(holes[0]?.radius ?? Number.NaN))).toBeCloseTo(0.25, 9);
+  });
+
+  it("skips a jewel whose shaft position is not yet resolved", () => {
+    const { movement, plate } = buildMovement();
+    let m = movement;
+    const shaftA = createShaft("Shaft A", fixedAt(mm(2), mm(3)));
+    m = addShaft(m, shaftA);
+    m = addJewel(m, createJewel({ name: "Known jewel", kind: "HOLE_JEWEL", frameId: plate.id, shaftId: shaftA.id, end: "LOWER", boreDiameter: mm(0.5) }));
+    expect(frameBearingHoles(m, plate, new Map())).toEqual([]);
+  });
+
+  it("punches one hole per screw declared against the frame", () => {
+    const { movement, plate } = buildMovement();
+    const m = addScrew(movement, createScrew({ name: "Screw 1", frameId: plate.id, position: vec2(mm(5), mm(0)), diameter: mm(0.8) }));
+    const holes = frameScrewHoles(m, plate);
+    expect(holes).toHaveLength(1);
+    expect(toMillimetres(metres(holes[0]?.x ?? Number.NaN))).toBeCloseTo(5, 9);
+    expect(toMillimetres(metres(holes[0]?.radius ?? Number.NaN))).toBeCloseTo(0.4, 9);
+  });
+
+  it("the teaching movement's own frames produce screw holes but no bearing holes (jewel bores are left unknown, ASM-0009)", () => {
+    const teaching = createTeachingMovement();
+    const mainplate = frame(teaching, "Mainplate");
+    expect(frameScrewHoles(teaching, mainplate).length).toBeGreaterThan(0);
+    expect(frameBearingHoles(teaching, mainplate, new Map())).toEqual([]);
   });
 });
 

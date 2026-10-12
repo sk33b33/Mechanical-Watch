@@ -28,7 +28,7 @@ import {
   MONTH_LINKAGE_VISUALIZATION,
   type EscapeToothFace,
 } from "@/geometry/assemblyGeometry3d";
-import { arborZRange, frameZRange, isCompleteFrame } from "@/assembly/assemblyGeometry";
+import { arborZRange, frameBearingHoles, frameScrewHoles, frameZRange, isCompleteFrame } from "@/assembly/assemblyGeometry";
 import { partReferencePoint, type Point3 } from "@/assembly/measure";
 import { stemBodyId, type KeylessWorksId } from "@/domain/keyless";
 import { findDiscComplication } from "@/domain/discComplication";
@@ -420,7 +420,8 @@ export class Viewport {
     for (const frame of Object.values(movement.frames)) {
       if (!isCompleteFrame(frame)) continue;
       const range = frameZRange(frame);
-      const geometry = createFrameGeometry(frame.outline, range.hi - range.lo);
+      const holes = [...frameBearingHoles(movement, frame, positions), ...frameScrewHoles(movement, frame)];
+      const geometry = createFrameGeometry(frame.outline, range.hi - range.lo, holes);
       const mesh = new THREE.Mesh(
         geometry,
         material(COLORS.frame, { transparent: true, opacity: FRAME_OPACITY.normal, depthWrite: false, side: THREE.DoubleSide }),

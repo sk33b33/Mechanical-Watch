@@ -17,10 +17,11 @@ import { createGear, type Gear } from "@/domain/gear";
 import { createGearMesh, type GearMesh } from "@/domain/gearMesh";
 import { createFrame } from "@/domain/frame";
 import { createJewel } from "@/domain/jewel";
+import { createScrew } from "@/domain/screw";
 import { createFrictionClutch, createMainspring } from "@/domain/coupling";
 import { createKeylessWorks } from "@/domain/keyless";
 import { createDial } from "@/domain/dial";
-import { addDateComplication, addDial, addDialWindow, addEscapement, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, setBalanceDrive } from "@/domain/movement";
+import { addDateComplication, addDial, addDialWindow, addEscapement, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addScrew, setBalanceDrive } from "@/domain/movement";
 import { createMoonPhase } from "@/domain/moonPhase";
 import { createDateComplication } from "@/domain/dateComplication";
 import { createMonthComplication } from "@/domain/monthComplication";
@@ -243,6 +244,13 @@ export function createTeachingMovement(): Movement {
     thickness: mm(0.8),
   });
   m = addFrame(m, balanceCock);
+  // A few illustrative mounting screws (ASM-0056, ASM-0009): declared positions within each
+  // frame's own outline, not a complete screw layout for every frame.
+  m = addScrew(m, createScrew({ name: "Mainplate screw 1", frameId: mainplate.id, position: vec2(mm(14.5), mm(0)), diameter: mm(0.8) }));
+  m = addScrew(m, createScrew({ name: "Mainplate screw 2", frameId: mainplate.id, position: vec2(mm(-7.5), mm(8)), diameter: mm(0.8) }));
+  m = addScrew(m, createScrew({ name: "Mainplate screw 3", frameId: mainplate.id, position: vec2(mm(-7.5), mm(-8)), diameter: mm(0.8) }));
+  m = addScrew(m, createScrew({ name: "Train bridge screw", frameId: bridge.id, position: vec2(mm(5), mm(-1)), diameter: mm(0.7) }));
+  m = addScrew(m, createScrew({ name: "Balance cock screw", frameId: balanceCock.id, position: vec2(mm(7), mm(6.5)), diameter: mm(0.6) }));
   for (const s of [
     barrel, centre, third, fourth, escape, cannon, minuteWheel, hourWheel, barrelArbor, crownWheelArbor, settingWheelArbor,
     moonReductionArbor, moonDiscArbor, twentyFourHourArbor, dateStarArbor, monthStarArbor, leapYearWheelArbor,

@@ -15,6 +15,7 @@ import { createDateComplication, type DateComplication } from "./dateComplicatio
 import { createMonthComplication, type MonthComplication } from "./monthComplication";
 import { createLeapYearComplication, type LeapYearComplication } from "./leapYearComplication";
 import { createDialWindow, type DialWindow, type DialWindowId } from "./dialWindow";
+import { createScrew, type Screw, type ScrewId } from "./screw";
 import { radians } from "@/units/angle";
 import { vec2 } from "@/math/vec2";
 import type { ToleranceId } from "./tolerance";
@@ -179,6 +180,16 @@ export function newDialWindow(movement: Movement): DialWindow {
   });
 }
 
+/** A screw with every dimension empty and no frame chosen yet (SCREW-001 lists what is missing). */
+export function newScrew(movement: Movement): Screw {
+  return createScrew({
+    name: nextName(Object.values(movement.screws), "Screw"),
+    frameId: "" as FrameId,
+    position: vec2(EMPTY, EMPTY),
+    diameter: EMPTY,
+  });
+}
+
 /** An escapement with every dimension empty and no arbors chosen yet (ESC-101 lists what is missing). */
 export function newEscapement(movement: Movement): Escapement {
   const none = "" as ShaftId;
@@ -234,6 +245,7 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
   const couplings = new Set<CouplingId>();
   const dials = new Set<DialId>();
   const dialWindows = new Set<DialWindowId>();
+  const screws = new Set<ScrewId>();
 
   if (id in movement.frames) frames.add(id as FrameId);
   if (id in movement.shafts) shafts.add(id as ShaftId);
@@ -243,6 +255,7 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
   if (id in movement.couplings) couplings.add(id as CouplingId);
   if (id in movement.dials) dials.add(id as DialId);
   if (id in movement.dialWindows) dialWindows.add(id as DialWindowId);
+  if (id in movement.screws) screws.add(id as ScrewId);
 
   for (const gear of Object.values(movement.gears)) {
     if (shafts.has(gear.shaftId)) gears.add(gear.id);
@@ -259,6 +272,9 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
   for (const window of Object.values(movement.dialWindows)) {
     if (dials.has(window.dialId)) dialWindows.add(window.id);
   }
+  for (const screw of Object.values(movement.screws)) {
+    if (frames.has(screw.frameId)) screws.add(screw.id);
+  }
 
   const tolerances = new Set<ToleranceId>();
   if (id in movement.tolerances) tolerances.add(id as ToleranceId);
@@ -270,7 +286,7 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
   const others = new Set<string>();
   if (id in movement.keylessWorks || id in movement.dials || id in movement.escapements || id in movement.moonPhases || id in movement.dateComplications || id in movement.monthComplications || id in movement.leapYearComplications) others.add(id);
 
-  const removed = new Set<string>([...frames, ...shafts, ...gears, ...meshes, ...jewels, ...couplings, ...tolerances, ...others, ...dialWindows]);
+  const removed = new Set<string>([...frames, ...shafts, ...gears, ...meshes, ...jewels, ...couplings, ...tolerances, ...others, ...dialWindows, ...screws]);
   const drive = movement.drive;
   return {
     movement: {
@@ -290,6 +306,7 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
       monthComplications: without(movement.monthComplications, removed),
       leapYearComplications: without(movement.leapYearComplications, removed),
       dialWindows: without(movement.dialWindows, removed),
+      screws: without(movement.screws, removed),
       drive: drive?.kind === "PRESCRIBED" && removed.has(drive.shaftId) ? null : drive,
     },
     removedIds: [...removed] as EntityId[],
