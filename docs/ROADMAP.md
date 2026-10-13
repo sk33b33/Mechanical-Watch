@@ -478,6 +478,21 @@ propagation used everywhere else.
   is now drawn once in its idle/disengaged position near the month star,
   offset toward the date star that drives it — no tracking map, no
   per-tick update, since nothing about it ever moves.
+- 8.10 — **Done** (see `docs/STATUS.md`). Not a calendar complication —
+  raised as a direct question ("there's missing baseplates that the
+  parts get screwed on to") and picked up right after 8.9 as the next
+  item, so it keeps this section's running sub-item numbering rather
+  than opening a new phase. `Screw`, listed in CLAUDE.md's own "Core
+  component model" from the start but never built, plus bearing and
+  screw clearance holes punched into existing `Frame` (mainplate/
+  bridge) geometry: a bearing hole wherever a seated `Jewel`'s own
+  `boreDiameter` is declared (skipped, never invented, when unknown)
+  and a screw hole wherever a `Screw` references the frame (ASM-0056,
+  SCREW-001/002). The user's own second question — auto-resizing an
+  outline to fit newly added parts — was answered but deliberately
+  **not** built: it would violate CLAUDE.md's "never silently alter
+  user dimensions" principle, so it stays a separate, explicit,
+  user-triggered action if wanted later.
 
 Order: 8.1 first (ships independently, no jump-mechanism risk, proves
 the display groundwork 8.6 needs). 8.2 next (the jump-mechanism design
@@ -500,9 +515,11 @@ scoped on its own once date was done, choosing the static (never
 animated) of two offered options specifically to avoid inventing an
 engagement-timing constant with no source behind it at all (ASM-0054).
 
-8.1–8.4, 8.6 and 8.9 (all three complications) are done (see
-`docs/STATUS.md` for each). 8.7's cross-cutting validation work was
-folded into 8.1–8.4/8.6 as they shipped, rather than built as a separate
-item. 8.5 and 8.8 remain confirmed out of scope. No further Phase 8
-sub-item is scoped to start without the user's next explicit
-instruction.
+8.1–8.4, 8.6, 8.9 and 8.10 are done (see `docs/STATUS.md` for each).
+8.7's cross-cutting validation work was folded into 8.1–8.4/8.6 as they
+shipped, rather than built as a separate item. 8.10 is not itself a
+calendar complication — a baseplate/hardware item (`Screw`, bearing and
+screw clearance holes) that happened to ship next and keeps this
+section's running numbering rather than opening a new phase heading.
+8.5 and 8.8 remain confirmed out of scope. No further Phase 8 sub-item
+is scoped to start without the user's next explicit instruction.
