@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toDegrees, radians } from "@/units/angle";
+import { degrees, toDegrees, radians } from "@/units/angle";
 import { rpmToRadPerSecond, radiansPerSecond } from "@/units/angularVelocity";
 import type { ShaftId } from "@/domain/shaft";
 import type { Movement } from "@/domain/movement";
@@ -53,6 +53,22 @@ describe("stepSimulation", () => {
     expect(deg).toBeGreaterThanOrEqual(0);
     expect(deg).toBeLessThan(360);
     expect(deg).toBeCloseTo(180, 5);
+  });
+
+  it("accumulates time from the previous state, not stepCount × dtSeconds (SIM-002)", () => {
+    // Regression: `time: seconds(stepCount * dtSeconds)` silently assumed every step in a
+    // state's whole history used the same dtSeconds — true of every caller until
+    // AppStore.setToBrowserTime's coarse-then-fine fast-forward mixed step sizes on one state.
+    // Accumulating from state.time instead keeps `time` correct regardless of what dt each of
+    // its steps actually used.
+    let state = createSimulationState(movement);
+    for (let i = 0; i < 100; i += 1) state = stepSimulation(state, solutionAt(0), NUMERICAL_PARAMETERS.simulationTimestepSeconds);
+    expect(state.time).toBeCloseTo(100 * NUMERICAL_PARAMETERS.simulationTimestepSeconds, 9);
+    // One large step at a much coarser dt, immediately after 100 fine steps: with the old
+    // `stepCount * dtSeconds` formula this would read (101 × 10), not ~10.4 — i.e. it would
+    // multiply every step ever taken (fine and coarse alike) by the new, coarser dt.
+    state = stepSimulation(state, solutionAt(0), 10);
+    expect(state.time).toBeCloseTo(100 * NUMERICAL_PARAMETERS.simulationTimestepSeconds + 10, 9);
   });
 
   it("refuses to store a non-finite angle (SIM-001)", () => {
@@ -165,7 +181,7 @@ describe("date jump (ASM-0048)", () => {
   const starShaftId = "shaft_star" as ShaftId;
   const dateId = "dateComplication_1" as DateComplicationId;
   const starToothCount = 31;
-  const track: DateJumpTrack = { id: dateId, driveShaftId, starShaftId, starToothCount, stepAngle: dateJumpStepAngle(starToothCount), monthCorrection: null };
+  const track: DateJumpTrack = { id: dateId, driveShaftId, starShaftId, starToothCount, stepAngle: dateJumpStepAngle(starToothCount), forwardSign: 1, monthCorrection: null };
   const withDate = { shafts: { [driveShaftId]: {}, [starShaftId]: {} }, keylessWorks: {}, couplings: {} } as unknown as Movement;
   const driveSolution = (revPerSecond: number): GearTrainSolution => ({
     ...solutionAt(0),
@@ -205,6 +221,37 @@ describe("date jump (ASM-0048)", () => {
     const next = stepSimulation(createSimulationState(withDate), driveSolution(1), 1);
     expect(next.shaftAngle[starShaftId] ?? radians(0)).toBe(0);
   });
+
+  describe("a drive shaft that is negative under the design's own forward running (forwardSign: -1)", () => {
+    // Regression for a real bug: a drive shaft one mesh away from its neighbours has its
+    // solved angular velocity sign flipped by mesh parity alone, independent of which way it is
+    // genuinely turning. A teaching-movement drive shaft wired exactly this way never advanced
+    // its date star under the real solved gear train (only ever under a synthetic
+    // always-positive `driveSolution`, which this file's other tests use) until forwardSign was
+    // threaded through `crossesRevolution`.
+    const negativeTrack: DateJumpTrack = { ...track, forwardSign: -1 };
+    const negativeSolution = (revPerSecond: number): GearTrainSolution => ({
+      ...solutionAt(0),
+      shaftAngularVelocity: new Map([[driveShaftId, radiansPerSecond(-revPerSecond * 2 * Math.PI)]]),
+    });
+
+    it("one full (negative-signed) drive revolution still advances the star by exactly one step", () => {
+      const next = stepSimulation(createSimulationState(withDate), negativeSolution(1), 1, [], [negativeTrack]);
+      expect(toDegrees(next.shaftAngle[starShaftId] ?? radians(0))).toBeCloseTo(360 / starToothCount, 9);
+    });
+
+    it("does not fire mid-revolution", () => {
+      // 350°, decreasing: nowhere near the next (downward, through 0) crossing.
+      const state = { ...createSimulationState(withDate), shaftAngle: { [driveShaftId]: degrees(350) } };
+      const next = stepSimulation(state, negativeSolution(0.25), 0.5, [], [negativeTrack]);
+      expect(next.shaftAngle[starShaftId] ?? radians(0)).toBe(0);
+    });
+
+    it("a positive-signed drive (reversed relative to forwardSign) never advances the star", () => {
+      const next = stepSimulation(createSimulationState(withDate), driveSolution(1), 1, [], [negativeTrack]);
+      expect(next.shaftAngle[starShaftId] ?? radians(0)).toBe(0);
+    });
+  });
 });
 
 describe("month-end correction (ASM-0049)", () => {
@@ -228,6 +275,7 @@ describe("month-end correction (ASM-0049)", () => {
     starShaftId,
     starToothCount,
     stepAngle: dateJumpStepAngle(starToothCount),
+    forwardSign: 1,
     monthCorrection: { monthStarShaftId, monthStepAngle: monthJumpStepAngle(), yearCorrection: null, seasonCorrection: null },
   };
 
@@ -306,6 +354,7 @@ describe("year-wrap correction (ASM-0050)", () => {
     starShaftId,
     starToothCount,
     stepAngle: dateJumpStepAngle(starToothCount),
+    forwardSign: 1,
     monthCorrection: { monthStarShaftId, monthStepAngle: monthJumpStepAngle(), yearCorrection: { wheelShaftId, wheelStepAngle }, seasonCorrection: null },
   };
 
@@ -442,6 +491,7 @@ describe("quarter-boundary correction (ASM-0057)", () => {
     starShaftId,
     starToothCount,
     stepAngle: dateJumpStepAngle(starToothCount),
+    forwardSign: 1,
     monthCorrection: { monthStarShaftId, monthStepAngle: monthJumpStepAngle(), yearCorrection: null, seasonCorrection: { wheelShaftId, wheelStepAngle } },
   };
 

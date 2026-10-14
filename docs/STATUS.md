@@ -2,6 +2,106 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## "Set to browser time", and a real pre-existing bug it surfaced in every jump-driven complication
+
+Requested directly: "set the movement to browser time" — a one-click
+toolbar action that fast-forwards the running simulation so the dial
+reads the computer's actual current local time.
+
+**`AppStore.setToBrowserTime()`** (`src/app/store.ts`) computes the
+simulated delta needed for ASM-0014's nominal 12-hour hand
+correspondence to land on `new Date()`'s current hour/minute/second,
+switches the crown back to `RUNNING` first if it was mid-setting or
+mid-winding, then advances by exactly that delta. This is a computed
+jump, not a simulated crown-setting action: ASM-0015's own "no
+stop-seconds" limitation (already in `docs/STATUS.md`'s known
+limitations) means the going train keeps running during a real setting
+action, so the seconds hand can't be landed on an exact target that
+way. The toolbar button (`src/app/panels/toolbar.ts`) warns if the
+resulting dial doesn't actually match the target, rather than silently
+claiming success, for a movement not driven at the nominal rate.
+
+**Performance:** advancing up to 12 simulated hours at the standard
+1/240 s timestep needs up to ~10.3 million steps — measured at over
+10 seconds of synchronous UI-blocking work in a real browser
+(headless Chromium, production build, a faked `Date` ~11.9 h ahead).
+Fixed with a provably exact (not approximate) optimization: under
+`RUNNING` mode, `shaftAngularVelocity` is a fixed, precomputed-once Map
+(ASM-0008 — the fixed timestep is a numerical-method choice, not a
+physical one), so Euler integration of a constant velocity is exact at
+any step size between jump-chain events. `fastForwardTimestepSeconds()`
+derives a coarser step from the fastest date-jump drive shaft's own
+rotation period (capped well under it, so a single coarse step can
+never span a whole revolution and risk `crossesRevolution` missing a
+crossing), landing the final stretch at the standard fine timestep.
+Re-measured after the fix: ~93 ms, a ~110× speedup, with the dial
+landing on the exact same target.
+
+**A regression test written specifically to check the coarse-timestep
+optimization doesn't break a date-jump crossing surfaced a real,
+pre-existing, unrelated bug**: `crossesRevolution`
+(`src/kinematics/dateComplication.ts`) hard-required a drive shaft's
+raw solved `angularVelocity` to be positive to count as "forward". But
+a drive shaft's solved sign is mesh-parity bookkeeping — each
+additional gear mesh between it and any reference flips the computed
+sign — not a statement about which way it is genuinely turning. The
+teaching movement's "24-hour arbor" (`DateComplication.driveShaftId`)
+is one mesh away from the hour wheel, so its solved velocity is
+negative under the real `analyzeMovement`-solved gear train, in every
+drive mode. `crossesRevolution` therefore never fired for it: the date
+star — and, chained off its jump, the month star, leap-year wheel and
+season wheel — never advanced under real simulation. Every existing
+unit test for this had used a synthetic, always-positive
+`driveSolution(1)` fixture, never the real solved train, so this went
+unnoticed since Phase 8.2.
+
+**Fix:** `DateJumpTrack` (`src/simulation/simulationState.ts`) gained a
+`forwardSign: 1 | -1` field, captured once per track from the sign
+`driveShaftId`'s own angular velocity actually has under the design's
+normal running solve — the same pattern `WindTrack.sign` already uses
+for exactly this reason. `dateJumpTracks()` now takes the running
+`GearTrainSolution` (like `windTracks()` already does) to derive it.
+`crossesRevolution()` takes `forwardSign` (default 1, so every existing
+caller is unaffected) and mirrors its crossing check around angle 0
+instead of 2π when a track's forward direction is the raw-negative one.
+No assumption register entry changes: ASM-0048's own description
+("forward-only crossing of the drive shaft's own angle reference") was
+always correct — this is a bug in detecting "forward" per-shaft, not a
+change to the assumption itself.
+
+**A second, independent bug surfaced by the same feature, caught only
+by a live-browser check (not any unit test) after the above fix**: the
+dial, after fast-forwarding, did not actually match the target time —
+consistently short by roughly the same proportion as the jump itself.
+`stepSimulation` computed `time: seconds(stepCount * dtSeconds)`
+instead of accumulating from the previous state's own `time`. That
+silently assumed every step a state had ever taken used the same
+`dtSeconds` — true of every caller until `setToBrowserTime`'s
+coarse-then-fine fast-forward mixed step sizes on one state: the first
+step at the new, coarser size got multiplied across every step ever
+taken (at the old, finer size), not just itself, throwing `time` off by
+roughly (historical step count) × (old dt − new dt). Fixed to
+`time: seconds(state.time + dtSeconds)`. CLAUDE.md requires a live
+browser check for UI-visible features before calling them done
+precisely because of bugs like this one: every unit test for
+`setToBrowserTime` had asserted hand readings through `toBeCloseTo`
+without an intervening historical dt change on the same state, so none
+of them exercised a mixed-dt history and this one slipped past all of
+them.
+
+Tests: new `forwardSign: -1` cases in `dateComplication.test.ts`
+(`crossesRevolution`), a new "a drive shaft that is negative under the
+design's own forward running" describe block and a `time` accumulation
+regression (mixed dtSeconds across consecutive steps) in
+`simulationState.test.ts`, both exercising the exact scenarios that
+were silently broken. `store.test.ts` gained `setToBrowserTime`
+coverage, including one test that places the simulation seconds away
+from a real date-jump crossing and confirms it still fires through the
+coarse fast-forward. Full suite green: `tsc -b`, `eslint`, 730 Vitest
+tests, production build, the full 38-test Playwright suite, and a
+live-browser check (production build, real Chromium) confirming the
+dial lands exactly on the browser's current time after the fix.
+
 ## Phase 8.11: `SeasonComplication`, a neutral quarter indicator driven by the month gear
 
 Requested directly: "can you use the month gear to add a season gear that

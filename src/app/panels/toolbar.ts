@@ -205,6 +205,18 @@ export function mountToolbar(container: HTMLElement, store: AppStore, readoutHos
     button("Reset", "Return every shaft to its starting angle at t = 0", () => {
       store.resetSimulation();
     }),
+    button("Set to browser time", "Fast-forward the running simulation so the dial reads your computer's current local time (ASM-0014's nominal 12-hour correspondence). Exact only if the movement actually runs at that nominal rate.", () => {
+      store.setToBrowserTime();
+      const now = new Date();
+      const target = `${String(now.getHours() % 12 === 0 ? 12 : now.getHours() % 12)}:${String(now.getMinutes()).padStart(2, "0")}:${String(now.getSeconds()).padStart(2, "0")}`;
+      const [h, m, sec] = (["HOURS", "MINUTES", "SECONDS"] as const).map(handReading);
+      const matches = (reading: number | null | undefined, target: number, period: number): boolean =>
+        reading !== null && reading !== undefined && Math.min(Math.abs(reading - target), period - Math.abs(reading - target)) < 0.01;
+      const onTime = matches(h, now.getHours() % 12, 12) && matches(m, now.getMinutes(), 60) && matches(sec, now.getSeconds(), 60);
+      if (!onTime) {
+        toolbar.notify(`Fast-forwarded, but the dial doesn't read ${target}: this movement isn't driven at the nominal real-time rate (check the drive and hand assignments).`, "error");
+      }
+    }),
     rateSelect,
   );
   (readoutHost ?? simGroup).append(clock, dial, reserve);

@@ -21,6 +21,26 @@ describe("crossesRevolution (ASM-0048)", () => {
     expect(crossesRevolution(degrees(359), radiansPerSecond(0), 1)).toBe(false);
     expect(crossesRevolution(degrees(1), radiansPerSecond(degrees(-2)), 1)).toBe(false);
   });
+
+  describe("forwardSign: -1 (a drive shaft whose solved velocity is negative under the design's own forward running)", () => {
+    // A drive shaft one gear mesh away from its neighbours has its solved angular velocity sign
+    // flipped by mesh parity alone, independently of which way it is genuinely turning
+    // "forward". forwardSign lets the caller declare, once, which raw sign that is for a given
+    // shaft; the crossing condition then mirrors the forwardSign: 1 case around angle 0 instead
+    // of 2π.
+    it("fires when a (negative) forward step carries the angle past its own zero reference", () => {
+      expect(crossesRevolution(degrees(1), radiansPerSecond(degrees(-2)), 1, -1)).toBe(true);
+    });
+
+    it("does not fire mid-revolution", () => {
+      expect(crossesRevolution(degrees(10), radiansPerSecond(degrees(-2)), 1, -1)).toBe(false);
+    });
+
+    it("never fires for a stationary or reversed (i.e. raw-positive) drive", () => {
+      expect(crossesRevolution(degrees(1), radiansPerSecond(0), 1, -1)).toBe(false);
+      expect(crossesRevolution(degrees(359), radiansPerSecond(degrees(2)), 1, -1)).toBe(false);
+    });
+  });
 });
 
 describe("dateJumpStepAngle (ASM-0048)", () => {

@@ -1,16 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { radiansPerSecond } from "@/units/angularVelocity";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 import { AppStore } from "./store";
 import { addCoupling, addGearMesh, addJewel, drivenShaftId, setBalanceDrive, setNominalTimeDrive, updateCouplingSpring, updateEscapement, type Movement } from "@/domain/movement";
 import { createEmptyMovement, newFrictionClutch, newGearMesh, newJewel } from "@/domain/editing";
 import type { CouplingId } from "@/domain/coupling";
-import { degrees, toDegrees } from "@/units/angle";
+import { degrees, radians, toDegrees } from "@/units/angle";
+import { seconds } from "@/units/time";
+import { starPosition } from "@/kinematics/dateComplication";
 import { analyzeMovement } from "@/analysis/analyzeMovement";
 import { summarizeEnergy } from "@/kinematics/energySummary";
 import { createDemoMovement } from "./demoMovement";
 import { createTeachingMovement } from "./teachingMovement";
 import { TUTORIAL_STEPS } from "./tutorial/tutorialSteps";
+import { readHand } from "@/kinematics/timeDisplay";
+import type { HandFunction } from "@/domain/shaft";
 
 const dt = NUMERICAL_PARAMETERS.simulationTimestepSeconds;
 
@@ -63,6 +67,88 @@ describe("AppStore simulation playback", () => {
     store.load(createDemoMovement());
     expect(store.simulation.stepCount).toBe(0);
     expect(store.selectedId).toBeNull();
+  });
+});
+
+describe("AppStore setToBrowserTime", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function handReading(store: AppStore, hand: HandFunction): number | null {
+    const shafts = Object.values(store.movement.shafts).filter((s) => s.hand === hand);
+    const only = shafts.length === 1 ? shafts[0] : undefined;
+    return only === undefined ? null : readHand(hand, store.simulation.shaftAngle[only.id] ?? 0);
+  }
+
+  it("fast-forwards a nominally-driven movement so the dial matches the browser's current local time", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 1, 14, 37, 9)); // 2:37:09 PM local
+    const store = new AppStore(setNominalTimeDrive(createTeachingMovement()));
+    store.setToBrowserTime();
+    expect(handReading(store, "HOURS")).toBeCloseTo(2 + 37 / 60 + 9 / 3600, 3);
+    expect(handReading(store, "MINUTES")).toBeCloseTo(37 + 9 / 60, 2);
+    expect(handReading(store, "SECONDS")).toBeCloseTo(9, 1);
+  });
+
+  it("wraps forward across the 12-hour boundary when the target is 'earlier' than the current dial reading", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 1, 23, 59, 50)); // near the 12-hour wrap
+    const store = new AppStore(setNominalTimeDrive(createTeachingMovement()));
+    store.setToBrowserTime(); // dial now reads ~11:59:50
+    vi.setSystemTime(new Date(2026, 0, 2, 0, 0, 5)); // 15 simulated seconds "earlier" on a 12-hour dial
+    store.setToBrowserTime();
+    expect(handReading(store, "MINUTES")).toBeCloseTo(0 + 5 / 60, 2);
+    expect(handReading(store, "SECONDS")).toBeCloseTo(5, 1);
+  });
+
+  it("is a no-op already on time", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 1, 6, 0, 0));
+    const store = new AppStore(setNominalTimeDrive(createTeachingMovement()));
+    store.setToBrowserTime();
+    const stepsAfterFirst = store.simulation.stepCount;
+    store.setToBrowserTime();
+    expect(store.simulation.stepCount).toBe(stepsAfterFirst);
+  });
+
+  it("switches the crown back to running first, even if it was mid-setting", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 0, 1, 9, 15, 0));
+    const store = new AppStore(setNominalTimeDrive(createTeachingMovement()));
+    store.setCrownAction("SET_FORWARD");
+    store.setToBrowserTime();
+    expect(store.crownAction).toBe("RUNNING");
+    expect(handReading(store, "MINUTES")).toBeCloseTo(15, 1);
+  });
+
+  it("a date-jump drive-shaft revolution crossed mid-fast-forward still fires the jump (the coarse step stays safely under its period)", () => {
+    vi.useFakeTimers();
+    const movement = setNominalTimeDrive(createTeachingMovement());
+    const store = new AppStore(movement);
+    const twentyFourHourArbor = Object.values(movement.shafts).find((s) => s.name === "24-hour arbor");
+    const dateStarArbor = Object.values(movement.shafts).find((s) => s.name === "Date star");
+    const date = Object.values(movement.dateComplications)[0];
+    if (twentyFourHourArbor === undefined || dateStarArbor === undefined || date === undefined) {
+      throw new Error("teaching movement is missing the 24-hour arbor, date star or date complication");
+    }
+    // Place the simulation 10 simulated seconds before the 24-hour arbor's own revolution
+    // completes — a jump should fire within that very short window, well inside any single call's
+    // worth of coarse stepping (verifying the coarse timestep doesn't step clean over it). The
+    // arbor is one gear mesh away from the hour wheel, so its own solved angular velocity is
+    // negative (mesh-parity sign flip, not a statement about which way it is really turning,
+    // ASM-0048's `forwardSign`): "10 seconds before crossing" is therefore a small angle just
+    // above 0 (about to wrap downward), not just below 2π — derived from the actual solved sign
+    // rather than assumed, so this test keeps testing the real thing if the gearing ever changes.
+    const omega = store.analysis.train.shaftAngularVelocity.get(twentyFourHourArbor.id) ?? 0;
+    const tenSecondsOfRevolution = (2 * Math.PI * 10) / (24 * 3600);
+    const almostOneRevolution = radians(omega >= 0 ? 2 * Math.PI - tenSecondsOfRevolution : tenSecondsOfRevolution);
+    store.simulation = { ...store.simulation, time: seconds(0), shaftAngle: { ...store.simulation.shaftAngle, [twentyFourHourArbor.id]: almostOneRevolution } };
+    const before = starPosition(store.simulation.shaftAngle[dateStarArbor.id] ?? radians(0), date.starToothCount);
+    vi.setSystemTime(new Date(2026, 0, 1, 11, 0, 20)); // any target past the 10 s remaining to the revolution forces the crossing
+    store.setToBrowserTime();
+    const after = starPosition(store.simulation.shaftAngle[dateStarArbor.id] ?? radians(0), date.starToothCount);
+    expect(after).not.toBe(before);
   });
 });
 

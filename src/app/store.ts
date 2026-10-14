@@ -29,6 +29,8 @@ import {
   type SimulationState,
   type WindTrack,
 } from "@/simulation/simulationState";
+import { HAND_PERIOD_SECONDS } from "@/kinematics/timeDisplay";
+import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 
 const HISTORY_LIMIT = 200;
 
@@ -155,7 +157,7 @@ export class AppStore {
       this.energy = null;
     }
     this.windTracks = windTracks(this.movement, this.analysis.train);
-    this.dateJumpTracks = dateJumpTracks(this.movement);
+    this.dateJumpTracks = dateJumpTracks(this.movement, this.analysis.train);
     this.simulation = reconcileWind(this.simulation, this.movement);
     const spring = this.energy?.spec == null ? null : this.energy.spring;
     this.runDown = this.movement.drive?.kind === "BALANCE" && spring !== null && this.simulation.mainspringWind[spring.id] !== undefined
@@ -490,6 +492,79 @@ export class AppStore {
     this.simulation = createSimulationState(this.movement);
     this.simulationHalted = false;
     this.simulationIssue = null;
+    this.recompute();
+    this.notify();
+  }
+
+  /**
+   * The largest step safe to use for a bulk fast-forward (`setToBrowserTime`)
+   * without risking a missed or double-counted date-jump drive-shaft
+   * revolution (DATE-003/MONTH-002/YEAR-002/SEASON-002's own trigger —
+   * `crossesRevolution` only ever detects one crossing per step, the same
+   * implicit assumption the standard fixed timestep already makes). Well
+   * under the fastest declared drive shaft's own rotation period, so a
+   * single coarse step can never span a whole revolution of it. 1 second
+   * when there is no date-jump complication to protect against at all.
+   */
+  private fastForwardTimestepSeconds(): number {
+    let fastestPeriod = Number.POSITIVE_INFINITY;
+    for (const track of this.dateJumpTracks) {
+      const omega = this.analysis.train.shaftAngularVelocity.get(track.driveShaftId);
+      if (omega !== undefined && omega !== 0) fastestPeriod = Math.min(fastestPeriod, (2 * Math.PI) / Math.abs(omega));
+    }
+    if (!Number.isFinite(fastestPeriod)) return 1;
+    return Math.max(NUMERICAL_PARAMETERS.simulationTimestepSeconds, Math.min(1, fastestPeriod / 20));
+  }
+
+  /**
+   * Fast-forwards the RUNNING simulation (switching the crown back to
+   * "running" first, if it was mid-setting or mid-winding) by exactly the
+   * simulated time needed for the nominal 12-hour dial correspondence
+   * (ASM-0014: hours 1 rev/12 h, minutes 1 rev/h, seconds 1 rev/min) to
+   * land on the browser's own current local time. This is a computed
+   * jump, not a literal simulated crown-setting action (ASM-0015's own
+   * "no stop-seconds" limitation means the going train keeps running
+   * during a real setting action, so the seconds hand can't be landed on
+   * an exact target that way). Exact only for a movement actually driven
+   * at that nominal rate — e.g. "nominal time" or a correctly governed
+   * balance; the caller should check the resulting dial reading and warn
+   * if the design does not drive hands at the nominal rate. No-op if
+   * already within one simulated timestep of the target.
+   *
+   * Steps at a coarser-than-standard timestep (`fastForwardTimestepSeconds`),
+   * landing the final stretch with the exact standard one. This is not an
+   * approximation: every RUNNING shaft's angular velocity is constant
+   * between jump-chain events (ASM-0008, the fixed timestep is a
+   * numerical-method choice, not a physical one), so linear (Euler)
+   * integration is exact at any step size there — a plain stepped advance
+   * at the standard 1/240 s timestep would need millions of steps to
+   * cover up to 12 h, multiple seconds of UI-blocking work for the exact
+   * same final result.
+   */
+  setToBrowserTime(): void {
+    const now = new Date();
+    const targetSeconds = (now.getHours() % 12) * 3600 + now.getMinutes() * 60 + now.getSeconds() + now.getMilliseconds() / 1000;
+    const period = HAND_PERIOD_SECONDS.HOURS;
+    const currentSeconds = this.simulation.time % period;
+    const delta = (((targetSeconds - currentSeconds) % period) + period) % period;
+    if (delta < NUMERICAL_PARAMETERS.simulationTimestepSeconds) return;
+    if (this.crownAction !== "RUNNING") this.setCrownAction("RUNNING");
+    const coarseDt = this.fastForwardTimestepSeconds();
+    let remaining = delta;
+    const advanceBy = (dtSeconds: number): boolean => {
+      const before = this.simulation.time;
+      this.runSimulation(() => stepSimulation(this.simulation, this.trainFor(this.simulation), dtSeconds, this.windTracks, this.dateJumpTracks));
+      const advanced = this.simulation.time - before;
+      if (advanced <= 0) return false; // stuck (e.g. halted mid-call); don't loop forever
+      remaining -= advanced;
+      return true;
+    };
+    while (remaining >= coarseDt && !this.simulationHalted) {
+      if (!advanceBy(coarseDt)) break;
+    }
+    while (remaining >= NUMERICAL_PARAMETERS.simulationTimestepSeconds && !this.simulationHalted) {
+      if (!advanceBy(NUMERICAL_PARAMETERS.simulationTimestepSeconds)) break;
+    }
     this.recompute();
     this.notify();
   }

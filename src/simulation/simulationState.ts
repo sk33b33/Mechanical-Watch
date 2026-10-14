@@ -116,6 +116,17 @@ export interface DateJumpTrack {
   starShaftId: ShaftId;
   starToothCount: number;
   stepAngle: Angle;
+  /**
+   * The sign `driveShaftId`'s own angular velocity has under the design's
+   * normal (forward) running solve — not necessarily +1. A drive shaft is
+   * an ordinary continuous gear-train member (ASM-0048), and each
+   * additional mesh between it and any reference flips the computed sign
+   * (mesh-parity bookkeeping), so there is no reason its solved velocity
+   * should be positive. Captured once here, from the running solve, so
+   * `crossesRevolution` can tell "turning the real forward way" from the
+   * raw sign of whatever `GearTrainSolution` it is later stepped with.
+   */
+  forwardSign: 1 | -1;
   monthCorrection: {
     monthStarShaftId: ShaftId;
     monthStepAngle: Angle;
@@ -124,9 +135,11 @@ export interface DateJumpTrack {
   } | null;
 }
 
-export function dateJumpTracks(movement: Movement): DateJumpTrack[] {
+export function dateJumpTracks(movement: Movement, running: GearTrainSolution): DateJumpTrack[] {
   return Object.values(movement.dateComplications).flatMap((date) => {
     if (!(Number.isInteger(date.starToothCount) && date.starToothCount > 0)) return [];
+    const driveOmega = running.shaftAngularVelocity.get(date.driveShaftId);
+    if (driveOmega === undefined || driveOmega === 0) return [];
     const month = Object.values(movement.monthComplications).find((m) => m.dateComplicationId === date.id);
     const year = month === undefined ? undefined : Object.values(movement.leapYearComplications).find((y) => y.monthComplicationId === month.id);
     const season = month === undefined ? undefined : Object.values(movement.seasonComplications).find((s) => s.monthComplicationId === month.id);
@@ -136,6 +149,7 @@ export function dateJumpTracks(movement: Movement): DateJumpTrack[] {
       starShaftId: date.starShaftId,
       starToothCount: date.starToothCount,
       stepAngle: dateJumpStepAngle(date.starToothCount),
+      forwardSign: driveOmega > 0 ? 1 : -1,
       monthCorrection: month === undefined ? null : {
         monthStarShaftId: month.starShaftId,
         monthStepAngle: monthJumpStepAngle(),
@@ -185,7 +199,7 @@ export function stepSimulation(
     const driveOmega = solution.shaftAngularVelocity.get(track.driveShaftId);
     if (driveOmega === undefined) continue;
     const previousDriveAngle = state.shaftAngle[track.driveShaftId] ?? radians(0);
-    if (!crossesRevolution(previousDriveAngle, driveOmega, dtSeconds)) continue;
+    if (!crossesRevolution(previousDriveAngle, driveOmega, dtSeconds, track.forwardSign)) continue;
     const currentDate = nextShaftAngle[track.starShaftId] ?? radians(0);
     if (track.monthCorrection === null) {
       nextShaftAngle[track.starShaftId] = normalizeAngle(radians(currentDate + track.stepAngle));
@@ -260,7 +274,12 @@ export function stepSimulation(
   const stepCount = state.stepCount + 1;
   return {
     stepCount,
-    time: seconds(stepCount * dtSeconds),
+    // Accumulated from the previous state, not `stepCount * dtSeconds`: that form silently
+    // assumes every step in this state's whole history used the same dtSeconds, which broke the
+    // moment a caller (AppStore.setToBrowserTime's coarse-then-fine fast-forward) mixed step
+    // sizes on the same state — the first step at a new size would be multiplied across every
+    // step ever taken, not just itself.
+    time: seconds(state.time + dtSeconds),
     shaftAngle: nextShaftAngle,
     stemAngle: nextStemAngle,
     mainspringWind: nextWind,
