@@ -115,3 +115,6 @@ DIALWIN-002 A dial window must actually overlap its referenced complication's ow
 
 SCREW-001 A screw's position must be finite, its diameter a positive length, and it must reference an existing frame (ASM-0056).
 SCREW-002 A screw's position must fall within its own frame's outline, or its hole would not actually punch through the plate (ASM-0056).
+
+SEASON-001 A season complication's wheel dimensions must be positive/finite, its wheel arbor must exist and must not also be reached by the continuous gear train, it must reference a month complication that exists and is distinct from the season's own wheel arbor, and no two season complications may reference the same month complication (ASM-0057).
+SEASON-002 The season complication's drive model is reported (driven by the month complication's own jump into Jan/Apr/Jul/Oct), explicitly distinguishing this neutral quarter indicator from the out-of-scope real equation-of-time "season" complication (ASM-0057).

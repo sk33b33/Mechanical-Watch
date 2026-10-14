@@ -21,6 +21,7 @@ import { dateJumpStepAngle, starPosition } from "@/kinematics/dateComplication";
 import { monthJumpStepAngle, MONTHS_PER_YEAR } from "@/kinematics/monthComplication";
 import { LEAP_YEAR_INDEX_STROKE_SECONDS, LEAP_YEAR_SLOT_COUNT } from "@/domain/leapYearComplication";
 import { genevaStrokeDriverAngle, genevaWheelAdvanceAngle, genevaWheelAngle } from "@/kinematics/genevaDrive";
+import { seasonJumpStepAngle } from "@/kinematics/seasonComplication";
 
 const shaftId = "shaft_1" as ShaftId;
 const movement = { shafts: { [shaftId]: {} }, keylessWorks: {}, couplings: {} } as unknown as Movement;
@@ -227,7 +228,7 @@ describe("month-end correction (ASM-0049)", () => {
     starShaftId,
     starToothCount,
     stepAngle: dateJumpStepAngle(starToothCount),
-    monthCorrection: { monthStarShaftId, monthStepAngle: monthJumpStepAngle(), yearCorrection: null },
+    monthCorrection: { monthStarShaftId, monthStepAngle: monthJumpStepAngle(), yearCorrection: null, seasonCorrection: null },
   };
 
   function stateAt(dayPosition: number, monthIndex: number): ReturnType<typeof createSimulationState> {
@@ -305,7 +306,7 @@ describe("year-wrap correction (ASM-0050)", () => {
     starShaftId,
     starToothCount,
     stepAngle: dateJumpStepAngle(starToothCount),
-    monthCorrection: { monthStarShaftId, monthStepAngle: monthJumpStepAngle(), yearCorrection: { wheelShaftId, wheelStepAngle } },
+    monthCorrection: { monthStarShaftId, monthStepAngle: monthJumpStepAngle(), yearCorrection: { wheelShaftId, wheelStepAngle }, seasonCorrection: null },
   };
 
   function stateAt(dayPosition: number, monthIndex: number, yearPosition: number): ReturnType<typeof createSimulationState> {
@@ -354,7 +355,7 @@ describe("year-wrap correction (ASM-0050)", () => {
   });
 
   it("drive revolutions do not advance the year wheel if no leap-year complication is declared", () => {
-    const noYearTrack: DateJumpTrack = { ...track, monthCorrection: { monthStarShaftId, monthStepAngle: monthJumpStepAngle(), yearCorrection: null } };
+    const noYearTrack: DateJumpTrack = { ...track, monthCorrection: { monthStarShaftId, monthStepAngle: monthJumpStepAngle(), yearCorrection: null, seasonCorrection: null } };
     const state = stateAt(30, 11, 1);
     const next = stepSimulation(state, driveSolution(1), 1, [], [noYearTrack]);
     expect(starPosition(next.shaftAngle[monthStarShaftId] ?? radians(0), MONTHS_PER_YEAR)).toBe(0); // January, month still corrects
@@ -415,5 +416,88 @@ describe("year-wrap correction (ASM-0050)", () => {
       const next = stepSimulation(state, driveSolution(1), dt, [], [track]);
       expect(Object.keys(next.genevaStrokes)).toHaveLength(0);
     });
+  });
+});
+
+describe("quarter-boundary correction (ASM-0057)", () => {
+  const driveShaftId = "shaft_drive" as ShaftId;
+  const starShaftId = "shaft_star" as ShaftId;
+  const monthStarShaftId = "shaft_month" as ShaftId;
+  const wheelShaftId = "shaft_season" as ShaftId;
+  const dateId = "dateComplication_1" as DateComplicationId;
+  const starToothCount = 31;
+  const withSeason = {
+    shafts: { [driveShaftId]: {}, [starShaftId]: {}, [monthStarShaftId]: {}, [wheelShaftId]: {} },
+    keylessWorks: {},
+    couplings: {},
+  } as unknown as Movement;
+  const driveSolution = (revPerSecond: number): GearTrainSolution => ({
+    ...solutionAt(0),
+    shaftAngularVelocity: new Map([[driveShaftId, radiansPerSecond(revPerSecond * 2 * Math.PI)]]),
+  });
+  const wheelStepAngle = seasonJumpStepAngle();
+  const track: DateJumpTrack = {
+    id: dateId,
+    driveShaftId,
+    starShaftId,
+    starToothCount,
+    stepAngle: dateJumpStepAngle(starToothCount),
+    monthCorrection: { monthStarShaftId, monthStepAngle: monthJumpStepAngle(), yearCorrection: null, seasonCorrection: { wheelShaftId, wheelStepAngle } },
+  };
+
+  function stateAt(dayPosition: number, monthIndex: number, seasonPosition: number): ReturnType<typeof createSimulationState> {
+    const base = createSimulationState(withSeason);
+    return {
+      ...base,
+      shaftAngle: {
+        ...base.shaftAngle,
+        [starShaftId]: radians(track.stepAngle * dayPosition),
+        [monthStarShaftId]: radians(monthJumpStepAngle() * monthIndex),
+        [wheelShaftId]: radians(wheelStepAngle * seasonPosition),
+      },
+    };
+  }
+
+  it("a month advance that is not a quarter boundary leaves the season wheel unchanged", () => {
+    // January (index 0), day 31 (position 30): the last day — month advances to February, not a quarter boundary.
+    const state = stateAt(30, 0, 1);
+    const next = stepSimulation(state, driveSolution(1), 1, [], [track]);
+    expect(starPosition(next.shaftAngle[monthStarShaftId] ?? radians(0), MONTHS_PER_YEAR)).toBe(1); // February
+    expect(starPosition(next.shaftAngle[wheelShaftId] ?? radians(0), 4)).toBe(1); // unchanged
+  });
+
+  it.each([
+    [2, 30], // March (31 days, last day index 30) -> April: Q1 -> Q2
+    [5, 29], // June (30 days, last day index 29) -> July: Q2 -> Q3
+    [8, 29], // September (30 days, last day index 29) -> October: Q3 -> Q4
+    [11, 30], // December (31 days, last day index 30) -> January: Q4 -> Q1 (wraps)
+  ])("a month-end jump out of month index %i advances the season wheel by one quarter step", (preMonthIndex, lastDayPosition) => {
+    const prePosition = Math.floor(preMonthIndex / 3);
+    const state = stateAt(lastDayPosition, preMonthIndex, prePosition);
+    const next = stepSimulation(state, driveSolution(1), 1, [], [track]);
+    expect(starPosition(next.shaftAngle[wheelShaftId] ?? radians(0), 4)).toBe((prePosition + 1) % 4);
+  });
+
+  it("an ordinary (non-month-end) day never advances the season wheel, even in March", () => {
+    // March (index 2), day 11 (position 10): not the last day.
+    const state = stateAt(10, 2, 0);
+    const next = stepSimulation(state, driveSolution(1), 1, [], [track]);
+    expect(starPosition(next.shaftAngle[monthStarShaftId] ?? radians(0), MONTHS_PER_YEAR)).toBe(2); // still March
+    expect(starPosition(next.shaftAngle[wheelShaftId] ?? radians(0), 4)).toBe(0); // unchanged
+  });
+
+  it("the season wheel advances instantly (no Geneva stroke state), unlike the leap-year wheel", () => {
+    const state = stateAt(30, 2, 0); // March 31 -> April
+    const next = stepSimulation(state, driveSolution(1), 1, [], [track]);
+    expect(Object.keys(next.genevaStrokes)).toHaveLength(0);
+    expect(starPosition(next.shaftAngle[wheelShaftId] ?? radians(0), 4)).toBe(1);
+  });
+
+  it("drive revolutions do not advance the season wheel if no season complication is declared", () => {
+    const noSeasonTrack: DateJumpTrack = { ...track, monthCorrection: { monthStarShaftId, monthStepAngle: monthJumpStepAngle(), yearCorrection: null, seasonCorrection: null } };
+    const state = stateAt(30, 2, 0);
+    const next = stepSimulation(state, driveSolution(1), 1, [], [noSeasonTrack]);
+    expect(starPosition(next.shaftAngle[monthStarShaftId] ?? radians(0), MONTHS_PER_YEAR)).toBe(3); // April, month still corrects
+    expect(starPosition(next.shaftAngle[wheelShaftId] ?? radians(0), 4)).toBe(0); // unchanged
   });
 });

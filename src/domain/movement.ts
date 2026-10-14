@@ -15,6 +15,7 @@ import type { MoonPhase, MoonPhaseId } from "./moonPhase";
 import type { DateComplication, DateComplicationId } from "./dateComplication";
 import type { MonthComplication, MonthComplicationId } from "./monthComplication";
 import type { LeapYearComplication, LeapYearComplicationId } from "./leapYearComplication";
+import type { SeasonComplication, SeasonComplicationId } from "./seasonComplication";
 import type { DialWindow, DialWindowId } from "./dialWindow";
 import type { Screw, ScrewId } from "./screw";
 import type { ValidationLevel } from "@/reference/validationLevels";
@@ -71,6 +72,8 @@ export interface Movement {
   monthComplications: Record<MonthComplicationId, MonthComplication>;
   /** Zero or more; each driven by its referenced month complication's own December-to-January wrap, not a continuous arbor (ASM-0050, Phase 8.4). */
   leapYearComplications: Record<LeapYearComplicationId, LeapYearComplication>;
+  /** Zero or more; each driven by its referenced month complication's own jump into Jan/Apr/Jul/Oct, not a continuous arbor (ASM-0057, Phase 8.11). */
+  seasonComplications: Record<SeasonComplicationId, SeasonComplication>;
   /** Zero or more; a pure display entity, kinematically inert (ASM-0051, Phase 8.6). */
   dialWindows: Record<DialWindowId, DialWindow>;
   /** Zero or more; holds one frame in place, a plain declared through-hole (ASM-0056). */
@@ -107,6 +110,7 @@ export function createMovement(
     dateComplications: {},
     monthComplications: {},
     leapYearComplications: {},
+    seasonComplications: {},
     dialWindows: {},
     screws: {},
     drive: null,
@@ -236,6 +240,18 @@ export function updateLeapYearComplication(movement: Movement, id: LeapYearCompl
     throw new Error(`Unknown leap-year complication id: ${id}`);
   }
   return { ...movement, leapYearComplications: { ...movement.leapYearComplications, [id]: { ...existing, ...patch } } };
+}
+
+export function addSeasonComplication(movement: Movement, season: SeasonComplication): Movement {
+  return { ...movement, seasonComplications: { ...movement.seasonComplications, [season.id]: season } };
+}
+
+export function updateSeasonComplication(movement: Movement, id: SeasonComplicationId, patch: Partial<Omit<SeasonComplication, "id" | "type">>): Movement {
+  const existing = movement.seasonComplications[id];
+  if (existing === undefined) {
+    throw new Error(`Unknown season complication id: ${id}`);
+  }
+  return { ...movement, seasonComplications: { ...movement.seasonComplications, [id]: { ...existing, ...patch } } };
 }
 
 export function addDialWindow(movement: Movement, window: DialWindow): Movement {

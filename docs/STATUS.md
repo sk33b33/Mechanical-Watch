@@ -2,6 +2,93 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.11: `SeasonComplication`, a neutral quarter indicator driven by the month gear
+
+Requested directly: "can you use the month gear to add a season gear that
+rotates after every 3 months." Not the "season" item `docs/ROADMAP.md`
+8.5 already scoped out and left deliberately unscoped — that is a
+genuine equation-of-time/analemma complication (a bean-shaped cam
+encoding real orbital-mechanics data) this project still has no source
+for. What was asked is architecturally much simpler: a jump-driven
+4-position wheel on another complication's own periodic trigger — the
+closest existing precedent is `LeapYearComplication` (driven by the
+month star's own December-to-January wrap, once a year); `SeasonComplication`
+is the same shape, driven by the month star's own jump into
+January/April/July/October instead, once a quarter.
+
+**Two real engineering choices put to the user before building, not
+invented.** (1) Labeling: named seasons (Spring/Summer/Autumn/Winter)
+are hemisphere-dependent — Northern and Southern Hemisphere conventions
+assign opposite seasons to the same quarter — and this project declares
+no hemisphere, so defaulting to one would be a silently-wrong assumption
+for half of any userbase. Offered neutral "Quarter 1–4" vs. two named-season
+options; the user chose neutral quarters. (2) Phase alignment: offered
+the Gregorian calendar-quarter boundary (Jan/Apr/Jul/Oct) vs. the
+alternative (Mar/Jun/Sep/Dec); the user chose the calendar-quarter
+convention. Both are now ASM-0057's own declared choices, not defaults
+buried in code.
+
+**Kinematics (`src/kinematics/seasonComplication.ts`):** `isQuarterBoundary(preAdvanceMonthPosition)`
+is true for March/June/September/December (the last month of each
+quarter) — the same pre-advance `monthPosition` reading `stepSimulation`'s
+existing year-wrap check already uses, so the trigger condition sits
+right next to it (`monthPosition % 3 === 2`, derived and unit-tested,
+not asserted). `seasonJumpStepAngle()` is a plain 2π/4. Unlike the
+leap-year wheel, no sourced real mechanism exists for a quarter-indicator
+built this way, so the jump stays instantaneous — the same "no sourced
+motion, stays instantaneous" treatment `DateComplication`/`MonthComplication`
+already have (ASM-0048/0049), not a declared Geneva-drive upgrade. No
+new `SimulationState` field was needed: the wheel's shaft angle is
+advanced directly in `stepSimulation`, the same way the month star's own
+instantaneous jump already is.
+
+**Wired through every generic dispatcher this codebase's complications
+need**, closely mirroring `LeapYearComplication`'s own wiring end to
+end: `movement.ts`/`editing.ts`/`lookup.ts`/`measure.ts` (the TypeScript
+exhaustiveness checker caught the two `measure.ts` switch cases
+automatically, same as it did for `Screw`), `discComplication.ts` (so a
+`DialWindow` can target it), `kinematicRules.ts`'s KIN-001 exemption set
+(`seasonWheelShaftIds`), the new `seasonComplicationRules.ts`
+(SEASON-001 dimensions/references/not-geared/duplicate-driver,
+SEASON-002 an info row reporting the drive model and explicitly
+distinguishing this from the out-of-scope real season complication),
+`viewport.ts` (a plain disc via the already-generic `createZCylinder` +
+`discMaterials` + `findDiscComplication` pattern the month star uses —
+no new geometry function needed, since there is no sourced mechanism
+shape to draw instead of a disc), the new `seasonComplicationSection.ts`
+inspector panel, `componentTree.ts` ("+ Season" button and listing), and
+`designFile.ts` (decoder + a v24→v25 migration, following the exact
+`leapYearComplications` precedent).
+
+**Teaching movement and guided tutorial kept in sync.** Added a
+declared "Season wheel" arbor and `SeasonComplication` (same resolution
+class as the leap-year wheel, 3mm tip diameter) plus a "Season window"
+dial window, following the existing four-complication pattern exactly.
+The guided tutorial walkthrough (`tutorialSteps.ts`) gained matching
+"add the season wheel's arbor" / "add the season complication" / "cut
+its window" steps — the `store.test.ts` structural-equivalence test
+(tutorial-built movement vs. `createTeachingMovement()`) caught the
+omission immediately when first skipped, confirming the two must stay
+in lockstep.
+
+Added: `src/domain/seasonComplication.ts`, `src/kinematics/seasonComplication.ts`,
+`src/validation/rules/seasonComplicationRules.ts`,
+`src/app/panels/inspector/seasonComplicationSection.ts`. Registered
+ASM-0057, SEASON-001/002 (markdown + TS mirrors, `registers.test.ts`
+passes) and new `TRACEABILITY.md` rows (kinematics, invalid-input, and
+rule-ID cross-reference tables). Tests: `seasonComplication.test.ts`
+(kinematics), `seasonComplicationRules.test.ts` (9 cases), a new
+`quarter-boundary correction` describe block in `simulationState.test.ts`
+(9 cases covering each of the four quarter boundaries, the no-op case,
+the instantaneous-jump assertion, and the no-complication-declared
+case), and `e2e/season.spec.ts`. Three pre-existing allowlist-style
+tests needed updating for the new shaft/info-row, the same recurring
+pattern every prior complication phase hit: `store.test.ts` (tutorial
+step count), `keyless.test.ts` (unreachable-shaft name list),
+`movementKinematics.test.ts` (info-only rule allowlist). Full suite
+green: `tsc -b`, `eslint`, 718 Vitest tests, production build, and the
+full Playwright suite.
+
 ## Phase 8.10: `Screw`, and bearing/screw holes on existing frames
 
 Requested directly: "there's missing baseplates that the parts get

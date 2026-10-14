@@ -1,6 +1,6 @@
 import type { EntityId } from "@/domain/ids";
 import type { Movement } from "@/domain/movement";
-import { addDateComplication, addDial, addDialWindow, addEscapement, addFrame, addGear, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addShaft } from "@/domain/movement";
+import { addDateComplication, addDial, addDialWindow, addEscapement, addFrame, addGear, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addSeasonComplication, addShaft } from "@/domain/movement";
 import type { Frame } from "@/domain/frame";
 import type { Gear } from "@/domain/gear";
 import type { Coupling } from "@/domain/coupling";
@@ -189,6 +189,7 @@ function buildTeachingMovementSteps(): TutorialStep[] {
   const dateStarArbor = byName(ref.shafts, "Date star");
   const monthStarArbor = byName(ref.shafts, "Month star");
   const leapYearWheelArbor = byName(ref.shafts, "Leap-year wheel");
+  const seasonWheelArbor = byName(ref.shafts, "Season wheel");
 
   const mainspring = couplingOfKind(ref.couplings, "MAINSPRING");
   const keylessWorks = only(ref.keylessWorks);
@@ -198,10 +199,12 @@ function buildTeachingMovementSteps(): TutorialStep[] {
   const dateComplication = only(ref.dateComplications);
   const monthComplication = only(ref.monthComplications);
   const leapYearComplication = only(ref.leapYearComplications);
+  const seasonComplication = only(ref.seasonComplications);
   const moonPhaseWindow = byName(ref.dialWindows, "Moon phase window");
   const dateWindow = byName(ref.dialWindows, "Date window");
   const monthWindow = byName(ref.dialWindows, "Month window");
   const leapYearWindow = byName(ref.dialWindows, "Leap-year window");
+  const seasonWindow = byName(ref.dialWindows, "Season window");
 
   return [
     {
@@ -435,6 +438,25 @@ function buildTeachingMovementSteps(): TutorialStep[] {
       createOverride: (m) => ({ movement: addDialWindow(m, leapYearWindow), id: leapYearWindow.id }),
     },
 
+    arborStep("add-season-wheel-arbor", "Add the season wheel's own arbor", "Click “+ Arbor” — like the other three jump-driven wheels, its position is declared, not derived: it is not meshed with anything either (ASM-0057).", seasonWheelArbor, solvedFixed(seasonWheelArbor)),
+    {
+      id: "add-season",
+      title: "Add the season complication",
+      instructions:
+        "Click “+ Season” — the referenced month complication, wheel arbor and dimensions all come from the real design. A neutral quarter indicator (Quarter 1-4, not named seasons -- those are hemisphere-dependent), driven entirely by the month star's own jump into January, April, July or October, with no drive train of its own (ASM-0057).",
+      targetSelector: '[data-tutorial="add-season"]',
+      isComplete: (m) => m.seasonComplications[seasonComplication.id] !== undefined,
+      createOverride: (m) => ({ movement: addSeasonComplication(m, seasonComplication), id: seasonComplication.id }),
+    },
+    {
+      id: "add-season-window",
+      title: "Cut a window for the season wheel",
+      instructions: "One last window, the same way -- the real design's dial now has all five: moonphase, date, month, leap year and season, each showing its own complication through its own cutout (ASM-0051).",
+      targetSelector: '[data-tutorial="add-window"]',
+      isComplete: (m) => m.dialWindows[seasonWindow.id] !== undefined,
+      createOverride: (m) => ({ movement: addDialWindow(m, seasonWindow), id: seasonWindow.id }),
+    },
+
     {
       id: "set-balance-drive",
       title: "Let the balance govern the rate",
@@ -458,9 +480,9 @@ function buildTeachingMovementSteps(): TutorialStep[] {
 
 /**
  * Covers the whole teaching movement: going train, motion works, keyless
- * works, mainspring, dial, escapement, moonphase disc, the date, month and
- * leap-year complications, and a dial window for each of the four disc
- * complications — everything createTeachingMovement() builds. Extending it
+ * works, mainspring, dial, escapement, moonphase disc, the date, month,
+ * leap-year and season complications, and a dial window for each of the
+ * five disc complications — everything createTeachingMovement() builds. Extending it
  * further (a second design, or a from-scratch design with genuinely
  * invented — i.e. user-declared-as-they-go — dimensions) follows the same
  * pattern.

@@ -25,8 +25,9 @@ export type DialWindowOutline =
 /**
  * A cutout in a dial, through which one of the movement's disc
  * complications (`MoonPhase`, `DateComplication`, `MonthComplication`,
- * `LeapYearComplication` — see `src/domain/discComplication.ts`) is
- * visible from the dial side. This is the display concept Phase 8.6
+ * `LeapYearComplication`, `SeasonComplication` — see
+ * `src/domain/discComplication.ts`) is visible from the dial side.
+ * This is the display concept Phase 8.6
  * scoped ("dial windows or sub-dials") but never actually built —
  * without it, every disc complication sits behind the dial (closer to
  * the mainplate) with the dial's own opaque disc fully occluding it, so
@@ -49,7 +50,7 @@ export interface DialWindow {
   readonly type: "DialWindow";
   name: string;
   dialId: DialId;
-  /** The disc complication shown through this window — a MoonPhase, DateComplication, MonthComplication or LeapYearComplication id. */
+  /** The disc complication shown through this window — a MoonPhase, DateComplication, MonthComplication, LeapYearComplication or SeasonComplication id. */
   complicationId: EntityId;
   centre: Vec2;
   outline: DialWindowOutline;

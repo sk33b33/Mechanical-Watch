@@ -8,19 +8,20 @@ import { windowsPerRevolution } from "./moonPhase";
 import type { DateComplicationId } from "./dateComplication";
 import type { MonthComplicationId } from "./monthComplication";
 import { LEAP_YEAR_LABELS, LEAP_YEAR_SHORT_LABELS, LEAP_YEAR_SLOT_COUNT, type LeapYearComplicationId } from "./leapYearComplication";
+import { SEASON_LABELS, SEASON_SHORT_LABELS, SEASON_SLOT_COUNT, type SeasonComplicationId } from "./seasonComplication";
 import { MONTHS_PER_YEAR, MONTH_ABBREVIATIONS, MONTH_NAMES } from "@/kinematics/monthComplication";
 import { moonPhaseFraction } from "@/kinematics/moonPhase";
 import { starPosition } from "@/kinematics/dateComplication";
 
 /**
- * A unified read of the four "disc on its own arbor" complications
- * (MoonPhase, DateComplication, MonthComplication, LeapYearComplication)
- * for anything that needs to treat them alike without re-deriving each
- * one's own field names — `DialWindow`'s own geometry/validation/
- * rendering, chiefly (`src/domain/dialWindow.ts`).
+ * A unified read of the five "disc on its own arbor" complications
+ * (MoonPhase, DateComplication, MonthComplication, LeapYearComplication,
+ * SeasonComplication) for anything that needs to treat them alike
+ * without re-deriving each one's own field names — `DialWindow`'s own
+ * geometry/validation/rendering, chiefly (`src/domain/dialWindow.ts`).
  */
 export interface DiscComplicationRef {
-  kind: "MoonPhase" | "DateComplication" | "MonthComplication" | "LeapYearComplication";
+  kind: "MoonPhase" | "DateComplication" | "MonthComplication" | "LeapYearComplication" | "SeasonComplication";
   id: EntityId;
   name: string;
   shaftId: ShaftId;
@@ -70,6 +71,15 @@ export function findDiscComplication(movement: Movement, id: EntityId): DiscComp
       positionLabels: LEAP_YEAR_SHORT_LABELS,
     };
   }
+  const season = movement.seasonComplications[id as SeasonComplicationId];
+  if (season !== undefined) {
+    return {
+      kind: "SeasonComplication", id: season.id, name: season.name, shaftId: season.wheelShaftId,
+      discRadius: (season.wheelTipDiameter / 2) as Length,
+      zLo: (season.wheelZCentre - season.wheelThickness / 2) as Length, zHi: (season.wheelZCentre + season.wheelThickness / 2) as Length,
+      positionLabels: SEASON_SHORT_LABELS,
+    };
+  }
   return undefined;
 }
 
@@ -101,6 +111,11 @@ export function discComplicationLabel(movement: Movement, shaftAngle: Readonly<R
   if (year !== undefined) {
     const position = starPosition(shaftAngle[year.wheelShaftId] ?? radians(0), LEAP_YEAR_SLOT_COUNT);
     return LEAP_YEAR_LABELS[position] ?? String(position + 1);
+  }
+  const season = movement.seasonComplications[id as SeasonComplicationId];
+  if (season !== undefined) {
+    const position = starPosition(shaftAngle[season.wheelShaftId] ?? radians(0), SEASON_SLOT_COUNT);
+    return SEASON_LABELS[position] ?? String(position + 1);
   }
   return null;
 }

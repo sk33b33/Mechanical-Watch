@@ -339,6 +339,12 @@ export const ASSUMPTIONS = {
     scope: "Screw entity + bearing/screw hole geometry on existing frames (Phase 8.10, visual/L0 display plus L1_GEOMETRIC placement checks)",
     status: "Active",
   },
+  "ASM-0057": {
+    summary:
+      "SeasonComplication (Phase 8.11): a quarter indicator (Quarter 1-4), driven entirely by its referenced MonthComplication's own jump into January, April, July or October -- one trigger every three months by construction, architecturally the closest analog to LeapYearComplication (also a jump-driven wheel on another complication's own periodic trigger). Raised directly by the user ('use the month gear to add a season gear that rotates after every 3 months'), and explicitly NOT the 'season' item docs/ROADMAP.md 8.5 already scoped out: that item is a genuine equation-of-time/analemma complication (a bean-shaped cam encoding real orbital-mechanics data) this project still has no source for and still does not model. Two real engineering choices were asked of the user directly rather than invented: (1) labeling -- named seasons (Spring/Summer/Autumn/Winter) are hemisphere-dependent (Northern and Southern Hemisphere conventions assign opposite seasons to the same quarter) and this project has declared no hemisphere, so the user chose neutral 'Quarter 1-4' labels over either named-season option offered; (2) phase alignment -- the user chose the Gregorian calendar-quarter boundary (Jan/Apr/Jul/Oct) over the alternative (Mar/Jun/Sep/Dec) offered. Unlike LeapYearComplication, no sourced real mechanism (patent or manufacturer description) exists for a quarter-indicator built this way, so the jump stays instantaneous rather than claiming a real Geneva-drive stroke shape to simulate -- the same 'no sourced motion, stays instantaneous' treatment DateComplication/MonthComplication already have (ASM-0048/0049), not a declared upgrade. Rendered as a plain disc (createZCylinder, reusing the month star's own rendering pattern), not a Geneva-slotted wheel like the leap-year wheel, for the same reason. wheelShaftId is a separate, declared (FIXED-position) arbor, NOT meshed with anything, same pattern as the other three jump-driven complications.",
+    scope: "SeasonComplication (Phase 8.11, visual/L0 display plus L2_KINEMATIC jump-chain simulation)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

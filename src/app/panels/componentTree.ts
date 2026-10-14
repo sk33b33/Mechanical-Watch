@@ -1,7 +1,7 @@
 import type { AppStore } from "@/app/store";
 import type { EntityId } from "@/domain/ids";
-import { addDateComplication, addDial, addDialWindow, addEscapement, addFrame, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addScrew, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
-import { newDateComplication, newDial, newDialWindow, newEscapement, newFrame, newKeylessWorks, newLeapYearComplication, newMonthComplication, newMoonPhase, newScrew, newShaft } from "@/domain/editing";
+import { addDateComplication, addDial, addDialWindow, addEscapement, addFrame, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addScrew, addSeasonComplication, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
+import { newDateComplication, newDial, newDialWindow, newEscapement, newFrame, newKeylessWorks, newLeapYearComplication, newMonthComplication, newMoonPhase, newScrew, newSeasonComplication, newShaft } from "@/domain/editing";
 import { listAssumptions } from "@/reference/assumptions";
 
 export function mountComponentTree(container: HTMLElement, store: AppStore): () => void {
@@ -108,6 +108,10 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
         const year = newLeapYearComplication(m);
         return { movement: addLeapYearComplication(m, year), id: year.id };
       }, "add-leap-year"),
+      addButton("+ Season", "Add a quarter indicator (Q1-Q4, driven every 3 months) with every value empty; then choose its month complication and arbor", (m) => {
+        const season = newSeasonComplication(m);
+        return { movement: addSeasonComplication(m, season), id: season.id };
+      }, "add-season"),
       addButton("+ Window", "Add a dial window with no dial or complication chosen yet", (m) => {
         const win = newDialWindow(m);
         return { movement: addDialWindow(m, win), id: win.id };
@@ -174,6 +178,11 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
     if (Object.keys(movement.leapYearComplications).length > 0) {
       container.appendChild(header("Leap year"));
       for (const year of Object.values(movement.leapYearComplications)) container.appendChild(item(year.name, year.id, 0, "(driven by month wrap)"));
+    }
+
+    if (Object.keys(movement.seasonComplications).length > 0) {
+      container.appendChild(header("Season"));
+      for (const season of Object.values(movement.seasonComplications)) container.appendChild(item(season.name, season.id, 0, "(driven by month jumps)"));
     }
 
     if (Object.keys(movement.dialWindows).length > 0) {

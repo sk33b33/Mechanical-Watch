@@ -12,6 +12,7 @@ import { crossesRevolution, dateJumpStepAngle, starPosition } from "@/kinematics
 import { monthEndCorrection, monthJumpStepAngle, MONTHS_PER_YEAR } from "@/kinematics/monthComplication";
 import { LEAP_YEAR_INDEX_STROKE_SECONDS, LEAP_YEAR_SLOT_COUNT } from "@/domain/leapYearComplication";
 import { genevaStrokeDriverAngle, genevaWheelAdvanceAngle, genevaWheelAngle } from "@/kinematics/genevaDrive";
+import { isQuarterBoundary, seasonJumpStepAngle } from "@/kinematics/seasonComplication";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 
 /**
@@ -115,7 +116,12 @@ export interface DateJumpTrack {
   starShaftId: ShaftId;
   starToothCount: number;
   stepAngle: Angle;
-  monthCorrection: { monthStarShaftId: ShaftId; monthStepAngle: Angle; yearCorrection: { wheelShaftId: ShaftId; wheelStepAngle: Angle } | null } | null;
+  monthCorrection: {
+    monthStarShaftId: ShaftId;
+    monthStepAngle: Angle;
+    yearCorrection: { wheelShaftId: ShaftId; wheelStepAngle: Angle } | null;
+    seasonCorrection: { wheelShaftId: ShaftId; wheelStepAngle: Angle } | null;
+  } | null;
 }
 
 export function dateJumpTracks(movement: Movement): DateJumpTrack[] {
@@ -123,6 +129,7 @@ export function dateJumpTracks(movement: Movement): DateJumpTrack[] {
     if (!(Number.isInteger(date.starToothCount) && date.starToothCount > 0)) return [];
     const month = Object.values(movement.monthComplications).find((m) => m.dateComplicationId === date.id);
     const year = month === undefined ? undefined : Object.values(movement.leapYearComplications).find((y) => y.monthComplicationId === month.id);
+    const season = month === undefined ? undefined : Object.values(movement.seasonComplications).find((s) => s.monthComplicationId === month.id);
     return [{
       id: date.id,
       driveShaftId: date.driveShaftId,
@@ -133,6 +140,7 @@ export function dateJumpTracks(movement: Movement): DateJumpTrack[] {
         monthStarShaftId: month.starShaftId,
         monthStepAngle: monthJumpStepAngle(),
         yearCorrection: year === undefined ? null : { wheelShaftId: year.wheelShaftId, wheelStepAngle: genevaWheelAdvanceAngle(LEAP_YEAR_SLOT_COUNT) },
+        seasonCorrection: season === undefined ? null : { wheelShaftId: season.wheelShaftId, wheelStepAngle: seasonJumpStepAngle() },
       },
     }];
   });
@@ -199,6 +207,16 @@ export function stepSimulation(
       if (yearCorrection !== null && monthPosition === MONTHS_PER_YEAR - 1) {
         const currentWheel = nextShaftAngle[yearCorrection.wheelShaftId] ?? radians(0);
         nextGenevaStrokes[yearCorrection.wheelShaftId] = { startAngle: currentWheel, elapsedSeconds: 0 };
+      }
+      // The season wheel (ASM-0057) advances only on the one month-advance each quarter that
+      // lands on January, April, July or October — checked against the month star's own
+      // PRE-advance position, same reading the year-wrap check above uses. Unlike the leap-year
+      // wheel, no sourced real mechanism exists for a quarter-indicator built this way, so the
+      // jump stays instantaneous rather than claiming a real stroke shape to simulate.
+      const seasonCorrection = track.monthCorrection.seasonCorrection;
+      if (seasonCorrection !== null && isQuarterBoundary(monthPosition)) {
+        const currentWheel = nextShaftAngle[seasonCorrection.wheelShaftId] ?? radians(0);
+        nextShaftAngle[seasonCorrection.wheelShaftId] = normalizeAngle(radians(currentWheel + seasonCorrection.wheelStepAngle));
       }
     }
   }

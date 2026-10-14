@@ -13,6 +13,7 @@ import { moonPhaseSection } from "./moonPhaseSection";
 import { dateComplicationSection } from "./dateComplicationSection";
 import { monthComplicationSection } from "./monthComplicationSection";
 import { leapYearComplicationSection } from "./leapYearComplicationSection";
+import { seasonComplicationSection } from "./seasonComplicationSection";
 import { dialWindowSection } from "./dialWindowSection";
 import { screwSection } from "./screwSection";
 
@@ -28,6 +29,7 @@ const TYPE_LABEL: Record<SelectableEntity["type"], string> = {
   DateComplication: "Date",
   MonthComplication: "Month",
   LeapYearComplication: "Leap year",
+  SeasonComplication: "Season",
   DialWindow: "Window",
   Screw: "Screw",
 };
@@ -52,6 +54,7 @@ function relatedIds(entity: SelectableEntity): EntityId[] {
     case "MonthComplication":
       return [entity.id, entity.starShaftId, entity.dateComplicationId];
     case "LeapYearComplication":
+    case "SeasonComplication":
       return [entity.id, entity.wheelShaftId, entity.monthComplicationId];
     case "DialWindow":
       return [entity.id, entity.dialId, entity.complicationId];
@@ -108,6 +111,7 @@ export function mountInspector(
       : entity.type === "DateComplication" ? dateComplicationSection(store, entity)
       : entity.type === "MonthComplication" ? monthComplicationSection(store, entity)
       : entity.type === "LeapYearComplication" ? leapYearComplicationSection(store, entity)
+      : entity.type === "SeasonComplication" ? seasonComplicationSection(store, entity)
       : entity.type === "DialWindow" ? dialWindowSection(store, entity)
       : entity.type === "Screw" ? screwSection(store, entity)
       : frameSection(store, entity, storage, notify);

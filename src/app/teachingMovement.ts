@@ -21,11 +21,12 @@ import { createScrew } from "@/domain/screw";
 import { createFrictionClutch, createMainspring } from "@/domain/coupling";
 import { createKeylessWorks } from "@/domain/keyless";
 import { createDial } from "@/domain/dial";
-import { addDateComplication, addDial, addDialWindow, addEscapement, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addScrew, setBalanceDrive } from "@/domain/movement";
+import { addDateComplication, addDial, addDialWindow, addEscapement, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addScrew, addSeasonComplication, setBalanceDrive } from "@/domain/movement";
 import { createMoonPhase } from "@/domain/moonPhase";
 import { createDateComplication } from "@/domain/dateComplication";
 import { createMonthComplication } from "@/domain/monthComplication";
 import { createLeapYearComplication } from "@/domain/leapYearComplication";
+import { createSeasonComplication } from "@/domain/seasonComplication";
 import { createDialWindow } from "@/domain/dialWindow";
 import { solvePlacement } from "@/kinematics/solvePlacement";
 import { micronewtonMillimetresPerRadian, milligramSquareCentimetres } from "@/units/rotational";
@@ -213,6 +214,12 @@ export function createTeachingMovement(): Movement {
   // its own, just a separate, declared (FIXED-position) arbor for the LeapYearComplication below.
   const leapYearWheelArbor = shaft("Leap-year wheel", null, { kind: "STUD", frameId: mainplate.id });
 
+  // Season wheel (Phase 8.11, ASM-0057): driven entirely by the month complication's own jump
+  // into Jan/Apr/Jul/Oct, so — like the month star and leap-year wheel — it has no gear, mesh or
+  // drive train of its own, just a separate, declared (FIXED-position) arbor for the
+  // SeasonComplication below.
+  const seasonWheelArbor = shaft("Season wheel", null, { kind: "STUD", frameId: mainplate.id });
+
   // Keyless works. Ratchet and crown wheel just above the mainplate (its top face is at 1.0 mm).
   const keylessModule = mm(0.1);
   const ratchetWheel = gear("Ratchet wheel", barrelArbor, 40, keylessModule, 1.1, 0.2);
@@ -253,7 +260,7 @@ export function createTeachingMovement(): Movement {
   m = addScrew(m, createScrew({ name: "Balance cock screw", frameId: balanceCock.id, position: vec2(mm(7), mm(6.5)), diameter: mm(0.6) }));
   for (const s of [
     barrel, centre, third, fourth, escape, cannon, minuteWheel, hourWheel, barrelArbor, crownWheelArbor, settingWheelArbor,
-    moonReductionArbor, moonDiscArbor, twentyFourHourArbor, dateStarArbor, monthStarArbor, leapYearWheelArbor,
+    moonReductionArbor, moonDiscArbor, twentyFourHourArbor, dateStarArbor, monthStarArbor, leapYearWheelArbor, seasonWheelArbor,
   ]) {
     m = addShaft(m, s);
   }
@@ -316,6 +323,10 @@ export function createTeachingMovement(): Movement {
   // ASM-0050) — further along the same line from the month star, by more than their tip radii
   // combined (ASSY-002 clearance), comfortably inside the mainplate.
   m = updateShaft(m, leapYearWheelArbor.id, { placement: fixedAt(mm(-6), mm(-9)) });
+  // Declared, not mesh-derived (the season wheel is not meshed with anything either, ASM-0057) —
+  // on the date star's own line but the opposite direction from the month/leap-year wheels, by
+  // more than their tip radii combined (ASSY-002 clearance), comfortably inside the mainplate.
+  m = updateShaft(m, seasonWheelArbor.id, { placement: fixedAt(mm(-6), mm(4.5)) });
 
   // Put the crown wheel and setting wheel on the stem line y = 0 (the centre arbor is at the origin).
   // Each is placed from its partner by its mesh; the angle is the one that lands on y = 0 on the crown side.
@@ -389,6 +400,16 @@ export function createTeachingMovement(): Movement {
     wheelZCentre: mm(-1.2),
   });
   m = addLeapYearComplication(m, leapYearComplication);
+  const seasonComplication = createSeasonComplication({
+    name: "Season",
+    monthComplicationId: monthComplication.id,
+    wheelShaftId: seasonWheelArbor.id,
+    // Same resolution class as the leap-year wheel: 4 positions need the least resolution of the four star/wheel discs (illustrative, ASM-0009).
+    wheelTipDiameter: mm(3),
+    wheelThickness: mm(0.15),
+    wheelZCentre: mm(-1.2),
+  });
+  m = addSeasonComplication(m, seasonComplication);
 
   // Dial windows (Phase 8.6, ASM-0051): without one, every disc complication above sits fully
   // hidden behind the dial's own opaque disc. Each window is offset from its complication's own
@@ -446,6 +467,15 @@ export function createTeachingMovement(): Movement {
     complicationId: leapYearComplication.id,
     centre: windowAbove(leapYearWheelArbor.id, 1.5, 0.72),
     outline: { kind: "RECTANGLE", width: mm(1.2), height: mm(0.55) },
+  }));
+  m = addDialWindow(m, createDialWindow({
+    name: "Season window",
+    dialId: dial.id,
+    complicationId: seasonComplication.id,
+    // Slightly wider than the leap-year window: SEASON_SHORT_LABELS prints two characters
+    // ("Q1"-"Q4") instead of one digit.
+    centre: windowAbove(seasonWheelArbor.id, 1.5, 0.72),
+    outline: { kind: "RECTANGLE", width: mm(1.3), height: mm(0.55) },
   }));
 
   // Pallet arbor and balance staff: fixed positions along a line from the escape arbor

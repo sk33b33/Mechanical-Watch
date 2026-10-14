@@ -51,6 +51,7 @@ function axisOf(placement: PlacementSolution, entity: SelectableEntity): Vec2 | 
     case "MonthComplication":
       return placement.shaftPositions.get(entity.starShaftId) ?? null;
     case "LeapYearComplication":
+    case "SeasonComplication":
       return placement.shaftPositions.get(entity.wheelShaftId) ?? null;
     case "DialWindow":
       // A fixed plan position of its own, not tied to any shaft's rotation axis.
@@ -109,6 +110,7 @@ function zRangeOf(movement: Movement, entity: SelectableEntity): ZRange | null {
         : null;
     }
     case "LeapYearComplication":
+    case "SeasonComplication":
       return Number.isFinite(entity.wheelZCentre) && Number.isFinite(entity.wheelThickness) && entity.wheelThickness > 0
         ? { lo: entity.wheelZCentre - entity.wheelThickness / 2, hi: entity.wheelZCentre + entity.wheelThickness / 2 }
         : null;

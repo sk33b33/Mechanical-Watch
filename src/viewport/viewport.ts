@@ -52,7 +52,7 @@ import { forkActingLength, forkRatio, isHalfToothSpan, lockingPoints, spanAngle,
 import { isValidToothCount } from "@/math/gearMath";
 import { metres } from "@/units/length";
 
-type PickKind = "gear" | "jewel" | "escapement" | "keyless" | "arbor" | "frame" | "dial" | "moonPhase" | "dateStar" | "monthStar" | "leapYearWheel";
+type PickKind = "gear" | "jewel" | "escapement" | "keyless" | "arbor" | "frame" | "dial" | "moonPhase" | "dateStar" | "monthStar" | "leapYearWheel" | "seasonWheel";
 type ViewSide = "BRIDGE" | "DIAL";
 
 /**
@@ -69,7 +69,7 @@ export interface SectionState {
 const EXPLODE_STRETCH = 3;
 
 /** When several objects are under the pointer, the most specific wins. */
-const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, escapement: 2, keyless: 2, moonPhase: 2, dateStar: 2, monthStar: 2, leapYearWheel: 2, arbor: 3, frame: 4, dial: 5 };
+const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, escapement: 2, keyless: 2, moonPhase: 2, dateStar: 2, monthStar: 2, leapYearWheel: 2, seasonWheel: 2, arbor: 3, frame: 4, dial: 5 };
 
 const COLORS = {
   selected: 0x4fa3ff,
@@ -87,6 +87,7 @@ const COLORS = {
   dateStar: 0xc2a06a,
   monthStar: 0x8aa0c2,
   leapYearWheel: 0x8ac2a0,
+  seasonWheel: 0xc28ac2,
   stem: 0x9aa4ae,
   crown: 0xa9b3bd,
   pinion: 0xb8c4d0,
@@ -696,6 +697,29 @@ export class Viewport {
         driverGroup.add(pin);
         this.genevaDriverPins.set(year.id, { group: driverGroup, wheelShaftId: year.wheelShaftId, directionWheelFromDriver });
       }
+    }
+
+    for (const season of Object.values(movement.seasonComplications)) {
+      const group = this.shaftGroups.get(season.wheelShaftId);
+      const valid = Number.isFinite(season.wheelTipDiameter) && season.wheelTipDiameter > 0 && Number.isFinite(season.wheelThickness) && season.wheelThickness > 0 && Number.isFinite(season.wheelZCentre);
+      if (group === undefined || !valid) continue;
+      // Driven entirely by the month complication's own quarter-boundary jumps (ASM-0057) — same
+      // applyKinematicRotation() loop that spins every other shaft group spins this one too. A
+      // plain disc, not a Geneva-slotted wheel like the leap-year wheel: no sourced real
+      // mechanism exists for a quarter-indicator built this way to draw instead.
+      const meshZ = this.displayZ(season.wheelZCentre);
+      const seasonLabels = findDiscComplication(movement, season.id)?.positionLabels ?? null;
+      const mesh = new THREE.Mesh(createZCylinder(season.wheelTipDiameter / 2, meshZ - season.wheelThickness / 2, meshZ + season.wheelThickness / 2, 64), discMaterials(COLORS.seasonWheel, { metalness: 0.1, roughness: 0.7 }, seasonLabels));
+      this.addPickable(group, mesh, { kind: "seasonWheel", entityId: season.id, baseColor: COLORS.seasonWheel });
+      this.cappableSolids.push({
+        positionX: group.position.x,
+        positionY: group.position.y,
+        rotationGroup: group,
+        zLo: meshZ - season.wheelThickness / 2,
+        zHi: meshZ + season.wheelThickness / 2,
+        footprint: { kind: "circle", radius: season.wheelTipDiameter / 2, centre: { x: 0, y: 0 } },
+        color: COLORS.seasonWheel,
+      });
     }
 
     // Hands sit below the dial face, or below the lowest part of the movement if there is no dial (ASM-0016).

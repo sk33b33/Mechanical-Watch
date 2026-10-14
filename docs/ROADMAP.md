@@ -515,11 +515,34 @@ scoped on its own once date was done, choosing the static (never
 animated) of two offered options specifically to avoid inventing an
 engagement-timing constant with no source behind it at all (ASM-0054).
 
-8.1–8.4, 8.6, 8.9 and 8.10 are done (see `docs/STATUS.md` for each).
-8.7's cross-cutting validation work was folded into 8.1–8.4/8.6 as they
-shipped, rather than built as a separate item. 8.10 is not itself a
-calendar complication — a baseplate/hardware item (`Screw`, bearing and
-screw clearance holes) that happened to ship next and keeps this
-section's running numbering rather than opening a new phase heading.
-8.5 and 8.8 remain confirmed out of scope. No further Phase 8 sub-item
-is scoped to start without the user's next explicit instruction.
+- 8.11 — **Done** (see `docs/STATUS.md`). `SeasonComplication`: raised
+  as a direct request ("use the month gear to add a season gear that
+  rotates after every 3 months"), architecturally the closest analog to
+  8.4's leap-year wheel — a jump-driven 4-position wheel on another
+  complication's own periodic trigger, here the month star's own jump
+  into January/April/July/October instead of its December-to-January
+  wrap. Explicitly **not** 8.5's real equation-of-time season
+  complication: no bean-shaped-cam/analemma source exists for that, and
+  none was invented here either. Two real choices were put to the user
+  rather than defaulted: neutral "Quarter 1–4" labels over named seasons
+  (hemisphere-dependent, and this project declares no hemisphere), and
+  the Gregorian calendar-quarter boundary (Jan/Apr/Jul/Oct) over the
+  alternative (Mar/Jun/Sep/Dec) offered — both now ASM-0057's own
+  declared choices. Unlike the leap-year wheel, no sourced real
+  mechanism exists for a quarter-indicator built this way, so the jump
+  stays instantaneous (the same treatment `DateComplication`/
+  `MonthComplication` already have) rather than claiming a Geneva-drive
+  stroke shape to simulate. Teaching movement and the guided tutorial
+  walkthrough both updated in lockstep, following the established
+  four-complication pattern.
+
+8.1–8.4, 8.6, 8.9, 8.10 and 8.11 are done (see `docs/STATUS.md` for
+each). 8.7's cross-cutting validation work was folded into 8.1–8.4/8.6
+as they shipped, rather than built as a separate item. 8.10 and 8.11
+are not themselves calendar complications — a baseplate/hardware item
+(`Screw`, bearing and screw clearance holes) and a neutral quarter
+indicator respectively, each raised as its own direct request and kept
+in this section's running numbering rather than opening a new phase
+heading. 8.5 and 8.8 remain confirmed out of scope. No further Phase 8
+sub-item is scoped to start without the user's next explicit
+instruction.
