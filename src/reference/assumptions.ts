@@ -351,6 +351,12 @@ export const ASSUMPTIONS = {
     scope: "SeasonComplication (Phase 8.11, visual/L0 display plus L2_KINEMATIC jump-chain simulation)",
     status: "Active",
   },
+  "ASM-0058": {
+    summary:
+      "Season wheel quadrant art (Phase 8.11 follow-up): the disc is divided into four equal wedges (seasonWedgeBoundaryAngles, src/geometry/assemblyGeometry3d.ts), each tinted and carrying a simple seasonal icon (sun/leaf/snowflake/flower) plus its own position label, requested directly by the user ('cut the gear into 4 equal pieces and add some art representing each season in their respective quarter'). Purely decorative (ASM-0004): the icons are generic symbolic glyphs, not sourced from any real watch's own dial art -- no four-seasons indicator with this specific iconography has been found, the same 'declared, not invented' visual treatment the moon-phase illustration (ASM-0055) and disc label ring (ASM-0051) already have. Index-matched to SEASON_LABELS's own fixed Q1-Q4 order (Summer/Autumn/Winter/Spring, ASM-0057), so this is specific to the season wheel, not a generic N-wedge drawer -- the same way createMoonPhaseTexture is specific to moon phase. Wedge boundaries sit at the half-slot-offset between adjacent labels (same convention the Geneva wheel's own rim slots already use relative to its labels). The -Z cap's own material colour is white rather than the wheel's own base colour, so the wedge tints read true instead of being darkened by it (the same reasoning the plain disc label ring's near-white background already relies on, extended to coloured art). No new domain fields, no schema change: createSeasonTexture replaces the generic createDiscLabelTexture call only for this one disc (seasonMaterials, src/viewport/viewport.ts).",
+    scope: "SeasonComplication wheel's own dial-facing art (Phase 8.11 follow-up, visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

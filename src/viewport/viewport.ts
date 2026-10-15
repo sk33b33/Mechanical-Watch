@@ -17,6 +17,7 @@ import {
   createHandGeometry,
   createMoonPhaseTexture,
   createRodGeometry,
+  createSeasonTexture,
   createZCylinder,
   DATE_LINKAGE_VISUALIZATION,
   discCapCanvasAngleForMeshAngle,
@@ -198,6 +199,22 @@ function moonPhaseMaterials(color: number, extra: THREE.MeshStandardMaterialPara
   const plain = material(color, extra);
   const texture = createMoonPhaseTexture(windowCount);
   const illustrated = texture === null ? plain : material(color, { ...extra, map: texture });
+  return [plain, plain, illustrated];
+}
+
+/**
+ * Same 3-group convention as `discMaterials`, with the season wheel's own
+ * four-wedge art (ASM-0058) on the −Z (dial-facing) cap. Unlike
+ * `discMaterials`/`moonPhaseMaterials`, the −Z cap's own base colour is
+ * white rather than the wheel's `color`: the wedge tints are a deliberate
+ * illustration meant to read true (the same reasoning `DIAL_WINDOW_VISUALIZATION`'s
+ * near-white background already uses to keep a plain label ring from being
+ * darkened by the disc's own base colour, just extended to coloured art).
+ */
+function seasonMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, labels: readonly string[] | null): THREE.MeshStandardMaterial[] {
+  const plain = material(color, extra);
+  const texture = labels === null ? null : createSeasonTexture(labels);
+  const illustrated = texture === null ? plain : material(0xffffff, { ...extra, map: texture });
   return [plain, plain, illustrated];
 }
 
@@ -709,7 +726,7 @@ export class Viewport {
       // mechanism exists for a quarter-indicator built this way to draw instead.
       const meshZ = this.displayZ(season.wheelZCentre);
       const seasonLabels = findDiscComplication(movement, season.id)?.positionLabels ?? null;
-      const mesh = new THREE.Mesh(createZCylinder(season.wheelTipDiameter / 2, meshZ - season.wheelThickness / 2, meshZ + season.wheelThickness / 2, 64), discMaterials(COLORS.seasonWheel, { metalness: 0.1, roughness: 0.7 }, seasonLabels));
+      const mesh = new THREE.Mesh(createZCylinder(season.wheelTipDiameter / 2, meshZ - season.wheelThickness / 2, meshZ + season.wheelThickness / 2, 64), seasonMaterials(COLORS.seasonWheel, { metalness: 0.1, roughness: 0.7 }, seasonLabels));
       this.addPickable(group, mesh, { kind: "seasonWheel", entityId: season.id, baseColor: COLORS.seasonWheel });
       this.cappableSolids.push({
         positionX: group.position.x,

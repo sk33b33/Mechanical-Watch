@@ -278,6 +278,200 @@ export function createDiscLabelTexture(labels: readonly string[], canvasAngleOff
 }
 
 /**
+ * The season wheel's own quadrant art (ASM-0058): four equal wedges, each
+ * tinted and carrying a simple seasonal icon plus its own position label,
+ * requested directly by the user ("cut the gear into 4 equal pieces and
+ * add some art representing each season in their respective quarter").
+ * Purely decorative (ASM-0004) — generic sun/leaf/snowflake/flower glyphs,
+ * not sourced from any real watch's own dial art (no four-seasons
+ * indicator with this specific iconography has been found), the same
+ * "declared, not invented" visual treatment the moon-phase illustration
+ * (ASM-0055) and disc label ring (ASM-0051) already have. Index-matched
+ * to `SEASON_LABELS`' own fixed Q1–Q4 order (Summer/Autumn/Winter/Spring,
+ * ASM-0057, the user's own declared Southern Hemisphere convention) —
+ * this function is specific to the season wheel, not a generic N-wedge
+ * drawer, the same way `createMoonPhaseTexture` is specific to moon phase.
+ */
+export const SEASON_VISUALIZATION = {
+  /** Wedge background tints, index-matched to SEASON_LABELS (Summer/Autumn/Winter/Spring) — declared colour choices, not a real dial's own enamel or print. */
+  wedgeColors: ["#f3cf6b", "#d98b4a", "#cfe3ee", "#bfe0a8"] as const,
+  iconColor: "#2a2a2a",
+  iconRadiusFraction: 0.44,
+  labelRadiusFraction: 0.82,
+  fontSizePx: 26,
+  dividerColor: "#4a4642",
+  dividerWidthPx: 4,
+  assumption: "ASM-0058" satisfies AssumptionId,
+} as const;
+
+/**
+ * The canvas angle of each boundary between adjacent season wedges,
+ * offset by half a wedge's own angular width from the first wedge's own
+ * centre (angle 0) — so each wedge is centred on its own label rather
+ * than straddling two of them, the same half-slot-offset convention
+ * `createGenevaWheelGeometry`'s own rim slots already use relative to the
+ * disc label ring (see `discLabelPlacements`'s own doc comment). Split
+ * out, like `discLabelPlacements`, so it can be unit tested without a DOM
+ * canvas.
+ */
+export function seasonWedgeBoundaryAngles(count: number): number[] {
+  const step = (Math.PI * 2) / count;
+  return Array.from({ length: count }, (_, i) => i * step + step / 2);
+}
+
+function drawSunIcon(ctx: CanvasRenderingContext2D, size: number, color: string): void {
+  const r = size * 0.32;
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = size * 0.07;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  const rayInner = r * 1.35;
+  const rayOuter = r * 2.1;
+  for (let i = 0; i < 8; i += 1) {
+    const a = (i / 8) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(rayInner * Math.cos(a), rayInner * Math.sin(a));
+    ctx.lineTo(rayOuter * Math.cos(a), rayOuter * Math.sin(a));
+    ctx.stroke();
+  }
+}
+
+function drawLeafIcon(ctx: CanvasRenderingContext2D, size: number, color: string): void {
+  const h = size * 0.85;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(0, -h / 2);
+  ctx.bezierCurveTo(h * 0.45, -h * 0.2, h * 0.45, h * 0.2, 0, h / 2);
+  ctx.bezierCurveTo(-h * 0.45, h * 0.2, -h * 0.45, -h * 0.2, 0, -h / 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.35)";
+  ctx.lineWidth = size * 0.035;
+  ctx.beginPath();
+  ctx.moveTo(0, -h * 0.42);
+  ctx.lineTo(0, h * 0.42);
+  ctx.stroke();
+}
+
+function drawSnowflakeIcon(ctx: CanvasRenderingContext2D, size: number, color: string): void {
+  const r = size * 0.42;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = size * 0.06;
+  ctx.lineCap = "round";
+  for (let i = 0; i < 3; i += 1) {
+    const a = (i / 3) * Math.PI;
+    const dx = Math.cos(a);
+    const dy = Math.sin(a);
+    ctx.beginPath();
+    ctx.moveTo(-r * dx, -r * dy);
+    ctx.lineTo(r * dx, r * dy);
+    ctx.stroke();
+    for (const sign of [-1, 1] as const) {
+      const tipX = r * dx * sign;
+      const tipY = r * dy * sign;
+      for (const branchSign of [-1, 1] as const) {
+        const branchAngle = a + (branchSign * Math.PI) / 4;
+        const branch = r * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(tipX - sign * branch * Math.cos(branchAngle), tipY - sign * branch * Math.sin(branchAngle));
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+function drawFlowerIcon(ctx: CanvasRenderingContext2D, size: number, color: string): void {
+  const petalRadius = size * 0.18;
+  const orbit = size * 0.22;
+  ctx.fillStyle = color;
+  for (let i = 0; i < 5; i += 1) {
+    const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+    ctx.beginPath();
+    ctx.arc(orbit * Math.cos(a), orbit * Math.sin(a), petalRadius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = "#fffdf5";
+  ctx.beginPath();
+  ctx.arc(0, 0, petalRadius * 0.75, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** Index-matched to `SEASON_LABELS` (Summer/Autumn/Winter/Spring, ASM-0057). */
+const SEASON_ICON_DRAWERS: readonly ((ctx: CanvasRenderingContext2D, size: number, color: string) => void)[] = [
+  drawSunIcon,
+  drawLeafIcon,
+  drawSnowflakeIcon,
+  drawFlowerIcon,
+];
+
+export function createSeasonTexture(labels: readonly string[]): THREE.CanvasTexture | null {
+  if (labels.length === 0) return null;
+  const v = SEASON_VISUALIZATION;
+  const size = DIAL_WINDOW_VISUALIZATION.textureSizePx;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (ctx === null) return null;
+  const centre = size / 2;
+  const outerRadius = centre;
+
+  // Four equal wedges (ASM-0058), cutting the disc as requested; dividers sit at the
+  // half-slot-offset boundary between adjacent labels, same convention as the Geneva wheel's own
+  // rim slots relative to its labels.
+  const boundaries = seasonWedgeBoundaryAngles(labels.length);
+  for (let i = 0; i < labels.length; i += 1) {
+    const start = boundaries[(i - 1 + labels.length) % labels.length] ?? 0;
+    const end = boundaries[i] ?? Math.PI * 2;
+    ctx.fillStyle = v.wedgeColors[i % v.wedgeColors.length] ?? DIAL_WINDOW_VISUALIZATION.backgroundColor;
+    ctx.beginPath();
+    ctx.moveTo(centre, centre);
+    ctx.arc(centre, centre, outerRadius, start, end);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.strokeStyle = v.dividerColor;
+  ctx.lineWidth = v.dividerWidthPx;
+  for (const boundary of boundaries) {
+    ctx.beginPath();
+    ctx.moveTo(centre, centre);
+    ctx.lineTo(centre + outerRadius * Math.cos(boundary), centre + outerRadius * Math.sin(boundary));
+    ctx.stroke();
+  }
+
+  // One simple icon plus the position label per wedge, both oriented radially — the same "own up
+  // points away from the disc centre" convention `discLabelPlacements` already uses.
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `bold ${String(v.fontSizePx)}px sans-serif`;
+  for (let i = 0; i < labels.length; i += 1) {
+    const angle = (i / labels.length) * Math.PI * 2;
+    const rotation = angle + Math.PI / 2;
+    const draw = SEASON_ICON_DRAWERS[i % SEASON_ICON_DRAWERS.length];
+
+    ctx.save();
+    ctx.translate(centre + v.iconRadiusFraction * centre * Math.cos(angle), centre + v.iconRadiusFraction * centre * Math.sin(angle));
+    ctx.rotate(rotation);
+    draw?.(ctx, size * 0.11, v.iconColor);
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(centre + v.labelRadiusFraction * centre * Math.cos(angle), centre + v.labelRadiusFraction * centre * Math.sin(angle));
+    ctx.rotate(rotation);
+    ctx.fillStyle = v.iconColor;
+    ctx.fillText(labels[i] ?? "", 0, 0);
+    ctx.restore();
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/**
  * A moon-phase disc's own sky-and-moon illustration (ASM-0055, Phase
  * 8.9 follow-up). `MoonPhase` was built (Phase 8.1) with "moon/star
  * artwork is not modeled, only the disc itself" as a deliberate scope

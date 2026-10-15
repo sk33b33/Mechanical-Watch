@@ -21,6 +21,7 @@ import {
   moonImageLocalAngle,
   MOON_PHASE_VISUALIZATION,
   rayCircleInward,
+  seasonWedgeBoundaryAngles,
   type PalletArm,
 } from "./assemblyGeometry3d";
 
@@ -476,6 +477,32 @@ describe("discLabelPlacements", () => {
       expect(placement.x).toBeCloseTo(centre + centre * 0.72 * Math.cos(angle), 6);
       expect(placement.y).toBeCloseTo(centre + centre * 0.72 * Math.sin(angle), 6);
       expect(placement.rotation).toBeCloseTo(angle + Math.PI / 2, 9);
+    }
+  });
+});
+
+describe("seasonWedgeBoundaryAngles (ASM-0058)", () => {
+  it("returns one boundary per wedge, each offset half a wedge's own width from the first label's own angle (0)", () => {
+    const boundaries = seasonWedgeBoundaryAngles(4);
+    expect(boundaries).toHaveLength(4);
+    const step = (Math.PI * 2) / 4;
+    for (const [i, boundary] of boundaries.entries()) {
+      expect(boundary).toBeCloseTo(i * step + step / 2, 9);
+    }
+  });
+
+  it("the boundary just after label 0's own angle (0) sits exactly between label 0 and label 1", () => {
+    const [firstBoundary] = seasonWedgeBoundaryAngles(4);
+    const labelAngle0 = 0;
+    const labelAngle1 = (1 / 4) * Math.PI * 2;
+    expect(firstBoundary).toBeCloseTo((labelAngle0 + labelAngle1) / 2, 9);
+  });
+
+  it("evenly spaced: consecutive boundaries are exactly 2π/count apart", () => {
+    const boundaries = seasonWedgeBoundaryAngles(4);
+    const step = (Math.PI * 2) / 4;
+    for (let i = 1; i < boundaries.length; i += 1) {
+      expect((boundaries[i] ?? 0) - (boundaries[i - 1] ?? 0)).toBeCloseTo(step, 9);
     }
   });
 });

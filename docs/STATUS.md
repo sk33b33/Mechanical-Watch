@@ -2,6 +2,55 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Season wheel quadrant art: four wedges, one icon per season
+
+Requested directly: "cut the gear into 4 equal pieces and add some art
+representing each season in their respective quarter." The season
+wheel previously carried only the generic disc label ring
+(`createDiscLabelTexture`, ASM-0051) shared with date/month/leap-year —
+a plain disc with just "SU"/"AU"/"WI"/"SP" printed around the rim.
+
+Built a dedicated `createSeasonTexture` (`src/geometry/assemblyGeometry3d.ts`,
+ASM-0058), the same "one texture function per complication" pattern
+`createMoonPhaseTexture` (ASM-0055) already established, rather than
+generalizing the shared label-ring function: divides the disc into
+four equal wedges (`seasonWedgeBoundaryAngles`, boundaries at the
+half-slot offset between adjacent labels — the same convention the
+leap-year Geneva wheel's own rim slots already use relative to their
+labels), tints each wedge (gold/Summer, rust/Autumn, ice-blue/Winter,
+green/Spring), draws a divider line at each boundary, and draws one
+simple icon per wedge — a sun, a leaf, a snowflake, a flower — plus
+its position label, both oriented radially (the disc label ring's own
+"up points away from centre" convention, ASM-0051). The icons are
+generic symbolic glyphs, not sourced from any real watch's own dial
+art: purely decorative (ASM-0004), the same "declared, not invented"
+treatment the moon-phase illustration already has. Index-matched to
+`SEASON_LABELS`'s fixed Q1–Q4 order (Summer/Autumn/Winter/Spring, the
+Southern Hemisphere convention from the entry below), so
+`createSeasonTexture` is specific to the season wheel, not a generic
+N-wedge drawer.
+
+Wired through a new `seasonMaterials` (`src/viewport/viewport.ts`,
+mirroring `moonPhaseMaterials`), replacing the generic `discMaterials`
+call for this one disc only. The −Z cap's own material colour is set
+to white rather than the wheel's base colour so the wedge tints read
+true rather than being darkened by it (the same reasoning the label
+ring's own near-white texture background already relies on).
+
+Verified live: built the production bundle, loaded the teaching
+movement in a real browser, selected and zoomed to the season
+complication — the wheel now shows four distinctly coloured,
+divided wedges with their icons and labels legible at the window's
+own scale.
+
+Tests: `seasonWedgeBoundaryAngles` (`assemblyGeometry3d.test.ts`, pure
+layout math, same pattern `discLabelPlacements` already uses — no DOM
+canvas in the test environment, so the icon-drawing functions
+themselves are exercised only through this live-browser check, the
+same treatment `createMoonPhaseTexture`'s own drawing code already
+has). Full suite green: `tsc -b`, `eslint`, 733 Vitest tests,
+production build, and the full 38-test Playwright suite.
+
 ## Season complication: named seasons, Southern Hemisphere (declared, not invented)
 
 Requested directly: rename the season wheel's "Quarter 1–4" labels to
