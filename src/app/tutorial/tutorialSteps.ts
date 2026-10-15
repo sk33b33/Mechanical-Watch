@@ -443,7 +443,7 @@ function buildTeachingMovementSteps(): TutorialStep[] {
       id: "add-season",
       title: "Add the season complication",
       instructions:
-        "Click “+ Season” — the referenced month complication, wheel arbor and dimensions all come from the real design. A neutral quarter indicator (Quarter 1-4, not named seasons -- those are hemisphere-dependent), driven entirely by the month star's own jump into January, April, July or October, with no drive train of its own (ASM-0057).",
+        "Click “+ Season” — the referenced month complication, wheel arbor and dimensions all come from the real design. A quarter indicator labeled with the Southern Hemisphere's own astronomical seasons (Summer/Autumn/Winter/Spring for Q1-Q4, a declared choice -- season names are hemisphere-dependent), driven entirely by the month star's own jump into January, April, July or October, with no drive train of its own (ASM-0057).",
       targetSelector: '[data-tutorial="add-season"]',
       isComplete: (m) => m.seasonComplications[seasonComplication.id] !== undefined,
       createOverride: (m) => ({ movement: addSeasonComplication(m, seasonComplication), id: seasonComplication.id }),

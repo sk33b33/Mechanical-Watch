@@ -6,7 +6,7 @@ test("the teaching movement's own season complication shows its month complicati
   await expect(inspector.locator('[data-field="Month complication"]')).toHaveValue(/.+/);
   await expect(inspector.locator('[data-field="Wheel tip Ø \\(mm\\)"]')).toHaveValue("3");
   await expect(inspector).toContainText("ASM-0057");
-  await expect(inspector).toContainText("Quarter");
+  await expect(inspector).toContainText("Summer");
 });
 
 test("a new season complication starts with no month complication chosen and lists what is missing", async ({ app }) => {

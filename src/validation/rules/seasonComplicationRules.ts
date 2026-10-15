@@ -45,9 +45,10 @@ export const seasonComplicationRules: Rule = ({ movement, train }) => {
     issues.push(
       issue("SEASON-002", "model", "info", "L2_KINEMATIC", [season.id],
         `${season.name}: driven entirely by the month complication's own jump into January, April, July or October, not a continuous arbor of its own. ` +
-        `This is a neutral quarter indicator (Quarter 1–4), not the real equation-of-time "season" complication (a bean-shaped cam encoding analemma/orbital-mechanics data) ` +
-        `that this project has deliberately left unscoped for lack of a source. Position labels avoid named seasons (Spring/Summer/Autumn/Winter) since those are ` +
-        `hemisphere-dependent and no hemisphere has been declared. The jump stays instantaneous: unlike the leap-year wheel, no sourced real mechanism exists for ` +
+        `This is a quarter indicator, not the real equation-of-time "season" complication (a bean-shaped cam encoding analemma/orbital-mechanics data) ` +
+        `that this project has deliberately left unscoped for lack of a source. Position labels use the Southern Hemisphere's own astronomical seasons ` +
+        `(Summer/Autumn/Winter/Spring for Q1–Q4), a declared choice since season names are hemisphere-dependent — the Northern Hemisphere reading of the ` +
+        `same quarters would be Winter/Spring/Summer/Autumn. The jump stays instantaneous: unlike the leap-year wheel, no sourced real mechanism exists for ` +
         `a quarter-indicator built this way to simulate a real stroke shape from.`,
         ["ASM-0057"]),
     );

@@ -10,19 +10,22 @@ export type SeasonComplicationId = EntityId<"seasonComplication">;
 export const SEASON_SLOT_COUNT = 4;
 
 /**
- * Neutral quarter labels, not named seasons. Real season names (Spring,
- * Summer, Autumn, Winter) are hemisphere-dependent — Northern and
- * Southern Hemisphere conventions assign opposite seasons to the same
- * quarter — and this project has not declared, sourced or asked the
- * user for a hemisphere, so naming a "season" here would be an invented,
- * silently-wrong assumption for half its users (ASM-0057). The user's
- * own explicit choice, asked directly, was the neutral "Quarter 1–4"
- * labeling over either named-season option offered.
+ * Named-season labels, Southern Hemisphere astronomical convention
+ * (ASM-0057). Real season names (Spring, Summer, Autumn, Winter) are
+ * hemisphere-dependent — Northern and Southern Hemisphere conventions
+ * assign opposite seasons to the same quarter — so this project
+ * initially used neutral "Quarter 1–4" labels rather than invent a
+ * hemisphere. The user later asked directly for this specific mapping
+ * (Q1 Summer, Q2 Autumn, Q3 Winter, Q4 Spring), which is the Southern
+ * Hemisphere's own astronomical quarters (Q1 = January–March, mostly
+ * within the Dec 21–Mar 20 summer quarter, and so on) — a declared
+ * choice, not an invented default; the Northern Hemisphere reading of
+ * the same quarters would be Winter/Spring/Summer/Autumn.
  */
-export const SEASON_LABELS = ["Quarter 1", "Quarter 2", "Quarter 3", "Quarter 4"] as const;
+export const SEASON_LABELS = ["Summer", "Autumn", "Winter", "Spring"] as const;
 
-/** `SEASON_LABELS`, shortened for the wheel's own printed-ring texture (same "clogging a small disc" fix the other complication discs already use, ASM-0051). */
-export const SEASON_SHORT_LABELS = SEASON_LABELS.map((_, i) => `Q${String(i + 1)}`);
+/** `SEASON_LABELS`, shortened for the wheel's own printed-ring texture (same "clogging a small disc" fix the other complication discs already use, ASM-0051). Two letters each, so they stay distinct (Summer and Spring both start with "S"). */
+export const SEASON_SHORT_LABELS = ["SU", "AU", "WI", "SP"] as const;
 
 /**
  * A quarter indicator, driven entirely by its referenced month

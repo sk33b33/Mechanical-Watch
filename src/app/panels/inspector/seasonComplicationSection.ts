@@ -49,9 +49,9 @@ export function seasonComplicationSection(store: AppStore, season: SeasonComplic
       onCommit: (raw) => { edit({ wheelZCentre: millimetres(parseRequired(raw)) }); },
     }),
     readonlyRow("Model", "driven by the month complication's own jump into Jan/Apr/Jul/Oct, once a quarter (ASM-0057)",
-      "A neutral quarter indicator (Quarter 1–4), not the real equation-of-time \"season\" complication — that is a different, unsourced mechanism this project has deliberately left unscoped. Named seasons (Spring/Summer/Autumn/Winter) are not used since they are hemisphere-dependent and no hemisphere has been declared. The jump is instantaneous: unlike the leap-year wheel, no sourced real mechanism exists here to simulate a real stroke shape from."),
+      "A quarter indicator, not the real equation-of-time \"season\" complication — that is a different, unsourced mechanism this project has deliberately left unscoped. Labeled with the Southern Hemisphere's own astronomical seasons (Summer/Autumn/Winter/Spring for Q1–Q4), a declared choice (ASM-0057) since season names are hemisphere-dependent — the Northern Hemisphere reading of the same quarters would be Winter/Spring/Summer/Autumn. The jump is instantaneous: unlike the leap-year wheel, no sourced real mechanism exists here to simulate a real stroke shape from."),
     readonlyRow("Current position", position === null ? "—" : SEASON_LABELS[position] ?? String(position + 1),
-      "Position 0 reads as Quarter 1, an arbitrary reference, same convention as the other jump-driven complication wheels."),
+      "Position 0 reads as Summer (the Southern Hemisphere's Q1, January–March), an arbitrary reference, same convention as the other jump-driven complication wheels."),
     deleteRow(store, season.id, "Delete season complication", "The referenced month complication and wheel arbor are not removed."),
   ];
 }

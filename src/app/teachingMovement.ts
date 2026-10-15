@@ -473,7 +473,7 @@ export function createTeachingMovement(): Movement {
     dialId: dial.id,
     complicationId: seasonComplication.id,
     // Slightly wider than the leap-year window: SEASON_SHORT_LABELS prints two characters
-    // ("Q1"-"Q4") instead of one digit.
+    // ("SU"-"SP") instead of one digit.
     centre: windowAbove(seasonWheelArbor.id, 1.5, 0.72),
     outline: { kind: "RECTANGLE", width: mm(1.3), height: mm(0.55) },
   }));

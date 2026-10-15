@@ -83,9 +83,10 @@ describe("season complication rules", () => {
     const info = validateMovement(teaching).find((i) => i.rule === "SEASON-002");
     expect(info?.severity).toBe("info");
     expect(info?.message).toContain("January, April, July or October");
-    expect(info?.message).toContain("neutral quarter indicator");
+    expect(info?.message).toContain("quarter indicator");
     expect(info?.message).toContain("equation-of-time");
     expect(info?.message).toContain("hemisphere-dependent");
+    expect(info?.message).toContain("Summer/Autumn/Winter/Spring");
     expect(info?.references).toContain("ASM-0057");
   });
 });

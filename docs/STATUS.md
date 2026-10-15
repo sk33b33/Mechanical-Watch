@@ -2,6 +2,44 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Season complication: named seasons, Southern Hemisphere (declared, not invented)
+
+Requested directly: rename the season wheel's "Quarter 1–4" labels to
+"Q1 Summer, Q2 Autumn, Q3 Winter, Q4 Spring." Phase 8.11 (below)
+originally offered the user neutral quarter numbers specifically
+*because* named seasons are hemisphere-dependent and no hemisphere had
+been declared; this request supplies that missing choice directly,
+rather than this project defaulting to one. The requested mapping is
+internally consistent: Q1 (January–March, the quarter that starts when
+the month star wraps to January) falls mostly within the Southern
+Hemisphere's own Dec 21–Mar 20 astronomical summer, Q2 within autumn,
+Q3 within winter, Q4 within spring — the Southern Hemisphere's own
+astronomical-quarter convention, not an arbitrary string swap. The
+Northern Hemisphere reading of the same four quarters is
+Winter/Spring/Summer/Autumn.
+
+`SEASON_LABELS` (`src/domain/seasonComplication.ts`) changed from
+`["Quarter 1", "Quarter 2", "Quarter 3", "Quarter 4"]` to
+`["Summer", "Autumn", "Winter", "Spring"]`; `SEASON_SHORT_LABELS` (the
+wheel's own printed-ring texture) from `Q1`–`Q4` to `SU`/`AU`/`WI`/`SP`
+— still two characters each, so the dial window sized for
+`SEASON_SHORT_LABELS` needed no resizing. Updated everywhere the old
+labels or their "neutral, hemisphere avoided" rationale were quoted:
+the inspector section, SEASON-002's validation message, the guided
+tutorial step, ASM-0057 (both the markdown register and its TS mirror,
+`registers.test.ts` still passes since it checks IDs/status, not
+prose), and `docs/ROADMAP.md`'s own "Done" summary (STATUS.md's own
+Phase 8.11 entry below is left as it was written, describing the
+choice actually made at the time). `isQuarterBoundary`
+(`src/kinematics/seasonComplication.ts`) is unrenamed: it is about
+calendar-quarter alignment, not season names.
+
+Tests updated: `seasonComplicationRules.test.ts`'s SEASON-002 message
+assertions, and `e2e/season.spec.ts`'s inspector text check (now
+"Summer" instead of "Quarter"). Full suite green: `tsc -b`, `eslint`,
+730 Vitest tests, production build, and the full 38-test Playwright
+suite.
+
 ## "Set to browser time", and a real pre-existing bug it surfaced in every jump-driven complication
 
 Requested directly: "set the movement to browser time" — a one-click

@@ -524,8 +524,10 @@ engagement-timing constant with no source behind it at all (ASM-0054).
   wrap. Explicitly **not** 8.5's real equation-of-time season
   complication: no bean-shaped-cam/analemma source exists for that, and
   none was invented here either. Two real choices were put to the user
-  rather than defaulted: neutral "Quarter 1–4" labels over named seasons
-  (hemisphere-dependent, and this project declares no hemisphere), and
+  rather than defaulted: labeling (initially neutral "Quarter 1–4" over
+  named seasons, hemisphere-dependent and undeclared at the time; the
+  user later asked directly for the Southern Hemisphere's own
+  astronomical seasons — Summer/Autumn/Winter/Spring for Q1–Q4), and
   the Gregorian calendar-quarter boundary (Jan/Apr/Jul/Oct) over the
   alternative (Mar/Jun/Sep/Dec) offered — both now ASM-0057's own
   declared choices. Unlike the leap-year wheel, no sourced real
