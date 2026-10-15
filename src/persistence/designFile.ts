@@ -14,6 +14,7 @@ import type { DateComplication } from "@/domain/dateComplication";
 import type { MonthComplication } from "@/domain/monthComplication";
 import type { LeapYearComplication } from "@/domain/leapYearComplication";
 import type { SeasonComplication } from "@/domain/seasonComplication";
+import type { YearDigitComplication } from "@/domain/yearDigitComplication";
 import type { DialWindow, DialWindowOutline } from "@/domain/dialWindow";
 import type { Screw } from "@/domain/screw";
 import type { MainspringSpec } from "@/domain/coupling";
@@ -45,7 +46,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 25;
+export const DESIGN_SCHEMA_VERSION = 26;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -343,6 +344,12 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
     const movement = doc.movement;
     if (!isRecord(movement)) return doc;
     return { ...doc, schemaVersion: 25, movement: { ...movement, seasonComplications: {} } };
+  },
+  /** v25 → v26: movements gain empty `yearDigitComplications` (Phase 8.12). */
+  25: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement)) return doc;
+    return { ...doc, schemaVersion: 26, movement: { ...movement, yearDigitComplications: {} } };
   },
 };
 
@@ -677,6 +684,22 @@ const seasonComplication: Decoder<SeasonComplication> = (value, path) => {
   };
 };
 
+const yearDigitComplication: Decoder<YearDigitComplication> = (value, path) => {
+  const o = object(value, path);
+  return {
+    id: field(o, "id", id<YearDigitComplication["id"]>(), path),
+    type: field(o, "type", literal("YearDigitComplication"), path),
+    name: field(o, "name", string, path),
+    monthComplicationId: field(o, "monthComplicationId", id<MonthComplication["id"]>(), path),
+    digitPlace: field(o, "digitPlace", oneOf(["ONES", "TENS", "HUNDREDS", "THOUSANDS"]), path),
+    wheelShaftId: field(o, "wheelShaftId", id<Shaft["id"]>(), path),
+    startDigit: field(o, "startDigit", number, path),
+    wheelTipDiameter: field(o, "wheelTipDiameter", length, path),
+    wheelThickness: field(o, "wheelThickness", length, path),
+    wheelZCentre: field(o, "wheelZCentre", length, path),
+  };
+};
+
 const dialWindowOutline: Decoder<DialWindowOutline> = (value, path) => {
   const o = object(value, path);
   const kind = field(o, "kind", oneOf(["CIRCLE", "RECTANGLE"]), path);
@@ -793,6 +816,7 @@ const movement: Decoder<Movement> = (value, path) => {
     monthComplications: field(o, "monthComplications", entityRecord(monthComplication), path),
     leapYearComplications: field(o, "leapYearComplications", entityRecord(leapYearComplication), path),
     seasonComplications: field(o, "seasonComplications", entityRecord(seasonComplication), path),
+    yearDigitComplications: field(o, "yearDigitComplications", entityRecord(yearDigitComplication), path),
     dialWindows: field(o, "dialWindows", entityRecord(dialWindow), path),
     screws: field(o, "screws", entityRecord(screw), path),
     drive: field(o, "drive", nullable(drive), path),

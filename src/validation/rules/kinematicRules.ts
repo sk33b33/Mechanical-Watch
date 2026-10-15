@@ -3,6 +3,7 @@ import { dateStarShaftIds } from "@/domain/dateComplication";
 import { monthStarShaftIds } from "@/domain/monthComplication";
 import { leapYearWheelShaftIds } from "@/domain/leapYearComplication";
 import { seasonWheelShaftIds } from "@/domain/seasonComplication";
+import { yearDigitWheelShaftIds } from "@/domain/yearDigitComplication";
 import type { EntityId } from "@/domain/ids";
 import { drivenShaftId } from "@/domain/movement";
 import type { ValidationIssue } from "../validationIssue";
@@ -75,13 +76,14 @@ export const kinematicRules: Rule = ({ movement, train }) => {
   if (shaftId !== null) {
     // Pallet arbor and balance staff oscillate under the escapement; they are not meant to be gear-driven (ESC-102).
     const oscillating = oscillatingShaftIds(movement.escapements);
-    // Date, month, leap-year and season arbors advance only by a jump, not continuous propagation (ASM-0048/0049/0050/0057); DATE-003/MONTH-002/YEAR-002/SEASON-002 report their own drive state.
+    // Date, month, leap-year, season and year-digit arbors advance only by a jump, not continuous propagation (ASM-0048/0049/0050/0057); DATE-003/MONTH-002/YEAR-002/SEASON-002/YEARDIGIT-002 report their own drive state.
     const dateStars = dateStarShaftIds(movement.dateComplications);
     const monthStars = monthStarShaftIds(movement.monthComplications);
     const leapYearWheels = leapYearWheelShaftIds(movement.leapYearComplications);
     const seasonWheels = seasonWheelShaftIds(movement.seasonComplications);
+    const yearDigitWheels = yearDigitWheelShaftIds(movement.yearDigitComplications);
     for (const id of train.unreachableShaftIds) {
-      if (oscillating.has(id) || dateStars.has(id) || monthStars.has(id) || leapYearWheels.has(id) || seasonWheels.has(id)) continue;
+      if (oscillating.has(id) || dateStars.has(id) || monthStars.has(id) || leapYearWheels.has(id) || seasonWheels.has(id) || yearDigitWheels.has(id)) continue;
       const shaft = movement.shafts[id];
       issues.push(
         issue("KIN-001", "unpowered", "warning", "L2_KINEMATIC", [id],

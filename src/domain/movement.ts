@@ -16,6 +16,7 @@ import type { DateComplication, DateComplicationId } from "./dateComplication";
 import type { MonthComplication, MonthComplicationId } from "./monthComplication";
 import type { LeapYearComplication, LeapYearComplicationId } from "./leapYearComplication";
 import type { SeasonComplication, SeasonComplicationId } from "./seasonComplication";
+import type { YearDigitComplication, YearDigitComplicationId } from "./yearDigitComplication";
 import type { DialWindow, DialWindowId } from "./dialWindow";
 import type { Screw, ScrewId } from "./screw";
 import type { ValidationLevel } from "@/reference/validationLevels";
@@ -74,6 +75,8 @@ export interface Movement {
   leapYearComplications: Record<LeapYearComplicationId, LeapYearComplication>;
   /** Zero or more; each driven by its referenced month complication's own jump into Jan/Apr/Jul/Oct, not a continuous arbor (ASM-0057, Phase 8.11). */
   seasonComplications: Record<SeasonComplicationId, SeasonComplication>;
+  /** Zero or more; each a single decimal digit wheel of a "drum clock" year display, driven by its referenced month complication's own December-to-January wrap with decimal carry between digit places, not a continuous arbor (Phase 8.12). */
+  yearDigitComplications: Record<YearDigitComplicationId, YearDigitComplication>;
   /** Zero or more; a pure display entity, kinematically inert (ASM-0051, Phase 8.6). */
   dialWindows: Record<DialWindowId, DialWindow>;
   /** Zero or more; holds one frame in place, a plain declared through-hole (ASM-0056). */
@@ -111,6 +114,7 @@ export function createMovement(
     monthComplications: {},
     leapYearComplications: {},
     seasonComplications: {},
+    yearDigitComplications: {},
     dialWindows: {},
     screws: {},
     drive: null,
@@ -252,6 +256,18 @@ export function updateSeasonComplication(movement: Movement, id: SeasonComplicat
     throw new Error(`Unknown season complication id: ${id}`);
   }
   return { ...movement, seasonComplications: { ...movement.seasonComplications, [id]: { ...existing, ...patch } } };
+}
+
+export function addYearDigitComplication(movement: Movement, digit: YearDigitComplication): Movement {
+  return { ...movement, yearDigitComplications: { ...movement.yearDigitComplications, [digit.id]: digit } };
+}
+
+export function updateYearDigitComplication(movement: Movement, id: YearDigitComplicationId, patch: Partial<Omit<YearDigitComplication, "id" | "type">>): Movement {
+  const existing = movement.yearDigitComplications[id];
+  if (existing === undefined) {
+    throw new Error(`Unknown year digit complication id: ${id}`);
+  }
+  return { ...movement, yearDigitComplications: { ...movement.yearDigitComplications, [id]: { ...existing, ...patch } } };
 }
 
 export function addDialWindow(movement: Movement, window: DialWindow): Movement {

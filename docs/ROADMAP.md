@@ -538,12 +538,38 @@ engagement-timing constant with no source behind it at all (ASM-0054).
   walkthrough both updated in lockstep, following the established
   four-complication pattern.
 
-8.1–8.4, 8.6, 8.9, 8.10 and 8.11 are done (see `docs/STATUS.md` for
-each). 8.7's cross-cutting validation work was folded into 8.1–8.4/8.6
-as they shipped, rather than built as a separate item. 8.10 and 8.11
-are not themselves calendar complications — a baseplate/hardware item
-(`Screw`, bearing and screw clearance holes) and a neutral quarter
-indicator respectively, each raised as its own direct request and kept
+- 8.12 — **Done** (see `docs/STATUS.md`). `YearDigitComplication`: raised
+  as a direct request ("add a drum clock for the current year"). Four
+  separate digit-wheel entities (ones/tens/hundreds/thousands), each
+  architecturally identical to 8.4's leap-year wheel — a jump-driven
+  wheel on another complication's own periodic trigger (the month
+  star's own December-to-January wrap, same event 8.4 uses) — rather
+  than inventing a new multi-shaft complication abstraction, since
+  every existing disc complication (and `DialWindow`) assumes one
+  complication maps to exactly one disc. The genuinely new kinematics:
+  ordinary decimal carry between the declared digit places
+  (`digitsToAdvance`), something no earlier jump-driven wheel here
+  needed (each only ever has one wheel to advance per trigger). Two
+  real choices were clarified with the user directly rather than
+  invented: this means an actual calendar-year display via digit
+  wheels (not another bounded cycle indicator), and the displayed year
+  starts at a declared value (today's own year, 2026, at the design's
+  own t=0) rather than auto-synced from the browser — there is no
+  sourced way for a watch to know the real calendar year on its own,
+  the same reasoning `DateComplication` always starting at day 1
+  already rests on. No sourced real mechanism exists for a wristwatch
+  year display built from decimal digit wheels, so the jump stays
+  instantaneous, the same treatment the season wheel already has.
+  Teaching movement and the guided tutorial walkthrough both updated
+  in lockstep.
+
+8.1–8.4, 8.6, 8.9, 8.10, 8.11 and 8.12 are done (see `docs/STATUS.md`
+for each). 8.7's cross-cutting validation work was folded into
+8.1–8.4/8.6 as they shipped, rather than built as a separate item.
+8.10, 8.11 and 8.12 are not themselves calendar complications in 8.1's
+original sense — a baseplate/hardware item (`Screw`, bearing and screw
+clearance holes), a neutral quarter indicator, and a decimal year
+display respectively — each raised as its own direct request and kept
 in this section's running numbering rather than opening a new phase
 heading. 8.5 and 8.8 remain confirmed out of scope. No further Phase 8
 sub-item is scoped to start without the user's next explicit

@@ -21,12 +21,13 @@ import { createScrew } from "@/domain/screw";
 import { createFrictionClutch, createMainspring } from "@/domain/coupling";
 import { createKeylessWorks } from "@/domain/keyless";
 import { createDial } from "@/domain/dial";
-import { addDateComplication, addDial, addDialWindow, addEscapement, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addScrew, addSeasonComplication, setBalanceDrive } from "@/domain/movement";
+import { addDateComplication, addDial, addDialWindow, addEscapement, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addScrew, addSeasonComplication, addYearDigitComplication, setBalanceDrive } from "@/domain/movement";
 import { createMoonPhase } from "@/domain/moonPhase";
 import { createDateComplication } from "@/domain/dateComplication";
 import { createMonthComplication } from "@/domain/monthComplication";
 import { createLeapYearComplication } from "@/domain/leapYearComplication";
 import { createSeasonComplication } from "@/domain/seasonComplication";
+import { createYearDigitComplication, type YearDigitComplicationId } from "@/domain/yearDigitComplication";
 import { createDialWindow } from "@/domain/dialWindow";
 import { solvePlacement } from "@/kinematics/solvePlacement";
 import { micronewtonMillimetresPerRadian, milligramSquareCentimetres } from "@/units/rotational";
@@ -220,6 +221,15 @@ export function createTeachingMovement(): Movement {
   // SeasonComplication below.
   const seasonWheelArbor = shaft("Season wheel", null, { kind: "STUD", frameId: mainplate.id });
 
+  // Year digits (Phase 8.12, "drum clock"): four separate digit wheels, each — like the month
+  // star, leap-year wheel and season wheel above — driven entirely by the month complication's
+  // own December-to-January wrap, so each has no gear, mesh or drive train of its own, just a
+  // separate, declared (FIXED-position) arbor for its own YearDigitComplication below.
+  const yearOnesArbor = shaft("Year ones", null, { kind: "STUD", frameId: mainplate.id });
+  const yearTensArbor = shaft("Year tens", null, { kind: "STUD", frameId: mainplate.id });
+  const yearHundredsArbor = shaft("Year hundreds", null, { kind: "STUD", frameId: mainplate.id });
+  const yearThousandsArbor = shaft("Year thousands", null, { kind: "STUD", frameId: mainplate.id });
+
   // Keyless works. Ratchet and crown wheel just above the mainplate (its top face is at 1.0 mm).
   const keylessModule = mm(0.1);
   const ratchetWheel = gear("Ratchet wheel", barrelArbor, 40, keylessModule, 1.1, 0.2);
@@ -261,6 +271,7 @@ export function createTeachingMovement(): Movement {
   for (const s of [
     barrel, centre, third, fourth, escape, cannon, minuteWheel, hourWheel, barrelArbor, crownWheelArbor, settingWheelArbor,
     moonReductionArbor, moonDiscArbor, twentyFourHourArbor, dateStarArbor, monthStarArbor, leapYearWheelArbor, seasonWheelArbor,
+    yearOnesArbor, yearTensArbor, yearHundredsArbor, yearThousandsArbor,
   ]) {
     m = addShaft(m, s);
   }
@@ -327,6 +338,16 @@ export function createTeachingMovement(): Movement {
   // on the date star's own line but the opposite direction from the month/leap-year wheels, by
   // more than their tip radii combined (ASSY-002 clearance), comfortably inside the mainplate.
   m = updateShaft(m, seasonWheelArbor.id, { placement: fixedAt(mm(-6), mm(4.5)) });
+  // Declared, not mesh-derived (none of the four digit wheels are meshed with anything, same as
+  // the month/leap-year/season wheels) — a compact 2×2 grid north of the balance cock's own
+  // bridge footprint (x 3-12, y 5-11) and clear of the train bridge (max y 5), comfortably inside
+  // the mainplate's own 15 mm radius (ASSY-002 clearance). Ones/tens in the front row (closer to
+  // the other complications), hundreds/thousands behind — least to most significant, top to
+  // bottom reading like an odometer.
+  m = updateShaft(m, yearOnesArbor.id, { placement: fixedAt(mm(-2), mm(8)) });
+  m = updateShaft(m, yearTensArbor.id, { placement: fixedAt(mm(1), mm(8)) });
+  m = updateShaft(m, yearHundredsArbor.id, { placement: fixedAt(mm(-2), mm(11)) });
+  m = updateShaft(m, yearThousandsArbor.id, { placement: fixedAt(mm(1), mm(11)) });
 
   // Put the crown wheel and setting wheel on the stem line y = 0 (the centre arbor is at the origin).
   // Each is placed from its partner by its mesh; the angle is the one that lands on y = 0 on the crown side.
@@ -411,6 +432,32 @@ export function createTeachingMovement(): Movement {
   });
   m = addSeasonComplication(m, seasonComplication);
 
+  // Year digits (Phase 8.12, "drum clock"): four separate digit wheels showing today's own
+  // year at the design's own t=0 (2026) — like DateComplication always starting at day 1 and
+  // MonthComplication always starting at January, each wheel's own starting digit is
+  // independently declared (there is no sourced way for a watch to know the real calendar year
+  // on its own), not derived from a single shared "year" field.
+  const yearOnesComplication = createYearDigitComplication({
+    name: "Year ones", monthComplicationId: monthComplication.id, digitPlace: "ONES", wheelShaftId: yearOnesArbor.id, startDigit: 6,
+    wheelTipDiameter: mm(2), wheelThickness: mm(0.15), wheelZCentre: mm(-1.2),
+  });
+  m = addYearDigitComplication(m, yearOnesComplication);
+  const yearTensComplication = createYearDigitComplication({
+    name: "Year tens", monthComplicationId: monthComplication.id, digitPlace: "TENS", wheelShaftId: yearTensArbor.id, startDigit: 2,
+    wheelTipDiameter: mm(2), wheelThickness: mm(0.15), wheelZCentre: mm(-1.2),
+  });
+  m = addYearDigitComplication(m, yearTensComplication);
+  const yearHundredsComplication = createYearDigitComplication({
+    name: "Year hundreds", monthComplicationId: monthComplication.id, digitPlace: "HUNDREDS", wheelShaftId: yearHundredsArbor.id, startDigit: 0,
+    wheelTipDiameter: mm(2), wheelThickness: mm(0.15), wheelZCentre: mm(-1.2),
+  });
+  m = addYearDigitComplication(m, yearHundredsComplication);
+  const yearThousandsComplication = createYearDigitComplication({
+    name: "Year thousands", monthComplicationId: monthComplication.id, digitPlace: "THOUSANDS", wheelShaftId: yearThousandsArbor.id, startDigit: 2,
+    wheelTipDiameter: mm(2), wheelThickness: mm(0.15), wheelZCentre: mm(-1.2),
+  });
+  m = addYearDigitComplication(m, yearThousandsComplication);
+
   // Dial windows (Phase 8.6, ASM-0051): without one, every disc complication above sits fully
   // hidden behind the dial's own opaque disc. Each window is offset from its complication's own
   // rotation axis by (illustrative) the radius its position labels print at
@@ -477,6 +524,21 @@ export function createTeachingMovement(): Movement {
     centre: windowAbove(seasonWheelArbor.id, 1.5, 0.72),
     outline: { kind: "RECTANGLE", width: mm(1.3), height: mm(0.55) },
   }));
+  const yearDigitWindow = (name: string, complicationId: YearDigitComplicationId, arborId: ShaftId): void => {
+    m = addDialWindow(m, createDialWindow({
+      name,
+      dialId: dial.id,
+      complicationId,
+      // Smaller disc (2mm tip) than the other jump-driven wheels: a narrower window to match, wide
+      // enough for one digit ("0"-"9").
+      centre: windowAbove(arborId, 1, 0.72),
+      outline: { kind: "RECTANGLE", width: mm(0.9), height: mm(0.5) },
+    }));
+  };
+  yearDigitWindow("Year ones window", yearOnesComplication.id, yearOnesArbor.id);
+  yearDigitWindow("Year tens window", yearTensComplication.id, yearTensArbor.id);
+  yearDigitWindow("Year hundreds window", yearHundredsComplication.id, yearHundredsArbor.id);
+  yearDigitWindow("Year thousands window", yearThousandsComplication.id, yearThousandsArbor.id);
 
   // Pallet arbor and balance staff: fixed positions along a line from the escape arbor
   // (illustrative layout distances). The escape arbor's position follows the mesh chain

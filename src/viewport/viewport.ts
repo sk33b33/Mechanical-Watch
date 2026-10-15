@@ -53,7 +53,7 @@ import { forkActingLength, forkRatio, isHalfToothSpan, lockingPoints, spanAngle,
 import { isValidToothCount } from "@/math/gearMath";
 import { metres } from "@/units/length";
 
-type PickKind = "gear" | "jewel" | "escapement" | "keyless" | "arbor" | "frame" | "dial" | "moonPhase" | "dateStar" | "monthStar" | "leapYearWheel" | "seasonWheel";
+type PickKind = "gear" | "jewel" | "escapement" | "keyless" | "arbor" | "frame" | "dial" | "moonPhase" | "dateStar" | "monthStar" | "leapYearWheel" | "seasonWheel" | "yearDigitWheel";
 type ViewSide = "BRIDGE" | "DIAL";
 
 /**
@@ -70,7 +70,7 @@ export interface SectionState {
 const EXPLODE_STRETCH = 3;
 
 /** When several objects are under the pointer, the most specific wins. */
-const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, escapement: 2, keyless: 2, moonPhase: 2, dateStar: 2, monthStar: 2, leapYearWheel: 2, seasonWheel: 2, arbor: 3, frame: 4, dial: 5 };
+const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, escapement: 2, keyless: 2, moonPhase: 2, dateStar: 2, monthStar: 2, leapYearWheel: 2, seasonWheel: 2, yearDigitWheel: 2, arbor: 3, frame: 4, dial: 5 };
 
 const COLORS = {
   selected: 0x4fa3ff,
@@ -89,6 +89,7 @@ const COLORS = {
   monthStar: 0x8aa0c2,
   leapYearWheel: 0x8ac2a0,
   seasonWheel: 0xc28ac2,
+  yearDigitWheel: 0xc2ac6a,
   stem: 0x9aa4ae,
   crown: 0xa9b3bd,
   pinion: 0xb8c4d0,
@@ -736,6 +737,30 @@ export class Viewport {
         zHi: meshZ + season.wheelThickness / 2,
         footprint: { kind: "circle", radius: season.wheelTipDiameter / 2, centre: { x: 0, y: 0 } },
         color: COLORS.seasonWheel,
+      });
+    }
+
+    for (const digit of Object.values(movement.yearDigitComplications)) {
+      const group = this.shaftGroups.get(digit.wheelShaftId);
+      const valid = Number.isFinite(digit.wheelTipDiameter) && digit.wheelTipDiameter > 0 && Number.isFinite(digit.wheelThickness) && digit.wheelThickness > 0 && Number.isFinite(digit.wheelZCentre);
+      if (group === undefined || !valid) continue;
+      // A "drum clock" digit wheel (new assumption, Phase 8.12), driven entirely by the month
+      // complication's own December-to-January wrap with decimal carry — same
+      // applyKinematicRotation() loop that spins every other shaft group spins this one too. A
+      // plain disc like the season wheel, not a Geneva-slotted wheel: no sourced real mechanism
+      // exists for a year display built this way to draw instead.
+      const meshZ = this.displayZ(digit.wheelZCentre);
+      const digitLabels = findDiscComplication(movement, digit.id)?.positionLabels ?? null;
+      const mesh = new THREE.Mesh(createZCylinder(digit.wheelTipDiameter / 2, meshZ - digit.wheelThickness / 2, meshZ + digit.wheelThickness / 2, 64), discMaterials(COLORS.yearDigitWheel, { metalness: 0.1, roughness: 0.7 }, digitLabels));
+      this.addPickable(group, mesh, { kind: "yearDigitWheel", entityId: digit.id, baseColor: COLORS.yearDigitWheel });
+      this.cappableSolids.push({
+        positionX: group.position.x,
+        positionY: group.position.y,
+        rotationGroup: group,
+        zLo: meshZ - digit.wheelThickness / 2,
+        zHi: meshZ + digit.wheelThickness / 2,
+        footprint: { kind: "circle", radius: digit.wheelTipDiameter / 2, centre: { x: 0, y: 0 } },
+        color: COLORS.yearDigitWheel,
       });
     }
 

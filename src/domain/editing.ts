@@ -15,6 +15,7 @@ import { createDateComplication, type DateComplication } from "./dateComplicatio
 import { createMonthComplication, type MonthComplication } from "./monthComplication";
 import { createLeapYearComplication, type LeapYearComplication } from "./leapYearComplication";
 import { createSeasonComplication, type SeasonComplication } from "./seasonComplication";
+import { createYearDigitComplication, type YearDigitComplication } from "./yearDigitComplication";
 import { createDialWindow, type DialWindow, type DialWindowId } from "./dialWindow";
 import { createScrew, type Screw, type ScrewId } from "./screw";
 import { radians } from "@/units/angle";
@@ -182,6 +183,20 @@ export function newSeasonComplication(movement: Movement): SeasonComplication {
   });
 }
 
+/** A year-digit complication (drum clock) with every dimension empty, no arbor/month complication chosen, and an undeclared starting digit (YEARDIGIT-001 lists what is missing); defaults to the ONES place, changeable via the inspector. */
+export function newYearDigitComplication(movement: Movement): YearDigitComplication {
+  return createYearDigitComplication({
+    name: nextName(Object.values(movement.yearDigitComplications), "Year digit"),
+    monthComplicationId: "" as MonthComplication["id"],
+    digitPlace: "ONES",
+    wheelShaftId: "" as ShaftId,
+    startDigit: Number.NaN,
+    wheelTipDiameter: EMPTY,
+    wheelThickness: EMPTY,
+    wheelZCentre: EMPTY,
+  });
+}
+
 /** A dial window with no dial/complication chosen yet and an empty centre/radius (DIALWIN-001 lists what is missing). */
 export function newDialWindow(movement: Movement): DialWindow {
   return createDialWindow({
@@ -297,7 +312,7 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
   }
 
   const others = new Set<string>();
-  if (id in movement.keylessWorks || id in movement.dials || id in movement.escapements || id in movement.moonPhases || id in movement.dateComplications || id in movement.monthComplications || id in movement.leapYearComplications || id in movement.seasonComplications) others.add(id);
+  if (id in movement.keylessWorks || id in movement.dials || id in movement.escapements || id in movement.moonPhases || id in movement.dateComplications || id in movement.monthComplications || id in movement.leapYearComplications || id in movement.seasonComplications || id in movement.yearDigitComplications) others.add(id);
 
   const removed = new Set<string>([...frames, ...shafts, ...gears, ...meshes, ...jewels, ...couplings, ...tolerances, ...others, ...dialWindows, ...screws]);
   const drive = movement.drive;
@@ -319,6 +334,7 @@ export function removeEntity(movement: Movement, id: EntityId): RemovalResult {
       monthComplications: without(movement.monthComplications, removed),
       leapYearComplications: without(movement.leapYearComplications, removed),
       seasonComplications: without(movement.seasonComplications, removed),
+      yearDigitComplications: without(movement.yearDigitComplications, removed),
       dialWindows: without(movement.dialWindows, removed),
       screws: without(movement.screws, removed),
       drive: drive?.kind === "PRESCRIBED" && removed.has(drive.shaftId) ? null : drive,

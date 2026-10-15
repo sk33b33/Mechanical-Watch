@@ -357,6 +357,12 @@ export const ASSUMPTIONS = {
     scope: "SeasonComplication wheel's own dial-facing art (Phase 8.11 follow-up, visual/L0 display only)",
     status: "Active",
   },
+  "ASM-0059": {
+    summary:
+      "YearDigitComplication, a 'drum clock' year display (Phase 8.12): four decimal digit wheels -- ones, tens, hundreds, thousands -- each architecturally identical to LeapYearComplication/SeasonComplication (a declared FIXED-position arbor, not meshed with anything, advanced only by a jump), all four referencing the same MonthComplication and all four triggered by its December-to-January wrap -- the same event LeapYearComplication's own Geneva wheel already fires on. Raised directly by the user ('add a drum clock for the current year'). No sourced real mechanism (patent or manufacturer description) for a wristwatch 'year' complication built from decimal digit-roller wheels has been found, so -- like SeasonComplication -- this models only the net kinematic effect the user described, declared rather than invented, and the jump stays instantaneous. The genuinely new kinematics: decimal carry propagation (digitsToAdvance, src/kinematics/yearDigitComplication.ts) -- every wrap advances the ones wheel; a more significant place advances in the same event only if every place below it was sitting at 9, ordinary decimal carry worked out from first principles since no equivalent already existed here (every earlier jump-driven wheel only ever has one wheel to advance per trigger). There is no sourced way for a watch to know the real calendar year on its own, so -- matching how DateComplication always starts at day 1 and MonthComplication always starts at January -- each wheel's own startDigit (0-9) is independently declared, set once like a real digit wheel would be by hand, not derived from a single shared 'year' field (clarified directly with the user: declared, not synced to the browser's own clock). wheelShaftId is a separate, declared (FIXED-position) arbor, NOT meshed with anything, same pattern as the other four jump-driven complications.",
+    scope: "YearDigitComplication (Phase 8.12, visual/L0 display plus L2_KINEMATIC jump-chain simulation with decimal carry)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

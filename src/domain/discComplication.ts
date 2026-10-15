@@ -9,6 +9,7 @@ import type { DateComplicationId } from "./dateComplication";
 import type { MonthComplicationId } from "./monthComplication";
 import { LEAP_YEAR_LABELS, LEAP_YEAR_SHORT_LABELS, LEAP_YEAR_SLOT_COUNT, type LeapYearComplicationId } from "./leapYearComplication";
 import { SEASON_LABELS, SEASON_SHORT_LABELS, SEASON_SLOT_COUNT, type SeasonComplicationId } from "./seasonComplication";
+import { YEAR_DIGIT_LABELS, YEAR_DIGIT_SLOT_COUNT, type YearDigitComplicationId } from "./yearDigitComplication";
 import { MONTHS_PER_YEAR, MONTH_ABBREVIATIONS, MONTH_NAMES } from "@/kinematics/monthComplication";
 import { moonPhaseFraction } from "@/kinematics/moonPhase";
 import { starPosition } from "@/kinematics/dateComplication";
@@ -21,7 +22,7 @@ import { starPosition } from "@/kinematics/dateComplication";
  * geometry/validation/rendering, chiefly (`src/domain/dialWindow.ts`).
  */
 export interface DiscComplicationRef {
-  kind: "MoonPhase" | "DateComplication" | "MonthComplication" | "LeapYearComplication" | "SeasonComplication";
+  kind: "MoonPhase" | "DateComplication" | "MonthComplication" | "LeapYearComplication" | "SeasonComplication" | "YearDigitComplication";
   id: EntityId;
   name: string;
   shaftId: ShaftId;
@@ -80,6 +81,15 @@ export function findDiscComplication(movement: Movement, id: EntityId): DiscComp
       positionLabels: SEASON_SHORT_LABELS,
     };
   }
+  const yearDigit = movement.yearDigitComplications[id as YearDigitComplicationId];
+  if (yearDigit !== undefined) {
+    return {
+      kind: "YearDigitComplication", id: yearDigit.id, name: yearDigit.name, shaftId: yearDigit.wheelShaftId,
+      discRadius: (yearDigit.wheelTipDiameter / 2) as Length,
+      zLo: (yearDigit.wheelZCentre - yearDigit.wheelThickness / 2) as Length, zHi: (yearDigit.wheelZCentre + yearDigit.wheelThickness / 2) as Length,
+      positionLabels: YEAR_DIGIT_LABELS,
+    };
+  }
   return undefined;
 }
 
@@ -116,6 +126,11 @@ export function discComplicationLabel(movement: Movement, shaftAngle: Readonly<R
   if (season !== undefined) {
     const position = starPosition(shaftAngle[season.wheelShaftId] ?? radians(0), SEASON_SLOT_COUNT);
     return SEASON_LABELS[position] ?? String(position + 1);
+  }
+  const yearDigit = movement.yearDigitComplications[id as YearDigitComplicationId];
+  if (yearDigit !== undefined) {
+    const position = starPosition(shaftAngle[yearDigit.wheelShaftId] ?? radians(0), YEAR_DIGIT_SLOT_COUNT);
+    return YEAR_DIGIT_LABELS[position] ?? String(position);
   }
   return null;
 }

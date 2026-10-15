@@ -1,7 +1,7 @@
 import type { AppStore } from "@/app/store";
 import type { EntityId } from "@/domain/ids";
-import { addDateComplication, addDial, addDialWindow, addEscapement, addFrame, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addScrew, addSeasonComplication, addShaft, drivenShaftId, type Movement } from "@/domain/movement";
-import { newDateComplication, newDial, newDialWindow, newEscapement, newFrame, newKeylessWorks, newLeapYearComplication, newMonthComplication, newMoonPhase, newScrew, newSeasonComplication, newShaft } from "@/domain/editing";
+import { addDateComplication, addDial, addDialWindow, addEscapement, addFrame, addKeylessWorks, addLeapYearComplication, addMonthComplication, addMoonPhase, addScrew, addSeasonComplication, addShaft, addYearDigitComplication, drivenShaftId, type Movement } from "@/domain/movement";
+import { newDateComplication, newDial, newDialWindow, newEscapement, newFrame, newKeylessWorks, newLeapYearComplication, newMonthComplication, newMoonPhase, newScrew, newSeasonComplication, newShaft, newYearDigitComplication } from "@/domain/editing";
 import { listAssumptions } from "@/reference/assumptions";
 
 export function mountComponentTree(container: HTMLElement, store: AppStore): () => void {
@@ -112,6 +112,10 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
         const season = newSeasonComplication(m);
         return { movement: addSeasonComplication(m, season), id: season.id };
       }, "add-season"),
+      addButton("+ Year digit", "Add one digit wheel (0-9) of a \"drum clock\" year display, driven once a year on the December-to-January wrap; defaults to the ones place, then choose its month complication, arbor and starting digit. Add four (ones/tens/hundreds/thousands) for a full year", (m) => {
+        const digit = newYearDigitComplication(m);
+        return { movement: addYearDigitComplication(m, digit), id: digit.id };
+      }, "add-year-digit"),
       addButton("+ Window", "Add a dial window with no dial or complication chosen yet", (m) => {
         const win = newDialWindow(m);
         return { movement: addDialWindow(m, win), id: win.id };
@@ -183,6 +187,11 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
     if (Object.keys(movement.seasonComplications).length > 0) {
       container.appendChild(header("Season"));
       for (const season of Object.values(movement.seasonComplications)) container.appendChild(item(season.name, season.id, 0, "(driven by month jumps)"));
+    }
+
+    if (Object.keys(movement.yearDigitComplications).length > 0) {
+      container.appendChild(header("Year digits (drum clock)"));
+      for (const digit of Object.values(movement.yearDigitComplications)) container.appendChild(item(digit.name, digit.id, 0, `(${digit.digitPlace.toLowerCase()}, driven by month wrap)`));
     }
 
     if (Object.keys(movement.dialWindows).length > 0) {

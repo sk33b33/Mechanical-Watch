@@ -13,6 +13,8 @@ import { monthEndCorrection, monthJumpStepAngle, MONTHS_PER_YEAR } from "@/kinem
 import { LEAP_YEAR_INDEX_STROKE_SECONDS, LEAP_YEAR_SLOT_COUNT } from "@/domain/leapYearComplication";
 import { genevaStrokeDriverAngle, genevaWheelAdvanceAngle, genevaWheelAngle } from "@/kinematics/genevaDrive";
 import { isQuarterBoundary, seasonJumpStepAngle } from "@/kinematics/seasonComplication";
+import { YEAR_DIGIT_SLOT_COUNT, type YearDigitPlace } from "@/domain/yearDigitComplication";
+import { digitsToAdvance, yearDigitStepAngle } from "@/kinematics/yearDigitComplication";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 
 /**
@@ -51,6 +53,17 @@ export function createSimulationState(movement: Movement): SimulationState {
   const shaftAngle: Record<ShaftId, Angle> = {};
   for (const shaftId of Object.keys(movement.shafts) as ShaftId[]) {
     shaftAngle[shaftId] = radians(0);
+  }
+  // Every other jump-driven complication's own zero position is an arbitrary reference (day 1,
+  // January, position 0). A drum-clock digit has no equivalent "natural" zero: there is no
+  // sourced way for a watch to know the real calendar year on its own, so each wheel's own
+  // starting digit is independently declared (startDigit) and applied here, once, as this
+  // wheel's own initial angle — not derived from a shared "year" field (ASM pending,
+  // src/domain/yearDigitComplication.ts).
+  for (const digit of Object.values(movement.yearDigitComplications)) {
+    if (!(digit.wheelShaftId in movement.shafts)) continue;
+    if (!(Number.isInteger(digit.startDigit) && digit.startDigit >= 0 && digit.startDigit < YEAR_DIGIT_SLOT_COUNT)) continue;
+    shaftAngle[digit.wheelShaftId] = normalizeAngle(radians(digit.startDigit * yearDigitStepAngle()));
   }
   const stemAngle: Record<StemBodyId, Angle> = {};
   for (const id of Object.keys(movement.keylessWorks) as (keyof Movement["keylessWorks"])[]) {
@@ -132,6 +145,17 @@ export interface DateJumpTrack {
     monthStepAngle: Angle;
     yearCorrection: { wheelShaftId: ShaftId; wheelStepAngle: Angle } | null;
     seasonCorrection: { wheelShaftId: ShaftId; wheelStepAngle: Angle } | null;
+    /**
+     * Zero to four "drum clock" digit wheels (`YearDigitComplication`),
+     * each independently declared — a design need not have all four
+     * places. Decimal carry between them (`digitsToAdvance`,
+     * `src/kinematics/yearDigitComplication.ts`) needs every declared
+     * wheel's own CURRENT position read together, so — unlike
+     * `yearCorrection`/`seasonCorrection`, each a single fixed step —
+     * `stepSimulation` reads these fresh from `state.shaftAngle` each
+     * step rather than this track carrying a precomputed step.
+     */
+    yearDigitCorrections: readonly { digitPlace: YearDigitPlace; wheelShaftId: ShaftId; wheelStepAngle: Angle }[];
   } | null;
 }
 
@@ -143,6 +167,7 @@ export function dateJumpTracks(movement: Movement, running: GearTrainSolution): 
     const month = Object.values(movement.monthComplications).find((m) => m.dateComplicationId === date.id);
     const year = month === undefined ? undefined : Object.values(movement.leapYearComplications).find((y) => y.monthComplicationId === month.id);
     const season = month === undefined ? undefined : Object.values(movement.seasonComplications).find((s) => s.monthComplicationId === month.id);
+    const yearDigits = month === undefined ? [] : Object.values(movement.yearDigitComplications).filter((d) => d.monthComplicationId === month.id);
     return [{
       id: date.id,
       driveShaftId: date.driveShaftId,
@@ -155,6 +180,7 @@ export function dateJumpTracks(movement: Movement, running: GearTrainSolution): 
         monthStepAngle: monthJumpStepAngle(),
         yearCorrection: year === undefined ? null : { wheelShaftId: year.wheelShaftId, wheelStepAngle: genevaWheelAdvanceAngle(LEAP_YEAR_SLOT_COUNT) },
         seasonCorrection: season === undefined ? null : { wheelShaftId: season.wheelShaftId, wheelStepAngle: seasonJumpStepAngle() },
+        yearDigitCorrections: yearDigits.map((d) => ({ digitPlace: d.digitPlace, wheelShaftId: d.wheelShaftId, wheelStepAngle: yearDigitStepAngle() })),
       },
     }];
   });
@@ -231,6 +257,25 @@ export function stepSimulation(
       if (seasonCorrection !== null && isQuarterBoundary(monthPosition)) {
         const currentWheel = nextShaftAngle[seasonCorrection.wheelShaftId] ?? radians(0);
         nextShaftAngle[seasonCorrection.wheelShaftId] = normalizeAngle(radians(currentWheel + seasonCorrection.wheelStepAngle));
+      }
+      // The drum-clock year digits (zero to four declared) advance only on the same
+      // December-to-January wrap the leap-year wheel uses — one trigger per calendar year — with
+      // ordinary decimal carry between whichever places are actually declared (digitsToAdvance):
+      // the ones place always advances; a more significant place advances in the same event only
+      // if every place below it was sitting at 9. Reads every declared place's own CURRENT
+      // position together (not a precomputed single step, unlike yearCorrection/seasonCorrection
+      // above), since which wheels fire depends on all of them at once.
+      const yearDigitCorrections = track.monthCorrection.yearDigitCorrections;
+      if (yearDigitCorrections.length > 0 && monthPosition === MONTHS_PER_YEAR - 1) {
+        const currentPositions = new Map(
+          yearDigitCorrections.map((d) => [d.digitPlace, starPosition(state.shaftAngle[d.wheelShaftId] ?? radians(0), YEAR_DIGIT_SLOT_COUNT)] as const),
+        );
+        const advancing = digitsToAdvance(currentPositions);
+        for (const d of yearDigitCorrections) {
+          if (!advancing.has(d.digitPlace)) continue;
+          const currentWheel = nextShaftAngle[d.wheelShaftId] ?? radians(0);
+          nextShaftAngle[d.wheelShaftId] = normalizeAngle(radians(currentWheel + d.wheelStepAngle));
+        }
       }
     }
   }

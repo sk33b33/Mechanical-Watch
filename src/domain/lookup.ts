@@ -12,10 +12,11 @@ import type { DateComplication, DateComplicationId } from "./dateComplication";
 import type { MonthComplication, MonthComplicationId } from "./monthComplication";
 import type { LeapYearComplication, LeapYearComplicationId } from "./leapYearComplication";
 import type { SeasonComplication, SeasonComplicationId } from "./seasonComplication";
+import type { YearDigitComplication, YearDigitComplicationId } from "./yearDigitComplication";
 import type { DialWindow, DialWindowId } from "./dialWindow";
 import type { Screw, ScrewId } from "./screw";
 
-export type SelectableEntity = Gear | Shaft | Frame | Jewel | KeylessWorks | Dial | Escapement | MoonPhase | DateComplication | MonthComplication | LeapYearComplication | SeasonComplication | DialWindow | Screw;
+export type SelectableEntity = Gear | Shaft | Frame | Jewel | KeylessWorks | Dial | Escapement | MoonPhase | DateComplication | MonthComplication | LeapYearComplication | SeasonComplication | YearDigitComplication | DialWindow | Screw;
 
 export function findEntity(movement: Movement, id: EntityId): SelectableEntity | undefined {
   return (
@@ -31,6 +32,7 @@ export function findEntity(movement: Movement, id: EntityId): SelectableEntity |
     movement.monthComplications[id as MonthComplicationId] ??
     movement.leapYearComplications[id as LeapYearComplicationId] ??
     movement.seasonComplications[id as SeasonComplicationId] ??
+    movement.yearDigitComplications[id as YearDigitComplicationId] ??
     movement.dialWindows[id as DialWindowId] ??
     movement.screws[id as ScrewId]
   );

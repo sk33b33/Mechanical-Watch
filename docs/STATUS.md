@@ -2,6 +2,98 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.12: `YearDigitComplication`, a "drum clock" year display
+
+Requested directly: "can we add a drum clock for the current year." Clarified
+with the user before building: (1) a complication showing the actual
+calendar year via rotating drum/cylinder digit wheels, not a 4-position
+cycle indicator like `LeapYearComplication`; (2) the displayed year starts
+at a declared value (like date always starting at day 1, month at
+January), not auto-synced from the browser.
+
+**Four separate digit-wheel entities, not one multi-shaft entity.**
+Every existing disc complication (`DiscComplicationRef`,
+`src/domain/discComplication.ts`) maps one complication to exactly one
+disc/shaft — `DialWindow`, the inspector, componentTree and the viewport
+all assume that 1:1 shape. A "drum clock" genuinely needs four rotating
+discs (ones/tens/hundreds/thousands) under one logical year value, so
+rather than inventing a new multi-shaft abstraction nothing else in this
+project has, `YearDigitComplication` (new assumption) is architecturally
+identical to `LeapYearComplication`/`SeasonComplication` (a declared
+FIXED-position arbor, not meshed with anything, advanced only by a jump)
+with an added `digitPlace` field (ONES/TENS/HUNDREDS/THOUSANDS). The
+teaching movement declares four instances, all referencing the same
+`MonthComplication`, fitting cleanly into every existing 1:1 pattern
+(four small discs, four small windows) instead of widening it.
+
+**The genuinely new kinematics: decimal carry propagation.**
+`digitsToAdvance` (`src/kinematics/yearDigitComplication.ts`) walks
+ONES → TENS → HUNDREDS → THOUSANDS, including a place and continuing to
+the next only while the current one's own pre-advance position is 9 —
+ordinary decimal carry, the same rule a mechanical odometer or a real
+"big date" mechanism's own tens-digit jump already follows. No earlier
+jump-driven wheel in this project needed this: date/month/leap-year/
+season each only ever have one wheel to advance per trigger. A design
+can declare any subset of the four places; a gap stops the carry chain
+there rather than inventing a bridge across it (surfaced as a
+YEARDIGIT-001 warning, not silently patched over).
+
+**Simulation wiring** (`src/simulation/simulationState.ts`):
+`DateJumpTrack.monthCorrection` gained `yearDigitCorrections` (zero to
+four entries, each independently declared). Unlike
+`yearCorrection`/`seasonCorrection` (each a single precomputed step),
+carry needs every declared wheel's own CURRENT position read together,
+so `stepSimulation` reads them fresh from `state.shaftAngle` each step
+rather than carrying a precomputed step — on the same December-to-
+January wrap trigger the leap-year wheel already uses.
+`createSimulationState` gained a small loop applying each wheel's own
+declared `startDigit` (0-9) as its initial angle: unlike every other
+complication here, there is no "natural" zero position for a drum-clock
+digit (no sourced way for a watch to know the real calendar year on its
+own), so each wheel is independently set, like a real digit wheel would
+be set by hand — not derived from a single shared "year" field, which
+would need a new kind of cross-entity consistency check this project
+does not otherwise have.
+
+**Teaching movement**: four 2mm digit wheels in a compact 2×2 grid,
+clear of the balance cock's own bridge footprint and the train bridge,
+comfortably inside the mainplate's 15mm radius (verified live — no
+INTERFERENCE/clearance errors). Starting digits 2/0/2/6 — today's own
+year (2026) at the design's own t=0. Guided tutorial walkthrough
+extended with 12 new steps (arbor + complication + window, ×4),
+following the exact leap-year/season pattern.
+
+Wired through every generic dispatcher this codebase's complications
+need, closely mirroring `SeasonComplication`'s own wiring end to end:
+`movement.ts`/`editing.ts`/`lookup.ts`/`measure.ts`,
+`discComplication.ts` (plain "0"-"9" labels via the existing generic
+label-ring texture, no new art needed), `kinematicRules.ts`'s KIN-001
+exemption, the new `yearDigitComplicationRules.ts` (YEARDIGIT-001
+dimensions/references/not-geared/duplicate-driver/carry-gap warning,
+YEARDIGIT-002 an info row explicitly noting no sourced real wristwatch
+mechanism exists for a year display built this way), `viewport.ts`
+(new PickKind/COLORS entry, a render loop reusing the plain-disc
+pattern), `yearDigitComplicationSection.ts` + `inspector/index.ts`
+wiring, `componentTree.ts` ("+ Year digit" button + listing),
+`designFile.ts` (decoder + v25→v26 migration), reference registers
+(ASM-0059, YEARDIGIT-001/002 in both markdown and TS mirrors), and
+`TRACEABILITY.md` (the carry equation, the rule-ID cross-reference).
+
+Tests: `yearDigitComplication.test.ts` (kinematics — step angle, and
+`digitsToAdvance`'s full carry-chain behaviour including gaps),
+`yearDigitComplicationRules.test.ts` (11 cases), a new "year-digit
+(drum clock) correction" describe block in `simulationState.test.ts`
+(8 cases covering ordinary advance, each carry depth, a gap, and the
+no-complication-declared case). Three pre-existing allowlist-style
+tests needed updating, the same recurring pattern every prior
+complication phase hits: `store.test.ts` (tutorial step count),
+`keyless.test.ts` (unreachable-shaft name list),
+`movementKinematics.test.ts` (info-only rule allowlist). Full suite
+green: `tsc -b`, `eslint`, 761 Vitest tests, production build, a
+live-browser check (teaching movement loads with zero validation
+errors, the thousands wheel correctly reads "2"), and the full
+38-test Playwright suite.
+
 ## Season wheel quadrant art: four wedges, one icon per season
 
 Requested directly: "cut the gear into 4 equal pieces and add some art
