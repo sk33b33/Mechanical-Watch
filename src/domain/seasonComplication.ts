@@ -15,8 +15,10 @@ export const SEASON_SLOT_COUNT = 4;
  * hemisphere-dependent — Northern and Southern Hemisphere conventions
  * assign opposite seasons to the same quarter — so this project
  * initially used neutral "Quarter 1–4" labels rather than invent a
- * hemisphere. The user later asked directly for this specific mapping
- * (Q1 Summer, Q2 Autumn, Q3 Winter, Q4 Spring), which is the Southern
+ * hemisphere. The user then stated directly they are in the Southern
+ * Hemisphere and asked for that to be the standing convention here
+ * (see `reference/assumptions/ASSUMPTION_REGISTER.md`'s own preamble),
+ * giving Q1 Summer, Q2 Autumn, Q3 Winter, Q4 Spring — the Southern
  * Hemisphere's own astronomical quarters (Q1 = January–March, mostly
  * within the Dec 21–Mar 20 summer quarter, and so on) — a declared
  * choice, not an invented default; the Northern Hemisphere reading of
