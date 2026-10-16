@@ -190,10 +190,6 @@ function buildTeachingMovementSteps(): TutorialStep[] {
   const monthStarArbor = byName(ref.shafts, "Month star");
   const leapYearWheelArbor = byName(ref.shafts, "Leap-year wheel");
   const seasonWheelArbor = byName(ref.shafts, "Season wheel");
-  const yearOnesArbor = byName(ref.shafts, "Year ones");
-  const yearTensArbor = byName(ref.shafts, "Year tens");
-  const yearHundredsArbor = byName(ref.shafts, "Year hundreds");
-  const yearThousandsArbor = byName(ref.shafts, "Year thousands");
 
   const mainspring = couplingOfKind(ref.couplings, "MAINSPRING");
   const keylessWorks = only(ref.keylessWorks);
@@ -204,19 +200,16 @@ function buildTeachingMovementSteps(): TutorialStep[] {
   const monthComplication = only(ref.monthComplications);
   const leapYearComplication = only(ref.leapYearComplications);
   const seasonComplication = only(ref.seasonComplications);
-  const yearOnesComplication = byName(ref.yearDigitComplications, "Year ones");
-  const yearTensComplication = byName(ref.yearDigitComplications, "Year tens");
-  const yearHundredsComplication = byName(ref.yearDigitComplications, "Year hundreds");
   const yearThousandsComplication = byName(ref.yearDigitComplications, "Year thousands");
+  const yearHundredsComplication = byName(ref.yearDigitComplications, "Year hundreds");
+  const yearTensComplication = byName(ref.yearDigitComplications, "Year tens");
+  const yearOnesComplication = byName(ref.yearDigitComplications, "Year ones");
   const moonPhaseWindow = byName(ref.dialWindows, "Moon phase window");
   const dateWindow = byName(ref.dialWindows, "Date window");
   const monthWindow = byName(ref.dialWindows, "Month window");
   const leapYearWindow = byName(ref.dialWindows, "Leap-year window");
   const seasonWindow = byName(ref.dialWindows, "Season window");
-  const yearOnesWindow = byName(ref.dialWindows, "Year ones window");
-  const yearTensWindow = byName(ref.dialWindows, "Year tens window");
-  const yearHundredsWindow = byName(ref.dialWindows, "Year hundreds window");
-  const yearThousandsWindow = byName(ref.dialWindows, "Year thousands window");
+  const yearWindow = byName(ref.dialWindows, "Year window");
 
   return [
     {
@@ -469,77 +462,47 @@ function buildTeachingMovementSteps(): TutorialStep[] {
       createOverride: (m) => ({ movement: addDialWindow(m, seasonWindow), id: seasonWindow.id }),
     },
 
-    arborStep("add-year-ones-wheel-arbor", "Add the year-ones wheel's own arbor", "Click “+ Arbor” — a \"drum clock\" year display (four separate digit wheels): like the other jump-driven wheels, its position is declared, not derived, and it is not meshed with anything either.", yearOnesArbor, solvedFixed(yearOnesArbor)),
-    {
-      id: "add-year-ones",
-      title: "Add the year-ones digit wheel",
-      instructions:
-        "Click “+ Year digit” — the referenced month complication, digit place, wheel arbor, starting digit and dimensions all come from the real design. Driven entirely by the month star's own December-to-January wrap, once a calendar year, with no drive train of its own. This wheel (the ones place) always advances on that wrap; the other three only join in when decimal carry reaches them.",
-      targetSelector: '[data-tutorial="add-year-digit"]',
-      isComplete: (m) => m.yearDigitComplications[yearOnesComplication.id] !== undefined,
-      createOverride: (m) => ({ movement: addYearDigitComplication(m, yearOnesComplication), id: yearOnesComplication.id }),
-    },
-    {
-      id: "add-year-ones-window",
-      title: "Cut a window for the year-ones wheel",
-      instructions: "The same way as every other complication's own window (ASM-0051).",
-      targetSelector: '[data-tutorial="add-window"]',
-      isComplete: (m) => m.dialWindows[yearOnesWindow.id] !== undefined,
-      createOverride: (m) => ({ movement: addDialWindow(m, yearOnesWindow), id: yearOnesWindow.id }),
-    },
-
-    arborStep("add-year-tens-wheel-arbor", "Add the year-tens wheel's own arbor", "Click “+ Arbor” — same declared-position pattern as the year-ones wheel.", yearTensArbor, solvedFixed(yearTensArbor)),
-    {
-      id: "add-year-tens",
-      title: "Add the year-tens digit wheel",
-      instructions: "Click “+ Year digit” again — this one advances only when the ones wheel carries into it (it was sitting at 9 the moment the year wraps), ordinary decimal carry.",
-      targetSelector: '[data-tutorial="add-year-digit"]',
-      isComplete: (m) => m.yearDigitComplications[yearTensComplication.id] !== undefined,
-      createOverride: (m) => ({ movement: addYearDigitComplication(m, yearTensComplication), id: yearTensComplication.id }),
-    },
-    {
-      id: "add-year-tens-window",
-      title: "Cut a window for the year-tens wheel",
-      instructions: "The same way again.",
-      targetSelector: '[data-tutorial="add-window"]',
-      isComplete: (m) => m.dialWindows[yearTensWindow.id] !== undefined,
-      createOverride: (m) => ({ movement: addDialWindow(m, yearTensWindow), id: yearTensWindow.id }),
-    },
-
-    arborStep("add-year-hundreds-wheel-arbor", "Add the year-hundreds wheel's own arbor", "Click “+ Arbor” — same declared-position pattern again.", yearHundredsArbor, solvedFixed(yearHundredsArbor)),
-    {
-      id: "add-year-hundreds",
-      title: "Add the year-hundreds digit wheel",
-      instructions: "Click “+ Year digit” — this one only advances when BOTH the ones and tens wheels are carrying in the same event (both were at 9).",
-      targetSelector: '[data-tutorial="add-year-digit"]',
-      isComplete: (m) => m.yearDigitComplications[yearHundredsComplication.id] !== undefined,
-      createOverride: (m) => ({ movement: addYearDigitComplication(m, yearHundredsComplication), id: yearHundredsComplication.id }),
-    },
-    {
-      id: "add-year-hundreds-window",
-      title: "Cut a window for the year-hundreds wheel",
-      instructions: "The same way again.",
-      targetSelector: '[data-tutorial="add-window"]',
-      isComplete: (m) => m.dialWindows[yearHundredsWindow.id] !== undefined,
-      createOverride: (m) => ({ movement: addDialWindow(m, yearHundredsWindow), id: yearHundredsWindow.id }),
-    },
-
-    arborStep("add-year-thousands-wheel-arbor", "Add the year-thousands wheel's own arbor", "Click “+ Arbor” — the fourth and last digit wheel's own declared position.", yearThousandsArbor, solvedFixed(yearThousandsArbor)),
     {
       id: "add-year-thousands",
-      title: "Add the year-thousands digit wheel",
-      instructions: "Click “+ Year digit” one last time — the whole \"drum clock\" is now wired: four digit wheels, decimal carry between them, all driven by the same December-to-January wrap the leap-year and season wheels already use. No sourced real wristwatch mechanism exists for a year display built this way, so the jump stays instantaneous, the same declared (not invented) treatment the season wheel already has.",
+      title: "Add the year-thousands digit segment",
+      instructions:
+        "Click “+ Year digit” — unlike every other jump-driven wheel so far, this one has no arbor at all: a \"page-flip\" horizontal-axis barrel (ASM-0019-style exception to ASM-0006, not a Shaft), sliced into four digit segments. This step places the leftmost segment (thousands) at the real design's own axle origin, direction and height; it only advances when every place below it is carrying in the same wrap.",
       targetSelector: '[data-tutorial="add-year-digit"]',
       isComplete: (m) => m.yearDigitComplications[yearThousandsComplication.id] !== undefined,
       createOverride: (m) => ({ movement: addYearDigitComplication(m, yearThousandsComplication), id: yearThousandsComplication.id }),
     },
     {
-      id: "add-year-thousands-window",
-      title: "Cut a window for the year-thousands wheel",
-      instructions: "The last window -- the real design's dial now shows every complication through its own cutout (ASM-0051).",
+      id: "add-year-hundreds",
+      title: "Add the year-hundreds digit segment",
+      instructions: "Click “+ Year digit” again — the next segment along the same barrel's own axle, abutting the thousands segment. It only advances when BOTH the ones and tens segments are carrying in the same event (both were at 9).",
+      targetSelector: '[data-tutorial="add-year-digit"]',
+      isComplete: (m) => m.yearDigitComplications[yearHundredsComplication.id] !== undefined,
+      createOverride: (m) => ({ movement: addYearDigitComplication(m, yearHundredsComplication), id: yearHundredsComplication.id }),
+    },
+    {
+      id: "add-year-tens",
+      title: "Add the year-tens digit segment",
+      instructions: "Click “+ Year digit” — this segment advances only when the ones segment carries into it (it was sitting at 9 the moment the year wraps), ordinary decimal carry.",
+      targetSelector: '[data-tutorial="add-year-digit"]',
+      isComplete: (m) => m.yearDigitComplications[yearTensComplication.id] !== undefined,
+      createOverride: (m) => ({ movement: addYearDigitComplication(m, yearTensComplication), id: yearTensComplication.id }),
+    },
+    {
+      id: "add-year-ones",
+      title: "Add the year-ones digit segment",
+      instructions:
+        "Click “+ Year digit” one last time — the rightmost segment. All four together now read left to right like a printed year, driven entirely by the month star's own December-to-January wrap, once a calendar year, with no drive train of their own. This segment (the ones place) always advances on that wrap; the other three only join in when decimal carry reaches them. No sourced real wristwatch mechanism exists for a year display built this way, so the jump stays instantaneous, the same declared (not invented) treatment the season wheel already has.",
+      targetSelector: '[data-tutorial="add-year-digit"]',
+      isComplete: (m) => m.yearDigitComplications[yearOnesComplication.id] !== undefined,
+      createOverride: (m) => ({ movement: addYearDigitComplication(m, yearOnesComplication), id: yearOnesComplication.id }),
+    },
+    {
+      id: "add-year-window",
+      title: "Cut one shared window for the whole barrel",
+      instructions: "Click “+ Window” — one large rectangular cutout over the whole four-segment barrel, not a separate window per segment: the real design's dial now shows every complication through its own cutout (ASM-0051).",
       targetSelector: '[data-tutorial="add-window"]',
-      isComplete: (m) => m.dialWindows[yearThousandsWindow.id] !== undefined,
-      createOverride: (m) => ({ movement: addDialWindow(m, yearThousandsWindow), id: yearThousandsWindow.id }),
+      isComplete: (m) => m.dialWindows[yearWindow.id] !== undefined,
+      createOverride: (m) => ({ movement: addDialWindow(m, yearWindow), id: yearWindow.id }),
     },
 
     {

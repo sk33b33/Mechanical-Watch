@@ -1,5 +1,6 @@
 import type { Length } from "@/units/length";
 import { radians, type Angle } from "@/units/angle";
+import type { Vec2 } from "@/math/vec2";
 import type { Movement } from "./movement";
 import type { EntityId } from "./ids";
 import type { ShaftId } from "./shaft";
@@ -15,17 +16,29 @@ import { moonPhaseFraction } from "@/kinematics/moonPhase";
 import { starPosition } from "@/kinematics/dateComplication";
 
 /**
- * A unified read of the five "disc on its own arbor" complications
- * (MoonPhase, DateComplication, MonthComplication, LeapYearComplication,
- * SeasonComplication) for anything that needs to treat them alike
- * without re-deriving each one's own field names — `DialWindow`'s own
- * geometry/validation/rendering, chiefly (`src/domain/dialWindow.ts`).
+ * Where to read a disc complication's own plan position from. Every
+ * complication but `YearDigitComplication` sits on a `Shaft`'s own
+ * solved axis; a `YearDigitComplication` (Phase 8.15) is a horizontal
+ * barrel segment with no `Shaft` at all (ASM-0019's own exception,
+ * extended), so it declares a fixed point of its own directly instead
+ * — the same "declared, not shaft-derived" treatment `DialWindow`'s own
+ * `centre` and `Screw`'s own `position` already get.
+ */
+export type DiscComplicationPosition = { kind: "SHAFT"; shaftId: ShaftId } | { kind: "FIXED"; point: Vec2 };
+
+/**
+ * A unified read of the six "disc/barrel" complications (MoonPhase,
+ * DateComplication, MonthComplication, LeapYearComplication,
+ * SeasonComplication, YearDigitComplication) for anything that needs to
+ * treat them alike without re-deriving each one's own field names —
+ * `DialWindow`'s own geometry/validation/rendering, chiefly
+ * (`src/domain/dialWindow.ts`).
  */
 export interface DiscComplicationRef {
   kind: "MoonPhase" | "DateComplication" | "MonthComplication" | "LeapYearComplication" | "SeasonComplication" | "YearDigitComplication";
   id: EntityId;
   name: string;
-  shaftId: ShaftId;
+  position: DiscComplicationPosition;
   discRadius: Length;
   zLo: Length;
   zHi: Length;
@@ -37,7 +50,7 @@ export function findDiscComplication(movement: Movement, id: EntityId): DiscComp
   const moon = movement.moonPhases[id as MoonPhaseId];
   if (moon !== undefined) {
     return {
-      kind: "MoonPhase", id: moon.id, name: moon.name, shaftId: moon.shaftId,
+      kind: "MoonPhase", id: moon.id, name: moon.name, position: { kind: "SHAFT", shaftId: moon.shaftId },
       discRadius: (moon.diameter / 2) as Length,
       zLo: moon.faceHeight, zHi: (moon.faceHeight + moon.thickness) as Length,
       positionLabels: null,
@@ -46,7 +59,7 @@ export function findDiscComplication(movement: Movement, id: EntityId): DiscComp
   const date = movement.dateComplications[id as DateComplicationId];
   if (date !== undefined) {
     return {
-      kind: "DateComplication", id: date.id, name: date.name, shaftId: date.starShaftId,
+      kind: "DateComplication", id: date.id, name: date.name, position: { kind: "SHAFT", shaftId: date.starShaftId },
       discRadius: (date.starTipDiameter / 2) as Length,
       zLo: (date.starZCentre - date.starThickness / 2) as Length, zHi: (date.starZCentre + date.starThickness / 2) as Length,
       positionLabels: Number.isInteger(date.starToothCount) && date.starToothCount > 0
@@ -57,7 +70,7 @@ export function findDiscComplication(movement: Movement, id: EntityId): DiscComp
   const month = movement.monthComplications[id as MonthComplicationId];
   if (month !== undefined) {
     return {
-      kind: "MonthComplication", id: month.id, name: month.name, shaftId: month.starShaftId,
+      kind: "MonthComplication", id: month.id, name: month.name, position: { kind: "SHAFT", shaftId: month.starShaftId },
       discRadius: (month.starTipDiameter / 2) as Length,
       zLo: (month.starZCentre - month.starThickness / 2) as Length, zHi: (month.starZCentre + month.starThickness / 2) as Length,
       positionLabels: MONTH_ABBREVIATIONS,
@@ -66,7 +79,7 @@ export function findDiscComplication(movement: Movement, id: EntityId): DiscComp
   const year = movement.leapYearComplications[id as LeapYearComplicationId];
   if (year !== undefined) {
     return {
-      kind: "LeapYearComplication", id: year.id, name: year.name, shaftId: year.wheelShaftId,
+      kind: "LeapYearComplication", id: year.id, name: year.name, position: { kind: "SHAFT", shaftId: year.wheelShaftId },
       discRadius: (year.wheelTipDiameter / 2) as Length,
       zLo: (year.wheelZCentre - year.wheelThickness / 2) as Length, zHi: (year.wheelZCentre + year.wheelThickness / 2) as Length,
       positionLabels: LEAP_YEAR_SHORT_LABELS,
@@ -75,7 +88,7 @@ export function findDiscComplication(movement: Movement, id: EntityId): DiscComp
   const season = movement.seasonComplications[id as SeasonComplicationId];
   if (season !== undefined) {
     return {
-      kind: "SeasonComplication", id: season.id, name: season.name, shaftId: season.wheelShaftId,
+      kind: "SeasonComplication", id: season.id, name: season.name, position: { kind: "SHAFT", shaftId: season.wheelShaftId },
       discRadius: (season.wheelTipDiameter / 2) as Length,
       zLo: (season.wheelZCentre - season.wheelThickness / 2) as Length, zHi: (season.wheelZCentre + season.wheelThickness / 2) as Length,
       positionLabels: SEASON_SHORT_LABELS,
@@ -84,9 +97,15 @@ export function findDiscComplication(movement: Movement, id: EntityId): DiscComp
   const yearDigit = movement.yearDigitComplications[id as YearDigitComplicationId];
   if (yearDigit !== undefined) {
     return {
-      kind: "YearDigitComplication", id: yearDigit.id, name: yearDigit.name, shaftId: yearDigit.wheelShaftId,
-      discRadius: (yearDigit.wheelTipDiameter / 2) as Length,
-      zLo: (yearDigit.wheelZCentre - yearDigit.wheelThickness / 2) as Length, zHi: (yearDigit.wheelZCentre + yearDigit.wheelThickness / 2) as Length,
+      kind: "YearDigitComplication", id: yearDigit.id, name: yearDigit.name, position: { kind: "FIXED", point: yearDigit.axleOrigin },
+      // A horizontal barrel's own true XY footprint (viewed from the dial, along Z) is a
+      // rectangle — segmentLength along its own axle by barrelDiameter across it — not a circle;
+      // DIALWIN-002's own overlap check (src/validation/rules/dialWindowRules.ts) only knows
+      // circles, so this uses the larger of the two dimensions as a conservative bounding
+      // radius: a check against it can only ever over-report overlap (never miss a real one),
+      // the safer direction for a rule whose job is "catch a window showing nothing" (ASM-0051).
+      discRadius: (Math.max(yearDigit.barrelDiameter, yearDigit.segmentLength) / 2) as Length,
+      zLo: (yearDigit.axleHeight - yearDigit.barrelDiameter / 2) as Length, zHi: (yearDigit.axleHeight + yearDigit.barrelDiameter / 2) as Length,
       positionLabels: YEAR_DIGIT_LABELS,
     };
   }
@@ -95,41 +114,48 @@ export function findDiscComplication(movement: Movement, id: EntityId): DiscComp
 
 /**
  * The current human-readable value a disc complication shows, read from
- * its own arbor's simulated angle — the same read `xxxComplicationSection.ts`'s
+ * its own live simulated angle — the same read `xxxComplicationSection.ts`'s
  * own "Current position" row already does per type, unified here for
  * `DialWindow`'s own inspector/viewport label. Null when the complication
  * is not yet fully declared enough to read (e.g. no star tooth count).
+ * `yearDigitAngle` is separate from `shaftAngle` because a
+ * `YearDigitComplication` is not a `Shaft` (Phase 8.15), the same split
+ * `SimulationState` itself already keeps.
  */
-export function discComplicationLabel(movement: Movement, shaftAngle: Readonly<Record<ShaftId, Angle>>, id: EntityId): string | null {
+export function discComplicationLabel(
+  movement: Movement,
+  angles: { shaftAngle: Readonly<Record<ShaftId, Angle>>; yearDigitAngle: Readonly<Record<YearDigitComplicationId, Angle>> },
+  id: EntityId,
+): string | null {
   const moon = movement.moonPhases[id as MoonPhaseId];
   if (moon !== undefined) {
-    const fraction = moonPhaseFraction(shaftAngle[moon.shaftId] ?? radians(0), windowsPerRevolution(moon.windowCount));
+    const fraction = moonPhaseFraction(angles.shaftAngle[moon.shaftId] ?? radians(0), windowsPerRevolution(moon.windowCount));
     return `${String(Math.round(fraction * 100))}%`;
   }
   const date = movement.dateComplications[id as DateComplicationId];
   if (date !== undefined) {
     if (!(Number.isInteger(date.starToothCount) && date.starToothCount > 0)) return null;
-    const position = starPosition(shaftAngle[date.starShaftId] ?? radians(0), date.starToothCount);
+    const position = starPosition(angles.shaftAngle[date.starShaftId] ?? radians(0), date.starToothCount);
     return String(position + 1);
   }
   const month = movement.monthComplications[id as MonthComplicationId];
   if (month !== undefined) {
-    const position = starPosition(shaftAngle[month.starShaftId] ?? radians(0), MONTHS_PER_YEAR);
+    const position = starPosition(angles.shaftAngle[month.starShaftId] ?? radians(0), MONTHS_PER_YEAR);
     return MONTH_NAMES[position] ?? String(position + 1);
   }
   const year = movement.leapYearComplications[id as LeapYearComplicationId];
   if (year !== undefined) {
-    const position = starPosition(shaftAngle[year.wheelShaftId] ?? radians(0), LEAP_YEAR_SLOT_COUNT);
+    const position = starPosition(angles.shaftAngle[year.wheelShaftId] ?? radians(0), LEAP_YEAR_SLOT_COUNT);
     return LEAP_YEAR_LABELS[position] ?? String(position + 1);
   }
   const season = movement.seasonComplications[id as SeasonComplicationId];
   if (season !== undefined) {
-    const position = starPosition(shaftAngle[season.wheelShaftId] ?? radians(0), SEASON_SLOT_COUNT);
+    const position = starPosition(angles.shaftAngle[season.wheelShaftId] ?? radians(0), SEASON_SLOT_COUNT);
     return SEASON_LABELS[position] ?? String(position + 1);
   }
   const yearDigit = movement.yearDigitComplications[id as YearDigitComplicationId];
   if (yearDigit !== undefined) {
-    const position = starPosition(shaftAngle[yearDigit.wheelShaftId] ?? radians(0), YEAR_DIGIT_SLOT_COUNT);
+    const position = starPosition(angles.yearDigitAngle[yearDigit.id] ?? radians(0), YEAR_DIGIT_SLOT_COUNT);
     return YEAR_DIGIT_LABELS[position] ?? String(position);
   }
   return null;

@@ -601,15 +601,35 @@ engagement-timing constant with no source behind it at all (ASM-0054).
   drum's own digit colours also inverted to pale-on-dark, matching the
   reference photo.
 
-8.1–8.4, 8.6, 8.9, 8.10, 8.11, 8.12, 8.13 and 8.14 are done (see
+- 8.15 — **Done** (see `docs/STATUS.md`). Year-digit horizontal-axis
+  "page-flip" barrel: direct user rejection of the whole 8.12–8.14
+  vertical-arbor architecture ("i dont want 4 gears with 4 windows, it
+  needs to be 1 large rectangular window with 1 large cylindrical barrel
+  behind it that is separated into 4 parts... the numbers should turn
+  horizontally when facing the dial"). `YearDigitComplication` is no
+  longer a `Shaft` at all — it declares its own horizontal axle
+  (`axleOrigin`, `axleDirection`, `axleHeight`) directly, exactly
+  mirroring `KeylessWorks`'s own stem (ASM-0019), the project's one
+  pre-existing exception to ASM-0006 (every shaft axis vertical). Fixes
+  a real defect 8.13's drum had: its lateral digit texture was
+  geometrically invisible from the dial-side camera, which looks
+  straight down the same axis the drum rotated about. Four new
+  assumptions (ASM-0063–0066) replace the superseded ASM-0059–0062; the
+  decimal-carry kinematics and declared per-segment starting digit carry
+  forward unchanged. The four separate per-digit windows are replaced by
+  one shared rectangular window over the whole barrel, per the user's
+  own explicit request.
+
+8.1–8.4, 8.6, 8.9, 8.10, 8.11, 8.12, 8.13, 8.14 and 8.15 are done (see
 `docs/STATUS.md` for each). 8.7's cross-cutting validation work was
 folded into 8.1–8.4/8.6 as they shipped, rather than built as a
-separate item. 8.10, 8.11, 8.12, 8.13 and 8.14 are not themselves
+separate item. 8.10, 8.11, 8.12, 8.13, 8.14 and 8.15 are not themselves
 calendar complications in 8.1's original sense — a baseplate/hardware
 item (`Screw`, bearing and screw clearance holes), a neutral quarter
-indicator, a decimal year display, and that display's own two rounds of
-visual redesign respectively — each raised as its own direct request
-and kept in this section's running numbering rather than opening a new
-phase heading. 8.5 and 8.8 remain confirmed out of scope. No further
-Phase 8 sub-item is scoped to start without the user's next explicit
+indicator, a decimal year display, and that display's own three rounds
+of visual/architectural redesign respectively — each raised as its own
+direct request and kept in this section's running numbering rather than
+opening a new phase heading. 8.5 and 8.8 remain confirmed out of scope.
+No further Phase 8 sub-item is scoped to start without the user's next
+explicit
 instruction.

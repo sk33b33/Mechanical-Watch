@@ -633,7 +633,9 @@ function leapYearComplicationReport(movement: Movement, analysis: MovementAnalys
 function dialWindowReport(movement: Movement, analysis: MovementAnalysis, win: DialWindow): ComponentReport {
   const dial = movement.dials[win.dialId];
   const complication = findDiscComplication(movement, win.complicationId);
-  const discCentre = complication === undefined ? undefined : analysis.placement.shaftPositions.get(complication.shaftId);
+  const discCentre = complication === undefined
+    ? undefined
+    : complication.position.kind === "SHAFT" ? analysis.placement.shaftPositions.get(complication.position.shaftId) : complication.position.point;
   const gap = discCentre === undefined || complication === undefined
     ? null
     : win.outline.kind === "CIRCLE"

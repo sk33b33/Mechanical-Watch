@@ -57,8 +57,9 @@ function relatedIds(entity: SelectableEntity): EntityId[] {
       return [entity.id, entity.starShaftId, entity.dateComplicationId];
     case "LeapYearComplication":
     case "SeasonComplication":
-    case "YearDigitComplication":
       return [entity.id, entity.wheelShaftId, entity.monthComplicationId];
+    case "YearDigitComplication":
+      return [entity.id, entity.monthComplicationId];
     case "DialWindow":
       return [entity.id, entity.dialId, entity.complicationId];
     case "Screw":

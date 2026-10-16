@@ -112,7 +112,7 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
         const season = newSeasonComplication(m);
         return { movement: addSeasonComplication(m, season), id: season.id };
       }, "add-season"),
-      addButton("+ Year digit", "Add one digit wheel (0-9) of a \"drum clock\" year display, driven once a year on the December-to-January wrap; defaults to the ones place, then choose its month complication, arbor and starting digit. Add four (ones/tens/hundreds/thousands) for a full year", (m) => {
+      addButton("+ Year digit", "Add one digit segment (0-9) of a \"page-flip\" year display on a shared horizontal-axis barrel, driven once a year on the December-to-January wrap; defaults to the ones place, then choose its month complication, axle placement and starting digit. Add four (ones/tens/hundreds/thousands) for a full year", (m) => {
         const digit = newYearDigitComplication(m);
         return { movement: addYearDigitComplication(m, digit), id: digit.id };
       }, "add-year-digit"),
@@ -190,7 +190,7 @@ export function mountComponentTree(container: HTMLElement, store: AppStore): () 
     }
 
     if (Object.keys(movement.yearDigitComplications).length > 0) {
-      container.appendChild(header("Year digits (drum clock)"));
+      container.appendChild(header("Year digits (page-flip barrel)"));
       for (const digit of Object.values(movement.yearDigitComplications)) container.appendChild(item(digit.name, digit.id, 0, `(${digit.digitPlace.toLowerCase()}, driven by month wrap)`));
     }
 

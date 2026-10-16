@@ -13,7 +13,7 @@ import { monthEndCorrection, monthJumpStepAngle, MONTHS_PER_YEAR } from "@/kinem
 import { LEAP_YEAR_INDEX_STROKE_SECONDS, LEAP_YEAR_SLOT_COUNT } from "@/domain/leapYearComplication";
 import { genevaStrokeDriverAngle, genevaWheelAdvanceAngle, genevaWheelAngle } from "@/kinematics/genevaDrive";
 import { isQuarterBoundary, seasonJumpStepAngle } from "@/kinematics/seasonComplication";
-import { YEAR_DIGIT_SLOT_COUNT, type YearDigitPlace } from "@/domain/yearDigitComplication";
+import { YEAR_DIGIT_SLOT_COUNT, type YearDigitComplicationId, type YearDigitPlace } from "@/domain/yearDigitComplication";
 import { digitsToAdvance, yearDigitStepAngle } from "@/kinematics/yearDigitComplication";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 
@@ -29,6 +29,13 @@ export interface SimulationState {
   shaftAngle: Readonly<Record<ShaftId, Angle>>;
   /** Rotation of stem bodies about the stem direction (crown, sliding and winding pinions). */
   stemAngle: Readonly<Record<StemBodyId, Angle>>;
+  /**
+   * Rotation of each year-digit barrel segment about its own declared
+   * `axleDirection` (ASM-0019-style horizontal axis, Phase 8.15) — kept
+   * apart from `shaftAngle` the same way `stemAngle` is, since a
+   * `YearDigitComplication` is not a `Shaft`.
+   */
+  yearDigitAngle: Readonly<Record<YearDigitComplicationId, Angle>>;
   /**
    * State of wind of each mainspring with data, in arbor turns from let-down
    * (ASM-0026). Starts fully wound, an initial condition of the simulation.
@@ -54,21 +61,20 @@ export function createSimulationState(movement: Movement): SimulationState {
   for (const shaftId of Object.keys(movement.shafts) as ShaftId[]) {
     shaftAngle[shaftId] = radians(0);
   }
-  // Every other jump-driven complication's own zero position is an arbitrary reference (day 1,
-  // January, position 0). A drum-clock digit has no equivalent "natural" zero: there is no
-  // sourced way for a watch to know the real calendar year on its own, so each wheel's own
-  // starting digit is independently declared (startDigit) and applied here, once, as this
-  // wheel's own initial angle — not derived from a shared "year" field (ASM pending,
-  // src/domain/yearDigitComplication.ts).
-  for (const digit of Object.values(movement.yearDigitComplications)) {
-    if (!(digit.wheelShaftId in movement.shafts)) continue;
-    if (!(Number.isInteger(digit.startDigit) && digit.startDigit >= 0 && digit.startDigit < YEAR_DIGIT_SLOT_COUNT)) continue;
-    shaftAngle[digit.wheelShaftId] = normalizeAngle(radians(digit.startDigit * yearDigitStepAngle()));
-  }
   const stemAngle: Record<StemBodyId, Angle> = {};
   for (const id of Object.keys(movement.keylessWorks) as (keyof Movement["keylessWorks"])[]) {
     stemAngle[stemBodyId(id, "STEM")] = radians(0);
     stemAngle[stemBodyId(id, "WINDING_PINION")] = radians(0);
+  }
+  // Every other jump-driven complication's own zero position is an arbitrary reference (day 1,
+  // January, position 0). A drum-clock digit has no equivalent "natural" zero: there is no
+  // sourced way for a watch to know the real calendar year on its own, so each segment's own
+  // starting digit is independently declared (startDigit) and applied here, once, as this
+  // segment's own initial angle about its own axle — not derived from a shared "year" field.
+  const yearDigitAngle: Record<YearDigitComplicationId, Angle> = {};
+  for (const digit of Object.values(movement.yearDigitComplications)) {
+    if (!(Number.isInteger(digit.startDigit) && digit.startDigit >= 0 && digit.startDigit < YEAR_DIGIT_SLOT_COUNT)) continue;
+    yearDigitAngle[digit.id] = normalizeAngle(radians(digit.startDigit * yearDigitStepAngle()));
   }
   const mainspringWind: Record<CouplingId, number> = {};
   for (const link of mainsprings(movement.couplings)) {
@@ -76,7 +82,7 @@ export function createSimulationState(movement: Movement): SimulationState {
       mainspringWind[link.id] = link.spring.usableTurns;
     }
   }
-  return { stepCount: 0, time: seconds(0), shaftAngle, stemAngle, mainspringWind, pendingSeconds: 0, genevaStrokes: {} };
+  return { stepCount: 0, time: seconds(0), shaftAngle, stemAngle, yearDigitAngle, mainspringWind, pendingSeconds: 0, genevaStrokes: {} };
 }
 
 /**
@@ -146,16 +152,18 @@ export interface DateJumpTrack {
     yearCorrection: { wheelShaftId: ShaftId; wheelStepAngle: Angle } | null;
     seasonCorrection: { wheelShaftId: ShaftId; wheelStepAngle: Angle } | null;
     /**
-     * Zero to four "drum clock" digit wheels (`YearDigitComplication`),
+     * Zero to four "drum clock" digit segments (`YearDigitComplication`),
      * each independently declared — a design need not have all four
      * places. Decimal carry between them (`digitsToAdvance`,
      * `src/kinematics/yearDigitComplication.ts`) needs every declared
-     * wheel's own CURRENT position read together, so — unlike
+     * segment's own CURRENT position read together, so — unlike
      * `yearCorrection`/`seasonCorrection`, each a single fixed step —
-     * `stepSimulation` reads these fresh from `state.shaftAngle` each
-     * step rather than this track carrying a precomputed step.
+     * `stepSimulation` reads these fresh from `state.yearDigitAngle` each
+     * step rather than this track carrying a precomputed step. Keyed by
+     * `complicationId`, not a `ShaftId` (Phase 8.15: a year-digit segment
+     * is not a `Shaft`).
      */
-    yearDigitCorrections: readonly { digitPlace: YearDigitPlace; wheelShaftId: ShaftId; wheelStepAngle: Angle }[];
+    yearDigitCorrections: readonly { digitPlace: YearDigitPlace; complicationId: YearDigitComplicationId; wheelStepAngle: Angle }[];
   } | null;
 }
 
@@ -180,7 +188,7 @@ export function dateJumpTracks(movement: Movement, running: GearTrainSolution): 
         monthStepAngle: monthJumpStepAngle(),
         yearCorrection: year === undefined ? null : { wheelShaftId: year.wheelShaftId, wheelStepAngle: genevaWheelAdvanceAngle(LEAP_YEAR_SLOT_COUNT) },
         seasonCorrection: season === undefined ? null : { wheelShaftId: season.wheelShaftId, wheelStepAngle: seasonJumpStepAngle() },
-        yearDigitCorrections: yearDigits.map((d) => ({ digitPlace: d.digitPlace, wheelShaftId: d.wheelShaftId, wheelStepAngle: yearDigitStepAngle() })),
+        yearDigitCorrections: yearDigits.map((d) => ({ digitPlace: d.digitPlace, complicationId: d.id, wheelStepAngle: yearDigitStepAngle() })),
       },
     }];
   });
@@ -212,6 +220,7 @@ export function stepSimulation(
     nextShaftAngle[shaftId] = normalizeAngle(radians(next));
   }
   const nextGenevaStrokes: Record<ShaftId, { startAngle: Angle; elapsedSeconds: number }> = { ...state.genevaStrokes };
+  const nextYearDigitAngle: Record<YearDigitComplicationId, Angle> = { ...state.yearDigitAngle };
   // Date star arbors (ASM-0048) are not continuous gear-train members, so the loop above never
   // touches them; a jump, when the drive arbor crosses its own revolution, advances the star
   // directly instead. Read from the drive arbor's pre-step angle (`state`, never mutated here),
@@ -268,13 +277,13 @@ export function stepSimulation(
       const yearDigitCorrections = track.monthCorrection.yearDigitCorrections;
       if (yearDigitCorrections.length > 0 && monthPosition === MONTHS_PER_YEAR - 1) {
         const currentPositions = new Map(
-          yearDigitCorrections.map((d) => [d.digitPlace, starPosition(state.shaftAngle[d.wheelShaftId] ?? radians(0), YEAR_DIGIT_SLOT_COUNT)] as const),
+          yearDigitCorrections.map((d) => [d.digitPlace, starPosition(state.yearDigitAngle[d.complicationId] ?? radians(0), YEAR_DIGIT_SLOT_COUNT)] as const),
         );
         const advancing = digitsToAdvance(currentPositions);
         for (const d of yearDigitCorrections) {
           if (!advancing.has(d.digitPlace)) continue;
-          const currentWheel = nextShaftAngle[d.wheelShaftId] ?? radians(0);
-          nextShaftAngle[d.wheelShaftId] = normalizeAngle(radians(currentWheel + d.wheelStepAngle));
+          const currentSegment = nextYearDigitAngle[d.complicationId] ?? radians(0);
+          nextYearDigitAngle[d.complicationId] = normalizeAngle(radians(currentSegment + d.wheelStepAngle));
         }
       }
     }
@@ -327,6 +336,7 @@ export function stepSimulation(
     time: seconds(state.time + dtSeconds),
     shaftAngle: nextShaftAngle,
     stemAngle: nextStemAngle,
+    yearDigitAngle: nextYearDigitAngle,
     mainspringWind: nextWind,
     pendingSeconds: state.pendingSeconds,
     genevaStrokes: nextGenevaStrokes,

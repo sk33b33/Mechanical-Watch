@@ -9,8 +9,9 @@ import {
   createFrameGeometry,
   createGenevaWheelGeometry,
   createRodGeometry,
+  createXAxisCylinder,
   createZCylinder,
-  cylinderSideCanvasUForMeshAngle,
+  cylinderXAxisCanvasUForLocalAngle,
   discCapCanvasAngleForMeshAngle,
   discLabelPlacements,
   escapeWheelHubRadius,
@@ -23,10 +24,11 @@ import {
   MOON_PHASE_VISUALIZATION,
   rayCircleInward,
   seasonWedgeBoundaryAngles,
-  yearDigitDividerXPositions,
-  yearDigitHousingBounds,
-  yearDigitLocalAngle,
-  YEAR_DIGIT_DRUM_VISUALIZATION,
+  yearDigitAxleProjection,
+  yearDigitBarrelAlongBounds,
+  yearDigitBarrelDividerPositions,
+  yearDigitBarrelRestAngle,
+  YEAR_DIGIT_BARREL_VISUALIZATION,
   type PalletArm,
 } from "./assemblyGeometry3d";
 
@@ -707,43 +709,70 @@ describe("discCapCanvasAngleForMeshAngle", () => {
 
 const normalizeAngle = (a: number): number => (((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI));
 
-describe("yearDigitLocalAngle (ASM-0060)", () => {
-  // createYearDigitDrumTexture itself touches `document` (a Canvas2D context), the same already-
-  // accepted gap every other texture generator here has (moonImageLocalAngle's own describe block
-  // above); yearDigitLocalAngle and cylinderSideCanvasUForMeshAngle are pure, so tested directly.
+describe("createXAxisCylinder (ASM-0019, ASM-0064)", () => {
+  it("builds a cylinder whose own axis runs along local X, verified against real built vertex data", () => {
+    // The horizontal-axis counterpart to createZCylinder: every side vertex must sit at radius r
+    // in the Y/Z plane, with X spanning the declared length -- confirming geometry.rotateZ(π/2)
+    // actually moved the axis from local Y onto local X, not just that the call didn't throw.
+    const r = 1e-3;
+    const length = 2e-3;
+    const cyl = createXAxisCylinder(r, length, 32);
+    const pos = cyl.attributes.position;
+    if (pos === undefined) throw new Error("cylinder is missing a position attribute");
+    let checked = 0;
+    for (let i = 0; i < pos.count; i += 1) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const z = pos.getZ(i);
+      const radial = Math.hypot(y, z);
+      if (radial < r * 0.99) continue; // skip cap-centre vertices, on the axis itself
+      expect(radial).toBeCloseTo(r, 9);
+      expect(Math.abs(x)).toBeLessThanOrEqual(length / 2 + 1e-9);
+      checked += 1;
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+});
 
-  it("every digit's own world angle (after applying the wheel's own shaftAngle for that digit) lands on the same declared front angle", () => {
-    // This is the whole point of the formula: whichever digit the wheel is currently showing
-    // (shaftAngle = digit * stepAngle, src/simulation/simulationState.ts), that digit's own
-    // painted position must be the one facing "front" -- not just the wheel's own starting digit.
+describe("yearDigitBarrelRestAngle (ASM-0064)", () => {
+  // createYearDigitBarrelTexture itself touches `document` (a Canvas2D context), the same already-
+  // accepted gap every other texture generator here has (moonImageLocalAngle's own describe block
+  // above); yearDigitBarrelRestAngle and cylinderXAxisCanvasUForLocalAngle are pure, so tested directly.
+
+  it("every digit's own local angle, after applying the segment's own rotation.x for that digit, lands on the dial-facing angle", () => {
+    // This is the whole point of the formula: whichever digit the segment is currently showing
+    // (rotation.x = digit * stepAngle, src/simulation/simulationState.ts's yearDigitAngle), that
+    // digit's own painted position must be the one facing the dial -- not just the segment's own
+    // starting digit.
     const digitCount = 10;
     const step = (2 * Math.PI) / digitCount;
     for (let digit = 0; digit < digitCount; digit += 1) {
-      const worldAngle = yearDigitLocalAngle(digit, digitCount) + digit * step;
-      expect(normalizeAngle(worldAngle)).toBeCloseTo(normalizeAngle(YEAR_DIGIT_DRUM_VISUALIZATION.frontAngleRadians), 9);
+      const liveAngle = yearDigitBarrelRestAngle(digit, digitCount) + digit * step;
+      expect(normalizeAngle(liveAngle)).toBeCloseTo(normalizeAngle(YEAR_DIGIT_BARREL_VISUALIZATION.dialFacingLocalAngleRadians), 9);
     }
   });
 
-  it("runs the digits around the drum in the opposite sense to increasing shaftAngle (a real drum counter's own printed order)", () => {
+  it("runs the digits around the barrel in the opposite sense to increasing rotation.x (a real drum counter's own printed order)", () => {
     const digitCount = 10;
-    const a0 = normalizeAngle(yearDigitLocalAngle(0, digitCount));
-    const a1 = normalizeAngle(yearDigitLocalAngle(1, digitCount));
+    const a0 = normalizeAngle(yearDigitBarrelRestAngle(0, digitCount));
+    const a1 = normalizeAngle(yearDigitBarrelRestAngle(1, digitCount));
     const step = (2 * Math.PI) / digitCount;
     // Going from digit 0 to digit 1, the local angle decreases by one step (mod 2π) -- the digits
-    // are NOT laid out in the same rotational sense the shaft itself advances in.
+    // are NOT laid out in the same rotational sense the barrel itself advances in.
     expect(normalizeAngle(a0 - a1)).toBeCloseTo(step, 9);
   });
 });
 
-describe("cylinderSideCanvasUForMeshAngle (ASM-0060)", () => {
-  it("is the real inverse of createZCylinder's own lateral-surface UV mapping, verified against a real built cylinder's own vertex data", () => {
+describe("cylinderXAxisCanvasUForLocalAngle (ASM-0064)", () => {
+  it("is the real inverse of createXAxisCylinder's own lateral-surface UV mapping, verified against a real built cylinder's own vertex data", () => {
     // A from-scratch rebuild of CylinderGeometry's own pre-rotation side vertex/UV convention
     // (generateTorso: u = x/radialSegments, theta = u*2π, vertex = (r sinθ, height axis, r cosθ),
-    // uv = (u, 1-v|), empirically confirmed here against the real post-rotateX(π/2) geometry this
-    // project actually builds -- the same evidentiary standard discCapCanvasAngleForMeshAngle's
-    // own regression test already holds itself to for the −Z cap.
+    // uv = (u, 1-v)), tracked through rotateZ(π/2) (x' = -(height-axis), y' = r sinθ, z' = r cosθ,
+    // the axis moving from local Y to local X) and empirically confirmed here against the real
+    // post-rotation geometry this project actually builds -- the same evidentiary standard
+    // discCapCanvasAngleForMeshAngle's own regression test already holds itself to.
     const r = 1e-3;
-    const cyl = createZCylinder(r, -0.5e-3, 0.5e-3, 64);
+    const cyl = createXAxisCylinder(r, 1e-3, 64);
     const pos = cyl.attributes.position;
     const uv = cyl.attributes.uv;
     const index = cyl.index;
@@ -754,12 +783,12 @@ describe("cylinderSideCanvasUForMeshAngle (ASM-0060)", () => {
     let checked = 0;
     for (let i = sideGroup.start; i < sideGroup.start + sideGroup.count; i += 1) {
       const vi = index.getX(i);
-      const x = pos.getX(vi);
       const y = pos.getY(vi);
-      if (Math.hypot(x, y) < r * 0.99) continue; // only rim vertices, skip the axis if any
+      const z = pos.getZ(vi);
+      if (Math.hypot(y, z) < r * 0.99) continue; // only rim vertices, skip the axis if any
       const u = uv.getX(vi);
-      const actualMeshAngle = Math.atan2(y, x);
-      const predictedU = cylinderSideCanvasUForMeshAngle(actualMeshAngle);
+      const actualLocalAngle = Math.atan2(z, y);
+      const predictedU = cylinderXAxisCanvasUForLocalAngle(actualLocalAngle);
       // u and predictedU should agree modulo 1 (the seam makes u=0 and u=1 the same point).
       const diff = Math.abs(u - predictedU);
       expect(Math.min(diff, Math.abs(diff - 1))).toBeLessThan(1e-4);
@@ -769,85 +798,100 @@ describe("cylinderSideCanvasUForMeshAngle (ASM-0060)", () => {
     expect(checked).toBeGreaterThan(0);
   });
 
-  it("round-trips through yearDigitLocalAngle: the canvas u this function gives for digit d's own mesh angle, fed back through the same θ = u·2π + thetaStart convention, reproduces that mesh angle", () => {
+  it("round-trips through yearDigitBarrelRestAngle: the canvas u this function gives for digit d's own local angle, fed back through the same θ = π/2 − a convention, reproduces that local angle", () => {
     const digitCount = 10;
     for (let digit = 0; digit < digitCount; digit += 1) {
-      const meshAngle = yearDigitLocalAngle(digit, digitCount);
-      const u = cylinderSideCanvasUForMeshAngle(meshAngle);
+      const localAngle = yearDigitBarrelRestAngle(digit, digitCount);
+      const u = cylinderXAxisCanvasUForLocalAngle(localAngle);
       const theta = u * 2 * Math.PI;
-      const recoveredMeshAngle = theta - Math.PI / 2;
-      expect(normalizeAngle(recoveredMeshAngle)).toBeCloseTo(normalizeAngle(meshAngle), 9);
+      const recoveredLocalAngle = Math.PI / 2 - theta;
+      expect(normalizeAngle(recoveredLocalAngle)).toBeCloseTo(normalizeAngle(localAngle), 9);
     }
   });
 });
 
-describe("yearDigitHousingBounds (ASM-0062)", () => {
-  it("returns null for an empty wheel group (nothing to enclose)", () => {
-    expect(yearDigitHousingBounds([], 0.3e-3)).toBeNull();
+describe("yearDigitAxleProjection (ASM-0066)", () => {
+  it("projects onto world +X when direction is 0", () => {
+    expect(yearDigitAxleProjection({ x: 3e-3, y: 7e-3 }, 0)).toBeCloseTo(3e-3, 12);
   });
 
-  it("is the bounding box of the wheels' own rims, expanded by the margin on every side", () => {
-    const wheels = [
-      { x: -6.45e-3, y: 8e-3, tipRadius: 1e-3 },
-      { x: -4.15e-3, y: 8e-3, tipRadius: 1e-3 },
-      { x: -1.85e-3, y: 8e-3, tipRadius: 1e-3 },
-      { x: 0.45e-3, y: 8e-3, tipRadius: 1e-3 },
+  it("projects onto world +Y when direction is π/2", () => {
+    expect(yearDigitAxleProjection({ x: 3e-3, y: 7e-3 }, Math.PI / 2)).toBeCloseTo(7e-3, 12);
+  });
+
+  it("matches the plain dot product with the direction's own unit vector for an arbitrary angle", () => {
+    const direction = (37 * Math.PI) / 180;
+    const point = { x: -2e-3, y: 5e-3 };
+    const expected = point.x * Math.cos(direction) + point.y * Math.sin(direction);
+    expect(yearDigitAxleProjection(point, direction)).toBeCloseTo(expected, 12);
+  });
+});
+
+describe("yearDigitBarrelAlongBounds (ASM-0066)", () => {
+  it("returns null for an empty segment group (nothing to enclose)", () => {
+    expect(yearDigitBarrelAlongBounds([], 0.3e-3)).toBeNull();
+  });
+
+  it("is the span of every segment's own length, expanded by the margin on each end", () => {
+    const segments = [
+      { along: -4.2e-3, length: 0.8e-3 },
+      { along: -3.4e-3, length: 0.8e-3 },
+      { along: -2.6e-3, length: 0.8e-3 },
+      { along: -1.8e-3, length: 0.8e-3 },
     ];
     const margin = 0.3e-3;
-    const bounds = yearDigitHousingBounds(wheels, margin);
+    const bounds = yearDigitBarrelAlongBounds(segments, margin);
     expect(bounds).not.toBeNull();
-    expect(bounds?.xMin).toBeCloseTo(-6.45e-3 - 1e-3 - margin, 12);
-    expect(bounds?.xMax).toBeCloseTo(0.45e-3 + 1e-3 + margin, 12);
-    expect(bounds?.yMin).toBeCloseTo(8e-3 - 1e-3 - margin, 12);
-    expect(bounds?.yMax).toBeCloseTo(8e-3 + 1e-3 + margin, 12);
+    expect(bounds?.min).toBeCloseTo(-4.2e-3 - 0.4e-3 - margin, 12);
+    expect(bounds?.max).toBeCloseTo(-1.8e-3 + 0.4e-3 + margin, 12);
   });
 
-  it("handles a single wheel (a one-digit-place design)", () => {
-    const bounds = yearDigitHousingBounds([{ x: 2e-3, y: -3e-3, tipRadius: 0.5e-3 }], 0.2e-3);
-    expect(bounds).toEqual({ xMin: 1.3e-3, xMax: 2.7e-3, yMin: -3.7e-3, yMax: -2.3e-3 });
+  it("handles a single segment (a one-digit-place design)", () => {
+    const bounds = yearDigitBarrelAlongBounds([{ along: 2e-3, length: 1e-3 }], 0.2e-3);
+    expect(bounds).toEqual({ min: 2e-3 - 0.5e-3 - 0.2e-3, max: 2e-3 + 0.5e-3 + 0.2e-3 });
   });
 
-  it("does not depend on the wheels' own order in the input array", () => {
-    const wheels = [
-      { x: 1e-3, y: 0, tipRadius: 0.4e-3 },
-      { x: -2e-3, y: 0.5e-3, tipRadius: 0.6e-3 },
-      { x: 0, y: -1e-3, tipRadius: 0.3e-3 },
+  it("does not depend on the segments' own order in the input array", () => {
+    const segments = [
+      { along: 1e-3, length: 0.4e-3 },
+      { along: -2e-3, length: 0.6e-3 },
+      { along: 0, length: 0.3e-3 },
     ];
-    const forward = yearDigitHousingBounds(wheels, 0.1e-3);
-    const reversed = yearDigitHousingBounds([...wheels].reverse(), 0.1e-3);
+    const forward = yearDigitBarrelAlongBounds(segments, 0.1e-3);
+    const reversed = yearDigitBarrelAlongBounds([...segments].reverse(), 0.1e-3);
     expect(reversed).toEqual(forward);
   });
 });
 
-describe("yearDigitDividerXPositions (ASM-0062)", () => {
-  it("places one fewer divider than there are wheels, at each pair's own midpoint", () => {
-    const wheels = [
-      { x: -6.45e-3, y: 8e-3, tipRadius: 1e-3 },
-      { x: -4.15e-3, y: 8e-3, tipRadius: 1e-3 },
-      { x: -1.85e-3, y: 8e-3, tipRadius: 1e-3 },
-      { x: 0.45e-3, y: 8e-3, tipRadius: 1e-3 },
+describe("yearDigitBarrelDividerPositions (ASM-0066)", () => {
+  it("places one fewer divider than there are segments, at each pair's own midpoint", () => {
+    const segments = [
+      { along: -4.2e-3 },
+      { along: -3.4e-3 },
+      { along: -2.6e-3 },
+      { along: -1.8e-3 },
     ];
-    const dividers = yearDigitDividerXPositions(wheels);
+    const dividers = yearDigitBarrelDividerPositions(segments);
     expect(dividers).toHaveLength(3);
-    expect(dividers[0]).toBeCloseTo(-5.3e-3, 12);
+    expect(dividers[0]).toBeCloseTo(-3.8e-3, 12);
     expect(dividers[1]).toBeCloseTo(-3e-3, 12);
-    expect(dividers[2]).toBeCloseTo(-0.7e-3, 12);
+    expect(dividers[2]).toBeCloseTo(-2.2e-3, 12);
   });
 
-  it("sorts by X first, so the input order does not matter", () => {
-    const wheels = [
-      { x: 0.45e-3, y: 8e-3, tipRadius: 1e-3 },
-      { x: -6.45e-3, y: 8e-3, tipRadius: 1e-3 },
-      { x: -1.85e-3, y: 8e-3, tipRadius: 1e-3 },
-      { x: -4.15e-3, y: 8e-3, tipRadius: 1e-3 },
+  it("sorts by along-axle position first, so the input order does not matter", () => {
+    const segments = [
+      { along: -1.8e-3 },
+      { along: -4.2e-3 },
+      { along: -2.6e-3 },
+      { along: -3.4e-3 },
     ];
-    const dividers = yearDigitDividerXPositions(wheels);
+    const dividers = yearDigitBarrelDividerPositions(segments);
     expect(dividers).toHaveLength(3);
-    [-5.3e-3, -3e-3, -0.7e-3].forEach((expected, i) => { expect(dividers[i]).toBeCloseTo(expected, 12); });
+    [-3.8e-3, -3e-3, -2.2e-3].forEach((expected, i) => { expect(dividers[i]).toBeCloseTo(expected, 12); });
   });
 
-  it("returns no dividers for zero or one wheel", () => {
-    expect(yearDigitDividerXPositions([])).toEqual([]);
-    expect(yearDigitDividerXPositions([{ x: 0, y: 0, tipRadius: 1e-3 }])).toEqual([]);
+  it("returns no dividers for zero or one segment", () => {
+    expect(yearDigitBarrelDividerPositions([])).toEqual([]);
+    expect(yearDigitBarrelDividerPositions([{ along: 0 }])).toEqual([]);
   });
 });

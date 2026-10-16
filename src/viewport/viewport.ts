@@ -18,7 +18,8 @@ import {
   createMoonPhaseTexture,
   createRodGeometry,
   createSeasonTexture,
-  createYearDigitDrumTexture,
+  createXAxisCylinder,
+  createYearDigitBarrelTexture,
   createZCylinder,
   DATE_LINKAGE_VISUALIZATION,
   discCapCanvasAngleForMeshAngle,
@@ -30,8 +31,9 @@ import {
   MONTH_LINKAGE_VISUALIZATION,
   YEAR_DIGIT_HOUSING_VISUALIZATION,
   YEAR_DIGIT_LINKAGE_VISUALIZATION,
-  yearDigitDividerXPositions,
-  yearDigitHousingBounds,
+  yearDigitAxleProjection,
+  yearDigitBarrelAlongBounds,
+  yearDigitBarrelDividerPositions,
   type EscapeToothFace,
 } from "@/geometry/assemblyGeometry3d";
 import { arborZRange, frameBearingHoles, frameScrewHoles, frameZRange, isCompleteFrame } from "@/assembly/assemblyGeometry";
@@ -42,7 +44,7 @@ import type { MoonPhaseWindowCount } from "@/domain/moonPhase";
 import type { DateComplicationId } from "@/domain/dateComplication";
 import type { LeapYearComplicationId } from "@/domain/leapYearComplication";
 import { LEAP_YEAR_INDEX_STROKE_SECONDS, LEAP_YEAR_SLOT_COUNT } from "@/domain/leapYearComplication";
-import { YEAR_DIGIT_SLOT_COUNT } from "@/domain/yearDigitComplication";
+import { YEAR_DIGIT_SLOT_COUNT, type YearDigitComplicationId } from "@/domain/yearDigitComplication";
 import { genevaLambda, genevaStrokeDriverAngle, genevaDriverMotionAngle } from "@/kinematics/genevaDrive";
 import { buildDialMeshes, buildStemMeshes } from "./keylessMeshes";
 import { escapementDisplay, primaryEscapement } from "@/simulation/escapementDisplay";
@@ -234,26 +236,27 @@ function seasonMaterials(color: number, extra: THREE.MeshStandardMaterialParamet
  * wheel (not through the dial window) also reads as a digit drum.
  */
 /**
- * `sharedSideTexture` is built once per rebuild, outside the per-wheel
- * loop, and passed in here rather than rebuilt per wheel: the lateral
- * digit strip (`createYearDigitDrumTexture`) is a pure function of the
+ * `sharedSideTexture` is built once per rebuild, outside the per-segment
+ * loop, and passed in here rather than rebuilt per segment: the lateral
+ * digit strip (`createYearDigitBarrelTexture`) is a pure function of the
  * declared digit count alone, identical for all four digit-place
- * wheels, so re-painting (and re-uploading to the GPU) a fresh 1024×256
- * canvas four times a rebuild — once per wheel — would be pure waste.
- * Only the TEXTURE is shared, not the material: `applySelection()`
- * mutates a mesh's own material colour in place to highlight it, so
- * each wheel still needs its own `MeshStandardMaterial` instance (cheap
- * — an ordinary JS object) wrapping that one shared texture, or
- * selecting one digit wheel would wrongly tint every other wheel's own
- * lateral surface too.
+ * segments, so re-painting (and re-uploading to the GPU) a fresh
+ * 1024×256 canvas four times a rebuild — once per segment — would be
+ * pure waste. Only the TEXTURE is shared, not the material:
+ * `applySelection()` mutates a mesh's own material colour in place to
+ * highlight it, so each segment still needs its own
+ * `MeshStandardMaterial` instance (cheap — an ordinary JS object)
+ * wrapping that one shared texture, or selecting one digit segment
+ * would wrongly tint every other segment's own lateral surface too.
+ * Both end caps stay plain (Phase 8.15): the digit reading now lives on
+ * the side, facing the dial directly, with no need for a top-cap label
+ * ring any more.
  */
-function yearDigitDrumMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, capLabels: readonly string[] | null, sharedSideTexture: THREE.CanvasTexture | null): THREE.MeshStandardMaterial[] {
+function yearDigitBarrelMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, sharedSideTexture: THREE.CanvasTexture | null): THREE.MeshStandardMaterial[] {
   const plain = material(color, extra);
-  const capTexture = capLabels === null ? null : createDiscLabelTexture(capLabels);
-  const cap = capTexture === null ? plain : material(color, { ...extra, map: capTexture });
   const side = sharedSideTexture === null ? plain : material(color, { ...extra, map: sharedSideTexture });
-  // CylinderGeometry's own group order after createZCylinder's rotateX(π/2): [side, +Z cap, −Z cap].
-  return [side, plain, cap];
+  // createXAxisCylinder's own group order after rotateZ(π/2): [side, cap (was +Y), cap (was −Y)].
+  return [side, plain, plain];
 }
 
 /**
@@ -294,6 +297,15 @@ export class Viewport {
    * a star centre to compute the rod's current angle/length from.
    */
   private readonly dateJumperLinkages = new Map<DateComplicationId, { rod: THREE.Mesh; pivot: { x: number; y: number }; starCentre: { x: number; y: number }; starShaftId: ShaftId; noseRadius: number; z: number }>();
+  /**
+   * A year-digit barrel segment's own spin group (Phase 8.15): not
+   * backed by a `ShaftId` at all (`YearDigitComplication` is not a
+   * `Shaft`, ASM-0019-style horizontal axle), so tracked separately from
+   * `shaftGroups` the same way `stemSpins` already is for the keyless
+   * works' own horizontal stem. `rotation.x` is driven every frame from
+   * `SimulationState.yearDigitAngle`.
+   */
+  private readonly yearDigitSpins = new Map<YearDigitComplicationId, THREE.Group>();
   private showDial = true;
   private readonly escapementLabel: HTMLDivElement;
   private readonly pickables: THREE.Mesh[] = [];
@@ -463,6 +475,7 @@ export class Viewport {
     this.stemSpins.clear();
     this.genevaDriverPins.clear();
     this.dateJumperLinkages.clear();
+    this.yearDigitSpins.clear();
     this.pickables.length = 0;
     this.cappableSolids.length = 0;
     this.sectionCapMeshes.length = 0;
@@ -777,70 +790,76 @@ export class Viewport {
       });
     }
 
-    // Gathered per MonthComplicationId while the loop below builds each wheel, then used once
+    // Gathered per MonthComplicationId while the loop below builds each segment, then used once
     // afterward to build that group's own enclosing housing (YEAR_DIGIT_HOUSING_VISUALIZATION,
-    // ASM-0062) — the housing needs every wheel's own position/size together, not one at a time.
-    const yearDigitGroups = new Map<string, { x: number; y: number; tipRadius: number; zLo: number; zHi: number }[]>();
-    // Built lazily, at most once per rebuild, the first time a digit wheel actually needs it —
-    // see yearDigitDrumMaterials' own doc comment for why every wheel shares this one texture
+    // ASM-0066) — the housing needs every segment's own position/length together, not one at a
+    // time. `direction`/`axleHeight` are the GROUP's own shared values, taken from whichever
+    // segment is encountered first — declared independently per segment (like every other
+    // dimension in this domain), so a design whose four segments disagree will not enclose
+    // correctly; not validated, visual only (same "approximation, not a manufacturing claim"
+    // treatment the rest of this housing already has).
+    const yearDigitGroups = new Map<string, { direction: number; axleHeight: number; segments: { along: number; length: number; diameter: number }[] }>();
+    // Built lazily, at most once per rebuild, the first time a segment actually needs it — see
+    // yearDigitBarrelMaterials' own doc comment for why every segment shares this one texture
     // (but not the material built around it).
     let yearDigitSideTexture: THREE.CanvasTexture | null | undefined;
 
     for (const digit of Object.values(movement.yearDigitComplications)) {
-      const group = this.shaftGroups.get(digit.wheelShaftId);
-      const valid = Number.isFinite(digit.wheelTipDiameter) && digit.wheelTipDiameter > 0 && Number.isFinite(digit.wheelThickness) && digit.wheelThickness > 0 && Number.isFinite(digit.wheelZCentre);
-      if (group === undefined || !valid) continue;
-      // A "drum clock" digit wheel (ASM-0059/ASM-0060, Phase 8.12-8.13), driven entirely by the
-      // month complication's own December-to-January wrap with decimal carry — same
-      // applyKinematicRotation() loop that spins every other shaft group spins this one too. The
-      // −Z cap keeps the plain position-label ring every other jump-driven wheel gets (what the
-      // dial window above it reveals); the lateral surface additionally carries the same ten
-      // digits wrapped once around it (yearDigitDrumMaterials), so a direct 3D look at the drum —
-      // not through the dial window — also shows a digit sitting on its own rotating surface.
-      const meshZ = this.displayZ(digit.wheelZCentre);
-      const digitCentreForGroup = positions.get(digit.wheelShaftId);
-      if (digitCentreForGroup !== undefined) {
-        const bucket = yearDigitGroups.get(digit.monthComplicationId) ?? [];
-        bucket.push({ x: digitCentreForGroup.x, y: digitCentreForGroup.y, tipRadius: digit.wheelTipDiameter / 2, zLo: meshZ - digit.wheelThickness / 2, zHi: meshZ + digit.wheelThickness / 2 });
-        yearDigitGroups.set(digit.monthComplicationId, bucket);
-      }
-      const digitLabels = findDiscComplication(movement, digit.id)?.positionLabels ?? null;
-      if (yearDigitSideTexture === undefined) yearDigitSideTexture = createYearDigitDrumTexture(YEAR_DIGIT_SLOT_COUNT);
-      const mesh = new THREE.Mesh(createZCylinder(digit.wheelTipDiameter / 2, meshZ - digit.wheelThickness / 2, meshZ + digit.wheelThickness / 2, 64), yearDigitDrumMaterials(COLORS.yearDigitWheel, { metalness: 0.1, roughness: 0.7 }, digitLabels, yearDigitSideTexture));
-      this.addPickable(group, mesh, { kind: "yearDigitWheel", entityId: digit.id, baseColor: COLORS.yearDigitWheel });
-      this.cappableSolids.push({
-        positionX: group.position.x,
-        positionY: group.position.y,
-        rotationGroup: group,
-        zLo: meshZ - digit.wheelThickness / 2,
-        zHi: meshZ + digit.wheelThickness / 2,
-        footprint: { kind: "circle", radius: digit.wheelTipDiameter / 2, centre: { x: 0, y: 0 } },
-        color: COLORS.yearDigitWheel,
-      });
+      const valid = Number.isFinite(digit.axleOrigin.x) && Number.isFinite(digit.axleOrigin.y) && Number.isFinite(digit.axleDirection) && Number.isFinite(digit.axleHeight)
+        && Number.isFinite(digit.barrelDiameter) && digit.barrelDiameter > 0 && Number.isFinite(digit.segmentLength) && digit.segmentLength > 0;
+      if (!valid) continue;
+      // A "drum clock" digit segment on a horizontal-axis barrel (ASM-0019-style exception to
+      // ASM-0006, Phase 8.15), driven entirely by the month complication's own December-to-January
+      // wrap with decimal carry. Not a Shaft — root/spin mirror buildStemMeshes' own convention
+      // exactly: root is oriented once (rotation.z = axleDirection, local Z stays world Z), spin
+      // is its child and turns about local X every frame (applyKinematicRotation(), yearDigitSpins).
+      const meshZ = this.displayZ(digit.axleHeight);
+      const root = new THREE.Group();
+      root.position.set(digit.axleOrigin.x, digit.axleOrigin.y, meshZ);
+      root.rotation.z = digit.axleDirection;
+      this.content.add(root);
+      const spin = new THREE.Group();
+      root.add(spin);
+      this.yearDigitSpins.set(digit.id, spin);
 
-      // The drum clock's own visual linkage to the movement (ASM-0061): a small declutch wheel,
+      const bucket = yearDigitGroups.get(digit.monthComplicationId) ?? { direction: digit.axleDirection, axleHeight: digit.axleHeight, segments: [] };
+      bucket.segments.push({ along: yearDigitAxleProjection(digit.axleOrigin, bucket.direction), length: digit.segmentLength, diameter: digit.barrelDiameter });
+      yearDigitGroups.set(digit.monthComplicationId, bucket);
+
+      if (yearDigitSideTexture === undefined) yearDigitSideTexture = createYearDigitBarrelTexture(YEAR_DIGIT_SLOT_COUNT);
+      const mesh = new THREE.Mesh(
+        createXAxisCylinder(digit.barrelDiameter / 2, digit.segmentLength, 64),
+        yearDigitBarrelMaterials(COLORS.yearDigitWheel, { metalness: 0.1, roughness: 0.7 }, yearDigitSideTexture),
+      );
+      spin.add(mesh);
+      this.addPickable(spin, mesh, { kind: "yearDigitWheel", entityId: digit.id, baseColor: COLORS.yearDigitWheel });
+      // Not added to cappableSolids: the section-view cutaway cap is Z-extrusion-based and does
+      // not cover a horizontal-axis part, the same already-accepted gap the keyless works' own
+      // stem/crown/pinions have (STATUS.md) — it still shows the pre-existing uncapped clip.
+
+      // The barrel's own visual linkage to the movement (ASM-0065): a small declutch wheel,
       // idle/disengaged, the same treatment MONTH_LINKAGE_VISUALIZATION already gives the month
-      // star's own link to its date star. Only the ones-place wheel gets one drawn — see
+      // star's own link to its date star. Only the ones-place segment gets one drawn — see
       // YEAR_DIGIT_LINKAGE_VISUALIZATION's own doc comment for why the other three digit places
-      // are not linked to it or to each other.
+      // are not linked to it or to each other. An ordinary vertical-axis part (not part of the
+      // barrel's own rotating assembly), anchored directly at the segment's own declared axleOrigin.
       if (digit.digitPlace === "ONES") {
         const month = movement.monthComplications[digit.monthComplicationId];
-        const digitCentre = positions.get(digit.wheelShaftId);
         const monthCentre = month === undefined ? undefined : positions.get(month.starShaftId);
-        if (monthCentre !== undefined && digitCentre !== undefined) {
+        if (monthCentre !== undefined) {
           const v = YEAR_DIGIT_LINKAGE_VISUALIZATION;
-          const dx = monthCentre.x - digitCentre.x;
-          const dy = monthCentre.y - digitCentre.y;
+          const dx = monthCentre.x - digit.axleOrigin.x;
+          const dy = monthCentre.y - digit.axleOrigin.y;
           const distance = Math.hypot(dx, dy);
           const towardMonth = distance > 0 ? { x: dx / distance, y: dy / distance } : { x: 1, y: 0 };
-          const digitTipRadius = digit.wheelTipDiameter / 2;
-          const wheelRadius = digitTipRadius * v.wheelRadiusFraction;
+          const barrelRadius = digit.barrelDiameter / 2;
+          const wheelRadius = barrelRadius * v.wheelRadiusFraction;
           const wheelCentre = {
-            x: digitCentre.x + towardMonth.x * (digitTipRadius + wheelRadius + v.clearanceMetres),
-            y: digitCentre.y + towardMonth.y * (digitTipRadius + wheelRadius + v.clearanceMetres),
+            x: digit.axleOrigin.x + towardMonth.x * (barrelRadius + wheelRadius + v.clearanceMetres),
+            y: digit.axleOrigin.y + towardMonth.y * (barrelRadius + wheelRadius + v.clearanceMetres),
           };
           const wheel = new THREE.Mesh(
-            createZCylinder(wheelRadius, meshZ - digit.wheelThickness / 2, meshZ + digit.wheelThickness / 2, 24),
+            createZCylinder(wheelRadius, meshZ - digit.segmentLength / 8, meshZ + digit.segmentLength / 8, 24),
             material(COLORS.yearDigitWheel, { metalness: 0.3, roughness: 0.6 }),
           );
           wheel.position.set(wheelCentre.x, wheelCentre.y, 0);
@@ -849,53 +868,67 @@ export class Viewport {
       }
     }
 
-    // Each year-digit group's own enclosing housing (ASM-0062): three plain walls (back + two
-    // ends, no front/top/bottom cover needed — a solid cylinder's own far side is already hidden
-    // from the viewer without one) plus divider bars between adjacent wheels, derived from the
-    // group's own already-solved positions and declared tip diameters. Raised directly by the
-    // user, who supplied a photo of a real mechanical tally-counter.
+    // Each year-digit group's own enclosing housing (ASM-0066): five plain walls (back, two ends,
+    // two sides — every face but the one facing the dial, YEAR_DIGIT_BARREL_VISUALIZATION's own
+    // dialFacingLocalAngleRadians) plus divider bars between adjacent segments, built entirely in
+    // the barrel's own local frame (local X along the shared axle, local Z = world Z always).
+    // Raised directly by the user, who supplied a photo of a real mechanical tally-counter.
     const housingMaterial = material(YEAR_DIGIT_HOUSING_VISUALIZATION.housingColor, { metalness: 0.3, roughness: 0.55 });
     const mainplateFrame = Object.values(movement.frames).find((f) => f.kind === "MAINPLATE" && isCompleteFrame(f));
-    for (const wheels of yearDigitGroups.values()) {
+    for (const group of yearDigitGroups.values()) {
       const hv = YEAR_DIGIT_HOUSING_VISUALIZATION;
-      const bounds = yearDigitHousingBounds(wheels, hv.marginMetres);
+      const bounds = yearDigitBarrelAlongBounds(group.segments, hv.marginMetres);
       if (bounds === null) continue;
-      const zLo = Math.min(...wheels.map((w) => w.zLo));
-      const zHi = Math.max(...wheels.map((w) => w.zHi));
-      const zMid = (zLo + zHi) / 2;
-      const zSpan = zHi - zLo;
-      const { xMin, xMax, yMin, yMax } = bounds;
+      const halfAcross = Math.max(...group.segments.map((s) => s.diameter / 2)) + hv.marginMetres;
+      const midAlong = (bounds.min + bounds.max) / 2;
+      const alongSpan = bounds.max - bounds.min;
+      const halfAlongSpan = alongSpan / 2;
+      const wt = hv.wallThicknessMetres;
+      const zSpanAcross = 2 * halfAcross + wt;
+      const zCentreAcross = wt / 2;
 
-      const backWall = new THREE.Mesh(new THREE.BoxGeometry(xMax - xMin, hv.wallThicknessMetres, zSpan), housingMaterial);
-      backWall.position.set((xMin + xMax) / 2, yMin - hv.wallThicknessMetres / 2, zMid);
-      this.content.add(backWall);
+      const housingRoot = new THREE.Group();
+      const cos = Math.cos(group.direction);
+      const sin = Math.sin(group.direction);
+      // Reconstructs a world point at (along = midAlong, across = 0) on the shared axle line —
+      // the inverse of yearDigitAxleProjection's own dot product, i.e. midAlong·(cos,sin).
+      housingRoot.position.set(midAlong * cos, midAlong * sin, this.displayZ(group.axleHeight));
+      housingRoot.rotation.z = group.direction;
+      this.content.add(housingRoot);
 
-      const endSpanY = yMax - yMin + hv.wallThicknessMetres;
-      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(hv.wallThicknessMetres, endSpanY, zSpan), housingMaterial);
-      leftWall.position.set(xMin - hv.wallThicknessMetres / 2, (yMin + yMax) / 2, zMid);
-      this.content.add(leftWall);
+      const backWall = new THREE.Mesh(new THREE.BoxGeometry(alongSpan, 2 * halfAcross + 2 * wt, wt), housingMaterial);
+      backWall.position.set(0, 0, halfAcross + wt / 2);
+      housingRoot.add(backWall);
 
-      const rightWall = new THREE.Mesh(new THREE.BoxGeometry(hv.wallThicknessMetres, endSpanY, zSpan), housingMaterial);
-      rightWall.position.set(xMax + hv.wallThicknessMetres / 2, (yMin + yMax) / 2, zMid);
-      this.content.add(rightWall);
+      for (const sign of [-1, 1] as const) {
+        const endWall = new THREE.Mesh(new THREE.BoxGeometry(wt, 2 * halfAcross + 2 * wt, zSpanAcross), housingMaterial);
+        endWall.position.set(sign * (halfAlongSpan + wt / 2), 0, zCentreAcross);
+        housingRoot.add(endWall);
 
-      for (const dividerX of yearDigitDividerXPositions(wheels)) {
-        const divider = new THREE.Mesh(new THREE.BoxGeometry(hv.dividerWidthMetres, yMax - yMin, zSpan), housingMaterial);
-        divider.position.set(dividerX, (yMin + yMax) / 2, zMid);
-        this.content.add(divider);
+        const sideWall = new THREE.Mesh(new THREE.BoxGeometry(alongSpan + wt, wt, zSpanAcross), housingMaterial);
+        sideWall.position.set(0, sign * (halfAcross + wt / 2), zCentreAcross);
+        housingRoot.add(sideWall);
+      }
+
+      for (const dividerAlong of yearDigitBarrelDividerPositions(group.segments)) {
+        const divider = new THREE.Mesh(new THREE.BoxGeometry(hv.dividerWidthMetres, 2 * halfAcross, zSpanAcross), housingMaterial);
+        divider.position.set(dividerAlong - midAlong, 0, zCentreAcross);
+        housingRoot.add(divider);
       }
 
       // The housing's own static mounting bracket (never animated, same treatment as
-      // YEAR_DIGIT_LINKAGE_VISUALIZATION's declutch wheel): a rigid post from the back wall up to
-      // the mainplate's own underside — the explicit "connected to the movement" the user asked
-      // for, alongside (not instead of) the ones-wheel's own kinematic link to the month star.
+      // YEAR_DIGIT_LINKAGE_VISUALIZATION's declutch wheel): a rigid vertical post from the back
+      // wall up to the mainplate's own underside — the explicit "connected to the movement" the
+      // user asked for, alongside (not instead of) the ones-segment's own kinematic link to the
+      // month star. Built in the housing's own local frame, like every other wall here.
       if (mainplateFrame !== undefined) {
-        const mainplateZ = this.displayZ(mainplateFrame.zBottom);
-        const bracketHeight = mainplateZ - zHi;
+        const mainplateLocalZ = this.displayZ(mainplateFrame.zBottom) - housingRoot.position.z;
+        const backOuterZ = halfAcross + wt;
+        const bracketHeight = mainplateLocalZ - backOuterZ;
         if (bracketHeight > 0) {
           const bracket = new THREE.Mesh(new THREE.BoxGeometry(hv.bracketWidthMetres, hv.bracketWidthMetres, bracketHeight), housingMaterial);
-          bracket.position.set((xMin + xMax) / 2, yMin - hv.wallThicknessMetres, zHi + bracketHeight / 2);
-          this.content.add(bracket);
+          bracket.position.set(0, 0, backOuterZ + bracketHeight / 2);
+          housingRoot.add(bracket);
         }
       }
     }
@@ -1402,6 +1435,11 @@ export class Viewport {
     for (const [id, spins] of this.stemSpins) {
       spins.stem.rotation.x = this.store.simulation.stemAngle[stemBodyId(id, "STEM")] ?? 0;
       spins.windingPinion.rotation.x = this.store.simulation.stemAngle[stemBodyId(id, "WINDING_PINION")] ?? 0;
+    }
+    // A year-digit barrel segment turns about its own declared axle direction, the same
+    // "group's local +X" convention the stem bodies above already use (Phase 8.15).
+    for (const [id, spin] of this.yearDigitSpins) {
+      spin.rotation.x = this.store.simulation.yearDigitAngle[id] ?? 0;
     }
     // A leap-year wheel's driver pin (ASM-0050): mid-stroke, swept via the same genevaStrokeDriverAngle
     // the wheel's own β is computed from (SimulationState.genevaStrokes); dwelling, parked at its

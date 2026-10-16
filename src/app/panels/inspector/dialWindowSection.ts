@@ -44,7 +44,7 @@ export function dialWindowSection(store: AppStore, win: DialWindow): Section {
   ], (id) => { if (id !== "") edit({ complicationId: id as EntityId }); },
     "The disc complication visible through this window — a moon phase, date, month or leap-year complication. Must actually overlap the window geometrically (DIALWIN-002), or nothing shows through it.");
 
-  const reading = complication === undefined ? null : discComplicationLabel(movement, store.simulation.shaftAngle, win.complicationId);
+  const reading = complication === undefined ? null : discComplicationLabel(movement, { shaftAngle: store.simulation.shaftAngle, yearDigitAngle: store.simulation.yearDigitAngle }, win.complicationId);
 
   return [
     textRow("Name", win.name, (name) => { edit({ name }); }),

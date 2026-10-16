@@ -132,6 +132,22 @@ export function createZCylinder(radius: number, zLo: number, zHi: number, segmen
   return geometry;
 }
 
+/**
+ * Cylinder along local X, centred at the local origin: the
+ * horizontal-axis counterpart to `createZCylinder`, for a part whose
+ * own rotation axis lies in the mainplate plane rather than
+ * perpendicular to it (ASM-0019's own exception to ASM-0006, used by
+ * `src/viewport/keylessMeshes.ts`'s own stem rod/crown — `rod.geometry.
+ * rotateZ(Math.PI / 2)` — and by `YEAR_DIGIT_BARREL_VISUALIZATION`,
+ * Phase 8.15, whose own doc comment derives the UV-angle relationship
+ * this rotation produces).
+ */
+export function createXAxisCylinder(radius: number, length: number, segments = 24): THREE.CylinderGeometry {
+  const geometry = new THREE.CylinderGeometry(radius, radius, length, segments);
+  geometry.rotateZ(Math.PI / 2);
+  return geometry;
+}
+
 /** A `DialWindow`'s own cutout, already in the disc's local frame (see `createDiscWithHolesGeometry`). */
 export type DiscHole =
   | { kind: "CIRCLE"; x: number; y: number; radius: number }
@@ -854,127 +870,135 @@ export const MONTH_LINKAGE_VISUALIZATION = {
 } as const;
 
 /**
- * A year-digit wheel's own drum-shaped visualization (new assumption,
- * Phase 8.13). The plain top-cap digit ring every other jump-driven
- * wheel already gets (`discMaterials`, ASM-0051) stays exactly as it
- * was — it is what the dial window above each wheel actually reveals —
- * but the wheel itself is also given a genuinely drum-proportioned body
- * (`src/app/teachingMovement.ts`'s own thickness/diameter choice) with
- * the same ten digits wrapped once around its own LATERAL surface, so a
- * direct 3D inspection (not through the dial window) reads as "a digit
- * sits on a rotating drum" — raised directly by the user ("i would like
- * it to be a cylinder with 4 digits displayed where every digit sits on
- * a drum that rotates from 0 to 9"), not a thin disc.
+ * A year-digit barrel segment's own geometry (Phase 8.15): a literal
+ * horizontal-axis cylinder, built with `CylinderGeometry`'s own default
+ * side UV then `geometry.rotateZ(Math.PI / 2)` — the SAME axis-moving
+ * transform `src/viewport/keylessMeshes.ts`'s own stem rod/crown already
+ * use (`rod.geometry.rotateZ(Math.PI / 2)`), not `createZCylinder`'s own
+ * `rotateX(π/2)` (that keeps a vertical axis; this needs a horizontal
+ * one). Raised directly by the user, who revised this complication
+ * twice already (a flat disc, then a vertical drum with a lateral
+ * texture) before explaining what was still wrong: this project's own
+ * vertical-shaft convention (ASM-0006) was fighting a part that is
+ * supposed to look and turn like a real mechanical tally-counter's
+ * roller — "the numbers should turn horizontally when facing the
+ * dial." Told directly that a literal horizontal axis breaks ASM-0006
+ * and needs a declared exception, the user chose it anyway: the same
+ * exception `KeylessWorks`'s own stem already has (ASM-0019), now
+ * extended to a second part. `YearDigitComplication` is therefore NOT a
+ * `Shaft` (`src/domain/yearDigitComplication.ts`): each segment declares
+ * its own `axleOrigin`/`axleDirection`/`axleHeight` directly, the same
+ * "declared placement, no generic Shaft" pattern `KeylessWorks` already
+ * uses for its own stem line.
  *
- * Unlike the top cap (whose own −Z-cap UV formula is already derived,
- * `discCapCanvasAngleForMeshAngle`), `createZCylinder`'s own LATERAL
- * surface keeps `CylinderGeometry`'s default side UV
- * (`uvs.push(u, 1 - v)` in the installed three.js source's own
- * `generateTorso`) through the `rotateX(π/2)` that turns the cylinder's
- * own axis onto Z — the rotation changes which *world* angle a given
- * `u` lands at, not the UV mapping itself. See
- * `cylinderSideCanvasUForMeshAngle`'s own doc comment for the derived
- * relationship, and `yearDigitLocalAngle`'s for why the ten digits must
- * run around the drum in the OPPOSITE sense to its own increasing
- * `shaftAngle`.
+ * Mirroring `buildStemMeshes`'s own convention exactly: a `root` group
+ * positioned at `axleOrigin`/`axleHeight` with `root.rotation.z =
+ * axleDirection` (orienting local +X along the declared axle direction
+ * — local Z stays world Z always, since this is a rotation about Z
+ * only), and a child `spin` group — added to `root` with no further
+ * transform of its own — whose `rotation.x` is driven every frame from
+ * the live simulated angle (`SimulationState.yearDigitAngle`). The
+ * segment mesh itself (radius `barrelDiameter / 2`, length
+ * `segmentLength`, axis along local X after `rotateZ(π/2)`) is a child
+ * of `spin`.
+ *
+ * This is what makes the digit genuinely face the dial for the first
+ * time (Phase 8.13's vertical drum could only ever show its digits from
+ * the SIDE, never through a straight-down dial window, since its own
+ * rotation axis was parallel to the camera's own viewing axis in that
+ * view — see `yearDigitBarrelRestAngle`'s own doc comment for the
+ * derivation of which local angle now faces it instead).
  */
-export const YEAR_DIGIT_DRUM_VISUALIZATION = {
+export const YEAR_DIGIT_BARREL_VISUALIZATION = {
   /**
-   * The fixed world-frame angle the currently-displayed digit is drawn
-   * to face — "straight up," the same declared convention
-   * `MOON_PHASE_VISUALIZATION.windowWorldAngleRadians` and
-   * `windowAbove` (`src/app/teachingMovement.ts`) already use for "the
-   * direction a reveal/reading convention points." There is no dial
-   * window over the lateral surface (a top-down window cannot usefully
-   * reveal a side-printed cylinder), so nothing downstream depends on
-   * this exact value; it only keeps the lateral strip's own layout
-   * declared rather than arbitrary.
+   * The mesh-local angle (around the `spin` group's own local X, i.e.
+   * the segment's own rotation axis) that faces the dial — local −Z,
+   * since `root`'s own one-time `rotation.z` (which points local X
+   * along the declared `axleDirection`) never tilts local Z away from
+   * world Z. A structural FACT of this geometry's own construction
+   * (derived in `yearDigitBarrelRestAngle`'s own doc comment), not a
+   * free design choice the way the now-removed vertical drum's own
+   * `frontAngleRadians` was.
    */
-  frontAngleRadians: Math.PI / 2,
+  dialFacingLocalAngleRadians: -Math.PI / 2,
   fontSizePx: 160,
-  /**
-   * Phase 8.14: pale numerals on a dark drum body, not the dark-on-pale
-   * treatment every other disc complication's own label ring uses
-   * (`DIAL_WINDOW_VISUALIZATION`) — matching the mechanical tally-counter
-   * reference the user provided directly, whose own digit rollers read as
-   * dark bodies with light printed numerals.
-   */
+  /** Pale numerals on a dark barrel body, matching the mechanical tally-counter reference photo the user provided directly, whose own digit rollers read as dark bodies with light printed numerals. */
   textColor: "#f2ece0",
   backgroundColor: "#1c1915",
   dividerColor: "#3a342c",
   dividerWidthPx: 3,
-  assumption: "ASM-0060" satisfies AssumptionId,
+  assumption: "ASM-0064" satisfies AssumptionId,
 } as const;
 
 /**
- * The mesh-local angle (`createZCylinder`'s own frame, after its
- * `rotateX(π/2)`) at which digit `d` (0 to `digitCount − 1`) must be
- * painted so that, once the wheel's own already-simulated `shaftAngle`
- * is applied (`shaftAngle = d × 2π/digitCount` for whichever digit is
- * currently showing, `yearDigitStepAngle()`,
- * `src/simulation/simulationState.ts`), digit `d` itself lands at
- * `YEAR_DIGIT_DRUM_VISUALIZATION.frontAngleRadians` in world space —
- * true for every `d`, not just the wheel's own starting one, since
- * `(front − d·step) + d·step = front` for all `d`. Digits therefore run
- * around the drum in the OPPOSITE sense to increasing `shaftAngle` —
- * the same way a real mechanical drum counter's own printed digits must
- * run backwards around its rim for them to appear in forward (0, 1,
- * 2, …) reading order as the drum turns forward. `digit` need not be an
- * integer (the texture painter below also calls this at `digit + 0.5`
- * to place a divider between two digits).
+ * The mesh-local angle (around the `spin` group's own local X) at which
+ * digit `d` (0 to `digitCount − 1`) must be painted so that, once the
+ * segment's own already-simulated angle is applied (`rotation.x = d ×
+ * 2π/digitCount` for whichever digit is currently showing,
+ * `yearDigitStepAngle()`, `src/simulation/simulationState.ts`), digit
+ * `d` itself faces `YEAR_DIGIT_BARREL_VISUALIZATION.dialFacingLocalAngleRadians`
+ * — true for every `d`, not just the segment's own starting one, since
+ * `(rest − d·step) + d·step = rest` for all `d` (rotating a point at
+ * local angle `α` by `φ` about local X moves it to `α + φ`, the
+ * standard right-hand convention `THREE.Object3D.rotation.x` already
+ * uses). Digits therefore run around the barrel in the OPPOSITE sense
+ * to increasing rotation — the same way a real mechanical counter's own
+ * printed digits must run backwards around its rim for them to appear
+ * in forward (0, 1, 2, …) reading order as the drum turns forward.
+ * `digit` need not be an integer (the texture painter below also calls
+ * this at `digit + 0.5` to place a divider between two digits).
  */
-export function yearDigitLocalAngle(digit: number, digitCount: number): number {
+export function yearDigitBarrelRestAngle(digit: number, digitCount: number): number {
   const step = (Math.PI * 2) / digitCount;
   const twoPi = Math.PI * 2;
-  return (((YEAR_DIGIT_DRUM_VISUALIZATION.frontAngleRadians - digit * step) % twoPi) + twoPi) % twoPi;
+  return (((YEAR_DIGIT_BARREL_VISUALIZATION.dialFacingLocalAngleRadians - digit * step) % twoPi) + twoPi) % twoPi;
 }
 
 /**
- * The lateral-surface canvas-drawing angle (`θ`, with `u = θ / 2π`,
- * `createZCylinder`'s own side UV — the installed three.js source's
- * `generateTorso` default `u, 1−v`, carried through unchanged by the
- * `rotateX(π/2)` that only reassigns which axis is "up") that lands a
- * feature at a chosen *mesh-local* angle `meshAngle` — the
- * lateral-surface counterpart to `discCapCanvasAngleForMeshAngle`'s own
- * −Z-cap reflection formula.
+ * The lateral-surface canvas-drawing angle (`θ`, with `u = θ / 2π`) that
+ * lands a feature at a chosen *mesh-local* angle (around the `spin`
+ * group's own local X) on a `geometry.rotateZ(Math.PI / 2)`-built
+ * horizontal cylinder (`YEAR_DIGIT_BARREL_VISUALIZATION`) — the
+ * horizontal-axis counterpart to `discCapCanvasAngleForMeshAngle`'s own
+ * −Z-cap reflection formula for a vertical one.
  *
- * Unlike the cap's reflection, this is a plain rotation: working
- * `generateTorso`'s pre-rotation vertex (`x = r·sinθ, y = −vh+½h,
- * z = r·cosθ`, `θ = u·2π`) through `rotateX(π/2)` (`y′ = −z, z′ = y`)
- * gives `x′ = r·sinθ, y′ = −r·cosθ`, i.e. a mesh-local angle of
- * `θ − π/2` (`atan2(−cosθ, sinθ) ≡ θ − π/2`, verified against the real
- * built geometry's own vertex data, not just algebra, the same
- * verification standard `discCapCanvasAngleForMeshAngle`'s own doc
- * comment holds itself to). Solving for `θ` given a desired mesh angle
- * just adds `π/2` back.
+ * Derived by tracking `CylinderGeometry`'s own pre-rotation side vertex
+ * (the installed three.js source's own `generateTorso`: `x = r·sinθ,
+ * y = height-axis, z = r·cosθ`, `θ = u·2π`, UV `(u, 1−v)`) through
+ * `rotateZ(π/2)` (`x′ = −y, y′ = x`, so `x′ = −(height-axis), y′ =
+ * r·sinθ, z′ = r·cosθ` — the axis moves from local Y to local X,
+ * confirmed against `src/viewport/keylessMeshes.ts`'s own identical
+ * `rotateZ(π/2)` convention for the stem rod). The point's own angle
+ * around local X, measured `atan2(z, y)`, is therefore `atan2(r·cosθ,
+ * r·sinθ) = π/2 − θ`. Solving for `θ` given a desired local angle `a`
+ * gives `θ = π/2 − a`, which this function returns as a normalized
+ * `u = θ / 2π`.
  */
-export function cylinderSideCanvasUForMeshAngle(meshAngle: number): number {
-  const theta = meshAngle + Math.PI / 2;
+export function cylinderXAxisCanvasUForLocalAngle(localAngleAroundX: number): number {
+  const theta = Math.PI / 2 - localAngleAroundX;
   const u = theta / (Math.PI * 2);
   return u - Math.floor(u);
 }
 
 /**
- * The lateral-surface digit strip for a year-digit drum
- * (`YEAR_DIGIT_DRUM_VISUALIZATION`, ASM-0060): a plain background band
- * with `digitCount` digits painted around it at `yearDigitLocalAngle`'s
- * own positions, plus a thin divider at the half-digit boundary between
- * each pair (the same half-slot-offset convention
- * `seasonWedgeBoundaryAngles` already uses). Every digit and divider is
- * drawn three times, at `u`, `u − 1` and `u + 1`: the canvas is a flat
- * strip but the surface it wraps onto is a closed loop, so a digit
- * whose own centre falls near the `u = 0`/`u = 1` seam (there is always
- * exactly one, since the ten evenly-spaced digits and the one seam
- * share no common structure that would avoid it) must still appear
- * whole, split across both edges of the canvas, not clipped by it.
- * `digitCount` is passed in, not imported from
- * `src/domain/yearDigitComplication.ts` (this geometry module has no
- * dependency on any domain module), the same "pure function of its own
- * inputs" convention `createGenevaWheelGeometry`'s own `slotCount`
- * parameter already follows.
+ * The lateral-surface digit strip for a year-digit barrel
+ * (`YEAR_DIGIT_BARREL_VISUALIZATION`, ASM-0064): a plain background
+ * band with `digitCount` digits painted around it at
+ * `yearDigitBarrelRestAngle`'s own positions, plus a thin divider at
+ * the half-digit boundary between each pair (the same half-slot-offset
+ * convention `seasonWedgeBoundaryAngles` already uses). Every digit and
+ * divider is drawn three times, at `u`, `u − 1` and `u + 1`: the canvas
+ * is a flat strip but the surface it wraps onto is a closed loop, so a
+ * digit whose own centre falls near the `u = 0`/`u = 1` seam (there is
+ * always exactly one) must still appear whole, split across both edges
+ * of the canvas, not clipped by it. `digitCount` is passed in, not
+ * imported from `src/domain/yearDigitComplication.ts` (this geometry
+ * module has no dependency on any domain module), the same "pure
+ * function of its own inputs" convention `createGenevaWheelGeometry`'s
+ * own `slotCount` parameter already follows.
  */
-export function createYearDigitDrumTexture(digitCount: number): THREE.CanvasTexture | null {
-  const v = YEAR_DIGIT_DRUM_VISUALIZATION;
+export function createYearDigitBarrelTexture(digitCount: number): THREE.CanvasTexture | null {
+  const v = YEAR_DIGIT_BARREL_VISUALIZATION;
   const width = 1024;
   const height = 256;
   const canvas = document.createElement("canvas");
@@ -991,8 +1015,8 @@ export function createYearDigitDrumTexture(digitCount: number): THREE.CanvasText
   ctx.strokeStyle = v.dividerColor;
   ctx.lineWidth = v.dividerWidthPx;
   for (let digit = 0; digit < digitCount; digit += 1) {
-    const u = cylinderSideCanvasUForMeshAngle(yearDigitLocalAngle(digit, digitCount));
-    const dividerU = cylinderSideCanvasUForMeshAngle(yearDigitLocalAngle(digit + 0.5, digitCount));
+    const u = cylinderXAxisCanvasUForLocalAngle(yearDigitBarrelRestAngle(digit, digitCount));
+    const dividerU = cylinderXAxisCanvasUForLocalAngle(yearDigitBarrelRestAngle(digit + 0.5, digitCount));
     for (const offset of [-1, 0, 1]) {
       ctx.fillText(String(digit), (u + offset) * width, height / 2);
       const dividerX = (dividerU + offset) * width;
@@ -1008,132 +1032,143 @@ export function createYearDigitDrumTexture(digitCount: number): THREE.CanvasText
 }
 
 /**
- * A year-digit wheel's own visual linkage to the movement (new
- * assumption, Phase 8.13): a small declutch wheel, idle/disengaged, the
- * same shape and treatment `MONTH_LINKAGE_VISUALIZATION` (ASM-0054)
- * already gives the month star's own link to the date star that drives
- * it — drawn once, in its own rest position, never animated. Raised
- * directly by the user ("make sure to display the connection to the
- * movement"): before this, none of the four digit wheels had any visual
- * link at all (unlike date/month/leap-year), the same gap
- * `SeasonComplication` (ASM-0057) is still left with, deliberately, for
- * lack of a trigger with just one single driving star of its own to
- * hang a link from — a year-digit wheel does have exactly one real
- * trigger (the month star's own December-to-January wrap, ASM-0059),
- * shared by all four digit wheels, so unlike season there IS one real
- * connection to draw.
+ * A year-digit barrel's own visual linkage to the movement (Phase
+ * 8.15, carried over unchanged from Phase 8.13's own ASM-0061): a small
+ * declutch wheel, idle/disengaged, the same shape and treatment
+ * `MONTH_LINKAGE_VISUALIZATION` (ASM-0054) already gives the month
+ * star's own link to the date star that drives it — drawn once, in its
+ * own rest position, never animated.
  *
- * Only the ones-place wheel gets a drawn link to the month star. The
+ * Only the ones-place segment gets a drawn link to the month star. The
  * other three (tens, hundreds, thousands) are not mechanically chained
- * to the ones wheel or to each other in this project's own domain model
- * — `digitsToAdvance` (`src/kinematics/yearDigitComplication.ts`)
- * advances every qualifying wheel in the SAME simulated instant the
- * month star wraps, not via one wheel's own rotation stepping the next
- * (the way some real multi-digit mechanical counters are built, with a
- * one-tooth carry pinion between each pair of wheels — no source for
- * this specific drum-clock design has been found either way) —
- * drawing a tooth-engagement link between consecutive digit wheels
- * would imply a real inter-wheel
- * gearing this project does not model and YEARDIGIT-001 (`wheel-also-
- * geared`) explicitly forbids, so it is not drawn.
+ * to the ones segment or to each other in this project's own domain
+ * model — `digitsToAdvance` (`src/kinematics/yearDigitComplication.ts`)
+ * advances every qualifying segment in the SAME simulated instant the
+ * month star wraps, not via one segment's own rotation stepping the
+ * next (the way some real multi-digit mechanical counters are built,
+ * with a one-tooth carry pinion between each pair of wheels — no source
+ * for this specific drum-clock design has been found either way) —
+ * drawing a tooth-engagement link between consecutive digit segments
+ * would imply a real inter-segment gearing this project does not model.
+ * This small declutch wheel itself stays an ordinary vertical-axis
+ * `createZCylinder`, the same as before: it is not part of the barrel's
+ * own rotating assembly, just a static marker anchored near it.
  */
 export const YEAR_DIGIT_LINKAGE_VISUALIZATION = {
-  /** The declutch wheel's own radius, as a fraction of the ones-place wheel's own tip radius. */
+  /** The declutch wheel's own radius, as a fraction of the ones-place segment's own barrel radius. */
   wheelRadiusFraction: 0.3,
-  /** The visible gap between the wheel's own rim and the ones-place wheel's own rim, showing it disengaged. */
+  /** The visible gap between the wheel's own rim and the ones-place segment's own rim, showing it disengaged. */
   clearanceMetres: 0.3e-3,
-  assumption: "ASM-0061" satisfies AssumptionId,
+  assumption: "ASM-0065" satisfies AssumptionId,
 } as const;
 
 /**
- * A year-digit wheel group's own enclosing housing (new assumption,
- * Phase 8.14): raised directly by the user, who supplied a photo of a
- * real mechanical tally-counter ("remove the 4 gears for the year timer
- * and create something like this... connected somehow to the
- * movement") — four digit rollers sitting close together inside a dark
- * housing, with thin dividers between columns, visibly mounted rather
- * than floating free. Before this, the four digit wheels (ASM-0059,
- * ASM-0060) sat spaced out and fully exposed, reading as four separate
- * small wheels rather than one counter unit.
+ * A year-digit barrel's own enclosing housing (Phase 8.15, carried over
+ * from Phase 8.14's own ASM-0062, rebuilt for the horizontal axis):
+ * raised directly by the user, who supplied a photo of a real
+ * mechanical tally-counter ("remove the 4 gears for the year timer and
+ * create something like this... connected somehow to the movement") —
+ * four digit rollers sitting close together inside a dark housing, with
+ * thin dividers between columns, visibly mounted rather than floating
+ * free.
  *
- * The housing is three plain walls — one behind the row, one at each
- * end — never a front or top/bottom cover: the "window" in the real
- * counter is just the ordinary fact that a solid cylinder's own far
- * side is hidden from the viewer, the same way any other part in this
- * viewport is; no new reveal geometry is needed to get that. Divider
- * bars between adjacent wheels complete the look. Entirely visual
- * (ASM-0004) and, like `MONTH_LINKAGE_VISUALIZATION`, derived each
- * rebuild from the wheels' own already-solved positions and declared
- * dimensions — no new domain field, no new `ShaftId`, no new
- * simulation state.
+ * Built entirely in the barrel's own local frame (the SAME `root` group
+ * every segment's own geometry is positioned relative to, i.e. local X
+ * along the shared `axleDirection`, local Z = world Z always): a back
+ * wall (local Z, the side away from the dial), two end walls (local X,
+ * the ends of the whole segment run) and two side walls (local Y, the
+ * sides perpendicular to the barrel's own length) — five of the six
+ * faces of a box, leaving only the local −Z face (the one facing the
+ * dial, `YEAR_DIGIT_BARREL_VISUALIZATION.dialFacingLocalAngleRadians`)
+ * open: the real counter's own "window" is just the ordinary fact that
+ * a solid cylinder's own far side is hidden from the viewer, the same
+ * way any other part in this viewport already is — no separate reveal
+ * geometry is needed to get that. Divider bars between adjacent
+ * segments complete the look. Entirely visual (ASM-0004) and, like
+ * `MONTH_LINKAGE_VISUALIZATION`, derived each rebuild from the
+ * segments' own already-declared positions and dimensions — no new
+ * domain field, no `ShaftId` (there is none to have), no new simulation
+ * state.
  */
 export const YEAR_DIGIT_HOUSING_VISUALIZATION = {
-  /** Clearance between a wheel's own rim and the housing's inner wall face. */
+  /** Clearance between a segment's own rim/end and the housing's own inner wall face. */
   marginMetres: 0.3e-3,
   wallThicknessMetres: 0.2e-3,
   dividerWidthMetres: 0.15e-3,
   housingColor: 0x16140f,
   /**
    * The housing's own static mounting bracket (never animated, same
-   * treatment as `YEAR_DIGIT_LINKAGE_VISUALIZATION`): a rigid post from
-   * the housing's own back wall up to the mainplate's own underside —
-   * the explicit "connection to the movement" the user asked for,
-   * additional to (not a replacement for) the ones-wheel's own
-   * kinematic link to the month star above.
+   * treatment as `YEAR_DIGIT_LINKAGE_VISUALIZATION`): a rigid vertical
+   * post from the housing's own back wall up to the mainplate's own
+   * underside — the explicit "connection to the movement" the user
+   * asked for, additional to (not a replacement for) the ones-segment's
+   * own kinematic link to the month star above. Built in WORLD Z (not
+   * the housing's own local frame): a plain vertical post reads as
+   * "mounted to the plate" regardless of which way the barrel itself
+   * points.
    */
   bracketWidthMetres: 0.3e-3,
-  assumption: "ASM-0062" satisfies AssumptionId,
+  assumption: "ASM-0066" satisfies AssumptionId,
 } as const;
 
-/** A year-digit wheel's footprint in the movement plane, as `yearDigitHousingBounds`/`yearDigitDividerXPositions` need it. */
-export interface YearDigitWheelFootprint {
-  readonly x: number;
-  readonly y: number;
-  readonly tipRadius: number;
-}
-
-export interface YearDigitHousingBounds {
-  readonly xMin: number;
-  readonly xMax: number;
-  readonly yMin: number;
-  readonly yMax: number;
+/** One year-digit barrel segment's own position along its shared axle and length, as `yearDigitBarrelAlongBounds`/`yearDigitBarrelDividerPositions` need it. */
+export interface YearDigitBarrelSegment {
+  /** This segment's own centre, projected onto the shared axle direction (`yearDigitAxleProjection`) — a signed scalar distance, not a point. */
+  readonly along: number;
+  /** This segment's own length along the shared axle. */
+  readonly length: number;
 }
 
 /**
- * The housing's own outer footprint (`YEAR_DIGIT_HOUSING_VISUALIZATION`,
- * ASM-0062): the bounding box of the given wheels' own rims, expanded
- * by `margin` on every side — derived from the model's own already-
- * declared positions and tip diameters, not an invented size. `null`
- * for an empty group (nothing to enclose).
+ * A point's own signed distance along a declared direction (the
+ * standard dot product with the direction's own unit vector) — how
+ * `src/viewport/viewport.ts` reduces each year-digit segment's own 2D
+ * `axleOrigin` to the single scalar `yearDigitBarrelAlongBounds`/
+ * `yearDigitBarrelDividerPositions` need, so the housing/dividers work
+ * for a barrel declared along ANY `axleDirection`, not only one
+ * aligned with the world X axis.
  */
-export function yearDigitHousingBounds(wheels: readonly YearDigitWheelFootprint[], margin: number): YearDigitHousingBounds | null {
-  if (wheels.length === 0) return null;
-  let xMin = Number.POSITIVE_INFINITY;
-  let xMax = Number.NEGATIVE_INFINITY;
-  let yMin = Number.POSITIVE_INFINITY;
-  let yMax = Number.NEGATIVE_INFINITY;
-  for (const wheel of wheels) {
-    xMin = Math.min(xMin, wheel.x - wheel.tipRadius);
-    xMax = Math.max(xMax, wheel.x + wheel.tipRadius);
-    yMin = Math.min(yMin, wheel.y - wheel.tipRadius);
-    yMax = Math.max(yMax, wheel.y + wheel.tipRadius);
+export function yearDigitAxleProjection(point: Point2D, direction: number): number {
+  return point.x * Math.cos(direction) + point.y * Math.sin(direction);
+}
+
+export interface YearDigitBarrelAlongBounds {
+  readonly min: number;
+  readonly max: number;
+}
+
+/**
+ * The housing's own extent along the shared axle
+ * (`YEAR_DIGIT_HOUSING_VISUALIZATION`, ASM-0066): the span of every
+ * segment's own declared length, expanded by `margin` on each end —
+ * derived from the model's own already-declared positions and lengths,
+ * not an invented size. `null` for an empty group (nothing to enclose).
+ */
+export function yearDigitBarrelAlongBounds(segments: readonly YearDigitBarrelSegment[], margin: number): YearDigitBarrelAlongBounds | null {
+  if (segments.length === 0) return null;
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+  for (const segment of segments) {
+    min = Math.min(min, segment.along - segment.length / 2);
+    max = Math.max(max, segment.along + segment.length / 2);
   }
-  return { xMin: xMin - margin, xMax: xMax + margin, yMin: yMin - margin, yMax: yMax + margin };
+  return { min: min - margin, max: max + margin };
 }
 
 /**
- * The X position of a divider bar between each pair of adjacent wheels
- * (by X order), one fewer bar than there are wheels — the midpoint
- * between each pair's own centres, the same "derived from the model's
- * own declared positions" convention `yearDigitHousingBounds` follows.
- * Sorts a copy of `wheels`; the input order does not matter.
+ * The along-axle position of a divider bar between each pair of
+ * adjacent segments (by along-axle order), one fewer bar than there
+ * are segments — the midpoint between each pair's own centres, the
+ * same "derived from the model's own declared positions" convention
+ * `yearDigitBarrelAlongBounds` follows. Sorts a copy of `segments`; the
+ * input order does not matter.
  */
-export function yearDigitDividerXPositions(wheels: readonly YearDigitWheelFootprint[]): number[] {
-  const xs = wheels.map((wheel) => wheel.x).sort((a, b) => a - b);
+export function yearDigitBarrelDividerPositions(segments: readonly { along: number }[]): number[] {
+  const alongs = segments.map((segment) => segment.along).sort((a, b) => a - b);
   const midpoints: number[] = [];
-  for (let i = 0; i + 1 < xs.length; i += 1) {
-    const a = xs[i];
-    const b = xs[i + 1];
+  for (let i = 0; i + 1 < alongs.length; i += 1) {
+    const a = alongs[i];
+    const b = alongs[i + 1];
     if (a === undefined || b === undefined) continue;
     midpoints.push((a + b) / 2);
   }

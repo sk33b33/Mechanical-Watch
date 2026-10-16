@@ -27,7 +27,7 @@ import { createDateComplication } from "@/domain/dateComplication";
 import { createMonthComplication } from "@/domain/monthComplication";
 import { createLeapYearComplication } from "@/domain/leapYearComplication";
 import { createSeasonComplication } from "@/domain/seasonComplication";
-import { createYearDigitComplication, type YearDigitComplicationId } from "@/domain/yearDigitComplication";
+import { createYearDigitComplication } from "@/domain/yearDigitComplication";
 import { createDialWindow } from "@/domain/dialWindow";
 import { solvePlacement } from "@/kinematics/solvePlacement";
 import { micronewtonMillimetresPerRadian, milligramSquareCentimetres } from "@/units/rotational";
@@ -221,14 +221,11 @@ export function createTeachingMovement(): Movement {
   // SeasonComplication below.
   const seasonWheelArbor = shaft("Season wheel", null, { kind: "STUD", frameId: mainplate.id });
 
-  // Year digits (Phase 8.12, "drum clock"): four separate digit wheels, each — like the month
-  // star, leap-year wheel and season wheel above — driven entirely by the month complication's
-  // own December-to-January wrap, so each has no gear, mesh or drive train of its own, just a
-  // separate, declared (FIXED-position) arbor for its own YearDigitComplication below.
-  const yearOnesArbor = shaft("Year ones", null, { kind: "STUD", frameId: mainplate.id });
-  const yearTensArbor = shaft("Year tens", null, { kind: "STUD", frameId: mainplate.id });
-  const yearHundredsArbor = shaft("Year hundreds", null, { kind: "STUD", frameId: mainplate.id });
-  const yearThousandsArbor = shaft("Year thousands", null, { kind: "STUD", frameId: mainplate.id });
+  // Year digits (Phase 8.15, "page-flip" horizontal barrel): unlike the month star, leap-year
+  // wheel and season wheel above, there is no arbor at all here — a YearDigitComplication is not
+  // a Shaft (ASM-0019-style exception to ASM-0006, the same exception the keyless works' stem
+  // already has), so each of the four digit segments below declares its own horizontal axle
+  // placement directly.
 
   // Keyless works. Ratchet and crown wheel just above the mainplate (its top face is at 1.0 mm).
   const keylessModule = mm(0.1);
@@ -271,7 +268,6 @@ export function createTeachingMovement(): Movement {
   for (const s of [
     barrel, centre, third, fourth, escape, cannon, minuteWheel, hourWheel, barrelArbor, crownWheelArbor, settingWheelArbor,
     moonReductionArbor, moonDiscArbor, twentyFourHourArbor, dateStarArbor, monthStarArbor, leapYearWheelArbor, seasonWheelArbor,
-    yearOnesArbor, yearTensArbor, yearHundredsArbor, yearThousandsArbor,
   ]) {
     m = addShaft(m, s);
   }
@@ -338,20 +334,6 @@ export function createTeachingMovement(): Movement {
   // on the date star's own line but the opposite direction from the month/leap-year wheels, by
   // more than their tip radii combined (ASSY-002 clearance), comfortably inside the mainplate.
   m = updateShaft(m, seasonWheelArbor.id, { placement: fixedAt(mm(-6), mm(4.5)) });
-  // Declared, not mesh-derived (none of the four digit wheels are meshed with anything, same as
-  // the month/leap-year/season wheels) — Phase 8.14: a tight single row (2.3mm centre spacing,
-  // 0.3mm clear gap between adjacent 2mm-diameter drums — room for YEAR_DIGIT_HOUSING_
-  // VISUALIZATION's own divider bars), reading left to right thousands/hundreds/tens/ones like a
-  // printed year, matching the mechanical tally-counter reference the user provided directly
-  // (raised as explicit feedback: "remove the 4 gears for the year timer and create something
-  // like this"). Replaces the earlier 2×2 grid. Still north of the balance cock's own bridge
-  // footprint (x 3-12, y 5-11) and clear of the train bridge (max y 5), comfortably inside the
-  // mainplate's own 15 mm radius, and clear of the month/leap-year/season wheels further west at
-  // x = -6 (ASSY-002 clearance, verified live).
-  m = updateShaft(m, yearThousandsArbor.id, { placement: fixedAt(mm(-6.45), mm(8)) });
-  m = updateShaft(m, yearHundredsArbor.id, { placement: fixedAt(mm(-4.15), mm(8)) });
-  m = updateShaft(m, yearTensArbor.id, { placement: fixedAt(mm(-1.85), mm(8)) });
-  m = updateShaft(m, yearOnesArbor.id, { placement: fixedAt(mm(0.45), mm(8)) });
 
   // Put the crown wheel and setting wheel on the stem line y = 0 (the centre arbor is at the origin).
   // Each is placed from its partner by its mesh; the angle is the one that lands on y = 0 on the crown side.
@@ -436,41 +418,47 @@ export function createTeachingMovement(): Movement {
   });
   m = addSeasonComplication(m, seasonComplication);
 
-  // Year digits (Phase 8.12, "drum clock"): four separate digit wheels showing today's own
-  // year at the design's own t=0 (2026) — like DateComplication always starting at day 1 and
-  // MonthComplication always starting at January, each wheel's own starting digit is
-  // independently declared (there is no sourced way for a watch to know the real calendar year
-  // on its own), not derived from a single shared "year" field.
+  // Year digits (Phase 8.15, "page-flip" horizontal barrel): one cylindrical barrel, its axis
+  // horizontal (ASM-0019-style exception to ASM-0006), sliced along its own axle into four
+  // abutting segments (thousands/hundreds/tens/ones, reading left to right like a printed year)
+  // showing today's own year at the design's own t=0 (2026) — like DateComplication always
+  // starting at day 1 and MonthComplication always starting at January, each segment's own
+  // starting digit is independently declared (there is no sourced way for a watch to know the
+  // real calendar year on its own), not derived from a single shared "year" field.
   //
-  // Thickness/diameter (0.8 : 2, Phase 8.13) is deliberately drum/roller-proportioned, not the
-  // thin-disc ratio every other jump-driven wheel uses (ASM-0060, raised directly by the user:
-  // "i would like it to be a cylinder... every digit sits on a drum"). zCentre moves up from the
-  // other complications' shared -1.2mm to -0.7mm (half-thickness 0.4mm either side, spanning
-  // -1.1 to -0.3mm) to keep this taller body clear of both the mainplate's own underside (0mm)
-  // and the dial's own back (-1.4mm, same clearance convention the moon-phase disc's own
-  // comment already uses) — it does not need to share the other complications' own z-plane,
-  // since none of them overlap it in x/y (ASSY-002 clearance already keeps the digit row
-  // well clear of the date/month/leap-year/season wheels).
-  const yearOnesComplication = createYearDigitComplication({
-    name: "Year ones", monthComplicationId: monthComplication.id, digitPlace: "ONES", wheelShaftId: yearOnesArbor.id, startDigit: 6,
-    wheelTipDiameter: mm(2), wheelThickness: mm(0.8), wheelZCentre: mm(-0.7),
-  });
-  m = addYearDigitComplication(m, yearOnesComplication);
-  const yearTensComplication = createYearDigitComplication({
-    name: "Year tens", monthComplicationId: monthComplication.id, digitPlace: "TENS", wheelShaftId: yearTensArbor.id, startDigit: 2,
-    wheelTipDiameter: mm(2), wheelThickness: mm(0.8), wheelZCentre: mm(-0.7),
-  });
-  m = addYearDigitComplication(m, yearTensComplication);
-  const yearHundredsComplication = createYearDigitComplication({
-    name: "Year hundreds", monthComplicationId: monthComplication.id, digitPlace: "HUNDREDS", wheelShaftId: yearHundredsArbor.id, startDigit: 0,
-    wheelTipDiameter: mm(2), wheelThickness: mm(0.8), wheelZCentre: mm(-0.7),
-  });
-  m = addYearDigitComplication(m, yearHundredsComplication);
+  // Replaces the earlier vertical-axis "drum clock" (Phase 8.12-8.14, four separate wheels each
+  // on its own vertical arbor): raised directly by the user, who rejected "4 gears with 4
+  // windows" in favour of "1 large rectangular window with 1 large cylindrical barrel behind it
+  // that is separated into 4 parts" with digits that "turn horizontally when facing the dial".
+  // With the axle along world +X (axleDirection = 0°) and axleHeight = -0.7mm (the same height
+  // the old drum used, clear of both the mainplate's own underside at 0mm and the dial's own
+  // back at -1.4mm), the four segments are laid out abutting end to end along X, each
+  // segmentLength (0.8mm, the same axial dimension the old drum's own thickness used) wide, with
+  // barrelDiameter (2mm, same as the old drum's own tip diameter) giving each face enough height
+  // for one digit. Centres at x = -4.2/-3.4/-2.6/-1.8mm, y = 8mm: the same row position the old
+  // drums used (north of the balance cock's own bridge footprint, clear of the train bridge,
+  // comfortably inside the mainplate's own 15mm radius, and clear of the month/leap-year/season
+  // wheels further west at x = -6, ASSY-002 clearance).
   const yearThousandsComplication = createYearDigitComplication({
-    name: "Year thousands", monthComplicationId: monthComplication.id, digitPlace: "THOUSANDS", wheelShaftId: yearThousandsArbor.id, startDigit: 2,
-    wheelTipDiameter: mm(2), wheelThickness: mm(0.8), wheelZCentre: mm(-0.7),
+    name: "Year thousands", monthComplicationId: monthComplication.id, digitPlace: "THOUSANDS", startDigit: 2,
+    axleOrigin: vec2(mm(-4.2), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.7), barrelDiameter: mm(2), segmentLength: mm(0.8),
   });
   m = addYearDigitComplication(m, yearThousandsComplication);
+  const yearHundredsComplication = createYearDigitComplication({
+    name: "Year hundreds", monthComplicationId: monthComplication.id, digitPlace: "HUNDREDS", startDigit: 0,
+    axleOrigin: vec2(mm(-3.4), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.7), barrelDiameter: mm(2), segmentLength: mm(0.8),
+  });
+  m = addYearDigitComplication(m, yearHundredsComplication);
+  const yearTensComplication = createYearDigitComplication({
+    name: "Year tens", monthComplicationId: monthComplication.id, digitPlace: "TENS", startDigit: 2,
+    axleOrigin: vec2(mm(-2.6), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.7), barrelDiameter: mm(2), segmentLength: mm(0.8),
+  });
+  m = addYearDigitComplication(m, yearTensComplication);
+  const yearOnesComplication = createYearDigitComplication({
+    name: "Year ones", monthComplicationId: monthComplication.id, digitPlace: "ONES", startDigit: 6,
+    axleOrigin: vec2(mm(-1.8), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.7), barrelDiameter: mm(2), segmentLength: mm(0.8),
+  });
+  m = addYearDigitComplication(m, yearOnesComplication);
 
   // Dial windows (Phase 8.6, ASM-0051): without one, every disc complication above sits fully
   // hidden behind the dial's own opaque disc. Each window is offset from its complication's own
@@ -538,21 +526,23 @@ export function createTeachingMovement(): Movement {
     centre: windowAbove(seasonWheelArbor.id, 1.5, 0.72),
     outline: { kind: "RECTANGLE", width: mm(1.3), height: mm(0.55) },
   }));
-  const yearDigitWindow = (name: string, complicationId: YearDigitComplicationId, arborId: ShaftId): void => {
-    m = addDialWindow(m, createDialWindow({
-      name,
-      dialId: dial.id,
-      complicationId,
-      // Smaller disc (2mm tip) than the other jump-driven wheels: a narrower window to match, wide
-      // enough for one digit ("0"-"9").
-      centre: windowAbove(arborId, 1, 0.72),
-      outline: { kind: "RECTANGLE", width: mm(0.9), height: mm(0.5) },
-    }));
-  };
-  yearDigitWindow("Year ones window", yearOnesComplication.id, yearOnesArbor.id);
-  yearDigitWindow("Year tens window", yearTensComplication.id, yearTensArbor.id);
-  yearDigitWindow("Year hundreds window", yearHundredsComplication.id, yearHundredsArbor.id);
-  yearDigitWindow("Year thousands window", yearThousandsComplication.id, yearThousandsArbor.id);
+  // One shared window over the whole barrel (Phase 8.15, replacing the earlier four separate
+  // windows): the user's own explicit request ("it needs to be 1 large rectangular window...
+  // separated into 4 parts"). Centred on the barrel's own along-axle midpoint (x = -3mm, the
+  // mean of the four segment centres above) at the barrel's own y = 8mm — not offset the way
+  // `windowAbove` offsets the other complications' windows, since a barrel has no rotating
+  // position label to catch, just its own four always-forward-facing digit segments. Width
+  // (3.4mm) spans the full four-segment barrel (4 × 0.8mm = 3.2mm) with a small margin; height
+  // (0.9mm) is sized like the other jump-driven windows for a 2mm-diameter disc (DIALWIN-002
+  // checks this window overlaps the "ones" segment's own disc; the other three segments sit on
+  // the same barrel and are shown through the same cutout).
+  m = addDialWindow(m, createDialWindow({
+    name: "Year window",
+    dialId: dial.id,
+    complicationId: yearOnesComplication.id,
+    centre: { x: metres(mm(-3)), y: metres(mm(8)) },
+    outline: { kind: "RECTANGLE", width: mm(3.4), height: mm(0.9) },
+  }));
 
   // Pallet arbor and balance staff: fixed positions along a line from the escape arbor
   // (illustrative layout distances). The escape arbor's position follows the mesh chain

@@ -46,7 +46,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 26;
+export const DESIGN_SCHEMA_VERSION = 27;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -350,6 +350,51 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
     const movement = doc.movement;
     if (!isRecord(movement)) return doc;
     return { ...doc, schemaVersion: 26, movement: { ...movement, yearDigitComplications: {} } };
+  },
+  /**
+   * v26 → v27: YearDigitComplication drops `wheelShaftId` (Phase 8.15, the
+   * "page-flip" horizontal-axis barrel — ASM-0019-style exception to
+   * ASM-0006, not a Shaft at all any more) in favour of its own axle
+   * placement (`axleOrigin`, `axleDirection`, `axleHeight`) and barrel
+   * dimensions (`barrelDiameter`, `segmentLength`).
+   * `wheelTipDiameter` → `barrelDiameter`, `wheelThickness` →
+   * `segmentLength` and `wheelZCentre` → `axleHeight` carry over exactly
+   * (same meaning, new name). The old arbor's own x/y becomes
+   * `axleOrigin` only when that arbor was itself a declared FIXED
+   * position (every year-digit arbor the teaching movement ever created
+   * was); any other placement kind (COAXIAL, POLAR, ...) has no position
+   * to carry over without re-solving the whole gear train here, so it is
+   * left `NaN` — flagged by YEARDIGIT-001, not invented (CLAUDE.md).
+   * `axleDirection` is a genuinely new degree of freedom this redesign
+   * introduces (the old drum's own axis was always vertical, so there is
+   * nothing to carry over); it is always left `NaN` for the same reason,
+   * never defaulted to world +X.
+   */
+  26: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.yearDigitComplications)) return doc;
+    const shafts = isRecord(movement.shafts) ? movement.shafts : {};
+    const yearDigitComplications = Object.fromEntries(
+      Object.entries(movement.yearDigitComplications).map(([id, d]) => {
+        if (!isRecord(d) || !("wheelShaftId" in d)) return [id, d];
+        const { wheelShaftId, wheelTipDiameter, wheelThickness, wheelZCentre, ...rest } = d;
+        const shaft = typeof wheelShaftId === "string" && isRecord(shafts[wheelShaftId]) ? shafts[wheelShaftId] : undefined;
+        const placement = shaft?.placement;
+        const position = isRecord(placement) && placement.kind === "FIXED" && isRecord(placement.position) ? placement.position : undefined;
+        return [
+          id,
+          {
+            ...rest,
+            axleOrigin: position ?? { x: NaN, y: NaN },
+            axleDirection: NaN,
+            axleHeight: wheelZCentre,
+            barrelDiameter: wheelTipDiameter,
+            segmentLength: wheelThickness,
+          },
+        ];
+      }),
+    );
+    return { ...doc, schemaVersion: 27, movement: { ...movement, yearDigitComplications } };
   },
 };
 
@@ -692,11 +737,12 @@ const yearDigitComplication: Decoder<YearDigitComplication> = (value, path) => {
     name: field(o, "name", string, path),
     monthComplicationId: field(o, "monthComplicationId", id<MonthComplication["id"]>(), path),
     digitPlace: field(o, "digitPlace", oneOf(["ONES", "TENS", "HUNDREDS", "THOUSANDS"]), path),
-    wheelShaftId: field(o, "wheelShaftId", id<Shaft["id"]>(), path),
     startDigit: field(o, "startDigit", number, path),
-    wheelTipDiameter: field(o, "wheelTipDiameter", length, path),
-    wheelThickness: field(o, "wheelThickness", length, path),
-    wheelZCentre: field(o, "wheelZCentre", length, path),
+    axleOrigin: field(o, "axleOrigin", vec2, path),
+    axleDirection: field(o, "axleDirection", angle, path),
+    axleHeight: field(o, "axleHeight", length, path),
+    barrelDiameter: field(o, "barrelDiameter", length, path),
+    segmentLength: field(o, "segmentLength", length, path),
   };
 };
 

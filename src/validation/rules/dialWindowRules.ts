@@ -40,11 +40,12 @@ export const dialWindowRules: Rule = ({ movement, placement }) => {
 
     if (dial !== undefined && complication !== undefined && dimensionsOk
       && Number.isFinite(win.centre.x) && Number.isFinite(win.centre.y)) {
-      const discCentre = placement.shaftPositions.get(complication.shaftId);
+      const declaredPoint = complication.position.kind === "SHAFT" ? placement.shaftPositions.get(complication.position.shaftId) : complication.position.point;
+      const discCentre = declaredPoint !== undefined && Number.isFinite(declaredPoint.x) && Number.isFinite(declaredPoint.y) ? declaredPoint : undefined;
       if (discCentre === undefined) {
         issues.push(
           issue("DIALWIN-002", "disc-unresolved", "warning", "L1_GEOMETRIC", [win.id, complication.id],
-            `${win.name}: ${complication.name}'s own arbor position is not resolved, so whether this window actually overlaps it cannot be checked yet.`,
+            `${win.name}: ${complication.name}'s own position is not resolved, so whether this window actually overlaps it cannot be checked yet.`,
             ["ASM-0051"]),
         );
       } else if (!overlapsDisc(win, discCentre, complication.discRadius)) {

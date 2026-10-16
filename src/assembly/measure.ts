@@ -52,8 +52,11 @@ function axisOf(placement: PlacementSolution, entity: SelectableEntity): Vec2 | 
       return placement.shaftPositions.get(entity.starShaftId) ?? null;
     case "LeapYearComplication":
     case "SeasonComplication":
-    case "YearDigitComplication":
       return placement.shaftPositions.get(entity.wheelShaftId) ?? null;
+    case "YearDigitComplication":
+      // Not a Shaft (Phase 8.15, ASM-0019-style horizontal axle): a fixed plan position of its
+      // own, the same "declared, not shaft-derived" treatment DialWindow/Screw already get.
+      return Number.isFinite(entity.axleOrigin.x) && Number.isFinite(entity.axleOrigin.y) ? entity.axleOrigin : null;
     case "DialWindow":
       // A fixed plan position of its own, not tied to any shaft's rotation axis.
       return Number.isFinite(entity.centre.x) && Number.isFinite(entity.centre.y) ? entity.centre : null;
@@ -112,9 +115,15 @@ function zRangeOf(movement: Movement, entity: SelectableEntity): ZRange | null {
     }
     case "LeapYearComplication":
     case "SeasonComplication":
-    case "YearDigitComplication":
       return Number.isFinite(entity.wheelZCentre) && Number.isFinite(entity.wheelThickness) && entity.wheelThickness > 0
         ? { lo: entity.wheelZCentre - entity.wheelThickness / 2, hi: entity.wheelZCentre + entity.wheelThickness / 2 }
+        : null;
+    case "YearDigitComplication":
+      // The horizontal barrel's own vertical extent: its axle height ± its own radius (the
+      // circular cross-section's own Z span), not a thin Z-centred slab like the vertical-axis
+      // complications above (Phase 8.15).
+      return Number.isFinite(entity.axleHeight) && Number.isFinite(entity.barrelDiameter) && entity.barrelDiameter > 0
+        ? { lo: entity.axleHeight - entity.barrelDiameter / 2, hi: entity.axleHeight + entity.barrelDiameter / 2 }
         : null;
     case "Screw": {
       // A screw exists at its own frame's z-range — it is a hole through the frame, not a part with its own thickness.

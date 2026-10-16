@@ -82,10 +82,10 @@ describe("teaching movement keyless works", () => {
     const solution = solveGearTrain(movement);
     expect(solution.conflicts).toEqual([]);
     // The pallet arbor and balance staff oscillate under the escapement; the date star advances
-    // only by its own jump mechanism (ASM-0048) — none are continuous gear-train members.
+    // only by its own jump mechanism (ASM-0048) — none are continuous gear-train members. The
+    // four year-digit segments do not appear here at all (Phase 8.15): they are not Shafts.
     expect(solution.unreachableShaftIds.map((id) => movement.shafts[id]?.name).sort()).toEqual([
       "Balance staff", "Date star", "Leap-year wheel", "Month star", "Pallet arbor", "Season wheel",
-      "Year hundreds", "Year ones", "Year tens", "Year thousands",
     ]);
     for (const name of ["Barrel arbor", "Crown wheel"]) expect(shaftOmega(movement, name)).toBe(0);
     expect(solution.stemAngularVelocity.get(stemBodyId(keyless.id, "STEM"))).toBe(0);

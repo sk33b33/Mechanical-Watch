@@ -1,7 +1,8 @@
 import type { Length } from "@/units/length";
+import type { Angle } from "@/units/angle";
+import type { Vec2 } from "@/math/vec2";
 import type { EntityId } from "./ids";
 import { createId } from "./ids";
-import type { ShaftId } from "./shaft";
 import type { MonthComplicationId } from "./monthComplication";
 
 export type YearDigitComplicationId = EntityId<"yearDigitComplication">;
@@ -21,48 +22,56 @@ export const YEAR_DIGIT_SLOT_COUNT = 10;
 export const YEAR_DIGIT_LABELS = Array.from({ length: YEAR_DIGIT_SLOT_COUNT }, (_, i) => String(i));
 
 /**
- * A "drum clock" year display (Phase 8.12): four digit wheels — ones,
- * tens, hundreds, thousands — each a jump-driven wheel in exactly the
- * same architectural shape as `LeapYearComplication`/`SeasonComplication`
- * (a declared FIXED-position arbor, not meshed with anything, advanced
- * only by a jump, never by continuous gear-train propagation), all four
- * referencing the same `MonthComplication` and all four triggered by its
- * December-to-January wrap — one trigger per calendar year, the same
- * event `LeapYearComplication`'s own Geneva wheel already fires on.
+ * A "drum clock" year display: four decimal-digit barrel segments —
+ * ones, tens, hundreds, thousands — all referencing the same
+ * `MonthComplication` and all triggered by its December-to-January
+ * wrap, the same event `LeapYearComplication`'s own Geneva wheel
+ * already fires on.
  *
  * Raised directly by the user ("add a drum clock for the current
- * year"). No sourced real mechanism (patent or manufacturer
- * description) for a wristwatch "year" complication built from decimal
- * digit-roller wheels has been found, so — like `SeasonComplication`
- * (ASM-0057) — this models only the net kinematic effect the user
- * described, declared rather than invented, and the jump stays
- * instantaneous (no claimed stroke shape to simulate, unlike the
- * leap-year wheel's own sourced Geneva drive, SRC-0047).
+ * year"), then revised twice more directly by the user: first to a
+ * genuinely drum-shaped body with a digit wrapped around its own
+ * lateral surface (Phase 8.13), then — after the user supplied a photo
+ * of a real mechanical tally-counter and explained the "4 gears" they
+ * were still seeing was this project's own vertical-shaft convention
+ * fighting a part that is supposed to look and turn like a real
+ * counter roller — to this shape (Phase 8.15): a literal
+ * horizontal-axis barrel, the user's own explicit, informed choice
+ * after being told it breaks ASM-0006 (every `Shaft` axis vertical)
+ * and needs a declared exception, the same one `KeylessWorks`'s own
+ * stem already has (ASM-0019).
  *
- * The genuinely new kinematics this item needed: carry propagation.
- * Every wrap advances the ones wheel by one step; a tens (or hundreds,
- * or thousands) wheel advances in the SAME event only if every digit
- * place below it was sitting at 9 before the step — ordinary decimal
- * carry, the same rule a mechanical odometer or a real "big date"
- * mechanism's own tens-digit jump already follows, worked out here from
- * first principles (`digitsToAdvance`,
- * `src/kinematics/yearDigitComplication.ts`) since no equivalent already
- * existed in this project (every earlier jump-driven wheel — date,
- * month star, leap year, season — only ever has one wheel to advance
- * per trigger).
+ * Like the stem, this is NOT a `Shaft` — it has no `wheelShaftId`. Each
+ * segment declares its own horizontal rotation axis directly:
+ * `axleOrigin` (a point in the movement plane the axis passes
+ * through), `axleDirection` (the axis's own direction in that plane,
+ * from +X counter-clockwise seen from +Z — the same convention
+ * `KeylessWorks.stemDirection` already uses) and `axleHeight` (the
+ * axis's own Z height). A real multi-digit barrel shares one straight
+ * axle; here each segment declares its own copy of that line rather
+ * than referencing one shared axle entity, the same "declared
+ * independently, not cross-validated" convention every other
+ * dimension in this domain already follows (e.g. all four segments'
+ * `barrelDiameter` are independently declared even though a real
+ * design sets them equal) — a movement that gives its four segments
+ * different axle lines is not rejected, just not a straight barrel
+ * anymore.
  *
- * There is no sourced way for a watch to know the real calendar year on
- * its own, so — matching how `DateComplication` always starts at day 1
- * and `MonthComplication` always starts at January — `startDigit` is
- * each wheel's own independently declared starting digit (e.g. the "2"
- * in 2024's thousands place), set once like a real digit wheel would be
- * set by hand, not derived from a single shared "year" field (which
- * would need a new kind of cross-entity consistency check this project
- * does not otherwise have).
+ * No sourced real mechanism (patent or manufacturer description) for
+ * a wristwatch "year" complication built from decimal digit-roller
+ * wheels has been found, so this still only models the net kinematic
+ * effect the user described, declared rather than invented: the jump
+ * stays instantaneous (no claimed stroke shape to simulate), and
+ * decimal carry between declared places (`digitsToAdvance`,
+ * `src/kinematics/yearDigitComplication.ts`) is unchanged from the
+ * vertical-axis version — only the rotation's own real-world axis and
+ * the geometry/rendering around it changed, not the kinematics.
  *
- * `wheelShaftId` is a separate, declared (FIXED-position) arbor, NOT
- * meshed with anything, same pattern as the other four jump-driven
- * complications.
+ * There is no sourced way for a watch to know the real calendar year
+ * on its own, so — matching how `DateComplication` always starts at
+ * day 1 and `MonthComplication` always starts at January —
+ * `startDigit` is each segment's own independently declared starting
+ * digit, set once like a real digit wheel would be set by hand.
  */
 export interface YearDigitComplication {
   readonly id: YearDigitComplicationId;
@@ -70,30 +79,32 @@ export interface YearDigitComplication {
   name: string;
   monthComplicationId: MonthComplicationId;
   digitPlace: YearDigitPlace;
-  wheelShaftId: ShaftId;
-  /** This wheel's own declared starting digit (0-9), independent of the other three wheels. */
+  /** This segment's own declared starting digit (0-9), independent of the other three. */
   startDigit: number;
-  wheelTipDiameter: Length;
-  wheelThickness: Length;
-  wheelZCentre: Length;
+  /** A point in the movement plane this segment's own horizontal rotation axis passes through. */
+  axleOrigin: Vec2;
+  /** Direction of this segment's own rotation axis in the movement plane, from +X counter-clockwise seen from +Z (ASM-0019's own convention). */
+  axleDirection: Angle;
+  /** Z height of this segment's own rotation axis. */
+  axleHeight: Length;
+  /** This segment's own cylindrical diameter. */
+  barrelDiameter: Length;
+  /** How long this segment is along its own axle. */
+  segmentLength: Length;
 }
 
 export interface CreateYearDigitComplicationParams {
   name: string;
   monthComplicationId: MonthComplicationId;
   digitPlace: YearDigitPlace;
-  wheelShaftId: ShaftId;
   startDigit: number;
-  wheelTipDiameter: Length;
-  wheelThickness: Length;
-  wheelZCentre: Length;
+  axleOrigin: Vec2;
+  axleDirection: Angle;
+  axleHeight: Length;
+  barrelDiameter: Length;
+  segmentLength: Length;
 }
 
 export function createYearDigitComplication(params: CreateYearDigitComplicationParams): YearDigitComplication {
   return { ...params, id: createId("yearDigitComplication"), type: "YearDigitComplication" };
-}
-
-/** Arbors advanced only by the year-digit jump mechanism, never by continuous gear-train propagation (KIN-001 exemption, same pattern as `seasonWheelShaftIds`). */
-export function yearDigitWheelShaftIds(complications: Record<YearDigitComplicationId, YearDigitComplication>): Set<ShaftId> {
-  return new Set(Object.values(complications).map((y) => y.wheelShaftId));
 }

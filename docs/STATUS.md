@@ -2,6 +2,134 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15: year-digit horizontal-axis "page-flip" barrel (architecture redesign)
+
+Direct, explicit user rejection of the whole vertical-arbor "drum clock"
+architecture Phase 8.12–8.14 built: "i dont want 4 gears with 4 windows,
+it needs to be 1 large rectangular window with 1 large cylindrical
+barrel behind it that is separated into 4 parts that turns all
+separately 1 number at a time... the numbers should turn horizontally
+when facing the dial." Asked directly which of two readings was meant —
+(1) keep the vertical axis but simplify the window/layout, or (2) a
+literal horizontal rotation axis, which breaks ASM-0006 (every `Shaft`
+axis vertical) and needs a declared exception — the user chose (2)
+explicitly, aware of the tradeoff.
+
+**`YearDigitComplication` is no longer a `Shaft` at all** (ASM-0063),
+exactly mirroring `KeylessWorks`'s own stem (ASM-0019), the one
+pre-existing exception to ASM-0006. It now declares its own horizontal
+axle placement directly: `axleOrigin` (Vec2), `axleDirection` (Angle,
+plan direction of the rotation axis) and `axleHeight` (Length), plus
+`barrelDiameter` and `segmentLength` (replacing `wheelTipDiameter`/
+`wheelThickness`). `wheelShaftId` and every check that referenced it
+(KIN-001's exemption, the "differs from the month star's own arbor" and
+"wheel also geared" validation checks) are gone — there is no arbor to
+exempt, differ from, or be geared to. The decimal-carry kinematics
+(`digitsToAdvance`) and the declared (not invented) per-segment
+`startDigit` carry forward from ASM-0059 completely unchanged — this
+redesign only moves WHERE the digit lives in space and HOW it rotates.
+
+**The real defect this fixes.** Phase 8.13's vertical-axis drum wrapped
+its digit texture around the cylinder's own lateral surface, but the
+dial-side camera looks straight down the SAME axis the drum rotated
+about — so a lateral/side-wrapped digit always sat edge-on to that view,
+geometrically invisible from the one viewing angle that mattered. The
+user named this directly: "the problem you facing is that you using
+gears with numbers on it that turns clockwise." A horizontal rotation
+axis fixes this structurally, not just by retuning an angle: with the
+axis horizontal, the local angle that faces the dial (`atan2(z, y) =
+−π/2`, since the root group's own one-time `rotation.z` — which orients
+local X along the declared `axleDirection` — never tilts local Z away
+from world Z) is a geometric FACT of the construction, not a free
+per-texture design choice the way the old drum's own `frontAngleRadians`
+was.
+
+**Geometry (ASM-0064).** `createXAxisCylinder` (`src/geometry/
+assemblyGeometry3d.ts`) mirrors `src/viewport/keylessMeshes.ts`'s own
+stem-rod construction exactly: `geometry.rotateZ(Math.PI / 2)` moves
+`CylinderGeometry`'s default axis from local Y onto local X.
+`yearDigitBarrelRestAngle(digit, digitCount)` gives the local angle a
+digit's own canvas position must sit at so that the live simulated
+rotation (`rotation.x = digit × step`, same `yearDigitAngle` state
+Phase 8.12 already uses) brings it to the dial-facing angle for every
+digit, not just the segment's own starting one.
+`cylinderXAxisCanvasUForLocalAngle` inverts `CylinderGeometry`'s own
+pre-rotation side-vertex formula through that same rotation to place it
+on the canvas — verified against real built vertex data, the same
+evidentiary standard `discCapCanvasAngleForMeshAngle` already holds
+itself to. `createYearDigitBarrelTexture` replaces
+`createYearDigitDrumTexture`.
+
+**Viewport.** Each segment now builds a `root`/`spin` group pair
+mirroring `buildStemMeshes` exactly: `root` is positioned at
+`axleOrigin`/`axleHeight` with `root.rotation.z = axleDirection`; `spin`
+(a child of `root`, no further transform) has its own `rotation.x`
+driven every frame from `state.yearDigitAngle` in
+`applyKinematicRotation`, the same pattern the keyless stem's own
+`stemAngle` already uses. The segment mesh is a child of `spin`.
+Horizontal-axis parts are excluded from `cappableSolids` (the
+section-view cutaway system) — the same pre-existing, already-documented
+limitation `KeylessWorks` parts have, not a new gap.
+
+**Linkage (ASM-0065) and housing (ASM-0066)** carry the same concepts
+forward from ASM-0061/ASM-0062 unchanged in kind — a static declutch
+wheel pointed at the month star, and an enclosing housing with divider
+bars and a mounting bracket — now anchored at the barrel's own
+`axleOrigin`/along-axle bounds (`yearDigitAxleProjection`,
+`yearDigitBarrelAlongBounds`, `yearDigitBarrelDividerPositions`) instead
+of four independent wheel arbors' solved positions.
+
+**Generalizing `DialWindow`.** `DiscComplicationRef`'s own `shaftId`
+field became a `position: {kind: "SHAFT"; shaftId} | {kind: "FIXED";
+point}` union (`src/domain/discComplication.ts`), so `DialWindow`'s
+overlap check (DIALWIN-002) and the inspector's "current position"
+readout keep working byte-for-byte for every other complication while
+`YearDigitComplication` reports its own `axleOrigin` directly, with no
+`Shaft` to look up. `src/assembly/measure.ts`'s `axisOf`/`zRangeOf` gained
+their own `YearDigitComplication` case for the same reason.
+
+**Teaching movement.** The four year-digit arbors are gone entirely; the
+four `YearDigitComplication` entities now declare their own axle
+placement directly (`axleDirection = 0°`, world +X, `axleHeight =
+-0.7mm` — the same height the old drum used), laid out as four abutting
+0.8mm-long segments on one shared axle at y = 8mm (the same row position
+the old drums used). The four separate per-digit `DialWindow`s are
+replaced by ONE shared rectangular window (3.4mm × 0.9mm) spanning the
+whole barrel — the user's own explicit "1 large rectangular window"
+request.
+
+**Persistence.** Schema v26 → v27: a saved design's old
+`wheelShaftId`/`wheelTipDiameter`/`wheelThickness`/`wheelZCentre` shape
+migrates to the new fields. `wheelTipDiameter`/`wheelThickness`/
+`wheelZCentre` carry over exactly (same meaning, new name).
+`axleOrigin` is recovered only when the old arbor was itself a declared
+FIXED position (every one the teaching movement ever created was);
+anything else, and `axleDirection` (a genuinely new degree of freedom
+with nothing to carry over), are left `NaN` — flagged by YEARDIGIT-001,
+never invented.
+
+ASM-0059–0062 (the superseded vertical-arbor assumptions) are marked
+`Superseded` in the register rather than deleted, as the historical
+record of the decimal-carry kinematics' own first derivation and of the
+defect this redesign fixes. ASM-0063–0066 replace them.
+
+Tests: full rewrite of `yearDigitComplicationRules.test.ts` (the
+arbor-existence, "differs from month star," and "wheel also geared"
+checks are gone; new dimension checks cover `axleOrigin`/
+`axleDirection`/`axleHeight`); 6 call sites in
+`simulationState.test.ts` updated from `wheelShaftId` to
+`complicationId`/`yearDigitAngle`; `assemblyGeometry3d.test.ts`'s old
+drum/housing describe blocks replaced with new ones for
+`createXAxisCylinder`, `yearDigitBarrelRestAngle`,
+`cylinderXAxisCanvasUForLocalAngle`, `yearDigitAxleProjection`,
+`yearDigitBarrelAlongBounds` and `yearDigitBarrelDividerPositions` — the
+cylinder and canvas-angle functions verified against real built vertex
+data, the same standard the project already holds itself to.
+`keyless.test.ts`'s `unreachableShaftIds` allowlist updated: the four
+year-digit segments no longer appear in it at all (they are not Shafts).
+Full suite green: `tsc -b`, `eslint`, 774 Vitest tests, production
+build, and the Playwright e2e suite.
+
 ## Phase 8.14: year-digit counter housing, tight row layout, mounting bracket
 
 Further direct user feedback, this time with a reference photo of a real

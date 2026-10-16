@@ -23,6 +23,7 @@ import { LEAP_YEAR_INDEX_STROKE_SECONDS, LEAP_YEAR_SLOT_COUNT } from "@/domain/l
 import { genevaStrokeDriverAngle, genevaWheelAdvanceAngle, genevaWheelAngle } from "@/kinematics/genevaDrive";
 import { seasonJumpStepAngle } from "@/kinematics/seasonComplication";
 import { yearDigitStepAngle } from "@/kinematics/yearDigitComplication";
+import type { YearDigitComplicationId } from "@/domain/yearDigitComplication";
 
 const shaftId = "shaft_1" as ShaftId;
 const movement = { shafts: { [shaftId]: {} }, keylessWorks: {}, couplings: {}, yearDigitComplications: {} } as unknown as Movement;
@@ -557,18 +558,18 @@ describe("quarter-boundary correction (ASM-0057)", () => {
   });
 });
 
-describe("year-digit (drum clock) correction", () => {
+describe("year-digit (page-flip barrel) correction", () => {
   const driveShaftId = "shaft_drive" as ShaftId;
   const starShaftId = "shaft_star" as ShaftId;
   const monthStarShaftId = "shaft_month" as ShaftId;
-  const onesShaftId = "shaft_ones" as ShaftId;
-  const tensShaftId = "shaft_tens" as ShaftId;
-  const hundredsShaftId = "shaft_hundreds" as ShaftId;
-  const thousandsShaftId = "shaft_thousands" as ShaftId;
+  const onesComplicationId = "yearDigitComplication_ones" as YearDigitComplicationId;
+  const tensComplicationId = "yearDigitComplication_tens" as YearDigitComplicationId;
+  const hundredsComplicationId = "yearDigitComplication_hundreds" as YearDigitComplicationId;
+  const thousandsComplicationId = "yearDigitComplication_thousands" as YearDigitComplicationId;
   const dateId = "dateComplication_1" as DateComplicationId;
   const starToothCount = 31;
   const withYearDigits = {
-    shafts: { [driveShaftId]: {}, [starShaftId]: {}, [monthStarShaftId]: {}, [onesShaftId]: {}, [tensShaftId]: {}, [hundredsShaftId]: {}, [thousandsShaftId]: {} },
+    shafts: { [driveShaftId]: {}, [starShaftId]: {}, [monthStarShaftId]: {} },
     keylessWorks: {},
     couplings: {},
     yearDigitComplications: {},
@@ -594,10 +595,10 @@ describe("year-digit (drum clock) correction", () => {
     monthCorrection: {
       ...baseMonthCorrection,
       yearDigitCorrections: [
-        { digitPlace: "ONES", wheelShaftId: onesShaftId, wheelStepAngle: digitStepAngle },
-        { digitPlace: "TENS", wheelShaftId: tensShaftId, wheelStepAngle: digitStepAngle },
-        { digitPlace: "HUNDREDS", wheelShaftId: hundredsShaftId, wheelStepAngle: digitStepAngle },
-        { digitPlace: "THOUSANDS", wheelShaftId: thousandsShaftId, wheelStepAngle: digitStepAngle },
+        { digitPlace: "ONES", complicationId: onesComplicationId, wheelStepAngle: digitStepAngle },
+        { digitPlace: "TENS", complicationId: tensComplicationId, wheelStepAngle: digitStepAngle },
+        { digitPlace: "HUNDREDS", complicationId: hundredsComplicationId, wheelStepAngle: digitStepAngle },
+        { digitPlace: "THOUSANDS", complicationId: thousandsComplicationId, wheelStepAngle: digitStepAngle },
       ],
     },
   };
@@ -610,65 +611,69 @@ describe("year-digit (drum clock) correction", () => {
         ...base.shaftAngle,
         [starShaftId]: radians(dateJumpStepAngle(starToothCount) * dayPosition),
         [monthStarShaftId]: radians(monthJumpStepAngle() * monthIndex),
-        [onesShaftId]: radians(digitStepAngle * ones),
-        [tensShaftId]: radians(digitStepAngle * tens),
-        [hundredsShaftId]: radians(digitStepAngle * hundreds),
-        [thousandsShaftId]: radians(digitStepAngle * thousands),
+      },
+      yearDigitAngle: {
+        ...base.yearDigitAngle,
+        [onesComplicationId]: radians(digitStepAngle * ones),
+        [tensComplicationId]: radians(digitStepAngle * tens),
+        [hundredsComplicationId]: radians(digitStepAngle * hundreds),
+        [thousandsComplicationId]: radians(digitStepAngle * thousands),
       },
     };
   }
 
-  const read = (next: ReturnType<typeof createSimulationState>, shaftId: ShaftId): number => starPosition(next.shaftAngle[shaftId] ?? radians(0), 10);
+  const read = (next: ReturnType<typeof createSimulationState>, complicationId: YearDigitComplicationId): number =>
+    starPosition(next.yearDigitAngle[complicationId] ?? radians(0), 10);
 
-  it("an ordinary year-wrap (ones not at 9) advances only the ones wheel: 2024 -> 2025", () => {
+  it("an ordinary year-wrap (ones not at 9) advances only the ones segment: 2024 -> 2025", () => {
     // December (index 11), day 31 (position 30): the last day -> wraps to January.
     const state = stateAt(30, 11, 4, 2, 0, 2); // 2024
     const next = stepSimulation(state, driveSolution(1), 1, [], [allFourTrack]);
-    expect(read(next, onesShaftId)).toBe(5);
-    expect(read(next, tensShaftId)).toBe(2);
-    expect(read(next, hundredsShaftId)).toBe(0);
-    expect(read(next, thousandsShaftId)).toBe(2); // 2025
+    expect(read(next, onesComplicationId)).toBe(5);
+    expect(read(next, tensComplicationId)).toBe(2);
+    expect(read(next, hundredsComplicationId)).toBe(0);
+    expect(read(next, thousandsComplicationId)).toBe(2); // 2025
   });
 
   it("ones at 9 carries into tens: 2029 -> 2030", () => {
     const state = stateAt(30, 11, 9, 2, 0, 2);
     const next = stepSimulation(state, driveSolution(1), 1, [], [allFourTrack]);
-    expect(read(next, onesShaftId)).toBe(0);
-    expect(read(next, tensShaftId)).toBe(3);
-    expect(read(next, hundredsShaftId)).toBe(0);
-    expect(read(next, thousandsShaftId)).toBe(2); // 2030
+    expect(read(next, onesComplicationId)).toBe(0);
+    expect(read(next, tensComplicationId)).toBe(3);
+    expect(read(next, hundredsComplicationId)).toBe(0);
+    expect(read(next, thousandsComplicationId)).toBe(2); // 2030
   });
 
   it("ones and tens both at 9 carries into hundreds: 2099 -> 2100", () => {
     const state = stateAt(30, 11, 9, 9, 0, 2);
     const next = stepSimulation(state, driveSolution(1), 1, [], [allFourTrack]);
-    expect(read(next, onesShaftId)).toBe(0);
-    expect(read(next, tensShaftId)).toBe(0);
-    expect(read(next, hundredsShaftId)).toBe(1);
-    expect(read(next, thousandsShaftId)).toBe(2); // 2100
+    expect(read(next, onesComplicationId)).toBe(0);
+    expect(read(next, tensComplicationId)).toBe(0);
+    expect(read(next, hundredsComplicationId)).toBe(1);
+    expect(read(next, thousandsComplicationId)).toBe(2); // 2100
   });
 
   it("ones, tens and hundreds all at 9 carries into thousands: 2999 -> 3000", () => {
     const state = stateAt(30, 11, 9, 9, 9, 2);
     const next = stepSimulation(state, driveSolution(1), 1, [], [allFourTrack]);
-    expect(read(next, onesShaftId)).toBe(0);
-    expect(read(next, tensShaftId)).toBe(0);
-    expect(read(next, hundredsShaftId)).toBe(0);
-    expect(read(next, thousandsShaftId)).toBe(3); // 3000
+    expect(read(next, onesComplicationId)).toBe(0);
+    expect(read(next, tensComplicationId)).toBe(0);
+    expect(read(next, hundredsComplicationId)).toBe(0);
+    expect(read(next, thousandsComplicationId)).toBe(3); // 3000
   });
 
-  it("an ordinary (non-month-end) day never advances any digit wheel", () => {
+  it("an ordinary (non-month-end) day never advances any digit segment", () => {
     const state = stateAt(10, 11, 4, 2, 0, 2); // December 11, not the last day
     const next = stepSimulation(state, driveSolution(1), 1, [], [allFourTrack]);
-    expect(read(next, onesShaftId)).toBe(4);
-    expect(read(next, tensShaftId)).toBe(2);
+    expect(read(next, onesComplicationId)).toBe(4);
+    expect(read(next, tensComplicationId)).toBe(2);
   });
 
-  it("a month-end wrap that is not December-to-January never advances any digit wheel", () => {
+  it("a month-end wrap that is not December-to-January never advances any digit segment", () => {
     // January (index 0), day 31 (position 30): wraps to February, not a year boundary.
     const state = stateAt(30, 0, 4, 2, 0, 2);
     const next = stepSimulation(state, driveSolution(1), 1, [], [allFourTrack]);
-    expect(read(next, onesShaftId)).toBe(4);
+    expect(read(next, onesComplicationId)).toBe(4);
   });
 
   it("a gap in the declared places stops the carry chain, same as digitsToAdvance on its own", () => {
@@ -678,22 +683,22 @@ describe("year-digit (drum clock) correction", () => {
       monthCorrection: {
         ...baseMonthCorrection,
         yearDigitCorrections: [
-          { digitPlace: "ONES", wheelShaftId: onesShaftId, wheelStepAngle: digitStepAngle },
-          { digitPlace: "HUNDREDS", wheelShaftId: hundredsShaftId, wheelStepAngle: digitStepAngle },
+          { digitPlace: "ONES", complicationId: onesComplicationId, wheelStepAngle: digitStepAngle },
+          { digitPlace: "HUNDREDS", complicationId: hundredsComplicationId, wheelStepAngle: digitStepAngle },
         ],
       },
     };
     const state = stateAt(30, 11, 9, 2, 5, 2);
     const next = stepSimulation(state, driveSolution(1), 1, [], [gapTrack]);
-    expect(read(next, onesShaftId)).toBe(0); // wraps regardless
-    expect(read(next, hundredsShaftId)).toBe(5); // unchanged: the gap at "tens" breaks the chain
+    expect(read(next, onesComplicationId)).toBe(0); // wraps regardless
+    expect(read(next, hundredsComplicationId)).toBe(5); // unchanged: the gap at "tens" breaks the chain
   });
 
-  it("drive revolutions do not advance any digit wheel if no year-digit complication is declared", () => {
+  it("drive revolutions do not advance any digit segment if no year-digit complication is declared", () => {
     const noDigitsTrack: DateJumpTrack = { ...allFourTrack, monthCorrection: { ...baseMonthCorrection, yearDigitCorrections: [] } };
     const state = stateAt(30, 11, 9, 9, 9, 2);
     const next = stepSimulation(state, driveSolution(1), 1, [], [noDigitsTrack]);
-    expect(read(next, onesShaftId)).toBe(9); // unchanged
+    expect(read(next, onesComplicationId)).toBe(9); // unchanged
     expect(starPosition(next.shaftAngle[monthStarShaftId] ?? radians(0), MONTHS_PER_YEAR)).toBe(0); // January, month still corrects
   });
 });

@@ -183,17 +183,18 @@ export function newSeasonComplication(movement: Movement): SeasonComplication {
   });
 }
 
-/** A year-digit complication (drum clock) with every dimension empty, no arbor/month complication chosen, and an undeclared starting digit (YEARDIGIT-001 lists what is missing); defaults to the ONES place, changeable via the inspector. */
+/** A year-digit complication (drum clock) with every dimension empty, no month complication chosen, and an undeclared starting digit (YEARDIGIT-001 lists what is missing); defaults to the ONES place, changeable via the inspector. Phase 8.15: a horizontal-axle barrel segment, not a `Shaft`. */
 export function newYearDigitComplication(movement: Movement): YearDigitComplication {
   return createYearDigitComplication({
     name: nextName(Object.values(movement.yearDigitComplications), "Year digit"),
     monthComplicationId: "" as MonthComplication["id"],
     digitPlace: "ONES",
-    wheelShaftId: "" as ShaftId,
     startDigit: Number.NaN,
-    wheelTipDiameter: EMPTY,
-    wheelThickness: EMPTY,
-    wheelZCentre: EMPTY,
+    axleOrigin: vec2(EMPTY, EMPTY),
+    axleDirection: radians(Number.NaN),
+    axleHeight: EMPTY,
+    barrelDiameter: EMPTY,
+    segmentLength: EMPTY,
   });
 }
 
