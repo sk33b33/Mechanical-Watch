@@ -430,33 +430,41 @@ export function createTeachingMovement(): Movement {
   // on its own vertical arbor): raised directly by the user, who rejected "4 gears with 4
   // windows" in favour of "1 large rectangular window with 1 large cylindrical barrel behind it
   // that is separated into 4 parts" with digits that "turn horizontally when facing the dial".
-  // With the axle along world +X (axleDirection = 0°) and axleHeight = -0.7mm (the same height
-  // the old drum used, clear of both the mainplate's own underside at 0mm and the dial's own
-  // back at -1.4mm), the four segments are laid out abutting end to end along X, each
-  // segmentLength (0.8mm, the same axial dimension the old drum's own thickness used) wide, with
-  // barrelDiameter (2mm, same as the old drum's own tip diameter) giving each face enough height
-  // for one digit. Centres at x = -4.2/-3.4/-2.6/-1.8mm, y = 8mm: the same row position the old
-  // drums used (north of the balance cock's own bridge footprint, clear of the train bridge,
-  // comfortably inside the mainplate's own 15mm radius, and clear of the month/leap-year/season
-  // wheels further west at x = -6, ASSY-002 clearance).
+  // With the axle along world +X (axleDirection = 0°), the four segments are laid out abutting
+  // end to end along X, each segmentLength (0.8mm) wide. barrelDiameter is 0.8mm — NOT the 2mm
+  // the old vertical-axis drum used (Phase 8.12-8.14 real bug, caught from a live screenshot:
+  // "a black box protruding through the dial"). On a horizontal-axis barrel, barrelDiameter sets
+  // the Z-extent directly (the circular cross-section lies in the Y-Z plane), unlike the old
+  // drum, where diameter only set the flat XY footprint and a separate, small `thickness` set
+  // the Z-extent — so carrying the old drum's own 2mm diameter over unchanged needed ~2.8mm of
+  // mainplate-to-dial clearance (diameter + the housing's own margin/wall overhead,
+  // YEAR_DIGIT_HOUSING_VISUALIZATION), where only 1.4mm actually exists (the mainplate's own
+  // underside at 0mm down to the dial's own back at -1.8mm + 0.4mm thickness = -1.4mm) — the
+  // housing necessarily poked through both. axleHeight = -0.75mm centres the now-smaller
+  // (0.8mm-diameter) barrel, plus its housing's own smaller margin/wall overhead, inside that
+  // same 1.4mm gap with clearance on both sides (not just re-centred at the old 2mm size, which
+  // cannot fit regardless of centring). Centres at x = -4.2/-3.4/-2.6/-1.8mm, y = 8mm: the same
+  // row position the old drums used (north of the balance cock's own bridge footprint, clear of
+  // the train bridge, comfortably inside the mainplate's own 15mm radius, and clear of the
+  // month/leap-year/season wheels further west at x = -6, ASSY-002 clearance).
   const yearThousandsComplication = createYearDigitComplication({
     name: "Year thousands", monthComplicationId: monthComplication.id, digitPlace: "THOUSANDS", startDigit: 2,
-    axleOrigin: vec2(mm(-4.2), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.7), barrelDiameter: mm(2), segmentLength: mm(0.8),
+    axleOrigin: vec2(mm(-4.2), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.75), barrelDiameter: mm(0.8), segmentLength: mm(0.8),
   });
   m = addYearDigitComplication(m, yearThousandsComplication);
   const yearHundredsComplication = createYearDigitComplication({
     name: "Year hundreds", monthComplicationId: monthComplication.id, digitPlace: "HUNDREDS", startDigit: 0,
-    axleOrigin: vec2(mm(-3.4), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.7), barrelDiameter: mm(2), segmentLength: mm(0.8),
+    axleOrigin: vec2(mm(-3.4), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.75), barrelDiameter: mm(0.8), segmentLength: mm(0.8),
   });
   m = addYearDigitComplication(m, yearHundredsComplication);
   const yearTensComplication = createYearDigitComplication({
     name: "Year tens", monthComplicationId: monthComplication.id, digitPlace: "TENS", startDigit: 2,
-    axleOrigin: vec2(mm(-2.6), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.7), barrelDiameter: mm(2), segmentLength: mm(0.8),
+    axleOrigin: vec2(mm(-2.6), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.75), barrelDiameter: mm(0.8), segmentLength: mm(0.8),
   });
   m = addYearDigitComplication(m, yearTensComplication);
   const yearOnesComplication = createYearDigitComplication({
     name: "Year ones", monthComplicationId: monthComplication.id, digitPlace: "ONES", startDigit: 6,
-    axleOrigin: vec2(mm(-1.8), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.7), barrelDiameter: mm(2), segmentLength: mm(0.8),
+    axleOrigin: vec2(mm(-1.8), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.75), barrelDiameter: mm(0.8), segmentLength: mm(0.8),
   });
   m = addYearDigitComplication(m, yearOnesComplication);
 
@@ -533,15 +541,18 @@ export function createTeachingMovement(): Movement {
   // `windowAbove` offsets the other complications' windows, since a barrel has no rotating
   // position label to catch, just its own four always-forward-facing digit segments. Width
   // (3.4mm) spans the full four-segment barrel (4 × 0.8mm = 3.2mm) with a small margin; height
-  // (0.9mm) is sized like the other jump-driven windows for a 2mm-diameter disc (DIALWIN-002
-  // checks this window overlaps the "ones" segment's own disc; the other three segments sit on
-  // the same barrel and are shown through the same cutout).
+  // (0.45mm, roughly the barrel's own 0.4mm radius, the same "catches about one digit's own
+  // height, not the whole disc" sizing every other jump-driven window already uses) is scaled to
+  // the real 0.8mm barrelDiameter (not the old drum's 2mm, which this window's own height no
+  // longer needs to match now that the z-clearance bug is fixed — see the barrel's own comment
+  // above). DIALWIN-002 checks this window overlaps the "ones" segment's own disc; the other
+  // three segments sit on the same barrel and are shown through the same cutout.
   m = addDialWindow(m, createDialWindow({
     name: "Year window",
     dialId: dial.id,
     complicationId: yearOnesComplication.id,
     centre: { x: metres(mm(-3)), y: metres(mm(8)) },
-    outline: { kind: "RECTANGLE", width: mm(3.4), height: mm(0.9) },
+    outline: { kind: "RECTANGLE", width: mm(3.4), height: mm(0.45) },
   }));
 
   // Pallet arbor and balance staff: fixed positions along a line from the escape arbor

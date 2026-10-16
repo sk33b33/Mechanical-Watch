@@ -1116,9 +1116,22 @@ export const YEAR_DIGIT_LINKAGE_VISUALIZATION = {
  * state.
  */
 export const YEAR_DIGIT_HOUSING_VISUALIZATION = {
-  /** Clearance between a segment's own rim/end and the housing's own inner wall face. */
-  marginMetres: 0.3e-3,
-  wallThicknessMetres: 0.2e-3,
+  /**
+   * Clearance between a segment's own rim/end and the housing's own
+   * inner wall face. Smaller than the vertical-axis drum's own margin
+   * (0.3mm, Phase 8.14) because `barrelDiameter` now also sets the
+   * housing's own Z-extent (the circular cross-section lies in the
+   * local Y-Z plane for a horizontal-axis barrel, unlike the vertical
+   * drum, where diameter only set the flat XY footprint and a separate,
+   * small `thickness` set the Z-extent) — the total margin+wall
+   * overhead now competes directly with `barrelDiameter` for the same
+   * z-clearance a design's own mainplate/dial gap allows (ASSY-002-style
+   * reasoning, not yet an automated check for this one axis), so it is
+   * kept proportionally smaller to leave more of that gap for the
+   * barrel itself.
+   */
+  marginMetres: 0.12e-3,
+  wallThicknessMetres: 0.12e-3,
   dividerWidthMetres: 0.15e-3,
   housingColor: 0x16140f,
   /**

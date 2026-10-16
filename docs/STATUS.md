@@ -2,6 +2,35 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 2: barrel/housing poking through the mainplate and dial
+
+Reported from a live screenshot: a black box visibly protruding above the
+dial. Real bug, distinct from the previous follow-up's stray-position one
+(that one was fixed; this one is a genuine size/clearance problem).
+
+On a horizontal-axis barrel, `barrelDiameter` sets the Z-extent directly
+(the circular cross-section lies in the Y-Z plane), unlike the old
+vertical-axis drum, where diameter only set the flat XY footprint and a
+separate, small `thickness` set the Z-extent. The teaching movement
+carried the old drum's own numbers over unchanged (2mm diameter,
+axleHeight -0.7mm), which needs about 2.8mm of mainplate-to-dial
+clearance (diameter + the housing's own margin/wall overhead) — but only
+1.4mm actually exists there (mainplate underside at 0mm down to the
+dial's own back at -1.4mm). The assembly necessarily poked through both.
+
+Fixed by shrinking `barrelDiameter` to 0.8mm (matching `segmentLength`,
+giving roughly square segments) and the housing's own
+`marginMetres`/`wallThicknessMetres` proportionally (0.3/0.2mm down to
+0.12/0.12mm — scaled to the new, much smaller barrel rather than left
+oversized relative to it), re-centring `axleHeight` at -0.75mm, and
+shrinking the "Year window" height to match (0.9mm down to 0.45mm).
+Verified live (Bridge side and Dial side, zoomed on the barrel): no
+protrusion through either the mainplate or the dial, 22 info / zero
+validation errors unchanged. `tsc -b`, `eslint`, 774 Vitest tests
+(unchanged — a teaching-movement/declared-constant change only, no
+domain/kinematic code touched), production build, and the 38-test
+Playwright e2e suite all green.
+
 ## Phase 8.15 follow-up: two real bugs in the first shipped barrel
 
 Found from the user's own first screenshot of the barrel in the live app:
