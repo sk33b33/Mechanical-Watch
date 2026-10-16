@@ -922,6 +922,27 @@ export const YEAR_DIGIT_BARREL_VISUALIZATION = {
    */
   dialFacingLocalAngleRadians: -Math.PI / 2,
   fontSizePx: 160,
+  /**
+   * Each digit glyph is painted rotated by this many radians (canvas
+   * `ctx.rotate` convention: positive turns the glyph clockwise, since
+   * canvas Y grows downward) before being wrapped onto the barrel's own
+   * lateral surface. Needed because the canvas's own "up" direction
+   * (toward row 0, the glyph's own natural upright orientation) maps,
+   * through `cylinderXAxisCanvasUForLocalAngle`'s own θ = π/2 − a
+   * convention and `createXAxisCylinder`'s `rotateZ(π/2)`, to the
+   * barrel's own AXIAL direction (local X, the segment's own length),
+   * not a radial "up" — so with no correction a glyph renders rotated
+   * 90° clockwise from upright. Raised directly by the user on first
+   * seeing the barrel render ("the numbers are not upright... rotate
+   * the numbers on the barrel 45° to the left"): the direction (left,
+   * i.e. counter-clockwise) was correct, but 45° only partly corrected
+   * it — confirmed empirically with an unambiguous test glyph ("F")
+   * rendered through the real pipeline at 0°, 45° and 90°, matching a
+   * 90° correction exactly, not 45°; the user's own estimate by eye
+   * undershot the real angle. A declared visual correction (ASM-0004),
+   * not a re-derivation of the UV mapping itself.
+   */
+  textRotationRadians: -Math.PI / 2,
   /** Pale numerals on a dark barrel body, matching the mechanical tally-counter reference photo the user provided directly, whose own digit rollers read as dark bodies with light printed numerals. */
   textColor: "#f2ece0",
   backgroundColor: "#1c1915",
@@ -1018,7 +1039,11 @@ export function createYearDigitBarrelTexture(digitCount: number): THREE.CanvasTe
     const u = cylinderXAxisCanvasUForLocalAngle(yearDigitBarrelRestAngle(digit, digitCount));
     const dividerU = cylinderXAxisCanvasUForLocalAngle(yearDigitBarrelRestAngle(digit + 0.5, digitCount));
     for (const offset of [-1, 0, 1]) {
-      ctx.fillText(String(digit), (u + offset) * width, height / 2);
+      ctx.save();
+      ctx.translate((u + offset) * width, height / 2);
+      ctx.rotate(v.textRotationRadians);
+      ctx.fillText(String(digit), 0, 0);
+      ctx.restore();
       const dividerX = (dividerU + offset) * width;
       ctx.beginPath();
       ctx.moveTo(dividerX, 0);

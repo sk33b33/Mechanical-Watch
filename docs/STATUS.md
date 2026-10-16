@@ -2,6 +2,55 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up: two real bugs in the first shipped barrel
+
+Found from the user's own first screenshot of the barrel in the live app:
+"the numbers are not upright" and "there's a part that's showing on the
+dial, it's a black square with black lines."
+
+**Digit rotation.** `createYearDigitBarrelTexture` painted each glyph in
+its own natural canvas orientation, with no correction for the fact that
+the canvas's own "up" axis maps (through `cylinderXAxisCanvasUForLocalAngle`
+and `createXAxisCylinder`'s `rotateZ(π/2)`) to the barrel's own AXIAL
+direction, not a radial "up" — so every digit rendered rotated 90°
+clockwise from upright. The user's own estimate ("rotate 45° to the
+left") had the right direction (counter-clockwise) but undershot the
+angle; confirmed empirically by rendering an unambiguous test glyph
+("F") through the real pipeline at 0°, 45° and 90° — only 90° reads
+upright. Fixed with a new declared `textRotationRadians` constant
+(`YEAR_DIGIT_BARREL_VISUALIZATION`, −π/2) applied via `ctx.rotate`
+around each glyph's own centre before `fillText`.
+
+**Stray housing.** The housing's own root position (`src/viewport/
+viewport.ts`'s year-digit housing build) was reconstructed from only the
+barrel's own along-axle midpoint (`midAlong · (cos, sin)` of the shared
+`axleDirection`) — a real bug: this recovers a point on the line
+THROUGH THE WORLD ORIGIN in that direction, discarding the axle's own
+perpendicular offset from the origin entirely. For the teaching
+movement (axle direction 0°, but the real axle sits at y = 8mm, not
+y = 0), this placed the whole housing at the wrong location — exactly
+the "black square with black lines" floating elsewhere on the dial the
+user reported, while the barrel itself (whose own root uses each
+segment's full declared `axleOrigin` directly, never affected) rendered
+correctly. Fixed by recovering the axle's own perpendicular ("across")
+offset the same way the along component already is
+(`yearDigitAxleProjection` against the direction rotated by π/2),
+storing it on the per-month-complication group bucket, and using both
+components to reconstruct the housing's own world position
+(`midAlong·(cos,sin) − across·(sin,-cos)`, the inverse of the two
+projections together).
+
+Both fixes verified live (teaching movement reloaded, "Dial side"
+camera, zoomed on the barrel and on the whole dial): digits read
+upright and legible, the housing sits directly behind/around the
+barrel with no stray geometry elsewhere, 22 info / zero validation
+errors unchanged. Full suite green: `tsc -b`, `eslint`, 774 Vitest
+tests (unchanged — both fixes are viewport-only, no domain/kinematic
+code touched, and `viewport.ts` has no dedicated unit tests, the same
+established pattern every other purely-visual viewport fix in this
+project already follows), production build, and the 38-test Playwright
+e2e suite.
+
 ## Phase 8.15: year-digit horizontal-axis "page-flip" barrel (architecture redesign)
 
 Direct, explicit user rejection of the whole vertical-arbor "drum clock"

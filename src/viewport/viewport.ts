@@ -798,7 +798,7 @@ export class Viewport {
     // dimension in this domain), so a design whose four segments disagree will not enclose
     // correctly; not validated, visual only (same "approximation, not a manufacturing claim"
     // treatment the rest of this housing already has).
-    const yearDigitGroups = new Map<string, { direction: number; axleHeight: number; segments: { along: number; length: number; diameter: number }[] }>();
+    const yearDigitGroups = new Map<string, { direction: number; axleHeight: number; across: number; segments: { along: number; length: number; diameter: number }[] }>();
     // Built lazily, at most once per rebuild, the first time a segment actually needs it — see
     // yearDigitBarrelMaterials' own doc comment for why every segment shares this one texture
     // (but not the material built around it).
@@ -822,7 +822,16 @@ export class Viewport {
       root.add(spin);
       this.yearDigitSpins.set(digit.id, spin);
 
-      const bucket = yearDigitGroups.get(digit.monthComplicationId) ?? { direction: digit.axleDirection, axleHeight: digit.axleHeight, segments: [] };
+      const bucket = yearDigitGroups.get(digit.monthComplicationId) ?? {
+        direction: digit.axleDirection,
+        axleHeight: digit.axleHeight,
+        // The shared axle line's own perpendicular offset from the world origin — yearDigitAxleProjection
+        // only recovers the ALONG component; without this, the housing's own reconstructed centre
+        // (below) collapses onto the line THROUGH the origin in this direction, which is only correct
+        // when the real axle happens to pass through (0, 0).
+        across: yearDigitAxleProjection(digit.axleOrigin, digit.axleDirection + Math.PI / 2),
+        segments: [],
+      };
       bucket.segments.push({ along: yearDigitAxleProjection(digit.axleOrigin, bucket.direction), length: digit.segmentLength, diameter: digit.barrelDiameter });
       yearDigitGroups.set(digit.monthComplicationId, bucket);
 
@@ -890,9 +899,10 @@ export class Viewport {
       const housingRoot = new THREE.Group();
       const cos = Math.cos(group.direction);
       const sin = Math.sin(group.direction);
-      // Reconstructs a world point at (along = midAlong, across = 0) on the shared axle line —
-      // the inverse of yearDigitAxleProjection's own dot product, i.e. midAlong·(cos,sin).
-      housingRoot.position.set(midAlong * cos, midAlong * sin, this.displayZ(group.axleHeight));
+      // Reconstructs the world point at (along = midAlong, across = group.across) on the shared
+      // axle line — the inverse of yearDigitAxleProjection's own dot product against both the
+      // direction unit vector (cos, sin) and its own perpendicular (-sin, cos).
+      housingRoot.position.set(midAlong * cos - group.across * sin, midAlong * sin + group.across * cos, this.displayZ(group.axleHeight));
       housingRoot.rotation.z = group.direction;
       this.content.add(housingRoot);
 
