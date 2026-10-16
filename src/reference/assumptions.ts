@@ -363,6 +363,18 @@ export const ASSUMPTIONS = {
     scope: "YearDigitComplication (Phase 8.12, visual/L0 display plus L2_KINEMATIC jump-chain simulation with decimal carry)",
     status: "Active",
   },
+  "ASM-0060": {
+    summary:
+      "Year-digit wheel drum visualization (Phase 8.13): raised directly by the user as feedback on ASM-0059's own first shipped look ('i would like it to be a cylinder... every digit sits on a drum that rotates from 0 to 9'). The -Z (dial-facing) cap keeps the plain position-label ring every other jump-driven wheel already gets (ASM-0051) unchanged -- the dial window above it still reveals exactly that. The LATERAL surface now additionally carries the same ten digits painted around it once (createYearDigitDrumTexture, src/geometry/assemblyGeometry3d.ts), and the teaching movement's own thickness/diameter ratio for the four digit wheels moved from a thin disc (0.15mm : 2mm) to a drum/roller proportion (0.8mm : 2mm) -- a top-down window cannot usefully reveal a side-printed cylinder, so a direct 3D inspection is what now reads as a digit drum. wheelZCentre moved from -1.2mm to -0.7mm to stay clear of the mainplate (0mm) and the dial's own back (-1.4mm), safe only because the four digit wheels share no x/y footprint with any other complication at that z-range. No kinematic change at all -- shaftAngle, digitsToAdvance and every validation rule are untouched.",
+    scope: "YearDigitComplication wheel's own body shape and lateral-surface art (Phase 8.13, visual/L0 display only)",
+    status: "Active",
+  },
+  "ASM-0061": {
+    summary:
+      "Year-digit wheel connection-to-movement visualization (Phase 8.13): raised directly by the user in the same request as ASM-0060 ('make sure to display the connection to the movement') -- before this, none of the four digit wheels had any visual link to anything. Mirrors MONTH_LINKAGE_VISUALIZATION's own treatment (ASM-0054) exactly: a small declutch wheel, drawn once in its own idle/disengaged position, never animated -- no continuous member to animate and no sourced motion to play. Only the ones-place wheel gets one drawn, pointed at the month star that triggers all four digit wheels' own shared jump event (ASM-0059); the tens/hundreds/thousands wheels get no link of their own to the ones wheel or to each other, since digitsToAdvance advances every qualifying wheel in the SAME simulated instant rather than one wheel's own rotation stepping the next -- a tooth-engagement link between them would imply real inter-wheel gearing this project does not model, which YEARDIGIT-001's own wheel-also-geared check explicitly forbids. Visual only, no kinematic change.",
+    scope: "YearDigitComplication's own visual link to the MonthComplication that drives it (Phase 8.13, visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

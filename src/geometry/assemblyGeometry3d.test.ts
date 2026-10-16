@@ -10,6 +10,7 @@ import {
   createGenevaWheelGeometry,
   createRodGeometry,
   createZCylinder,
+  cylinderSideCanvasUForMeshAngle,
   discCapCanvasAngleForMeshAngle,
   discLabelPlacements,
   escapeWheelHubRadius,
@@ -22,6 +23,8 @@ import {
   MOON_PHASE_VISUALIZATION,
   rayCircleInward,
   seasonWedgeBoundaryAngles,
+  yearDigitLocalAngle,
+  YEAR_DIGIT_DRUM_VISUALIZATION,
   type PalletArm,
 } from "./assemblyGeometry3d";
 
@@ -696,6 +699,82 @@ describe("discCapCanvasAngleForMeshAngle", () => {
       const actualMeshAngle = Math.atan2(yMesh, xMesh);
       const normalize = (a: number): number => (((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI));
       expect(normalize(actualMeshAngle)).toBeCloseTo(normalize(desiredMeshAngle), 6);
+    }
+  });
+});
+
+const normalizeAngle = (a: number): number => (((a % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI));
+
+describe("yearDigitLocalAngle (ASM-0060)", () => {
+  // createYearDigitDrumTexture itself touches `document` (a Canvas2D context), the same already-
+  // accepted gap every other texture generator here has (moonImageLocalAngle's own describe block
+  // above); yearDigitLocalAngle and cylinderSideCanvasUForMeshAngle are pure, so tested directly.
+
+  it("every digit's own world angle (after applying the wheel's own shaftAngle for that digit) lands on the same declared front angle", () => {
+    // This is the whole point of the formula: whichever digit the wheel is currently showing
+    // (shaftAngle = digit * stepAngle, src/simulation/simulationState.ts), that digit's own
+    // painted position must be the one facing "front" -- not just the wheel's own starting digit.
+    const digitCount = 10;
+    const step = (2 * Math.PI) / digitCount;
+    for (let digit = 0; digit < digitCount; digit += 1) {
+      const worldAngle = yearDigitLocalAngle(digit, digitCount) + digit * step;
+      expect(normalizeAngle(worldAngle)).toBeCloseTo(normalizeAngle(YEAR_DIGIT_DRUM_VISUALIZATION.frontAngleRadians), 9);
+    }
+  });
+
+  it("runs the digits around the drum in the opposite sense to increasing shaftAngle (a real drum counter's own printed order)", () => {
+    const digitCount = 10;
+    const a0 = normalizeAngle(yearDigitLocalAngle(0, digitCount));
+    const a1 = normalizeAngle(yearDigitLocalAngle(1, digitCount));
+    const step = (2 * Math.PI) / digitCount;
+    // Going from digit 0 to digit 1, the local angle decreases by one step (mod 2π) -- the digits
+    // are NOT laid out in the same rotational sense the shaft itself advances in.
+    expect(normalizeAngle(a0 - a1)).toBeCloseTo(step, 9);
+  });
+});
+
+describe("cylinderSideCanvasUForMeshAngle (ASM-0060)", () => {
+  it("is the real inverse of createZCylinder's own lateral-surface UV mapping, verified against a real built cylinder's own vertex data", () => {
+    // A from-scratch rebuild of CylinderGeometry's own pre-rotation side vertex/UV convention
+    // (generateTorso: u = x/radialSegments, theta = u*2π, vertex = (r sinθ, height axis, r cosθ),
+    // uv = (u, 1-v|), empirically confirmed here against the real post-rotateX(π/2) geometry this
+    // project actually builds -- the same evidentiary standard discCapCanvasAngleForMeshAngle's
+    // own regression test already holds itself to for the −Z cap.
+    const r = 1e-3;
+    const cyl = createZCylinder(r, -0.5e-3, 0.5e-3, 64);
+    const pos = cyl.attributes.position;
+    const uv = cyl.attributes.uv;
+    const index = cyl.index;
+    if (pos === undefined || uv === undefined || index === null) throw new Error("cylinder is missing an attribute");
+    const sideGroup = cyl.groups[0];
+    if (sideGroup === undefined) throw new Error("no side group");
+
+    let checked = 0;
+    for (let i = sideGroup.start; i < sideGroup.start + sideGroup.count; i += 1) {
+      const vi = index.getX(i);
+      const x = pos.getX(vi);
+      const y = pos.getY(vi);
+      if (Math.hypot(x, y) < r * 0.99) continue; // only rim vertices, skip the axis if any
+      const u = uv.getX(vi);
+      const actualMeshAngle = Math.atan2(y, x);
+      const predictedU = cylinderSideCanvasUForMeshAngle(actualMeshAngle);
+      // u and predictedU should agree modulo 1 (the seam makes u=0 and u=1 the same point).
+      const diff = Math.abs(u - predictedU);
+      expect(Math.min(diff, Math.abs(diff - 1))).toBeLessThan(1e-4);
+      checked += 1;
+      if (checked > 20) break;
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  it("round-trips through yearDigitLocalAngle: the canvas u this function gives for digit d's own mesh angle, fed back through the same θ = u·2π + thetaStart convention, reproduces that mesh angle", () => {
+    const digitCount = 10;
+    for (let digit = 0; digit < digitCount; digit += 1) {
+      const meshAngle = yearDigitLocalAngle(digit, digitCount);
+      const u = cylinderSideCanvasUForMeshAngle(meshAngle);
+      const theta = u * 2 * Math.PI;
+      const recoveredMeshAngle = theta - Math.PI / 2;
+      expect(normalizeAngle(recoveredMeshAngle)).toBeCloseTo(normalizeAngle(meshAngle), 9);
     }
   });
 });

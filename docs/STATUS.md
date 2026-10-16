@@ -2,6 +2,91 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.13: year-digit drum redesign + connection-to-movement linkage
+
+Direct user feedback on Phase 8.12's first shipped look: "the drum clock
+is 4 gears, i would like it to be a cylinder with 4 digits displayed
+where every digit sits on a drum that rotates from 0 to 9 and also make
+sure to display the connection to the movement." Two asks, two new
+visual-only assumptions (ASM-0060, ASM-0061) — no kinematic change at
+all; `shaftAngle`, `digitsToAdvance` and every validation rule are
+untouched.
+
+**Why not a horizontal-axis drum.** The literal mental model for "digits
+on a rotating drum" (an odometer) has a HORIZONTAL rotation axis, which
+would violate ASM-0006 (every shaft axis parallel to the mainplate's own
+normal — i.e. vertical/Z) — a foundational, project-wide structural
+assumption, not something to special-case for one complication. Resolved
+by keeping the wheel's own existing vertical Z-axis and instead wrapping
+the digit texture around the cylinder's own LATERAL (side) surface
+rather than painting it on the top cap: the shaft's own already-correct
+Z-rotation then naturally brings the current digit to face outward, no
+new simulation state needed.
+
+**Drum geometry/texture (ASM-0060).** The top (−Z, dial-facing) cap
+keeps the plain position-label ring every other jump-driven wheel
+already gets (`discMaterials`, ASM-0051) completely unchanged — the
+dial window above each wheel still reveals exactly that, since nothing
+about how dial windows work changed. The lateral surface additionally
+carries the same ten digits painted around it once
+(`createYearDigitDrumTexture`, `yearDigitLocalAngle`,
+`cylinderSideCanvasUForMeshAngle`, `src/geometry/assemblyGeometry3d.ts`)
+— a dial window was deliberately NOT added/adapted for this surface,
+since a top-down window cannot usefully reveal circumferential text (it
+would show the surface edge-on, heavily foreshortened). `src/app/
+teachingMovement.ts`'s own thickness/diameter ratio for the four digit
+wheels changed from a thin disc (0.15mm : 2mm) to a drum/roller
+proportion (0.8mm : 2mm); `wheelZCentre` moved from the other
+complications' shared −1.2mm to −0.7mm to keep this taller body clear of
+both the mainplate's own underside (0mm) and the dial's own back
+(−1.4mm) — safe only because the four digit wheels share no x/y
+footprint with any other complication at that z-range (ASSY-002
+clearance already separates the 2×2 digit grid from everything else).
+
+The lateral texture's own derivation (`cylinderSideCanvasUForMeshAngle`)
+required tracking `CylinderGeometry`'s own pre-rotation side vertex/UV
+convention (the installed three.js source's own `generateTorso`) through
+`createZCylinder`'s `rotateX(π/2)` — unlike the −Z cap's own reflection
+formula, this turned out to be a plain rotation (`θ − π/2`), verified
+directly against a real built cylinder's own vertex data in
+`assemblyGeometry3d.test.ts`, the same evidentiary standard
+`discCapCanvasAngleForMeshAngle`'s own regression test already holds
+itself to. `yearDigitLocalAngle` works out which mesh-local angle each
+digit must be painted at so that whichever digit the wheel is CURRENTLY
+showing (not just its own starting digit) faces the same declared "front"
+world direction — the digits necessarily run around the drum in the
+OPPOSITE rotational sense to the wheel's own increasing `shaftAngle`, the
+same way a real drum counter's own printed digits must run backwards
+around its rim to read forward as the drum turns forward.
+
+**Connection-to-movement linkage (ASM-0061).** Before this, none of the
+four digit wheels had any visual link to anything (unlike date/month/
+leap-year, each of which already got one earlier this phase; season is
+the one deliberate, still-standing exception). Mirrors
+`MONTH_LINKAGE_VISUALIZATION`'s own treatment (ASM-0054) exactly: a small
+declutch wheel, drawn once in its own idle/disengaged position, never
+animated. Only the ones-place wheel gets one drawn, pointed at the month
+star that triggers all four digit wheels' own shared jump event
+(ASM-0059) — the tens/hundreds/thousands wheels get no link of their own
+to the ones wheel or to each other, since `digitsToAdvance` advances
+every qualifying wheel in the SAME simulated instant rather than through
+one wheel's own rotation stepping the next; drawing a tooth-engagement
+link between them would imply real inter-wheel gearing this project does
+not model, which YEARDIGIT-001's own `wheel-also-geared` check explicitly
+forbids.
+
+Tests: two new pure-function describe blocks in
+`assemblyGeometry3d.test.ts` (`yearDigitLocalAngle`,
+`cylinderSideCanvasUForMeshAngle` — the latter verified against a real
+built `createZCylinder`'s own side-group vertex/UV data, the same
+standard the moon-phase/leap-year regression tests already hold
+themselves to). No domain, simulation or validation code changed, so no
+existing test needed updating. Full suite green: `tsc -b`, `eslint`, the
+full Vitest suite, production build, a live-browser check (the four
+drums render taller/cylindrical with lateral digits and a static
+declutch-wheel link from the month star to the ones wheel, zero
+validation errors), and the full Playwright e2e suite.
+
 ## Phase 8.12: `YearDigitComplication`, a "drum clock" year display
 
 Requested directly: "can we add a drum clock for the current year." Clarified

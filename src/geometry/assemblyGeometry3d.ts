@@ -854,6 +854,191 @@ export const MONTH_LINKAGE_VISUALIZATION = {
 } as const;
 
 /**
+ * A year-digit wheel's own drum-shaped visualization (new assumption,
+ * Phase 8.13). The plain top-cap digit ring every other jump-driven
+ * wheel already gets (`discMaterials`, ASM-0051) stays exactly as it
+ * was — it is what the dial window above each wheel actually reveals —
+ * but the wheel itself is also given a genuinely drum-proportioned body
+ * (`src/app/teachingMovement.ts`'s own thickness/diameter choice) with
+ * the same ten digits wrapped once around its own LATERAL surface, so a
+ * direct 3D inspection (not through the dial window) reads as "a digit
+ * sits on a rotating drum" — raised directly by the user ("i would like
+ * it to be a cylinder with 4 digits displayed where every digit sits on
+ * a drum that rotates from 0 to 9"), not a thin disc.
+ *
+ * Unlike the top cap (whose own −Z-cap UV formula is already derived,
+ * `discCapCanvasAngleForMeshAngle`), `createZCylinder`'s own LATERAL
+ * surface keeps `CylinderGeometry`'s default side UV
+ * (`uvs.push(u, 1 - v)` in the installed three.js source's own
+ * `generateTorso`) through the `rotateX(π/2)` that turns the cylinder's
+ * own axis onto Z — the rotation changes which *world* angle a given
+ * `u` lands at, not the UV mapping itself. See
+ * `cylinderSideCanvasUForMeshAngle`'s own doc comment for the derived
+ * relationship, and `yearDigitLocalAngle`'s for why the ten digits must
+ * run around the drum in the OPPOSITE sense to its own increasing
+ * `shaftAngle`.
+ */
+export const YEAR_DIGIT_DRUM_VISUALIZATION = {
+  /**
+   * The fixed world-frame angle the currently-displayed digit is drawn
+   * to face — "straight up," the same declared convention
+   * `MOON_PHASE_VISUALIZATION.windowWorldAngleRadians` and
+   * `windowAbove` (`src/app/teachingMovement.ts`) already use for "the
+   * direction a reveal/reading convention points." There is no dial
+   * window over the lateral surface (a top-down window cannot usefully
+   * reveal a side-printed cylinder), so nothing downstream depends on
+   * this exact value; it only keeps the lateral strip's own layout
+   * declared rather than arbitrary.
+   */
+  frontAngleRadians: Math.PI / 2,
+  fontSizePx: 160,
+  textColor: "#2a2a2a",
+  backgroundColor: "#eee8da",
+  dividerColor: "#9a9284",
+  dividerWidthPx: 3,
+  assumption: "ASM-0060" satisfies AssumptionId,
+} as const;
+
+/**
+ * The mesh-local angle (`createZCylinder`'s own frame, after its
+ * `rotateX(π/2)`) at which digit `d` (0 to `digitCount − 1`) must be
+ * painted so that, once the wheel's own already-simulated `shaftAngle`
+ * is applied (`shaftAngle = d × 2π/digitCount` for whichever digit is
+ * currently showing, `yearDigitStepAngle()`,
+ * `src/simulation/simulationState.ts`), digit `d` itself lands at
+ * `YEAR_DIGIT_DRUM_VISUALIZATION.frontAngleRadians` in world space —
+ * true for every `d`, not just the wheel's own starting one, since
+ * `(front − d·step) + d·step = front` for all `d`. Digits therefore run
+ * around the drum in the OPPOSITE sense to increasing `shaftAngle` —
+ * the same way a real mechanical drum counter's own printed digits must
+ * run backwards around its rim for them to appear in forward (0, 1,
+ * 2, …) reading order as the drum turns forward. `digit` need not be an
+ * integer (the texture painter below also calls this at `digit + 0.5`
+ * to place a divider between two digits).
+ */
+export function yearDigitLocalAngle(digit: number, digitCount: number): number {
+  const step = (Math.PI * 2) / digitCount;
+  const twoPi = Math.PI * 2;
+  return (((YEAR_DIGIT_DRUM_VISUALIZATION.frontAngleRadians - digit * step) % twoPi) + twoPi) % twoPi;
+}
+
+/**
+ * The lateral-surface canvas-drawing angle (`θ`, with `u = θ / 2π`,
+ * `createZCylinder`'s own side UV — the installed three.js source's
+ * `generateTorso` default `u, 1−v`, carried through unchanged by the
+ * `rotateX(π/2)` that only reassigns which axis is "up") that lands a
+ * feature at a chosen *mesh-local* angle `meshAngle` — the
+ * lateral-surface counterpart to `discCapCanvasAngleForMeshAngle`'s own
+ * −Z-cap reflection formula.
+ *
+ * Unlike the cap's reflection, this is a plain rotation: working
+ * `generateTorso`'s pre-rotation vertex (`x = r·sinθ, y = −vh+½h,
+ * z = r·cosθ`, `θ = u·2π`) through `rotateX(π/2)` (`y′ = −z, z′ = y`)
+ * gives `x′ = r·sinθ, y′ = −r·cosθ`, i.e. a mesh-local angle of
+ * `θ − π/2` (`atan2(−cosθ, sinθ) ≡ θ − π/2`, verified against the real
+ * built geometry's own vertex data, not just algebra, the same
+ * verification standard `discCapCanvasAngleForMeshAngle`'s own doc
+ * comment holds itself to). Solving for `θ` given a desired mesh angle
+ * just adds `π/2` back.
+ */
+export function cylinderSideCanvasUForMeshAngle(meshAngle: number): number {
+  const theta = meshAngle + Math.PI / 2;
+  const u = theta / (Math.PI * 2);
+  return u - Math.floor(u);
+}
+
+/**
+ * The lateral-surface digit strip for a year-digit drum
+ * (`YEAR_DIGIT_DRUM_VISUALIZATION`, ASM-0060): a plain background band
+ * with `digitCount` digits painted around it at `yearDigitLocalAngle`'s
+ * own positions, plus a thin divider at the half-digit boundary between
+ * each pair (the same half-slot-offset convention
+ * `seasonWedgeBoundaryAngles` already uses). Every digit and divider is
+ * drawn three times, at `u`, `u − 1` and `u + 1`: the canvas is a flat
+ * strip but the surface it wraps onto is a closed loop, so a digit
+ * whose own centre falls near the `u = 0`/`u = 1` seam (there is always
+ * exactly one, since the ten evenly-spaced digits and the one seam
+ * share no common structure that would avoid it) must still appear
+ * whole, split across both edges of the canvas, not clipped by it.
+ * `digitCount` is passed in, not imported from
+ * `src/domain/yearDigitComplication.ts` (this geometry module has no
+ * dependency on any domain module), the same "pure function of its own
+ * inputs" convention `createGenevaWheelGeometry`'s own `slotCount`
+ * parameter already follows.
+ */
+export function createYearDigitDrumTexture(digitCount: number): THREE.CanvasTexture | null {
+  const v = YEAR_DIGIT_DRUM_VISUALIZATION;
+  const width = 1024;
+  const height = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (ctx === null) return null;
+  ctx.fillStyle = v.backgroundColor;
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = v.textColor;
+  ctx.font = `bold ${String(v.fontSizePx)}px sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.strokeStyle = v.dividerColor;
+  ctx.lineWidth = v.dividerWidthPx;
+  for (let digit = 0; digit < digitCount; digit += 1) {
+    const u = cylinderSideCanvasUForMeshAngle(yearDigitLocalAngle(digit, digitCount));
+    const dividerU = cylinderSideCanvasUForMeshAngle(yearDigitLocalAngle(digit + 0.5, digitCount));
+    for (const offset of [-1, 0, 1]) {
+      ctx.fillText(String(digit), (u + offset) * width, height / 2);
+      const dividerX = (dividerU + offset) * width;
+      ctx.beginPath();
+      ctx.moveTo(dividerX, 0);
+      ctx.lineTo(dividerX, height);
+      ctx.stroke();
+    }
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+/**
+ * A year-digit wheel's own visual linkage to the movement (new
+ * assumption, Phase 8.13): a small declutch wheel, idle/disengaged, the
+ * same shape and treatment `MONTH_LINKAGE_VISUALIZATION` (ASM-0054)
+ * already gives the month star's own link to the date star that drives
+ * it — drawn once, in its own rest position, never animated. Raised
+ * directly by the user ("make sure to display the connection to the
+ * movement"): before this, none of the four digit wheels had any visual
+ * link at all (unlike date/month/leap-year), the same gap
+ * `SeasonComplication` (ASM-0057) is still left with, deliberately, for
+ * lack of a trigger with just one single driving star of its own to
+ * hang a link from — a year-digit wheel does have exactly one real
+ * trigger (the month star's own December-to-January wrap, ASM-0059),
+ * shared by all four digit wheels, so unlike season there IS one real
+ * connection to draw.
+ *
+ * Only the ones-place wheel gets a drawn link to the month star. The
+ * other three (tens, hundreds, thousands) are not mechanically chained
+ * to the ones wheel or to each other in this project's own domain model
+ * — `digitsToAdvance` (`src/kinematics/yearDigitComplication.ts`)
+ * advances every qualifying wheel in the SAME simulated instant the
+ * month star wraps, not via one wheel's own rotation stepping the next
+ * (the way some real multi-digit mechanical counters are built, with a
+ * one-tooth carry pinion between each pair of wheels — no source for
+ * this specific drum-clock design has been found either way) —
+ * drawing a tooth-engagement link between consecutive digit wheels
+ * would imply a real inter-wheel
+ * gearing this project does not model and YEARDIGIT-001 (`wheel-also-
+ * geared`) explicitly forbids, so it is not drawn.
+ */
+export const YEAR_DIGIT_LINKAGE_VISUALIZATION = {
+  /** The declutch wheel's own radius, as a fraction of the ones-place wheel's own tip radius. */
+  wheelRadiusFraction: 0.3,
+  /** The visible gap between the wheel's own rim and the ones-place wheel's own rim, showing it disengaged. */
+  clearanceMetres: 0.3e-3,
+  assumption: "ASM-0061" satisfies AssumptionId,
+} as const;
+
+/**
  * Escapement parts are drawn only to show the simplified model's motion
  * (ASM-0023): the escape wheel's tooth form, the fork's shape and the
  * balance's rim and arms are visual (ASM-0012). Only the escape wheel's

@@ -18,6 +18,7 @@ import {
   createMoonPhaseTexture,
   createRodGeometry,
   createSeasonTexture,
+  createYearDigitDrumTexture,
   createZCylinder,
   DATE_LINKAGE_VISUALIZATION,
   discCapCanvasAngleForMeshAngle,
@@ -27,6 +28,7 @@ import {
   GENEVA_WHEEL_VISUALIZATION,
   handHubRadius,
   MONTH_LINKAGE_VISUALIZATION,
+  YEAR_DIGIT_LINKAGE_VISUALIZATION,
   type EscapeToothFace,
 } from "@/geometry/assemblyGeometry3d";
 import { arborZRange, frameBearingHoles, frameScrewHoles, frameZRange, isCompleteFrame } from "@/assembly/assemblyGeometry";
@@ -37,6 +39,7 @@ import type { MoonPhaseWindowCount } from "@/domain/moonPhase";
 import type { DateComplicationId } from "@/domain/dateComplication";
 import type { LeapYearComplicationId } from "@/domain/leapYearComplication";
 import { LEAP_YEAR_INDEX_STROKE_SECONDS, LEAP_YEAR_SLOT_COUNT } from "@/domain/leapYearComplication";
+import { YEAR_DIGIT_SLOT_COUNT } from "@/domain/yearDigitComplication";
 import { genevaLambda, genevaStrokeDriverAngle, genevaDriverMotionAngle } from "@/kinematics/genevaDrive";
 import { buildDialMeshes, buildStemMeshes } from "./keylessMeshes";
 import { escapementDisplay, primaryEscapement } from "@/simulation/escapementDisplay";
@@ -217,6 +220,24 @@ function seasonMaterials(color: number, extra: THREE.MeshStandardMaterialParamet
   const texture = labels === null ? null : createSeasonTexture(labels);
   const illustrated = texture === null ? plain : material(0xffffff, { ...extra, map: texture });
   return [plain, plain, illustrated];
+}
+
+/**
+ * Same 3-group convention as `discMaterials` for the −Z (dial-facing)
+ * cap, which keeps its own plain position-label ring unchanged (ASM-0051
+ * — the dial window above each wheel still reveals that), but with the
+ * LATERAL surface (group 0, ASM-0060's own drum strip) carrying the
+ * same ten digits wrapped once around it, so a direct 3D look at the
+ * wheel (not through the dial window) also reads as a digit drum.
+ */
+function yearDigitDrumMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, capLabels: readonly string[] | null): THREE.MeshStandardMaterial[] {
+  const plain = material(color, extra);
+  const capTexture = capLabels === null ? null : createDiscLabelTexture(capLabels);
+  const cap = capTexture === null ? plain : material(color, { ...extra, map: capTexture });
+  const sideTexture = createYearDigitDrumTexture(YEAR_DIGIT_SLOT_COUNT);
+  const side = sideTexture === null ? plain : material(color, { ...extra, map: sideTexture });
+  // CylinderGeometry's own group order after createZCylinder's rotateX(π/2): [side, +Z cap, −Z cap].
+  return [side, plain, cap];
 }
 
 /**
@@ -744,14 +765,16 @@ export class Viewport {
       const group = this.shaftGroups.get(digit.wheelShaftId);
       const valid = Number.isFinite(digit.wheelTipDiameter) && digit.wheelTipDiameter > 0 && Number.isFinite(digit.wheelThickness) && digit.wheelThickness > 0 && Number.isFinite(digit.wheelZCentre);
       if (group === undefined || !valid) continue;
-      // A "drum clock" digit wheel (new assumption, Phase 8.12), driven entirely by the month
-      // complication's own December-to-January wrap with decimal carry — same
-      // applyKinematicRotation() loop that spins every other shaft group spins this one too. A
-      // plain disc like the season wheel, not a Geneva-slotted wheel: no sourced real mechanism
-      // exists for a year display built this way to draw instead.
+      // A "drum clock" digit wheel (ASM-0059/ASM-0060, Phase 8.12-8.13), driven entirely by the
+      // month complication's own December-to-January wrap with decimal carry — same
+      // applyKinematicRotation() loop that spins every other shaft group spins this one too. The
+      // −Z cap keeps the plain position-label ring every other jump-driven wheel gets (what the
+      // dial window above it reveals); the lateral surface additionally carries the same ten
+      // digits wrapped once around it (yearDigitDrumMaterials), so a direct 3D look at the drum —
+      // not through the dial window — also shows a digit sitting on its own rotating surface.
       const meshZ = this.displayZ(digit.wheelZCentre);
       const digitLabels = findDiscComplication(movement, digit.id)?.positionLabels ?? null;
-      const mesh = new THREE.Mesh(createZCylinder(digit.wheelTipDiameter / 2, meshZ - digit.wheelThickness / 2, meshZ + digit.wheelThickness / 2, 64), discMaterials(COLORS.yearDigitWheel, { metalness: 0.1, roughness: 0.7 }, digitLabels));
+      const mesh = new THREE.Mesh(createZCylinder(digit.wheelTipDiameter / 2, meshZ - digit.wheelThickness / 2, meshZ + digit.wheelThickness / 2, 64), yearDigitDrumMaterials(COLORS.yearDigitWheel, { metalness: 0.1, roughness: 0.7 }, digitLabels));
       this.addPickable(group, mesh, { kind: "yearDigitWheel", entityId: digit.id, baseColor: COLORS.yearDigitWheel });
       this.cappableSolids.push({
         positionX: group.position.x,
@@ -762,6 +785,36 @@ export class Viewport {
         footprint: { kind: "circle", radius: digit.wheelTipDiameter / 2, centre: { x: 0, y: 0 } },
         color: COLORS.yearDigitWheel,
       });
+
+      // The drum clock's own visual linkage to the movement (ASM-0061): a small declutch wheel,
+      // idle/disengaged, the same treatment MONTH_LINKAGE_VISUALIZATION already gives the month
+      // star's own link to its date star. Only the ones-place wheel gets one drawn — see
+      // YEAR_DIGIT_LINKAGE_VISUALIZATION's own doc comment for why the other three digit places
+      // are not linked to it or to each other.
+      if (digit.digitPlace === "ONES") {
+        const month = movement.monthComplications[digit.monthComplicationId];
+        const digitCentre = positions.get(digit.wheelShaftId);
+        const monthCentre = month === undefined ? undefined : positions.get(month.starShaftId);
+        if (monthCentre !== undefined && digitCentre !== undefined) {
+          const v = YEAR_DIGIT_LINKAGE_VISUALIZATION;
+          const dx = monthCentre.x - digitCentre.x;
+          const dy = monthCentre.y - digitCentre.y;
+          const distance = Math.hypot(dx, dy);
+          const towardMonth = distance > 0 ? { x: dx / distance, y: dy / distance } : { x: 1, y: 0 };
+          const digitTipRadius = digit.wheelTipDiameter / 2;
+          const wheelRadius = digitTipRadius * v.wheelRadiusFraction;
+          const wheelCentre = {
+            x: digitCentre.x + towardMonth.x * (digitTipRadius + wheelRadius + v.clearanceMetres),
+            y: digitCentre.y + towardMonth.y * (digitTipRadius + wheelRadius + v.clearanceMetres),
+          };
+          const wheel = new THREE.Mesh(
+            createZCylinder(wheelRadius, meshZ - digit.wheelThickness / 2, meshZ + digit.wheelThickness / 2, 24),
+            material(COLORS.yearDigitWheel, { metalness: 0.3, roughness: 0.6 }),
+          );
+          wheel.position.set(wheelCentre.x, wheelCentre.y, 0);
+          this.content.add(wheel);
+        }
+      }
     }
 
     // Hands sit below the dial face, or below the lowest part of the movement if there is no dial (ASM-0016).

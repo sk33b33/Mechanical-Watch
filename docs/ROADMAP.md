@@ -563,13 +563,34 @@ engagement-timing constant with no source behind it at all (ASM-0054).
   Teaching movement and the guided tutorial walkthrough both updated
   in lockstep.
 
-8.1–8.4, 8.6, 8.9, 8.10, 8.11 and 8.12 are done (see `docs/STATUS.md`
-for each). 8.7's cross-cutting validation work was folded into
-8.1–8.4/8.6 as they shipped, rather than built as a separate item.
-8.10, 8.11 and 8.12 are not themselves calendar complications in 8.1's
-original sense — a baseplate/hardware item (`Screw`, bearing and screw
-clearance holes), a neutral quarter indicator, and a decimal year
-display respectively — each raised as its own direct request and kept
+- 8.13 — **Done** (see `docs/STATUS.md`). Year-digit drum redesign +
+  connection-to-movement linkage: direct user feedback on 8.12's first
+  shipped look ("i would like it to be a cylinder with 4 digits
+  displayed where every digit sits on a drum that rotates from 0 to 9
+  and also make sure to display the connection to the movement"). Two
+  new visual-only assumptions (ASM-0060, ASM-0061) — no kinematic
+  change; `shaftAngle`, `digitsToAdvance` and every validation rule are
+  untouched. The literal "rotating drum" mental model (an odometer) has
+  a horizontal axis, which would violate ASM-0006 (every shaft axis
+  vertical), so each wheel keeps its existing vertical axis and instead
+  wraps its digit texture around the cylinder's own LATERAL surface
+  (not the top cap, which keeps its own existing plain label ring for
+  the dial window above it) and is given a genuinely drum/roller
+  proportion (0.8mm : 2mm thickness:diameter, up from a thin 0.15mm : 2mm
+  disc). Only the ones-place wheel gets a drawn, static (never animated)
+  linkage to the month star that triggers all four — mirroring 8.9's own
+  month-declutch-wheel treatment exactly — since the other three digit
+  places are not mechanically chained to each other in this project's
+  own decimal-carry model.
+
+8.1–8.4, 8.6, 8.9, 8.10, 8.11, 8.12 and 8.13 are done (see
+`docs/STATUS.md` for each). 8.7's cross-cutting validation work was
+folded into 8.1–8.4/8.6 as they shipped, rather than built as a
+separate item. 8.10, 8.11, 8.12 and 8.13 are not themselves calendar
+complications in 8.1's original sense — a baseplate/hardware item
+(`Screw`, bearing and screw clearance holes), a neutral quarter
+indicator, a decimal year display, and that display's own visual
+redesign respectively — each raised as its own direct request and kept
 in this section's running numbering rather than opening a new phase
 heading. 8.5 and 8.8 remain confirmed out of scope. No further Phase 8
 sub-item is scoped to start without the user's next explicit

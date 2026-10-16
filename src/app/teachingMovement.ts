@@ -437,24 +437,34 @@ export function createTeachingMovement(): Movement {
   // MonthComplication always starting at January, each wheel's own starting digit is
   // independently declared (there is no sourced way for a watch to know the real calendar year
   // on its own), not derived from a single shared "year" field.
+  //
+  // Thickness/diameter (0.8 : 2, Phase 8.13) is deliberately drum/roller-proportioned, not the
+  // thin-disc ratio every other jump-driven wheel uses (ASM-0060, raised directly by the user:
+  // "i would like it to be a cylinder... every digit sits on a drum"). zCentre moves up from the
+  // other complications' shared -1.2mm to -0.7mm (half-thickness 0.4mm either side, spanning
+  // -1.1 to -0.3mm) to keep this taller body clear of both the mainplate's own underside (0mm)
+  // and the dial's own back (-1.4mm, same clearance convention the moon-phase disc's own
+  // comment already uses) — it does not need to share the other complications' own z-plane,
+  // since none of them overlap it in x/y (ASSY-002 clearance already keeps the 2x2 digit grid
+  // well clear of the date/month/leap-year/season wheels).
   const yearOnesComplication = createYearDigitComplication({
     name: "Year ones", monthComplicationId: monthComplication.id, digitPlace: "ONES", wheelShaftId: yearOnesArbor.id, startDigit: 6,
-    wheelTipDiameter: mm(2), wheelThickness: mm(0.15), wheelZCentre: mm(-1.2),
+    wheelTipDiameter: mm(2), wheelThickness: mm(0.8), wheelZCentre: mm(-0.7),
   });
   m = addYearDigitComplication(m, yearOnesComplication);
   const yearTensComplication = createYearDigitComplication({
     name: "Year tens", monthComplicationId: monthComplication.id, digitPlace: "TENS", wheelShaftId: yearTensArbor.id, startDigit: 2,
-    wheelTipDiameter: mm(2), wheelThickness: mm(0.15), wheelZCentre: mm(-1.2),
+    wheelTipDiameter: mm(2), wheelThickness: mm(0.8), wheelZCentre: mm(-0.7),
   });
   m = addYearDigitComplication(m, yearTensComplication);
   const yearHundredsComplication = createYearDigitComplication({
     name: "Year hundreds", monthComplicationId: monthComplication.id, digitPlace: "HUNDREDS", wheelShaftId: yearHundredsArbor.id, startDigit: 0,
-    wheelTipDiameter: mm(2), wheelThickness: mm(0.15), wheelZCentre: mm(-1.2),
+    wheelTipDiameter: mm(2), wheelThickness: mm(0.8), wheelZCentre: mm(-0.7),
   });
   m = addYearDigitComplication(m, yearHundredsComplication);
   const yearThousandsComplication = createYearDigitComplication({
     name: "Year thousands", monthComplicationId: monthComplication.id, digitPlace: "THOUSANDS", wheelShaftId: yearThousandsArbor.id, startDigit: 2,
-    wheelTipDiameter: mm(2), wheelThickness: mm(0.15), wheelZCentre: mm(-1.2),
+    wheelTipDiameter: mm(2), wheelThickness: mm(0.8), wheelZCentre: mm(-0.7),
   });
   m = addYearDigitComplication(m, yearThousandsComplication);
 
