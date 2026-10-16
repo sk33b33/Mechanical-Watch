@@ -2,6 +2,63 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.14: year-digit counter housing, tight row layout, mounting bracket
+
+Further direct user feedback, this time with a reference photo of a real
+mechanical tally-counter (four digit rollers packed close together
+inside a dark housing, thin dividers between columns): "remove the 4
+gears for the year timer and create something like this that's
+connected somehow to the movement." One new visual-only assumption
+(ASM-0062) — no kinematic change; `shaftAngle`, `digitsToAdvance` and
+every validation rule are untouched.
+
+**Layout: 2×2 grid → tight single row.** `src/app/teachingMovement.ts`'s
+four digit arbors move from a compact 2×2 grid to one row (2.3mm centre
+spacing — 2mm-diameter drums with a 0.3mm clear gap for the new divider
+bars), reading thousands/hundreds/tens/ones left to right like a
+printed year, matching the reference photo's own four-in-a-row layout.
+Still clear of the balance cock's own bridge footprint, the train
+bridge, the mainplate's 15mm radius, and the date/month/leap-year/
+season wheels further west (verified live — no new validation errors).
+
+**Housing (ASM-0062).** Before this, the four drums (ASM-0059, ASM-0060)
+sat fully exposed, each still reading as "a small wheel" individually
+even after Phase 8.13's drum redesign. A dark housing now encloses the
+row: three plain walls (one behind the row, one at each end) plus thin
+divider bars between adjacent wheels — every one a plain
+`THREE.BoxGeometry`, no new extrusion technique. Deliberately NO front,
+top or bottom cover: the real counter's own "window" effect comes free
+from the ordinary fact that a solid cylinder's own far side is already
+hidden from the viewer, the same as every other part in this viewport —
+no new reveal geometry was needed to get that. Two new pure functions
+make this derived rather than invented: `yearDigitHousingBounds` (the
+bounding box of the wheel group's own rims, expanded by a declared
+margin) and `yearDigitDividerXPositions` (the midpoint between each
+pair of wheels adjacent by X), both in `src/geometry/
+assemblyGeometry3d.ts`, both built from the group's own already-solved
+positions and declared tip diameters.
+
+**Mounting bracket.** A static, never-animated rigid post runs from the
+housing's own back wall up to the mainplate's own underside — the
+explicit "connected to the movement" the user asked for, additional to
+(not a replacement for) Phase 8.13's own ones-wheel-to-month-star
+declutch link, which still shows what actually drives the counter.
+
+**Drum colour inversion.** The lateral digit texture's own colours
+flipped from dark-on-pale (the convention every other disc complication's
+label ring uses) to pale numerals on a dark body
+(`YEAR_DIGIT_DRUM_VISUALIZATION`), matching the reference photo's own
+dark rollers with light print.
+
+Tests: two new describe blocks in `assemblyGeometry3d.test.ts`
+(`yearDigitHousingBounds`, `yearDigitDividerXPositions` — bounding-box
+and midpoint math, including the empty/single-wheel edge cases and
+order-independence). No domain, simulation or validation code changed,
+so no existing test needed updating. Full suite green: `tsc -b`,
+`eslint`, 772 Vitest tests, production build, a live-browser validation
+check (teaching movement loads with the same 22 info / zero errors as
+before the repack), and the full 38-test Playwright e2e suite.
+
 ## Phase 8.13: year-digit drum redesign + connection-to-movement linkage
 
 Direct user feedback on Phase 8.12's first shipped look: "the drum clock

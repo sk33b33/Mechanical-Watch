@@ -339,15 +339,19 @@ export function createTeachingMovement(): Movement {
   // more than their tip radii combined (ASSY-002 clearance), comfortably inside the mainplate.
   m = updateShaft(m, seasonWheelArbor.id, { placement: fixedAt(mm(-6), mm(4.5)) });
   // Declared, not mesh-derived (none of the four digit wheels are meshed with anything, same as
-  // the month/leap-year/season wheels) — a compact 2×2 grid north of the balance cock's own
-  // bridge footprint (x 3-12, y 5-11) and clear of the train bridge (max y 5), comfortably inside
-  // the mainplate's own 15 mm radius (ASSY-002 clearance). Ones/tens in the front row (closer to
-  // the other complications), hundreds/thousands behind — least to most significant, top to
-  // bottom reading like an odometer.
-  m = updateShaft(m, yearOnesArbor.id, { placement: fixedAt(mm(-2), mm(8)) });
-  m = updateShaft(m, yearTensArbor.id, { placement: fixedAt(mm(1), mm(8)) });
-  m = updateShaft(m, yearHundredsArbor.id, { placement: fixedAt(mm(-2), mm(11)) });
-  m = updateShaft(m, yearThousandsArbor.id, { placement: fixedAt(mm(1), mm(11)) });
+  // the month/leap-year/season wheels) — Phase 8.14: a tight single row (2.3mm centre spacing,
+  // 0.3mm clear gap between adjacent 2mm-diameter drums — room for YEAR_DIGIT_HOUSING_
+  // VISUALIZATION's own divider bars), reading left to right thousands/hundreds/tens/ones like a
+  // printed year, matching the mechanical tally-counter reference the user provided directly
+  // (raised as explicit feedback: "remove the 4 gears for the year timer and create something
+  // like this"). Replaces the earlier 2×2 grid. Still north of the balance cock's own bridge
+  // footprint (x 3-12, y 5-11) and clear of the train bridge (max y 5), comfortably inside the
+  // mainplate's own 15 mm radius, and clear of the month/leap-year/season wheels further west at
+  // x = -6 (ASSY-002 clearance, verified live).
+  m = updateShaft(m, yearThousandsArbor.id, { placement: fixedAt(mm(-6.45), mm(8)) });
+  m = updateShaft(m, yearHundredsArbor.id, { placement: fixedAt(mm(-4.15), mm(8)) });
+  m = updateShaft(m, yearTensArbor.id, { placement: fixedAt(mm(-1.85), mm(8)) });
+  m = updateShaft(m, yearOnesArbor.id, { placement: fixedAt(mm(0.45), mm(8)) });
 
   // Put the crown wheel and setting wheel on the stem line y = 0 (the centre arbor is at the origin).
   // Each is placed from its partner by its mesh; the angle is the one that lands on y = 0 on the crown side.
@@ -445,7 +449,7 @@ export function createTeachingMovement(): Movement {
   // -1.1 to -0.3mm) to keep this taller body clear of both the mainplate's own underside (0mm)
   // and the dial's own back (-1.4mm, same clearance convention the moon-phase disc's own
   // comment already uses) — it does not need to share the other complications' own z-plane,
-  // since none of them overlap it in x/y (ASSY-002 clearance already keeps the 2x2 digit grid
+  // since none of them overlap it in x/y (ASSY-002 clearance already keeps the digit row
   // well clear of the date/month/leap-year/season wheels).
   const yearOnesComplication = createYearDigitComplication({
     name: "Year ones", monthComplicationId: monthComplication.id, digitPlace: "ONES", wheelShaftId: yearOnesArbor.id, startDigit: 6,

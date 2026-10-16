@@ -583,15 +583,33 @@ engagement-timing constant with no source behind it at all (ASM-0054).
   places are not mechanically chained to each other in this project's
   own decimal-carry model.
 
-8.1–8.4, 8.6, 8.9, 8.10, 8.11, 8.12 and 8.13 are done (see
+- 8.14 — **Done** (see `docs/STATUS.md`). Year-digit counter housing,
+  tight row layout, mounting bracket: further direct user feedback, this
+  time with a reference photo of a real mechanical tally-counter ("remove
+  the 4 gears for the year timer and create something like this that's
+  connected somehow to the movement"). One new visual-only assumption
+  (ASM-0062) — no kinematic change. The four digit wheels' own layout
+  moved from a 2×2 grid to a tight single row (matching the reference
+  photo), now enclosed in a dark housing (three plain walls plus divider
+  bars between columns, derived from the wheel group's own already-solved
+  positions via two new pure functions, `yearDigitHousingBounds` and
+  `yearDigitDividerXPositions`) with no front/top/bottom cover needed — a
+  solid cylinder's own far side is already hidden from the viewer without
+  one. A static mounting bracket runs from the housing up to the
+  mainplate, the explicit "connection to the movement," alongside (not
+  replacing) 8.13's own ones-wheel-to-month-star declutch link. The
+  drum's own digit colours also inverted to pale-on-dark, matching the
+  reference photo.
+
+8.1–8.4, 8.6, 8.9, 8.10, 8.11, 8.12, 8.13 and 8.14 are done (see
 `docs/STATUS.md` for each). 8.7's cross-cutting validation work was
 folded into 8.1–8.4/8.6 as they shipped, rather than built as a
-separate item. 8.10, 8.11, 8.12 and 8.13 are not themselves calendar
-complications in 8.1's original sense — a baseplate/hardware item
-(`Screw`, bearing and screw clearance holes), a neutral quarter
-indicator, a decimal year display, and that display's own visual
-redesign respectively — each raised as its own direct request and kept
-in this section's running numbering rather than opening a new phase
-heading. 8.5 and 8.8 remain confirmed out of scope. No further Phase 8
-sub-item is scoped to start without the user's next explicit
+separate item. 8.10, 8.11, 8.12, 8.13 and 8.14 are not themselves
+calendar complications in 8.1's original sense — a baseplate/hardware
+item (`Screw`, bearing and screw clearance holes), a neutral quarter
+indicator, a decimal year display, and that display's own two rounds of
+visual redesign respectively — each raised as its own direct request
+and kept in this section's running numbering rather than opening a new
+phase heading. 8.5 and 8.8 remain confirmed out of scope. No further
+Phase 8 sub-item is scoped to start without the user's next explicit
 instruction.

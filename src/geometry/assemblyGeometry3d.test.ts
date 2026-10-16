@@ -23,6 +23,8 @@ import {
   MOON_PHASE_VISUALIZATION,
   rayCircleInward,
   seasonWedgeBoundaryAngles,
+  yearDigitDividerXPositions,
+  yearDigitHousingBounds,
   yearDigitLocalAngle,
   YEAR_DIGIT_DRUM_VISUALIZATION,
   type PalletArm,
@@ -776,5 +778,76 @@ describe("cylinderSideCanvasUForMeshAngle (ASM-0060)", () => {
       const recoveredMeshAngle = theta - Math.PI / 2;
       expect(normalizeAngle(recoveredMeshAngle)).toBeCloseTo(normalizeAngle(meshAngle), 9);
     }
+  });
+});
+
+describe("yearDigitHousingBounds (ASM-0062)", () => {
+  it("returns null for an empty wheel group (nothing to enclose)", () => {
+    expect(yearDigitHousingBounds([], 0.3e-3)).toBeNull();
+  });
+
+  it("is the bounding box of the wheels' own rims, expanded by the margin on every side", () => {
+    const wheels = [
+      { x: -6.45e-3, y: 8e-3, tipRadius: 1e-3 },
+      { x: -4.15e-3, y: 8e-3, tipRadius: 1e-3 },
+      { x: -1.85e-3, y: 8e-3, tipRadius: 1e-3 },
+      { x: 0.45e-3, y: 8e-3, tipRadius: 1e-3 },
+    ];
+    const margin = 0.3e-3;
+    const bounds = yearDigitHousingBounds(wheels, margin);
+    expect(bounds).not.toBeNull();
+    expect(bounds?.xMin).toBeCloseTo(-6.45e-3 - 1e-3 - margin, 12);
+    expect(bounds?.xMax).toBeCloseTo(0.45e-3 + 1e-3 + margin, 12);
+    expect(bounds?.yMin).toBeCloseTo(8e-3 - 1e-3 - margin, 12);
+    expect(bounds?.yMax).toBeCloseTo(8e-3 + 1e-3 + margin, 12);
+  });
+
+  it("handles a single wheel (a one-digit-place design)", () => {
+    const bounds = yearDigitHousingBounds([{ x: 2e-3, y: -3e-3, tipRadius: 0.5e-3 }], 0.2e-3);
+    expect(bounds).toEqual({ xMin: 1.3e-3, xMax: 2.7e-3, yMin: -3.7e-3, yMax: -2.3e-3 });
+  });
+
+  it("does not depend on the wheels' own order in the input array", () => {
+    const wheels = [
+      { x: 1e-3, y: 0, tipRadius: 0.4e-3 },
+      { x: -2e-3, y: 0.5e-3, tipRadius: 0.6e-3 },
+      { x: 0, y: -1e-3, tipRadius: 0.3e-3 },
+    ];
+    const forward = yearDigitHousingBounds(wheels, 0.1e-3);
+    const reversed = yearDigitHousingBounds([...wheels].reverse(), 0.1e-3);
+    expect(reversed).toEqual(forward);
+  });
+});
+
+describe("yearDigitDividerXPositions (ASM-0062)", () => {
+  it("places one fewer divider than there are wheels, at each pair's own midpoint", () => {
+    const wheels = [
+      { x: -6.45e-3, y: 8e-3, tipRadius: 1e-3 },
+      { x: -4.15e-3, y: 8e-3, tipRadius: 1e-3 },
+      { x: -1.85e-3, y: 8e-3, tipRadius: 1e-3 },
+      { x: 0.45e-3, y: 8e-3, tipRadius: 1e-3 },
+    ];
+    const dividers = yearDigitDividerXPositions(wheels);
+    expect(dividers).toHaveLength(3);
+    expect(dividers[0]).toBeCloseTo(-5.3e-3, 12);
+    expect(dividers[1]).toBeCloseTo(-3e-3, 12);
+    expect(dividers[2]).toBeCloseTo(-0.7e-3, 12);
+  });
+
+  it("sorts by X first, so the input order does not matter", () => {
+    const wheels = [
+      { x: 0.45e-3, y: 8e-3, tipRadius: 1e-3 },
+      { x: -6.45e-3, y: 8e-3, tipRadius: 1e-3 },
+      { x: -1.85e-3, y: 8e-3, tipRadius: 1e-3 },
+      { x: -4.15e-3, y: 8e-3, tipRadius: 1e-3 },
+    ];
+    const dividers = yearDigitDividerXPositions(wheels);
+    expect(dividers).toHaveLength(3);
+    [-5.3e-3, -3e-3, -0.7e-3].forEach((expected, i) => { expect(dividers[i]).toBeCloseTo(expected, 12); });
+  });
+
+  it("returns no dividers for zero or one wheel", () => {
+    expect(yearDigitDividerXPositions([])).toEqual([]);
+    expect(yearDigitDividerXPositions([{ x: 0, y: 0, tipRadius: 1e-3 }])).toEqual([]);
   });
 });

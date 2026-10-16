@@ -892,9 +892,16 @@ export const YEAR_DIGIT_DRUM_VISUALIZATION = {
    */
   frontAngleRadians: Math.PI / 2,
   fontSizePx: 160,
-  textColor: "#2a2a2a",
-  backgroundColor: "#eee8da",
-  dividerColor: "#9a9284",
+  /**
+   * Phase 8.14: pale numerals on a dark drum body, not the dark-on-pale
+   * treatment every other disc complication's own label ring uses
+   * (`DIAL_WINDOW_VISUALIZATION`) — matching the mechanical tally-counter
+   * reference the user provided directly, whose own digit rollers read as
+   * dark bodies with light printed numerals.
+   */
+  textColor: "#f2ece0",
+  backgroundColor: "#1c1915",
+  dividerColor: "#3a342c",
   dividerWidthPx: 3,
   assumption: "ASM-0060" satisfies AssumptionId,
 } as const;
@@ -1037,6 +1044,101 @@ export const YEAR_DIGIT_LINKAGE_VISUALIZATION = {
   clearanceMetres: 0.3e-3,
   assumption: "ASM-0061" satisfies AssumptionId,
 } as const;
+
+/**
+ * A year-digit wheel group's own enclosing housing (new assumption,
+ * Phase 8.14): raised directly by the user, who supplied a photo of a
+ * real mechanical tally-counter ("remove the 4 gears for the year timer
+ * and create something like this... connected somehow to the
+ * movement") — four digit rollers sitting close together inside a dark
+ * housing, with thin dividers between columns, visibly mounted rather
+ * than floating free. Before this, the four digit wheels (ASM-0059,
+ * ASM-0060) sat spaced out and fully exposed, reading as four separate
+ * small wheels rather than one counter unit.
+ *
+ * The housing is three plain walls — one behind the row, one at each
+ * end — never a front or top/bottom cover: the "window" in the real
+ * counter is just the ordinary fact that a solid cylinder's own far
+ * side is hidden from the viewer, the same way any other part in this
+ * viewport is; no new reveal geometry is needed to get that. Divider
+ * bars between adjacent wheels complete the look. Entirely visual
+ * (ASM-0004) and, like `MONTH_LINKAGE_VISUALIZATION`, derived each
+ * rebuild from the wheels' own already-solved positions and declared
+ * dimensions — no new domain field, no new `ShaftId`, no new
+ * simulation state.
+ */
+export const YEAR_DIGIT_HOUSING_VISUALIZATION = {
+  /** Clearance between a wheel's own rim and the housing's inner wall face. */
+  marginMetres: 0.3e-3,
+  wallThicknessMetres: 0.2e-3,
+  dividerWidthMetres: 0.15e-3,
+  housingColor: 0x16140f,
+  /**
+   * The housing's own static mounting bracket (never animated, same
+   * treatment as `YEAR_DIGIT_LINKAGE_VISUALIZATION`): a rigid post from
+   * the housing's own back wall up to the mainplate's own underside —
+   * the explicit "connection to the movement" the user asked for,
+   * additional to (not a replacement for) the ones-wheel's own
+   * kinematic link to the month star above.
+   */
+  bracketWidthMetres: 0.3e-3,
+  assumption: "ASM-0062" satisfies AssumptionId,
+} as const;
+
+/** A year-digit wheel's footprint in the movement plane, as `yearDigitHousingBounds`/`yearDigitDividerXPositions` need it. */
+export interface YearDigitWheelFootprint {
+  readonly x: number;
+  readonly y: number;
+  readonly tipRadius: number;
+}
+
+export interface YearDigitHousingBounds {
+  readonly xMin: number;
+  readonly xMax: number;
+  readonly yMin: number;
+  readonly yMax: number;
+}
+
+/**
+ * The housing's own outer footprint (`YEAR_DIGIT_HOUSING_VISUALIZATION`,
+ * ASM-0062): the bounding box of the given wheels' own rims, expanded
+ * by `margin` on every side — derived from the model's own already-
+ * declared positions and tip diameters, not an invented size. `null`
+ * for an empty group (nothing to enclose).
+ */
+export function yearDigitHousingBounds(wheels: readonly YearDigitWheelFootprint[], margin: number): YearDigitHousingBounds | null {
+  if (wheels.length === 0) return null;
+  let xMin = Number.POSITIVE_INFINITY;
+  let xMax = Number.NEGATIVE_INFINITY;
+  let yMin = Number.POSITIVE_INFINITY;
+  let yMax = Number.NEGATIVE_INFINITY;
+  for (const wheel of wheels) {
+    xMin = Math.min(xMin, wheel.x - wheel.tipRadius);
+    xMax = Math.max(xMax, wheel.x + wheel.tipRadius);
+    yMin = Math.min(yMin, wheel.y - wheel.tipRadius);
+    yMax = Math.max(yMax, wheel.y + wheel.tipRadius);
+  }
+  return { xMin: xMin - margin, xMax: xMax + margin, yMin: yMin - margin, yMax: yMax + margin };
+}
+
+/**
+ * The X position of a divider bar between each pair of adjacent wheels
+ * (by X order), one fewer bar than there are wheels — the midpoint
+ * between each pair's own centres, the same "derived from the model's
+ * own declared positions" convention `yearDigitHousingBounds` follows.
+ * Sorts a copy of `wheels`; the input order does not matter.
+ */
+export function yearDigitDividerXPositions(wheels: readonly YearDigitWheelFootprint[]): number[] {
+  const xs = wheels.map((wheel) => wheel.x).sort((a, b) => a - b);
+  const midpoints: number[] = [];
+  for (let i = 0; i + 1 < xs.length; i += 1) {
+    const a = xs[i];
+    const b = xs[i + 1];
+    if (a === undefined || b === undefined) continue;
+    midpoints.push((a + b) / 2);
+  }
+  return midpoints;
+}
 
 /**
  * Escapement parts are drawn only to show the simplified model's motion

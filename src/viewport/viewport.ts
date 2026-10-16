@@ -28,7 +28,10 @@ import {
   GENEVA_WHEEL_VISUALIZATION,
   handHubRadius,
   MONTH_LINKAGE_VISUALIZATION,
+  YEAR_DIGIT_HOUSING_VISUALIZATION,
   YEAR_DIGIT_LINKAGE_VISUALIZATION,
+  yearDigitDividerXPositions,
+  yearDigitHousingBounds,
   type EscapeToothFace,
 } from "@/geometry/assemblyGeometry3d";
 import { arborZRange, frameBearingHoles, frameScrewHoles, frameZRange, isCompleteFrame } from "@/assembly/assemblyGeometry";
@@ -230,12 +233,25 @@ function seasonMaterials(color: number, extra: THREE.MeshStandardMaterialParamet
  * same ten digits wrapped once around it, so a direct 3D look at the
  * wheel (not through the dial window) also reads as a digit drum.
  */
-function yearDigitDrumMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, capLabels: readonly string[] | null): THREE.MeshStandardMaterial[] {
+/**
+ * `sharedSideTexture` is built once per rebuild, outside the per-wheel
+ * loop, and passed in here rather than rebuilt per wheel: the lateral
+ * digit strip (`createYearDigitDrumTexture`) is a pure function of the
+ * declared digit count alone, identical for all four digit-place
+ * wheels, so re-painting (and re-uploading to the GPU) a fresh 1024×256
+ * canvas four times a rebuild — once per wheel — would be pure waste.
+ * Only the TEXTURE is shared, not the material: `applySelection()`
+ * mutates a mesh's own material colour in place to highlight it, so
+ * each wheel still needs its own `MeshStandardMaterial` instance (cheap
+ * — an ordinary JS object) wrapping that one shared texture, or
+ * selecting one digit wheel would wrongly tint every other wheel's own
+ * lateral surface too.
+ */
+function yearDigitDrumMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, capLabels: readonly string[] | null, sharedSideTexture: THREE.CanvasTexture | null): THREE.MeshStandardMaterial[] {
   const plain = material(color, extra);
   const capTexture = capLabels === null ? null : createDiscLabelTexture(capLabels);
   const cap = capTexture === null ? plain : material(color, { ...extra, map: capTexture });
-  const sideTexture = createYearDigitDrumTexture(YEAR_DIGIT_SLOT_COUNT);
-  const side = sideTexture === null ? plain : material(color, { ...extra, map: sideTexture });
+  const side = sharedSideTexture === null ? plain : material(color, { ...extra, map: sharedSideTexture });
   // CylinderGeometry's own group order after createZCylinder's rotateX(π/2): [side, +Z cap, −Z cap].
   return [side, plain, cap];
 }
@@ -761,6 +777,15 @@ export class Viewport {
       });
     }
 
+    // Gathered per MonthComplicationId while the loop below builds each wheel, then used once
+    // afterward to build that group's own enclosing housing (YEAR_DIGIT_HOUSING_VISUALIZATION,
+    // ASM-0062) — the housing needs every wheel's own position/size together, not one at a time.
+    const yearDigitGroups = new Map<string, { x: number; y: number; tipRadius: number; zLo: number; zHi: number }[]>();
+    // Built lazily, at most once per rebuild, the first time a digit wheel actually needs it —
+    // see yearDigitDrumMaterials' own doc comment for why every wheel shares this one texture
+    // (but not the material built around it).
+    let yearDigitSideTexture: THREE.CanvasTexture | null | undefined;
+
     for (const digit of Object.values(movement.yearDigitComplications)) {
       const group = this.shaftGroups.get(digit.wheelShaftId);
       const valid = Number.isFinite(digit.wheelTipDiameter) && digit.wheelTipDiameter > 0 && Number.isFinite(digit.wheelThickness) && digit.wheelThickness > 0 && Number.isFinite(digit.wheelZCentre);
@@ -773,8 +798,15 @@ export class Viewport {
       // digits wrapped once around it (yearDigitDrumMaterials), so a direct 3D look at the drum —
       // not through the dial window — also shows a digit sitting on its own rotating surface.
       const meshZ = this.displayZ(digit.wheelZCentre);
+      const digitCentreForGroup = positions.get(digit.wheelShaftId);
+      if (digitCentreForGroup !== undefined) {
+        const bucket = yearDigitGroups.get(digit.monthComplicationId) ?? [];
+        bucket.push({ x: digitCentreForGroup.x, y: digitCentreForGroup.y, tipRadius: digit.wheelTipDiameter / 2, zLo: meshZ - digit.wheelThickness / 2, zHi: meshZ + digit.wheelThickness / 2 });
+        yearDigitGroups.set(digit.monthComplicationId, bucket);
+      }
       const digitLabels = findDiscComplication(movement, digit.id)?.positionLabels ?? null;
-      const mesh = new THREE.Mesh(createZCylinder(digit.wheelTipDiameter / 2, meshZ - digit.wheelThickness / 2, meshZ + digit.wheelThickness / 2, 64), yearDigitDrumMaterials(COLORS.yearDigitWheel, { metalness: 0.1, roughness: 0.7 }, digitLabels));
+      if (yearDigitSideTexture === undefined) yearDigitSideTexture = createYearDigitDrumTexture(YEAR_DIGIT_SLOT_COUNT);
+      const mesh = new THREE.Mesh(createZCylinder(digit.wheelTipDiameter / 2, meshZ - digit.wheelThickness / 2, meshZ + digit.wheelThickness / 2, 64), yearDigitDrumMaterials(COLORS.yearDigitWheel, { metalness: 0.1, roughness: 0.7 }, digitLabels, yearDigitSideTexture));
       this.addPickable(group, mesh, { kind: "yearDigitWheel", entityId: digit.id, baseColor: COLORS.yearDigitWheel });
       this.cappableSolids.push({
         positionX: group.position.x,
@@ -813,6 +845,57 @@ export class Viewport {
           );
           wheel.position.set(wheelCentre.x, wheelCentre.y, 0);
           this.content.add(wheel);
+        }
+      }
+    }
+
+    // Each year-digit group's own enclosing housing (ASM-0062): three plain walls (back + two
+    // ends, no front/top/bottom cover needed — a solid cylinder's own far side is already hidden
+    // from the viewer without one) plus divider bars between adjacent wheels, derived from the
+    // group's own already-solved positions and declared tip diameters. Raised directly by the
+    // user, who supplied a photo of a real mechanical tally-counter.
+    const housingMaterial = material(YEAR_DIGIT_HOUSING_VISUALIZATION.housingColor, { metalness: 0.3, roughness: 0.55 });
+    const mainplateFrame = Object.values(movement.frames).find((f) => f.kind === "MAINPLATE" && isCompleteFrame(f));
+    for (const wheels of yearDigitGroups.values()) {
+      const hv = YEAR_DIGIT_HOUSING_VISUALIZATION;
+      const bounds = yearDigitHousingBounds(wheels, hv.marginMetres);
+      if (bounds === null) continue;
+      const zLo = Math.min(...wheels.map((w) => w.zLo));
+      const zHi = Math.max(...wheels.map((w) => w.zHi));
+      const zMid = (zLo + zHi) / 2;
+      const zSpan = zHi - zLo;
+      const { xMin, xMax, yMin, yMax } = bounds;
+
+      const backWall = new THREE.Mesh(new THREE.BoxGeometry(xMax - xMin, hv.wallThicknessMetres, zSpan), housingMaterial);
+      backWall.position.set((xMin + xMax) / 2, yMin - hv.wallThicknessMetres / 2, zMid);
+      this.content.add(backWall);
+
+      const endSpanY = yMax - yMin + hv.wallThicknessMetres;
+      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(hv.wallThicknessMetres, endSpanY, zSpan), housingMaterial);
+      leftWall.position.set(xMin - hv.wallThicknessMetres / 2, (yMin + yMax) / 2, zMid);
+      this.content.add(leftWall);
+
+      const rightWall = new THREE.Mesh(new THREE.BoxGeometry(hv.wallThicknessMetres, endSpanY, zSpan), housingMaterial);
+      rightWall.position.set(xMax + hv.wallThicknessMetres / 2, (yMin + yMax) / 2, zMid);
+      this.content.add(rightWall);
+
+      for (const dividerX of yearDigitDividerXPositions(wheels)) {
+        const divider = new THREE.Mesh(new THREE.BoxGeometry(hv.dividerWidthMetres, yMax - yMin, zSpan), housingMaterial);
+        divider.position.set(dividerX, (yMin + yMax) / 2, zMid);
+        this.content.add(divider);
+      }
+
+      // The housing's own static mounting bracket (never animated, same treatment as
+      // YEAR_DIGIT_LINKAGE_VISUALIZATION's declutch wheel): a rigid post from the back wall up to
+      // the mainplate's own underside — the explicit "connected to the movement" the user asked
+      // for, alongside (not instead of) the ones-wheel's own kinematic link to the month star.
+      if (mainplateFrame !== undefined) {
+        const mainplateZ = this.displayZ(mainplateFrame.zBottom);
+        const bracketHeight = mainplateZ - zHi;
+        if (bracketHeight > 0) {
+          const bracket = new THREE.Mesh(new THREE.BoxGeometry(hv.bracketWidthMetres, hv.bracketWidthMetres, bracketHeight), housingMaterial);
+          bracket.position.set((xMin + xMax) / 2, yMin - hv.wallThicknessMetres, zHi + bracketHeight / 2);
+          this.content.add(bracket);
         }
       }
     }

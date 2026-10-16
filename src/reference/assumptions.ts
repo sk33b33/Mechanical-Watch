@@ -375,6 +375,12 @@ export const ASSUMPTIONS = {
     scope: "YearDigitComplication's own visual link to the MonthComplication that drives it (Phase 8.13, visual/L0 display only)",
     status: "Active",
   },
+  "ASM-0062": {
+    summary:
+      "Year-digit wheel group housing visualization (Phase 8.14): raised directly by the user, who supplied a photo of a real mechanical tally-counter ('remove the 4 gears for the year timer and create something like this... connected somehow to the movement'). The teaching movement's own layout moved from a 2x2 grid to a tight single row (2.3mm centre spacing), and a dark housing now encloses it: three plain walls (back plus two ends) and thin divider bars between adjacent wheels, every one derived from the wheel group's own already-solved positions and declared tip diameters (yearDigitHousingBounds, yearDigitDividerXPositions, src/geometry/assemblyGeometry3d.ts) -- no invented size. No front/top/bottom cover is drawn: a solid cylinder's own far side is already hidden from the viewer without one. A static (never animated) mounting bracket runs from the housing's back wall up to the mainplate's own underside, the explicit 'connected to the movement' the user asked for, alongside (not replacing) the ones-wheel's own kinematic link to the month star (ASM-0061). The drum's own digit colours were also inverted to pale numerals on a dark body, matching the reference photo. No kinematic change: visual only, same treatment as ASM-0053/ASM-0054/ASM-0061.",
+    scope: "Year-digit wheel group's own enclosing housing, divider bars and mounting bracket (Phase 8.14, visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;
