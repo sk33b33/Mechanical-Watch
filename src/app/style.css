@@ -588,6 +588,28 @@ button.play-button {
   min-width: 56px;
 }
 
+button.pulse-yellow {
+  background: #e8c547;
+  color: #000;
+  border-color: #e8c547;
+  animation: pulse-yellow 1.4s ease-in-out infinite;
+}
+
+button.pulse-yellow:hover:not(:disabled) {
+  border-color: #000;
+}
+
+@keyframes pulse-yellow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 197, 71, 0.6); }
+  50% { box-shadow: 0 0 0 6px rgba(232, 197, 71, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button.pulse-yellow {
+    animation: none;
+  }
+}
+
 .field-action {
   justify-content: flex-start;
 }

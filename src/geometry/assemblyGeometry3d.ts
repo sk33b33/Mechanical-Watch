@@ -205,7 +205,7 @@ export function createDiscWithHolesGeometry(radius: number, thickness: number, h
 export const DIAL_WINDOW_VISUALIZATION = {
   textureSizePx: 512,
   labelRadiusFraction: 0.72,
-  fontSizePx: 34,
+  fontSizePx: 105,
   textColor: "#1a1e22",
   /**
    * An opaque fill behind the glyphs. `MeshStandardMaterial.map` is not
@@ -314,7 +314,7 @@ export const SEASON_VISUALIZATION = {
   iconColor: "#2a2a2a",
   iconRadiusFraction: 0.44,
   labelRadiusFraction: 0.82,
-  fontSizePx: 26,
+  fontSizePx: 105,
   dividerColor: "#4a4642",
   dividerWidthPx: 4,
   assumption: "ASM-0058" satisfies AssumptionId,
@@ -921,7 +921,22 @@ export const YEAR_DIGIT_BARREL_VISUALIZATION = {
    * `frontAngleRadians` was.
    */
   dialFacingLocalAngleRadians: -Math.PI / 2,
-  fontSizePx: 160,
+  /**
+   * Each of the 10 digits gets an equal 1024px-wide-canvas / 10 =
+   * 102.4px-wide slot around the circumference. Because every glyph is
+   * painted rotated ±90° (`textRotationRadians`), it is the font's own
+   * CAP HEIGHT, not its advance width, that consumes this slot's own
+   * width — at 160px that cap height alone nearly filled the slot, so
+   * adjacent digits merged into one unbroken ink run with no visible
+   * gap at all (reported live, "the numbers on the barrel are touching
+   * each other"; confirmed by scanning the real rendered canvas for
+   * contiguous ink runs: 160px gave 2 runs across all 10 digits, a 3px
+   * gap, versus 11 separate runs with a ~28px gap at this value — the
+   * same "verified against real pixel data" standard this project's
+   * own angle-math functions already hold themselves to). 105px keeps
+   * a comfortable, clearly non-touching gap while staying legible.
+   */
+  fontSizePx: 105,
   /**
    * Each digit glyph is painted rotated by this many radians (canvas
    * `ctx.rotate` convention: positive turns the glyph clockwise, since

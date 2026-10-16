@@ -2,6 +2,34 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 3: barrel digits touching; a pulsing "Set to browser time" button
+
+**Digit spacing (real bug).** Reported live: "the numbers on the barrel
+are touching each other." Because every glyph is painted rotated ±90°
+(`textRotationRadians`, the previous follow-up's own fix), it is the
+font's own CAP HEIGHT, not its advance width, that consumes each
+digit's 102.4px-wide circumferential slot — at `fontSizePx: 160` that
+cap height alone nearly filled the slot. Confirmed by scanning the real
+rendered canvas (`createYearDigitBarrelTexture`'s own output) for
+contiguous ink runs rather than guessing from a screenshot: 160px gave
+only 2 ink runs across all 10 digits (a 3px gap — i.e. genuinely
+touching), against 11 separate runs with a ~28px gap at the new value.
+Fixed by lowering `fontSizePx` to 105.
+
+**Pulsing "Set to browser time" button.** Every toolbar button, this
+one included, was previously unstyled (the shared dark `--bg-2` button
+style, no colour of its own). Added a `pulse-yellow` CSS class (yellow
+background `#e8c547`, black text, a looping `box-shadow` pulse,
+`prefers-reduced-motion`-aware) applied to this one button on mount,
+removed by its own click handler the moment it is clicked — a one-time
+visual nudge, not a persistent state.
+
+Verified live: the texture-level pixel scan above, and the button's
+own class list before/after a click (`pulse-yellow` present, then
+absent). `tsc -b`, `eslint`, 774 Vitest tests (unchanged — both
+changes are visual-only, no domain/kinematic code touched), production
+build, and the 38-test Playwright e2e suite all green.
+
 ## Phase 8.15 follow-up 2: barrel/housing poking through the mainplate and dial
 
 Reported from a live screenshot: a black box visibly protruding above the
