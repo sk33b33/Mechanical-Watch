@@ -2,6 +2,59 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 5: year window showing two stacked digits, and reading "6202" instead of "2026"
+
+Reported live, with an annotated screenshot: "the other text is jumbled
+or not showing the proper entries like the year should say 2026 if the
+browser time is activated." Two independent real bugs, both regressions
+from this phase's own earlier work.
+
+**Window height (real bug).** The "Year window" `DialWindow`
+(`src/app/teachingMovement.ts`) kept its pre-redesign `height: mm(0.45)`
+after `barrelDiameter` was shrunk from 2mm to 0.8mm in follow-up 2 (to
+clear the mainplate/dial gap) — sized by comparing it to "roughly the
+barrel's own 0.4mm radius," which is the wrong comparison for a
+horizontal-axis barrel. The quantity a window's height must stay under
+is a single digit's own circumferential arc length at the dial-facing
+point, `(barrelDiameter/2) × (2π/10)` ≈ 0.251mm for this barrel, not
+the radius — 0.45mm comfortably exceeded it, so the window always
+revealed part of the neighbouring digit above or below the current one,
+reading as stacked/jumbled glyphs. Fixed by lowering `height` to
+`mm(0.15)`, safely under the 0.251mm arc length.
+
+**Digit order mirrored (real bug, the one actually matching "should say
+2026").** The four digit barrels (thousands/hundreds/tens/ones) are laid
+out side by side along world +X, at x = -4.2/-3.4/-2.6/-1.8mm in that
+order — chosen on the assumption that world +X reads left-to-right on
+screen. It does not, specifically for the dial-side view: `viewport.ts`'s
+`frameCamera` points the "DIAL" camera along world +Z with up = +Y (the
+dial sits on the movement's −Z side, ASM-0014, so viewing it means
+looking from its far side back toward the mainplate), and for that
+camera orientation `screen-right = cross(forward, up) = cross((0,0,1),
+(0,1,0)) = (−1,0,0)` — screen-right is world −X, a mirror. Every other
+disc complication's text on this dial (season, month, leap-year) escaped
+this because it is either rotationally symmetric in reading or was
+independently tuned per-glyph; a 4-digit row crossing one window was the
+first place the mirror actually showed, reading "6202" (exactly the
+ones-through-thousands order, reversed) instead of "2026." Fixed by
+swapping the x-assignment so thousands gets the barrel closest to 0
+(screen-left under the mirror) and ones gets the most negative x
+(screen-right): x = -1.8/-2.6/-3.4/-4.2mm for thousands through ones.
+
+Verified live: selecting each of the four `YearDigitComplication` parts
+individually and confirming their declared `axleOrigin.x` against which
+side of a wide zoomed screenshot they render on (before the fix,
+"Year thousands" — the most-negative x — rendered on screen-*right*,
+confirming the mirror); then, after the fix, a pixel-cropped, upscaled
+(`deviceScaleFactor: 3`, Lanczos-resampled) close-up of the actual dial
+window aperture reading "2026" left to right with browser time active
+(system date 2026-10-17). `tsc -b`, `eslint`, 774 Vitest tests
+(unchanged — both fixes are position/dimension constants, no
+domain/kinematic code touched), production build, and the 38-test
+Playwright e2e suite all green (one incidental flake in
+`presets.spec.ts` under parallel workers, confirmed unrelated to this
+change and passing both before and after it when run in isolation).
+
 ## Phase 8.15 follow-up 4: toolbar silently clipped on narrow viewports
 
 Real, pre-existing bug, surfaced by the new pulsing button: reported live

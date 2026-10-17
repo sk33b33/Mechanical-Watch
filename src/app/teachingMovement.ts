@@ -443,28 +443,40 @@ export function createTeachingMovement(): Movement {
   // housing necessarily poked through both. axleHeight = -0.75mm centres the now-smaller
   // (0.8mm-diameter) barrel, plus its housing's own smaller margin/wall overhead, inside that
   // same 1.4mm gap with clearance on both sides (not just re-centred at the old 2mm size, which
-  // cannot fit regardless of centring). Centres at x = -4.2/-3.4/-2.6/-1.8mm, y = 8mm: the same
-  // row position the old drums used (north of the balance cock's own bridge footprint, clear of
-  // the train bridge, comfortably inside the mainplate's own 15mm radius, and clear of the
-  // month/leap-year/season wheels further west at x = -6, ASSY-002 clearance).
+  // cannot fit regardless of centring). Centres at x = -1.8/-2.6/-3.4/-4.2mm (thousands through
+  // ones), y = 8mm: the same row position the old drums used (north of the balance cock's own
+  // bridge footprint, clear of the train bridge, comfortably inside the mainplate's own 15mm
+  // radius, and clear of the month/leap-year/season wheels further west at x = -6, ASSY-002
+  // clearance).
+  //
+  // This x-order is DELIBERATELY the reverse of what "reading left to right" suggests at first
+  // glance (thousands would naturally seem to want the most-negative x). It is not: the dial-side
+  // camera (viewport.ts frameCamera, view "DIAL") looks along world +Z with up = +Y — it views the
+  // dial from the dial's own −Z side (ASM-0014), the opposite face from the default bridge-side
+  // view — so on screen, right = cross(forward, up) = cross((0,0,1),(0,1,0)) = (−1,0,0): screen-
+  // right is world −X, a mirror. A circular window or a single centred digit never betrays this
+  // (symmetric), which is why it went unnoticed through the per-digit rotation/legibility fixes
+  // above; a 4-digit row crossing the window is the first place it shows. Confirmed against a real
+  // rendered screenshot (user report: year showing as "6202" instead of "2026", i.e. exactly the
+  // ones-through-thousands order reversed) before this fix.
   const yearThousandsComplication = createYearDigitComplication({
     name: "Year thousands", monthComplicationId: monthComplication.id, digitPlace: "THOUSANDS", startDigit: 2,
-    axleOrigin: vec2(mm(-4.2), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.75), barrelDiameter: mm(0.8), segmentLength: mm(0.8),
+    axleOrigin: vec2(mm(-1.8), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.75), barrelDiameter: mm(0.8), segmentLength: mm(0.8),
   });
   m = addYearDigitComplication(m, yearThousandsComplication);
   const yearHundredsComplication = createYearDigitComplication({
     name: "Year hundreds", monthComplicationId: monthComplication.id, digitPlace: "HUNDREDS", startDigit: 0,
-    axleOrigin: vec2(mm(-3.4), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.75), barrelDiameter: mm(0.8), segmentLength: mm(0.8),
+    axleOrigin: vec2(mm(-2.6), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.75), barrelDiameter: mm(0.8), segmentLength: mm(0.8),
   });
   m = addYearDigitComplication(m, yearHundredsComplication);
   const yearTensComplication = createYearDigitComplication({
     name: "Year tens", monthComplicationId: monthComplication.id, digitPlace: "TENS", startDigit: 2,
-    axleOrigin: vec2(mm(-2.6), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.75), barrelDiameter: mm(0.8), segmentLength: mm(0.8),
+    axleOrigin: vec2(mm(-3.4), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.75), barrelDiameter: mm(0.8), segmentLength: mm(0.8),
   });
   m = addYearDigitComplication(m, yearTensComplication);
   const yearOnesComplication = createYearDigitComplication({
     name: "Year ones", monthComplicationId: monthComplication.id, digitPlace: "ONES", startDigit: 6,
-    axleOrigin: vec2(mm(-1.8), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.75), barrelDiameter: mm(0.8), segmentLength: mm(0.8),
+    axleOrigin: vec2(mm(-4.2), mm(8)), axleDirection: degrees(0), axleHeight: mm(-0.75), barrelDiameter: mm(0.8), segmentLength: mm(0.8),
   });
   m = addYearDigitComplication(m, yearOnesComplication);
 
@@ -540,19 +552,24 @@ export function createTeachingMovement(): Movement {
   // mean of the four segment centres above) at the barrel's own y = 8mm — not offset the way
   // `windowAbove` offsets the other complications' windows, since a barrel has no rotating
   // position label to catch, just its own four always-forward-facing digit segments. Width
-  // (3.4mm) spans the full four-segment barrel (4 × 0.8mm = 3.2mm) with a small margin; height
-  // (0.45mm, roughly the barrel's own 0.4mm radius, the same "catches about one digit's own
-  // height, not the whole disc" sizing every other jump-driven window already uses) is scaled to
-  // the real 0.8mm barrelDiameter (not the old drum's 2mm, which this window's own height no
-  // longer needs to match now that the z-clearance bug is fixed — see the barrel's own comment
-  // above). DIALWIN-002 checks this window overlaps the "ones" segment's own disc; the other
-  // three segments sit on the same barrel and are shown through the same cutout.
+  // (3.4mm) spans the full four-segment barrel (4 × 0.8mm = 3.2mm) with a small margin.
+  //
+  // Height is NOT comparable to a flat disc window's own radius-based sizing (a real follow-up
+  // bug: the first value here, 0.45mm, was picked that way and reported live as "the year...
+  // jumbled" — two digits visibly stacked through one window after pressing "Set to browser
+  // time"). On a horizontal-axis barrel the relevant comparison is the single digit's own
+  // CIRCUMFERENTIAL ARC LENGTH at the dial-facing point — (barrelDiameter / 2) × (2π /
+  // YEAR_DIGIT_SLOT_COUNT) = 0.4mm × 0.628 ≈ 0.251mm for the real 0.8mm barrelDiameter and 10
+  // digits — since the barrel's own tangent direction at that point is locally vertical
+  // (`yearDigitBarrelRestAngle`'s own doc comment), not its radius. A window taller than that
+  // arc length inevitably reveals part of the next digit (and its divider) above or below the
+  // current one. 0.15mm stays comfortably under it, showing exactly one digit per segment.
   m = addDialWindow(m, createDialWindow({
     name: "Year window",
     dialId: dial.id,
     complicationId: yearOnesComplication.id,
     centre: { x: metres(mm(-3)), y: metres(mm(8)) },
-    outline: { kind: "RECTANGLE", width: mm(3.4), height: mm(0.45) },
+    outline: { kind: "RECTANGLE", width: mm(3.4), height: mm(0.15) },
   }));
 
   // Pallet arbor and balance staff: fixed positions along a line from the escape arbor
