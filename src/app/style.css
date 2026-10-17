@@ -829,9 +829,20 @@ button.active {
   padding: 6px 10px;
 }
 
-/* Keep the toolbar within the window: the notice truncates first. */
+/*
+ * Keep every toolbar control reachable even when the row is wider than the
+ * window (real bug, reported live: a narrow mobile viewport silently
+ * clipped the whole simulation-controls group — Pause/Step/Reset/"Set to
+ * browser time"/speed — off the right edge with no way to reach it, since
+ * a plain `overflow: hidden` here has no scroll or wrap fallback).
+ * Horizontal scroll keeps the single-row layout instead of wrapping,
+ * which would grow the toolbar's own height unpredictably.
+ */
 .toolbar {
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 .toolbar-group,

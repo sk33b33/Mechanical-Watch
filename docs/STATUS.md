@@ -2,6 +2,33 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 4: toolbar silently clipped on narrow viewports
+
+Real, pre-existing bug, surfaced by the new pulsing button: reported live
+as "I still don't see the button" after confirming the deployment itself
+was live and the cache was cleared. `.toolbar` carried a blanket
+`overflow: hidden` (not inside any media query — active at every viewport
+width), while `.toolbar-group` is `flex: none` so no group shrinks to
+fit. Whenever the toolbar's total content (file actions, status, the
+whole simulation-controls group) is wider than the window, whatever
+doesn't fit is invisibly clipped off the right edge, with no scroll and
+no wrap — on a narrow phone viewport that silently cut off the entire
+simulation-controls group (Pause/Step/Reset/"Set to browser time"/speed),
+not anything specific to the new button.
+
+Fixed by switching `.toolbar` from `overflow: hidden` to a horizontally
+scrollable `overflow-x: auto` (keeping `overflow-y: hidden`, plus
+`-webkit-overflow-scrolling: touch` for a natural touch-scroll feel) —
+every control stays reachable by swiping, instead of disappearing.
+Verified live at a real mobile viewport width (412px, matching a typical
+Android phone): before the fix, the simulation-controls group and the
+pulsing button were entirely absent from the DOM's visible bounds, no
+scroll possible; after, swiping the toolbar reveals Pause/Step/Reset/the
+pulsing yellow button/speed selector, each with a real, in-viewport
+bounding box. `tsc -b`, `eslint`, 774 Vitest tests (unchanged — CSS-only,
+no domain/kinematic code touched), production build, and the 38-test
+Playwright e2e suite all green.
+
 ## Phase 8.15 follow-up 3: barrel digits touching; a pulsing "Set to browser time" button
 
 **Digit spacing (real bug).** Reported live: "the numbers on the barrel
