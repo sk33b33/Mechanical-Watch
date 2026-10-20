@@ -2,6 +2,27 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 13: moon phase window trial — whole-disc window with north pointer
+
+A trial at the user's request (option A of the three proposed), kept or reverted after they
+look. The Moon phase window changed from a 0.7mm-radius catch-one-moon circle to a CIRCLE
+centred on the moon disc's own axis, radius 5% over its declared 3mm radius, with
+`pointer: "NORTH"` (ASM-0069): the whole star sky and both moon images show. The pointer marks
+the **full-moon** position — `MOON_PHASE_VISUALIZATION.windowWorldAngleRadians` already puts a
+moon image straight north at the real full-moon instant (ASM-0055), so a moon under the triangle
+reads as full moon and one at the sides as new (checked live on 20 Oct 2026, a few hours before
+the real new moon: both moons sit at the sides). The moon images are plain discs, no phase shading
+or ring marks (offered as an optional extra, not added).
+**Layout side effect:** at its old straight-down position (9.5mm below the hour wheel) the
+6.3mm window's lower edge ran into the 6 o'clock hour marker, so the two 4.75mm moon-train mesh
+legs were bent into a shallow "V" (declared polar angles 244.86° and 295.14°, i.e. ±asin(4.3 /
+4.75) off straight down), landing the disc 8.6mm below the hour wheel with ≈0.45mm clearance.
+Mesh centre distances are unchanged, so every ratio and mesh is as before. **To revert:** restore
+`centre: windowAbove(moonDiscArbor.id, 3, 0.4)`, `outline: { kind: "CIRCLE", radius: mm(0.7) }`
+and drop `pointer` on the Moon phase window, and both moon `polar(...)` angles to 270, in
+`teachingMovement.ts`. The moon phase is not set from the browser date by "Set to browser time"
+(no sourced epoch in the model).
+
 ## Phase 8.15 follow-up 12: leap-year wheel prints words, not digits
 
 At the user's request the leap-year wheel's printed ring now reads "Year 1", "Year 2",

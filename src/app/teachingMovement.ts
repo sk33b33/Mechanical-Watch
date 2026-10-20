@@ -12,7 +12,7 @@ import {
   updateShaft,
   type Movement,
 } from "@/domain/movement";
-import { createShaft, fixedAt, type HandFunction, type Shaft, type ShaftId, type ShaftSupport } from "@/domain/shaft";
+import { createShaft, fixedAt, type HandFunction, type Shaft, type ShaftSupport } from "@/domain/shaft";
 import { createGear, type Gear } from "@/domain/gear";
 import { createGearMesh, type GearMesh } from "@/domain/gearMesh";
 import { createFrame } from "@/domain/frame";
@@ -316,8 +316,16 @@ export function createTeachingMovement(): Movement {
   m = updateShaft(m, barrelArbor.id, { placement: { kind: "COAXIAL", referenceShaftId: barrel.id } });
   // Straight down from the hour wheel (6 o'clock, ASM-0014's dial convention), clear of the
   // train and balance bridges and well inside both the mainplate and the dial.
-  polar(moonReductionArbor, hourWheel, hourToMoon1, 270);
-  polar(moonDiscArbor, moonReductionArbor, moon1ToMoon2, 270);
+  //
+  // Phase 8.15 follow-up 13: the moon disc's window now shows the WHOLE disc (6.3mm across), and
+  // at the former straight-down chain (9.5mm below the hour wheel) its lower edge ran into the
+  // 6 o'clock hour marker (inner edge ≈12.2mm from the centre). Both 4.75mm mesh legs are now
+  // bent into a shallow "V" — hour wheel → reduction arbor → disc at ±64.86° off straight down
+  // (asin(4.3 / 4.75)) — which lands the disc directly below the hour wheel at 8.6mm instead of
+  // 9.5mm, leaving ≈0.45mm clear of the marker. Mesh centre distances are unchanged, so every
+  // gear ratio and mesh is exactly as before; only the declared polar angles differ.
+  polar(moonReductionArbor, hourWheel, hourToMoon1, 244.86);
+  polar(moonDiscArbor, moonReductionArbor, moon1ToMoon2, 295.14);
   // 9 o'clock from the hour wheel, clear of the moonphase train (6 o'clock) and the stem line.
   polar(twentyFourHourArbor, hourWheel, hourToTwentyFourHour, 180);
   // Declared, not mesh-derived (the star is not meshed with anything, ASM-0048) — a plausible
@@ -506,11 +514,13 @@ export function createTeachingMovement(): Movement {
   // under one label's own rim spacing (2π × discRadius × labelRadiusFraction / 12 positions), the
   // same "catch one label at a time" reasoning as the comment above.
   const solved = solvePlacement(m);
-  const windowAbove = (shaftId: ShaftId, discRadiusMm: number, labelRadiusFraction: number): { x: Length; y: Length } => {
-    const at = solved.shaftPositions.get(shaftId);
-    if (at === undefined) throw new Error(`teaching movement: no solved position for arbor ${shaftId}`);
-    return { x: metres(at.x), y: metres(at.y + mm(discRadiusMm * labelRadiusFraction)) };
-  };
+  // Every disc window here is now a whole-wheel window centred on its own arbor's solved position
+  // (follow-ups 7, 9, 11, 13). The former catch-one-label placement, kept here for reverting a
+  // trial: the arbor's solved position moved north by `discRadiusMm × labelRadiusFraction`, i.e.
+  // `{ x: at.x, y: at.y + mm(discRadiusMm * labelRadiusFraction) }` — "+Y = north = the current
+  // reading position", the convention the pointer (ASM-0069) now makes visible. Written
+  // `windowAbove(shaft, discRadiusMm, labelRadiusFraction)` in the revert notes below and in
+  // docs/STATUS.md.
   m = addDialWindow(m, createDialWindow({
     name: "Moon phase window",
     dialId: dial.id,
@@ -521,8 +531,21 @@ export function createTeachingMovement(): Movement {
     // own radius (0.75mm = moonImageRadiusFraction × 3mm), the two stay clear of each other
     // (0.7+0.75=1.45mm) at the real new-moon instant, when their centres are offset×√2≈1.70mm
     // apart — a genuinely dark window, not just a dim one. ASM-0055.
-    centre: windowAbove(moonDiscArbor.id, 3, 0.4),
-    outline: { kind: "CIRCLE", radius: mm(0.7) },
+    //
+    // Whole-disc window (Phase 8.15 follow-up 13, a trial at the user's request — easy to revert
+    // to the former catch-one-moon 0.7mm-radius circle at `windowAbove(moonDiscArbor.id, 3, 0.4)`):
+    // same treatment as the date, month, season and leap-year wheels. Centred on the disc's own
+    // axis, radius 5% over its declared radius, so the whole star sky and both moon images show.
+    // The north pointer (ASM-0069) marks the full-moon position: `MOON_PHASE_VISUALIZATION.
+    // windowWorldAngleRadians` already places a moon image straight north at the real full-moon
+    // instant (ASM-0055), so "a moon under the triangle" reads as full moon.
+    centre: (() => {
+      const at = solved.shaftPositions.get(moonDiscArbor.id);
+      if (at === undefined) throw new Error("teaching movement: no solved position for the moon disc arbor");
+      return { x: metres(at.x), y: metres(at.y) };
+    })(),
+    outline: { kind: "CIRCLE", radius: (moonPhase.diameter / 2) * 1.05 as Length },
+    pointer: "NORTH",
   }));
   // Date window radius (real bug, reported live: "check the numbers for the date gear it looks
   // clumped up together") is NOT just the font-size fix above (ASM-0067) — the window itself was
