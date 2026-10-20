@@ -46,7 +46,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 29;
+export const DESIGN_SCHEMA_VERSION = 30;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -426,6 +426,19 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
     );
     return { ...doc, schemaVersion: 29, movement: { ...movement, dialWindows } };
   },
+  /**
+   * v29 → v30: a dial window gains `bezel` (a printed frame around its edge) and `caption` (a
+   * short printed label below it) — ASM-0074. Every existing window gets `bezel: false` and
+   * `caption: null`: none of them had these concepts before.
+   */
+  29: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.dialWindows)) return doc;
+    const dialWindows = Object.fromEntries(
+      Object.entries(movement.dialWindows).map(([id, w]) => [id, isRecord(w) ? { ...w, bezel: false, caption: null } : w]),
+    );
+    return { ...doc, schemaVersion: 30, movement: { ...movement, dialWindows } };
+  },
 };
 
 export class DesignFileError extends Error {}
@@ -796,6 +809,8 @@ const dialWindow: Decoder<DialWindow> = (value, path) => {
     outline: field(o, "outline", dialWindowOutline, path),
     pointer: field(o, "pointer", nullable(literal("NORTH")), path),
     phaseMarks: field(o, "phaseMarks", boolean, path),
+    bezel: field(o, "bezel", boolean, path),
+    caption: field(o, "caption", nullable(string), path),
   };
 };
 

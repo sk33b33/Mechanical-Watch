@@ -12,10 +12,14 @@ import { createGearGeometry } from "@/geometry/gearGeometry";
 import {
   DIAL_VISUALIZATION,
   DIAL_WINDOW_POINTER_VISUALIZATION,
+  DIAL_WINDOW_PRINT_VISUALIZATION,
   KEYLESS_VISUALIZATION,
   MOON_PHASE_MARK_VISUALIZATION,
   createDiscWithHolesGeometry,
+  createDialWindowBezelGeometry,
+  createDialWindowCaptionTexture,
   createDialWindowPointerGeometry,
+  dialWindowCaptionOffset,
   createMoonPhaseMarkGeometry,
   moonPhaseMarks,
   createZCylinder,
@@ -205,6 +209,35 @@ export function buildDialMeshes(
         face - d.markerThicknessMetres / 2,
       );
       root.add(icon);
+    }
+  }
+  // Printed furniture (ASM-0074): a thin dark bezel frame around a window's edge, and a caption
+  // just below it. Both sit on the dial face like the pointer and the hour markers.
+  const printV = DIAL_WINDOW_PRINT_VISUALIZATION;
+  const bezelWidth = r * printV.bezelWidthFraction;
+  const captionHeight = r * printV.captionHeightFraction;
+  for (const w of ownWindows) {
+    const wx = w.centre.x - centre.x;
+    const wy = w.centre.y - centre.y;
+    if (w.bezel) {
+      const bezel = new THREE.Mesh(createDialWindowBezelGeometry(w.outline, bezelWidth, d.markerThicknessMetres), materials.marker);
+      bezel.position.set(wx, wy, face - d.markerThicknessMetres / 2);
+      root.add(bezel);
+    }
+    if (w.caption !== null && w.caption !== "") {
+      const built = createDialWindowCaptionTexture(w.caption);
+      if (built === null) continue;
+      const southExtent = w.outline.kind === "CIRCLE" ? w.outline.radius : w.outline.height / 2;
+      const offset = dialWindowCaptionOffset(southExtent, w.bezel ? bezelWidth : 0, r * printV.captionGapFraction, captionHeight);
+      const caption = new THREE.Mesh(
+        new THREE.PlaneGeometry(captionHeight * built.aspect, captionHeight),
+        new THREE.MeshBasicMaterial({ map: built.texture, transparent: true, depthWrite: false, side: THREE.DoubleSide }),
+      );
+      // The dial is read from its −Z side, where world +X runs leftward on screen: turn the plane
+      // half a revolution about Y so its front face (and the text reading along local +X) faces −Z.
+      caption.rotation.y = Math.PI;
+      caption.position.set(wx + offset.x, wy + offset.y, face - 1.2 * d.markerThicknessMetres);
+      root.add(caption);
     }
   }
   return { root, disc };

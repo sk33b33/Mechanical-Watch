@@ -20,6 +20,7 @@ import {
   createSeasonTexture,
   createXAxisCylinder,
   createYearDigitBarrelTexture,
+  YEAR_DIGIT_BARREL_VISUALIZATION,
   createZCylinder,
   DATE_LINKAGE_VISUALIZATION,
   DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS,
@@ -254,7 +255,13 @@ function seasonMaterials(color: number, extra: THREE.MeshStandardMaterialParamet
  */
 function yearDigitBarrelMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, sharedSideTexture: THREE.CanvasTexture | null): THREE.MeshStandardMaterial[] {
   const plain = material(color, extra);
-  const side = sharedSideTexture === null ? plain : material(color, { ...extra, map: sharedSideTexture });
+  // The digit strip also drives a modest emissive term (ASM-0074): lit only by the scene's own
+  // lights the pale numerals read dim through the dial window, so they carry some light of their
+  // own. The dark body barely changes (emissive follows the texture), so it still reads as a dark
+  // roller with pale numerals.
+  const side = sharedSideTexture === null
+    ? plain
+    : material(color, { ...extra, map: sharedSideTexture, emissive: 0xffffff, emissiveMap: sharedSideTexture, emissiveIntensity: YEAR_DIGIT_BARREL_VISUALIZATION.emissiveIntensity });
   // createXAxisCylinder's own group order after rotateZ(π/2): [side, cap (was +Y), cap (was −Y)].
   return [side, plain, plain];
 }

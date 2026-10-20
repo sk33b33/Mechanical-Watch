@@ -688,13 +688,18 @@ export function createTeachingMovement(): Movement {
   // a thin sliver of the next digit's top (and its divider) now shows past the current digit —
   // the known cost of a window taller than one slot, accepted in exchange for the larger
   // opening. Past ≈0.5mm the neighbouring digits read as stacked/"jumbled" (verified live), which
-  // is why the height stops at 0.4mm.
+  // is why the height stopped at 0.4mm. Follow-up 16 trimmed it to 0.34mm — still past the
+  // glyph's own 0.218mm, so the digit has clear margin either side, but with the neighbour
+  // slivers mostly gone — and added a thin bezel and a "YEAR" caption (ASM-0074).
   m = addDialWindow(m, createDialWindow({
     name: "Year window",
     dialId: dial.id,
     complicationId: yearOnesComplication.id,
     centre: { x: metres(mm(-3)), y: metres(mm(8)) },
-    outline: { kind: "RECTANGLE", width: mm(3.6), height: mm(0.4) },
+    outline: { kind: "RECTANGLE", width: mm(3.6), height: mm(0.34) },
+    // Printed furniture (follow-up 16, ASM-0074): a thin frame for a crisp edge and a "YEAR" caption below.
+    bezel: true,
+    caption: "YEAR",
   }));
 
   // Pallet arbor and balance staff: fixed positions along a line from the escape arbor

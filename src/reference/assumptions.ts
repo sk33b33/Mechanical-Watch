@@ -447,6 +447,12 @@ export const ASSUMPTIONS = {
     scope: "Moon phase disc texture (visual/L0 display only)",
     status: "Active",
   },
+  "ASM-0074": {
+    summary:
+      "Year window legibility (Phase 8.15 follow-up 16): at the user's request the year window gets three aids, none changing the barrel, digit size or kinematics. (1) Contrast: the digit numerals are pure white (was cream) and the digit strip carries an emissive term (YEAR_DIGIT_BARREL_VISUALIZATION.emissiveIntensity, following the texture so the dark roller body stays dark) because lit only by the scene's lights the pale numerals read dim through the dial window; the dark roller body itself is kept, matching the tally-counter reference photo (ASM-0064). (2) Edges: new DialWindow.bezel, a thin dark frame printed on the dial around the window's edge, and the window's own height trimmed from 0.4mm to 0.34mm -- still above the digit's 0.218mm glyph extent so it is not clipped, but with the neighbouring digits' slivers mostly gone (the slot arc is 0.251mm). (3) Caption: new DialWindow.caption, a short printed label centred just below the window (the teaching movement prints 'YEAR'), rasterised to a transparent canvas texture on a plane facing the dial-side view. Bezel and caption are sized as fractions of the dial radius (DIAL_WINDOW_PRINT_VISUALIZATION), like the hour markers and pointers; visual only (ASM-0004). Domain schema change: DialWindow.bezel (false by default) and DialWindow.caption (null by default), persistence schema v29 to v30 backfills both on every existing window. No kinematic change.",
+    scope: "DialWindow.bezel / DialWindow.caption and year digit strip emissive (Phase 8.15 follow-up, visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

@@ -223,3 +223,32 @@ describe("schema migration v28 → v29 (ASM-0072, DialWindow.phaseMarks)", () =>
   });
 });
 
+describe("schema migration v29 → v30 (ASM-0074, DialWindow.bezel and caption)", () => {
+  it("backfills bezel: false and caption: null on every dial window of a v29 file", () => {
+    const doc = rawDoc(createTeachingMovement());
+    const movement = doc.movement as Record<string, Record<string, Record<string, unknown>>>;
+    const windows = movement.dialWindows ?? {};
+    expect(Object.keys(windows).length).toBeGreaterThan(0);
+    for (const w of Object.values(windows)) {
+      Reflect.deleteProperty(w, "bezel");
+      Reflect.deleteProperty(w, "caption");
+    }
+    const loaded = decodeDesign(JSON.stringify({ ...doc, schemaVersion: 29 }));
+    for (const w of Object.values(loaded.dialWindows)) {
+      expect(w.bezel).toBe(false);
+      expect(w.caption).toBeNull();
+    }
+  });
+
+  it("round-trips the year window's own bezel and caption", () => {
+    const teaching = createTeachingMovement();
+    const year = Object.values(teaching.dialWindows).find((w) => w.name === "Year window");
+    expect(year?.bezel).toBe(true);
+    expect(year?.caption).toBe("YEAR");
+    const loaded = decodeDesign(encodeDesign(teaching));
+    const loadedYear = Object.values(loaded.dialWindows).find((w) => w.name === "Year window");
+    expect(loadedYear?.bezel).toBe(true);
+    expect(loadedYear?.caption).toBe("YEAR");
+  });
+});
+

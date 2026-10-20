@@ -100,6 +100,12 @@ export function dialWindowSection(store: AppStore, win: DialWindow): Section {
       { value: "ON", label: "Lunar phase icons" },
     ], (value) => { edit({ phaseMarks: value === "ON" }); },
       "Fixed lunar-phase icons (new, first quarter, full, last quarter) printed on the dial in a ring around a circular moon-phase window, at the positions a moon image occupies at each phase (ASM-0072). Applies only to a moon-phase window."),
+    selectRow("Bezel", win.bezel ? "ON" : "", [
+      { value: "", label: "None" },
+      { value: "ON", label: "Thin printed frame" },
+    ], (value) => { edit({ bezel: value === "ON" }); },
+      "A thin dark frame printed on the dial around the window's own edge, for a crisp outline (ASM-0074). Visual only."),
+    textRow("Caption", win.caption ?? "", (value) => { edit({ caption: value.trim() === "" ? null : value.trim() }); }),
     readonlyRow("Model", "a circular or rectangular cutout in the dial, in plan — not a real date/month window's actual bevelled aperture (ASM-0051)",
       "Visual only — this project does not claim manufacturing accuracy for the window's shape (same treatment as ASM-0005's tooth proportions and ASM-0020's dial markers)."),
     readonlyRow("Currently shows", reading ?? "—",

@@ -77,6 +77,10 @@ export interface DialWindow {
    * full and last quarter, at the positions a moon image occupies at each phase. False (the usual case) for none.
    */
   phaseMarks: boolean;
+  /** A thin dark frame printed on the dial around the window's own edge (ASM-0074), or false for none. */
+  bezel: boolean;
+  /** A short caption printed on the dial just below the window (ASM-0074, e.g. "YEAR"), or null for none. */
+  caption: string | null;
 }
 
 export interface CreateDialWindowParams {
@@ -87,8 +91,10 @@ export interface CreateDialWindowParams {
   outline: DialWindowOutline;
   pointer?: DialWindowPointer | null;
   phaseMarks?: boolean;
+  bezel?: boolean;
+  caption?: string | null;
 }
 
 export function createDialWindow(params: CreateDialWindowParams): DialWindow {
-  return { pointer: null, phaseMarks: false, ...params, id: createId("dialWindow"), type: "DialWindow" };
+  return { pointer: null, phaseMarks: false, bezel: false, caption: null, ...params, id: createId("dialWindow"), type: "DialWindow" };
 }

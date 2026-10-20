@@ -98,6 +98,99 @@ export function createDialWindowPointerGeometry(baseWidth: number, height: numbe
   return new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false });
 }
 
+/**
+ * Printed furniture around a dial window (ASM-0074, visual only, ASM-0004): a thin
+ * dark bezel frame hugging the window's edge, and a short caption just below it.
+ * Sized as fractions of the DIAL's own radius — the same derivation convention the
+ * hour markers and the pointer (`DIAL_WINDOW_POINTER_VISUALIZATION`) use.
+ */
+export const DIAL_WINDOW_PRINT_VISUALIZATION = {
+  /** Bezel width (how far it extends outward from the window's edge) as a fraction of the dial radius. */
+  bezelWidthFraction: 0.005,
+  /** Caption text height as a fraction of the dial radius. */
+  captionHeightFraction: 0.036,
+  /** Gap between the window's (or its bezel's) outer edge and the caption's top, as a fraction of the dial radius. */
+  captionGapFraction: 0.012,
+  captionColor: "#1a1e22",
+  /** Canvas height in px the caption is rasterised at (width follows the text's own measured width). */
+  captionTexturePx: 128,
+  assumption: "ASM-0074" satisfies AssumptionId,
+} as const;
+
+/** The window shapes a bezel can frame (a plain-data mirror of the domain outline, so this module stays domain-free). */
+export type DialWindowFrameOutline =
+  | { readonly kind: "CIRCLE"; readonly radius: number }
+  | { readonly kind: "RECTANGLE"; readonly width: number; readonly height: number };
+
+/**
+ * Extruded frame hugging a window's own outline from the outside (ASM-0074): the outline
+ * grown by `bezelWidth` on every side, with the window's own shape cut out of the middle,
+ * spanning z ∈ [0, thickness]. Centred on the local origin.
+ */
+export function createDialWindowBezelGeometry(outline: DialWindowFrameOutline, bezelWidth: number, thickness: number): THREE.ExtrudeGeometry {
+  const outer = new THREE.Shape();
+  const inner = new THREE.Path();
+  if (outline.kind === "CIRCLE") {
+    outer.absarc(0, 0, outline.radius + bezelWidth, 0, Math.PI * 2, false);
+    inner.absarc(0, 0, outline.radius, 0, Math.PI * 2, true);
+  } else {
+    const hw = outline.width / 2;
+    const hh = outline.height / 2;
+    outer.moveTo(-hw - bezelWidth, -hh - bezelWidth);
+    outer.lineTo(hw + bezelWidth, -hh - bezelWidth);
+    outer.lineTo(hw + bezelWidth, hh + bezelWidth);
+    outer.lineTo(-hw - bezelWidth, hh + bezelWidth);
+    outer.closePath();
+    inner.moveTo(-hw, -hh);
+    inner.lineTo(-hw, hh);
+    inner.lineTo(hw, hh);
+    inner.lineTo(hw, -hh);
+    inner.closePath();
+  }
+  outer.holes.push(inner);
+  return new THREE.ExtrudeGeometry(outer, { depth: thickness, bevelEnabled: false, curveSegments: 48 });
+}
+
+/**
+ * Where a window's caption sits, relative to the window's own centre, in the dial plane
+ * (ASM-0074): centred under the window, its top `captionGap` below the window's (bezel's)
+ * southern edge. `southExtent` is the window's own half-height (a rectangle) or radius (a
+ * circle), `bezelWidth` how far a bezel adds to it (0 for none).
+ */
+export function dialWindowCaptionOffset(southExtent: number, bezelWidth: number, captionGap: number, captionHeight: number): { x: number; y: number } {
+  return { x: 0, y: -(southExtent + bezelWidth + captionGap + captionHeight / 2) };
+}
+
+/**
+ * A transparent-background caption texture for a dial window (ASM-0074), or null where no
+ * canvas exists. The texture is drawn at a fixed pixel height; `aspect` (width / height) lets
+ * the caller size a plane to the dial's own scale.
+ */
+export function createDialWindowCaptionTexture(text: string): { texture: THREE.CanvasTexture; aspect: number } | null {
+  const v = DIAL_WINDOW_PRINT_VISUALIZATION;
+  const height = v.captionTexturePx;
+  const fontPx = Math.round(height * 0.78);
+  const probe = document.createElement("canvas").getContext("2d");
+  if (probe === null) return null;
+  probe.font = `bold ${String(fontPx)}px sans-serif`;
+  const padding = Math.round(height * 0.2);
+  const width = Math.max(height, Math.ceil(probe.measureText(text).width) + 2 * padding);
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (ctx === null) return null;
+  ctx.font = `bold ${String(fontPx)}px sans-serif`;
+  ctx.fillStyle = v.captionColor;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, width / 2, height / 2);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return { texture, aspect: width / height };
+}
+
 /** The four lunar phases a moon-phase window's fixed marks name (ASM-0072). */
 export type MoonPhaseMarkKind = "NEW" | "FIRST_QUARTER" | "FULL" | "LAST_QUARTER";
 
@@ -1359,7 +1452,9 @@ export const YEAR_DIGIT_BARREL_VISUALIZATION = {
    */
   textRotationRadians: -Math.PI / 2,
   /** Pale numerals on a dark barrel body, matching the mechanical tally-counter reference photo the user provided directly, whose own digit rollers read as dark bodies with light printed numerals. */
-  textColor: "#f2ece0",
+  textColor: "#ffffff",
+  /** Fraction of the numerals' own colour the digit strip emits on its own (ASM-0074), so they read through the dial window rather than dimly. */
+  emissiveIntensity: 0.7,
   backgroundColor: "#1c1915",
   dividerColor: "#3a342c",
   dividerWidthPx: 3,
@@ -1467,6 +1562,9 @@ export function createYearDigitBarrelTexture(digitCount: number): THREE.CanvasTe
     }
   }
   const texture = new THREE.CanvasTexture(canvas);
+  // sRGB-tagged so the emissive term (ASM-0074) reads the dark body and pale numerals at their
+  // painted colours instead of treating the canvas as linear light (which washes the body grey).
+  texture.colorSpace = THREE.SRGBColorSpace;
   texture.needsUpdate = true;
   return texture;
 }

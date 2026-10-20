@@ -19,7 +19,9 @@ import {
   discLabelFittedFontSizePx,
   DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS,
   DISC_LABEL_RING_DIRECTION,
+  createDialWindowBezelGeometry,
   createMoonPhaseMarkGeometry,
+  dialWindowCaptionOffset,
   discLabelPlacements,
   discLabelSlotArcLengthPx,
   DIAL_WINDOW_VISUALIZATION,
@@ -1160,6 +1162,44 @@ describe("moonPhaseIconPlacements (ASM-0073)", () => {
       expect(a?.phase).toBeCloseTo(b?.phase ?? NaN, 12);
       expect(Math.abs(((a?.canvasAngle ?? 0) - (b?.canvasAngle ?? 0)) % (2 * Math.PI))).toBeCloseTo(Math.PI, 9);
     }
+  });
+});
+
+describe("createDialWindowBezelGeometry (ASM-0074)", () => {
+  const box = (g: ReturnType<typeof createDialWindowBezelGeometry>): THREE.Box3 => {
+    g.computeBoundingBox();
+    return g.boundingBox ?? new THREE.Box3();
+  };
+
+  it("frames a rectangular window from the outside: outer extent = window + bezel on every side, thickness as asked", () => {
+    const b = box(createDialWindowBezelGeometry({ kind: "RECTANGLE", width: 3e-3, height: 0.4e-3 }, 0.1e-3, 0.03e-3));
+    expect(b.max.x).toBeCloseTo(1.6e-3, 9);
+    expect(b.min.x).toBeCloseTo(-1.6e-3, 9);
+    expect(b.max.y).toBeCloseTo(0.3e-3, 9);
+    expect(b.min.y).toBeCloseTo(-0.3e-3, 9);
+    expect(b.max.z - b.min.z).toBeCloseTo(0.03e-3, 9);
+  });
+
+  it("frames a circular window from the outside, and leaves the window's own area open", () => {
+    const g = createDialWindowBezelGeometry({ kind: "CIRCLE", radius: 2e-3 }, 0.1e-3, 0.03e-3);
+    const b = box(g);
+    expect(b.max.x).toBeCloseTo(2.1e-3, 6);
+    expect(b.min.y).toBeCloseTo(-2.1e-3, 6);
+    const pos = g.attributes.position;
+    if (pos === undefined) throw new Error("no positions");
+    let innermost = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < pos.count; i += 1) innermost = Math.min(innermost, Math.hypot(pos.getX(i), pos.getY(i)));
+    expect(innermost).toBeCloseTo(2e-3, 6);
+  });
+});
+
+describe("dialWindowCaptionOffset (ASM-0074)", () => {
+  it("centres the caption under the window, its top the gap below the window's (bezel's) southern edge", () => {
+    const o = dialWindowCaptionOffset(0.2e-3, 0.05e-3, 0.17e-3, 0.5e-3);
+    expect(o.x).toBe(0);
+    // top of the caption = −(south extent + bezel + gap); centre is half the caption height further.
+    expect(o.y + 0.25e-3).toBeCloseTo(-(0.2e-3 + 0.05e-3 + 0.17e-3), 12);
+    expect(dialWindowCaptionOffset(0.2e-3, 0, 0.17e-3, 0.5e-3).y).toBeGreaterThan(o.y);
   });
 });
 

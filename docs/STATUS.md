@@ -2,6 +2,24 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 16: year window — contrast, bezel, tighter height, "YEAR" caption
+
+At the user's request (suggestions 1-3 of four offered; the barrel and digit size are untouched,
+the larger-barrel option 4 was left for later). **Contrast:** the numerals are pure white (was
+cream) and the digit strip carries an emissive term that follows its own texture
+(`YEAR_DIGIT_BARREL_VISUALIZATION.emissiveIntensity`), so the digits read through the dial window
+instead of dimly while the roller body stays dark (tally-counter reference, ASM-0064); the strip
+texture is now sRGB-tagged, which the emissive term needs (left as linear it washed the body grey —
+found live). **Edges:** new `DialWindow.bezel` (a thin dark printed frame around the window) and
+the window's height trimmed 0.4 → 0.34mm. The neighbour slivers shrank but are not entirely gone:
+the digit sits a little low in the window as seen from the dial-side camera (parallax from the
+off-axis position), so a trace of the next digit's top still peeks in above each numeral. **Caption:**
+new `DialWindow.caption` (a short label printed centred just below the window; the teaching
+movement prints "YEAR"). Both new fields are in the Inspector ("Bezel", "Caption"); persistence
+schema v29 → v30 backfills `bezel: false`, `caption: null` (ASM-0074). **To revert:** `bezel:
+false` and `caption: null` on the Year window, height back to 0.4mm, `textColor` back to
+`#f2ece0` and `emissiveIntensity` to 0.
+
 ## Phase 8.15 follow-up 15: phases printed on the moon wheel itself
 
 At the user's request the two plain moon discs on the dark moon wheel are gone, replaced by a ring
