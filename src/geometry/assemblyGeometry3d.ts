@@ -830,7 +830,7 @@ export const MOON_PHASE_VISUALIZATION = {
    */
   phasesPerImage: 8,
   /** Radius of the ring the phase icons sit on, as a fraction of the disc's own radius. */
-  iconRingRadiusFraction: 0.66,
+  iconRingRadiusFraction: 0.84,
   /** Each phase icon's own radius, as a fraction of the disc's own radius. */
   iconRadiusFraction: 0.115,
   /** The unlit part of an icon (the moon's own dark limb), a little lighter than the sky so a new moon still reads. */

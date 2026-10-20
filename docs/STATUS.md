@@ -16,7 +16,7 @@ waxing and on the right while waning (Southern Hemisphere, as declared). **Verif
 setting the disc to 0, 12.5, 25, 37.5, 50 and 75 % of a lunation and reading the icon under the
 pointer: empty ring, thin crescent, half, gibbous, full, half (waning). Placement reuses the
 label-ring calibration (ASM-0071), so the icon under the pointer is the phase the model reports;
-between two icons the pointer sits between two phases. **Layout:** with the dial icons gone, the
+between two icons the pointer sits between two phases. The icon ring sits at 0.84 of the disc radius (first drawn at 0.66, then moved out to the wheel's edge at the user's request); the icons keep their size and stay fully inside the disc. **Layout:** with the dial icons gone, the
 moon train's V is back at the follow-up 13 geometry (disc 8.6mm below the hour wheel, ≈0.45mm clear
 of the 6 o'clock marker). **To revert:** restore the two-circle drawing in `createMoonPhaseTexture`
 (git history, follow-up 14) and set `phaseMarks: true` for the dial ring.
