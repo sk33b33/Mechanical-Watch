@@ -1104,9 +1104,11 @@ export const YEAR_DIGIT_BARREL_VISUALIZATION = {
    * Phase 8.15 follow-up 7 ("I can barely see the year") raised this to
    * 125px: the cap-height extent (≈89px, measured with `ctx.measureText`)
    * still leaves a visible gap inside the 102.4px slot, and the year
-   * window (0.235mm tall) sits between that glyph extent (≈0.218mm) and
-   * the 0.251mm slot arc. Going larger would merge adjacent digits; the
-   * barrel diameter itself is capped by the mainplate-to-dial clearance.
+   * window was first sized (0.235mm tall) between that glyph extent
+   * (≈0.218mm) and the 0.251mm slot arc; follow-up 8 enlarged only the
+   * window (now 0.4mm) and left this font and the barrel as they are. Going
+   * larger here would merge adjacent digits; the barrel diameter itself is
+   * capped by the mainplate-to-dial clearance.
    */
   fontSizePx: 125,
   /**

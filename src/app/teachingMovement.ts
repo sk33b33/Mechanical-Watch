@@ -633,17 +633,19 @@ export function createTeachingMovement(): Movement {
   // 8.15 follow-up 3) already used) without approaching the next digit or its divider.
   //
   // Phase 8.15 follow-up 7 ("I can barely see the year"): the digits were raised to
-  // `fontSizePx: 125` (glyph extent ≈ 89px → ≈0.218mm on the barrel) and the window to 0.235mm,
-  // which still sits inside the (0.218mm, 0.251mm) band. That is the practical ceiling: the
-  // barrel diameter (and so the glyph's circumferential extent per digit slot) is capped at
-  // ≈0.82mm by the 1.4mm mainplate-to-dial clearance, so digits cannot grow further without
-  // crowding the neighbouring digit's slot.
+  // `fontSizePx: 125` (glyph extent ≈ 89px → ≈0.218mm on the barrel). Follow-up 8 then enlarged
+  // the WINDOW alone (barrel, digit font and every other dimension unchanged, at the user's
+  // explicit direction): 3.6mm × 0.4mm. This deliberately exceeds the 0.251mm slot arc above, so
+  // a thin sliver of the next digit's top (and its divider) now shows past the current digit —
+  // the known cost of a window taller than one slot, accepted in exchange for the larger
+  // opening. Past ≈0.5mm the neighbouring digits read as stacked/"jumbled" (verified live), which
+  // is why the height stops at 0.4mm.
   m = addDialWindow(m, createDialWindow({
     name: "Year window",
     dialId: dial.id,
     complicationId: yearOnesComplication.id,
     centre: { x: metres(mm(-3)), y: metres(mm(8)) },
-    outline: { kind: "RECTANGLE", width: mm(3.4), height: mm(0.235) },
+    outline: { kind: "RECTANGLE", width: mm(3.6), height: mm(0.4) },
   }));
 
   // Pallet arbor and balance staff: fixed positions along a line from the escape arbor

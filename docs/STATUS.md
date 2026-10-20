@@ -2,6 +2,16 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 8: year window enlarged, barrel and digits unchanged
+
+Per the user's direction ("keep the barrel and digits exactly as they are now,
+just make the window bigger"), only the Year window outline changed:
+3.4mm × 0.235mm → 3.6mm × 0.4mm. Barrel (0.8mm), digit font (125px) and segment
+layout are untouched. **Trade-off, declared:** 0.4mm exceeds the 0.251mm
+per-digit slot arc, so the top sliver of the neighbouring digit and its divider
+now peek into the window (checked live; at 0.5mm neighbours clearly stack and the
+year reads as jumbled, so the height stops at 0.4mm).
+
 ## Phase 8.15 follow-up 7: leap-year whole-wheel window with north pointer; larger year digits
 
 Two requests, live: (1) do the season-window treatment for the leap-year wheel
@@ -19,7 +29,7 @@ west of the month star to its south-west diagonal at the same 4mm centre
 distance (`teachingMovement.ts`). This is a declared teaching-layout change,
 not a physical-validation claim.
 
-**Year window / digits.** Digit font 105→125px and window height 0.22→0.235mm
+**Year window / digits.** Digit font 105→125px and window height 0.22→0.235mm (enlarged again in follow-up 8)
 (inside the glyph-extent ≈0.218mm / slot-arc 0.251mm band). This is ≈19%
 larger, not more: digit size is bounded by the barrel diameter (≈0.82mm cap
 from the 1.4mm mainplate-to-dial clearance), so larger digits would merge into
