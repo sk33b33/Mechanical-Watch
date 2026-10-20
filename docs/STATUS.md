@@ -2,6 +2,22 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 17: five-spoke date and month wheels
+
+At the user's request the date and month star wheels are drawn as open five-spoke wheels — hub,
+five constant-width spokes and the gaps between them — with the gaps stopping **below the printed
+numbers and names** so nothing encroaches on them. The solid rim from 0.58 of the radius out to the
+tip keeps the label ring (at 0.72) whole; checked live, no gap meets a date number or a month name
+(`createSpokedWheelGeometry`, `SPOKED_WHEEL_VISUALIZATION`, ASM-0075). The wheel reuses the leap-year
+wheel's extruded-geometry cap/UV reshaping, so the labels and their calibrated north reading are
+unchanged (date still reads 20 and month October under their pointers). Visual only: tip radius,
+thickness, positions and every kinematic result are as before, and the gaps do not feed any
+clearance check. Through the gaps you now see what is behind the wheel (the mainplate, and the
+month linkage's declutch wheel near the date wheel's rim). The Leap-year and Season wheels are
+unchanged. **To revert:** use `createZCylinder` for the date and month meshes in `viewport.ts`
+(the previous code is in git history) — or keep the geometry and set `openingOuterRadiusFraction`
+small to shrink the gaps.
+
 ## Phase 8.15 follow-up 16: year window — contrast, bezel, tighter height, "YEAR" caption
 
 At the user's request (suggestions 1-3 of four offered; the barrel and digit size are untouched,

@@ -21,6 +21,9 @@ import {
   DISC_LABEL_RING_DIRECTION,
   createDialWindowBezelGeometry,
   createMoonPhaseMarkGeometry,
+  createSpokedWheelGeometry,
+  SPOKED_WHEEL_VISUALIZATION,
+  spokedWheelOpenings,
   dialWindowCaptionOffset,
   discLabelPlacements,
   discLabelSlotArcLengthPx,
@@ -1200,6 +1203,97 @@ describe("dialWindowCaptionOffset (ASM-0074)", () => {
     // top of the caption = −(south extent + bezel + gap); centre is half the caption height further.
     expect(o.y + 0.25e-3).toBeCloseTo(-(0.2e-3 + 0.05e-3 + 0.17e-3), 12);
     expect(dialWindowCaptionOffset(0.2e-3, 0, 0.17e-3, 0.5e-3).y).toBeGreaterThan(o.y);
+  });
+});
+
+describe("spoked date/month wheels (ASM-0075)", () => {
+  const R = 2.5e-3;
+  const v = SPOKED_WHEEL_VISUALIZATION;
+  const shoelace = (pts: { x: number; y: number }[]): number => {
+    let a = 0;
+    pts.forEach((p, i) => {
+      const q = pts[(i + 1) % pts.length];
+      if (q !== undefined) a += p.x * q.y - q.x * p.y;
+    });
+    return Math.abs(a) / 2;
+  };
+
+  it("has five gaps, one between each pair of adjacent spokes, all between the hub and the opening radius", () => {
+    const openings = spokedWheelOpenings(R);
+    expect(openings).toHaveLength(v.spokeCount);
+    for (const opening of openings) {
+      for (const p of opening) {
+        const r = Math.hypot(p.x, p.y);
+        expect(r).toBeGreaterThanOrEqual(R * v.hubRadiusFraction - 1e-12);
+        expect(r).toBeLessThanOrEqual(R * v.openingOuterRadiusFraction + 1e-12);
+      }
+    }
+  });
+
+  it("keeps every spoke a constant width: each gap's corner sits half a spoke-width off its spoke's centreline", () => {
+    const spacing = (2 * Math.PI) / v.spokeCount;
+    const halfWidth = (R * v.spokeWidthFraction) / 2;
+    spokedWheelOpenings(R, 0.3).forEach((opening, k) => {
+      const first = opening[0];
+      const last = opening[opening.length - 1];
+      if (first === undefined || last === undefined) throw new Error("empty gap");
+      const spoke0 = 0.3 + k * spacing;
+      const spoke1 = spoke0 + spacing;
+      // Perpendicular distance of a point from a spoke's centreline through the origin.
+      const off = (p: { x: number; y: number }, angle: number): number => Math.abs(-Math.sin(angle) * p.x + Math.cos(angle) * p.y);
+      expect(off(first, spoke0)).toBeCloseTo(halfWidth, 12);
+      expect(off(opening[v.arcSegments] ?? first, spoke1)).toBeCloseTo(halfWidth, 12);
+      expect(off(opening[v.arcSegments + 1] ?? last, spoke1)).toBeCloseTo(halfWidth, 12);
+      expect(off(last, spoke0)).toBeCloseTo(halfWidth, 12);
+    });
+  });
+
+  it("stops the gaps well below the label ring, so no gap can cut into a number or a name", () => {
+    // Labels sit at labelRadiusFraction and, measured live, reach about 0.06 of the radius either side.
+    expect(v.openingOuterRadiusFraction + 0.1).toBeLessThanOrEqual(DIAL_WINDOW_VISUALIZATION.labelRadiusFraction);
+  });
+
+  it("builds a disc of the tip radius whose face area is the full circle minus the five gaps, grouped like a cylinder disc", () => {
+    const thickness = 0.15e-3;
+    const g = createSpokedWheelGeometry(R, thickness);
+    g.computeBoundingBox();
+    const box = g.boundingBox ?? new THREE.Box3();
+    expect(box.max.x).toBeCloseTo(R, 6);
+    expect(box.min.y).toBeCloseTo(-R, 6);
+    expect(box.max.z).toBeCloseTo(thickness / 2, 9);
+    expect(box.min.z).toBeCloseTo(-thickness / 2, 9);
+    expect(new Set(g.groups.map((group) => group.materialIndex))).toEqual(new Set([0, 1, 2]));
+
+    // Area of the top (+Z) face: sum of its triangles.
+    const pos = g.attributes.position;
+    const index = g.index;
+    if (pos === undefined) throw new Error("no positions");
+    let faceArea = 0;
+    const tri = (a: number, b: number, c: number): void => {
+      if (!(pos.getZ(a) > 0 && pos.getZ(b) > 0 && pos.getZ(c) > 0)) return;
+      faceArea += Math.abs((pos.getX(b) - pos.getX(a)) * (pos.getY(c) - pos.getY(a)) - (pos.getX(c) - pos.getX(a)) * (pos.getY(b) - pos.getY(a))) / 2;
+    };
+    if (index === null) for (let i = 0; i < pos.count; i += 3) tri(i, i + 1, i + 2);
+    else for (let i = 0; i < index.count; i += 3) tri(index.getX(i), index.getX(i + 1), index.getX(i + 2));
+    const gaps = spokedWheelOpenings(R).reduce((sum, o) => sum + shoelace(o), 0);
+    // The disc's own outline is a 64-segment polygon, a hair under the true circle.
+    const expected = Math.PI * R * R - gaps;
+    expect(Math.abs(faceArea - expected) / expected).toBeLessThan(1e-3);
+  });
+
+  it("normalises the cap UVs into the unit square, as the label-ring texture expects", () => {
+    const g = createSpokedWheelGeometry(R, 0.15e-3);
+    const uv = g.attributes.uv;
+    if (uv === undefined) throw new Error("no uvs");
+    for (const group of g.groups) {
+      if (group.materialIndex === 0) continue;
+      for (let i = group.start; i < group.start + group.count; i += 1) {
+        expect(uv.getX(i)).toBeGreaterThanOrEqual(-1e-9);
+        expect(uv.getX(i)).toBeLessThanOrEqual(1 + 1e-9);
+        expect(uv.getY(i)).toBeGreaterThanOrEqual(-1e-9);
+        expect(uv.getY(i)).toBeLessThanOrEqual(1 + 1e-9);
+      }
+    }
   });
 });
 

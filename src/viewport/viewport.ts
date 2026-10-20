@@ -14,6 +14,7 @@ import {
   createDiscLabelTexture,
   createFrameGeometry,
   createGenevaWheelGeometry,
+  createSpokedWheelGeometry,
   createHandGeometry,
   createMoonPhaseTexture,
   createRodGeometry,
@@ -609,9 +610,10 @@ export class Viewport {
       const meshZ = this.displayZ(date.starZCentre);
       const dateLabels = findDiscComplication(movement, date.id)?.positionLabels ?? null;
       const mesh = new THREE.Mesh(
-        createZCylinder(date.starTipDiameter / 2, meshZ - date.starThickness / 2, meshZ + date.starThickness / 2, 64),
+        createSpokedWheelGeometry(date.starTipDiameter / 2, date.starThickness),
         discMaterials(COLORS.dateStar, { metalness: 0.1, roughness: 0.7 }, dateLabels, DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS),
       );
+      mesh.position.z = meshZ;
       this.addPickable(group, mesh, { kind: "dateStar", entityId: date.id, baseColor: COLORS.dateStar });
       this.cappableSolids.push({
         positionX: group.position.x,
@@ -669,9 +671,10 @@ export class Viewport {
       const meshZ = this.displayZ(month.starZCentre);
       const monthLabels = findDiscComplication(movement, month.id)?.positionLabels ?? null;
       const mesh = new THREE.Mesh(
-        createZCylinder(month.starTipDiameter / 2, meshZ - month.starThickness / 2, meshZ + month.starThickness / 2, 64),
+        createSpokedWheelGeometry(month.starTipDiameter / 2, month.starThickness),
         discMaterials(COLORS.monthStar, { metalness: 0.1, roughness: 0.7 }, monthLabels, DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS),
       );
+      mesh.position.z = meshZ;
       this.addPickable(group, mesh, { kind: "monthStar", entityId: month.id, baseColor: COLORS.monthStar });
       this.cappableSolids.push({
         positionX: group.position.x,

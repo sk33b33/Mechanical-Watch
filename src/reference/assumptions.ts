@@ -453,6 +453,12 @@ export const ASSUMPTIONS = {
     scope: "DialWindow.bezel / DialWindow.caption and year digit strip emissive (Phase 8.15 follow-up, visual/L0 display only)",
     status: "Active",
   },
+  "ASM-0075": {
+    summary:
+      "Five-spoke date and month wheels (Phase 8.15 follow-up 17): at the user's request the date and month star wheels are drawn as open five-spoke wheels -- a central hub, five constant-width spokes and the gaps between them -- instead of solid discs, with the gaps stopping below the printed number/name ring ('start below the date numbers and below the month names to not encroach'). The gaps end at 0.58 of the tip radius while the label ring sits at 0.72 (DIAL_WINDOW_VISUALIZATION.labelRadiusFraction) and the labels extend only a few hundredths either side, so no gap cuts a label; the solid rim from there to the tip keeps the label ring whole. Spoke count 5, spoke width 0.13, hub radius 0.2 and the opening radius are named fractions of the tip radius (SPOKED_WHEEL_VISUALIZATION), declared visual choices and not a real calendar wheel's spoke design (SRC-0042 describes only a thirty-one-tooth star; no spoke geometry is sourced). The wheel reuses the leap-year wheel's extruded-geometry cap and UV reshaping, so the existing label ring and its calibrated north-reading rule (ASM-0068, ASM-0071) apply unchanged. Visual only (ASM-0004): tip radius, thickness, tooth/position count, mass properties and every kinematic result are unchanged, and the gaps do not feed any clearance or interference check (the wheel's footprint for section capping stays the full circle).",
+    scope: "Date/month star wheel geometry (visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

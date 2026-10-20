@@ -1202,6 +1202,89 @@ export function createGenevaWheelGeometry(tipRadius: number, thickness: number, 
 }
 
 /**
+ * The open five-spoke look of the date and month wheels (ASM-0075, visual only,
+ * ASM-0004): a hub, `spokeCount` constant-width spokes and gaps between them, all
+ * inside a solid outer rim that keeps the printed label ring whole. Every size is
+ * a fraction of the wheel's own tip radius. The gaps stop at
+ * `openingOuterRadiusFraction`, below the inner edge of the label band
+ * (labels sit at `DIAL_WINDOW_VISUALIZATION.labelRadiusFraction` = 0.72 of the
+ * radius and extend a few hundredths either side), so no gap ever cuts into a number
+ * or a name.
+ */
+export const SPOKED_WHEEL_VISUALIZATION = {
+  spokeCount: 5,
+  /** Each spoke's own (constant) width, as a fraction of the tip radius. */
+  spokeWidthFraction: 0.13,
+  /** The solid central hub the spokes meet in. */
+  hubRadiusFraction: 0.2,
+  /** Where the gaps stop, outward: the solid rim runs from here to the tip. */
+  openingOuterRadiusFraction: 0.58,
+  /** Segments used to approximate each gap's own inner and outer circular edge. */
+  arcSegments: 14,
+  assumption: "ASM-0075" satisfies AssumptionId,
+} as const;
+
+/**
+ * The gaps between a spoked wheel's spokes, as polygons in the wheel's own frame
+ * (ASM-0075): gap `k` lies between the spokes at `baseAngle + k·2π/n` and
+ * `baseAngle + (k+1)·2π/n`, bounded inside by the hub circle and outside by the
+ * opening radius, with straight, parallel-to-the-spoke sides one half spoke-width
+ * off each spoke's centreline. Pure geometry, no THREE dependency.
+ */
+export function spokedWheelOpenings(tipRadius: number, baseAngle = 0): Point2D[][] {
+  const v = SPOKED_WHEEL_VISUALIZATION;
+  const n = v.spokeCount;
+  const spacing = (2 * Math.PI) / n;
+  const rIn = tipRadius * v.hubRadiusFraction;
+  const rOut = tipRadius * v.openingOuterRadiusFraction;
+  const halfWidth = (tipRadius * v.spokeWidthFraction) / 2;
+  const edgeAngle = (radius: number): number => Math.asin(halfWidth / radius);
+  const openings: Point2D[][] = [];
+  for (let k = 0; k < n; k += 1) {
+    const a0 = baseAngle + k * spacing;
+    const a1 = a0 + spacing;
+    const outerFrom = a0 + edgeAngle(rOut);
+    const outerTo = a1 - edgeAngle(rOut);
+    const innerFrom = a1 - edgeAngle(rIn);
+    const innerTo = a0 + edgeAngle(rIn);
+    const points: Point2D[] = [];
+    for (let i = 0; i <= v.arcSegments; i += 1) {
+      const a = outerFrom + ((outerTo - outerFrom) * i) / v.arcSegments;
+      points.push({ x: rOut * Math.cos(a), y: rOut * Math.sin(a) });
+    }
+    for (let i = 0; i <= v.arcSegments; i += 1) {
+      const a = innerFrom + ((innerTo - innerFrom) * i) / v.arcSegments;
+      points.push({ x: rIn * Math.cos(a), y: rIn * Math.sin(a) });
+    }
+    openings.push(points);
+  }
+  return openings;
+}
+
+/**
+ * Extruded geometry for a five-spoke date or month wheel (ASM-0075): a solid disc of
+ * `tipRadius` with `spokedWheelOpenings` cut through it, depth [0, thickness] shifted to
+ * be centred on z = 0 (position the mesh at the wheel's own zCentre, the same convention
+ * `createGenevaWheelGeometry` uses). Its cap groups and UVs are reshaped to
+ * `CylinderGeometry`'s own convention (`reshapeCapGroupsForDiscMaterials`), so the same
+ * `discMaterials` label ring paints onto it exactly as on a plain `createZCylinder` disc.
+ */
+export function createSpokedWheelGeometry(tipRadius: number, thickness: number, baseAngle = 0): THREE.ExtrudeGeometry {
+  const shape = new THREE.Shape();
+  shape.absarc(0, 0, tipRadius, 0, Math.PI * 2, false);
+  for (const opening of spokedWheelOpenings(tipRadius, baseAngle)) {
+    const hole = new THREE.Path();
+    opening.forEach(({ x, y }, i) => { if (i === 0) hole.moveTo(x, y); else hole.lineTo(x, y); });
+    hole.closePath();
+    shape.holes.push(hole);
+  }
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false, curveSegments: 64 });
+  geometry.translate(0, 0, -thickness / 2);
+  reshapeCapGroupsForDiscMaterials(geometry, tipRadius);
+  return geometry;
+}
+
+/**
  * `ExtrudeGeometry`'s own default material groups are `[caps (front and
  * back combined), sides]` — not `CylinderGeometry`'s `[sides, +Z cap, −Z
  * cap]` that `discMaterials` (`src/viewport/viewport.ts`) is built
