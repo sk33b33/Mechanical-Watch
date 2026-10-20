@@ -54,20 +54,22 @@ describe("dial window rules", () => {
     expect(byName("Season window")).toBe("CIRCLE");
   });
 
-  it("the teaching movement's own moon phase window carries phase marks and reports no errors (ASM-0072)", () => {
+  it("the teaching movement's moon phase window has the dial phase ring off (ASM-0073 prints phases on the wheel instead) but accepts it", () => {
     const moon = Object.values(teaching.dialWindows).find((w) => w.name === "Moon phase window");
-    expect(moon?.phaseMarks).toBe(true);
-    expect(Object.values(teaching.dialWindows).filter((w) => w.phaseMarks).map((w) => w.name)).toEqual(["Moon phase window"]);
-    expect(validateMovement(teaching).filter((i) => i.rule === "DIALWIN-001" && i.severity === "error")).toEqual([]);
+    if (moon === undefined) throw new Error("no moon phase window");
+    expect(Object.values(teaching.dialWindows).filter((w) => w.phaseMarks)).toEqual([]);
+    const marked = updateDialWindow(teaching, moon.id, { phaseMarks: true });
+    expect(found(marked, "DIALWIN-001")).toEqual([]);
+    expect(validateMovement(marked).filter((i) => i.rule === "DIALWIN-001" && i.severity === "error")).toEqual([]);
   });
 
   it("DIALWIN-001: phase marks apply only to a moon-phase window, and only a circular one (ASM-0072)", () => {
     expect(found(edit({ phaseMarks: true }), "DIALWIN-001")).toContain("DIALWIN-001:error:phase marks apply only to a moon-phase window");
     const moon = Object.values(teaching.dialWindows).find((w) => w.name === "Moon phase window");
     if (moon === undefined) throw new Error("no moon phase window");
-    const rect = updateDialWindow(teaching, moon.id, { outline: { kind: "RECTANGLE", width: mm(1), height: mm(1) } });
+    const rect = updateDialWindow(teaching, moon.id, { phaseMarks: true, outline: { kind: "RECTANGLE", width: mm(1), height: mm(1) } });
     expect(found(rect, "DIALWIN-001")).toContain("DIALWIN-001:error:phase marks need a circular window");
-    expect(found(updateDialWindow(teaching, moon.id, { phaseMarks: false }), "DIALWIN-001")).toEqual([]);
+    expect(found(updateDialWindow(teaching, moon.id, { phaseMarks: true }), "DIALWIN-001")).toEqual([]);
   });
 
   it("DIALWIN-001: centre must be finite", () => {

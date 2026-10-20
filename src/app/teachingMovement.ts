@@ -320,15 +320,14 @@ export function createTeachingMovement(): Movement {
   // Phase 8.15 follow-up 13: the moon disc's window now shows the WHOLE disc (6.3mm across), and
   // at the former straight-down chain (9.5mm below the hour wheel) its lower edge ran into the
   // 6 o'clock hour marker (inner edge ≈12.2mm from the centre). Both 4.75mm mesh legs are bent
-  // into a shallow "V" — hour wheel → reduction arbor → disc at ±asin(half-base / 4.75) off
-  // straight down — which lands the disc directly below the hour wheel at 2 × half-base instead
-  // of 9.5mm. Follow-up 14 added a ring of phase icons just outside the window (to ≈0.7mm beyond
-  // its edge), so the half-base went from 4.3mm (disc 8.6mm down, ±64.86°) to 4.0mm (disc 8.0mm
-  // down, ±57.37°), keeping ≈0.35mm clear of the marker below. Mesh centre distances are
-  // unchanged, so every gear ratio and mesh is exactly as before; only the declared polar angles
-  // differ.
-  polar(moonReductionArbor, hourWheel, hourToMoon1, 237.37);
-  polar(moonDiscArbor, moonReductionArbor, moon1ToMoon2, 302.63);
+  // into a shallow "V" — hour wheel → reduction arbor → disc at ±asin(4.3 / 4.75) = ±64.86° off
+  // straight down — which lands the disc directly below the hour wheel at 8.6mm instead of
+  // 9.5mm, ≈0.45mm clear of the marker. (Follow-up 14 briefly deepened this to 4.0mm for a ring of
+  // dial icons; follow-up 15 removed the ring, so the V is back at 4.3mm.) Mesh centre distances
+  // are unchanged, so every gear ratio and mesh is exactly as before; only the declared polar
+  // angles differ.
+  polar(moonReductionArbor, hourWheel, hourToMoon1, 244.86);
+  polar(moonDiscArbor, moonReductionArbor, moon1ToMoon2, 295.14);
   // 9 o'clock from the hour wheel, clear of the moonphase train (6 o'clock) and the stem line.
   polar(twentyFourHourArbor, hourWheel, hourToTwentyFourHour, 180);
   // Declared, not mesh-derived (the star is not meshed with anything, ASM-0048) — a plausible
@@ -549,10 +548,10 @@ export function createTeachingMovement(): Movement {
     })(),
     outline: { kind: "CIRCLE", radius: (moonPhase.diameter / 2) * 1.05 as Length },
     pointer: "NORTH",
-    // Fixed lunar-phase icons around the window (follow-up 14, ASM-0072): the north pointer stands
-    // for the full moon at north, so the ring adds new (east/west), the quarters (diagonals) and the
-    // second image's full moon (south).
-    phaseMarks: true,
+    // The dial ring of fixed phase icons (follow-up 14, ASM-0072) is off: at the user's request
+    // (follow-up 15, ASM-0073) the phases are printed on the moon wheel itself instead, and this
+    // window's north pointer points at the one that is current.
+    phaseMarks: false,
   }));
   // Date window radius (real bug, reported live: "check the numbers for the date gear it looks
   // clumped up together") is NOT just the font-size fix above (ASM-0067) — the window itself was

@@ -441,6 +441,12 @@ export const ASSUMPTIONS = {
     scope: "DialWindow.phaseMarks lunar-phase icon ring (Phase 8.15 follow-up, visual/L0 display only)",
     status: "Active",
   },
+  "ASM-0073": {
+    summary:
+      "Printed moon-phase series on the moon disc (Phase 8.15 follow-up 15): at the user's request the two plain moon images on the dark sky disc were replaced by a ring of phase icons printed on the disc itself -- eight evenly spaced phases per moon image (new, waxing crescent, first quarter, waxing gibbous, full, waning gibbous, last quarter, waning crescent), repeated once per image so a two-image disc carries the series twice, half a turn apart -- and the dial ring of fixed phase icons (ASM-0072) was turned off for the teaching movement; the window's north pointer (ASM-0069) now points at whichever printed phase is current. Each icon of phase p sits at the canvas angle at which a disc label would read at north once the disc has turned phi = 2*pi*(p + k)/n (the same calibrated label-ring rule, ASM-0071), so the icon under the pointer is the phase moonPhaseFraction reports (verified live at fractions 0, 12.5, 25, 37.5, 50 and 75 percent). The lit part of an icon is bounded by the lit limb and a half-ellipse terminator whose area fraction is the textbook (1 - cos 2*pi*p)/2; waxing phases are lit on the viewer's left and waning on the right (declared Southern Hemisphere convention). Icons are drawn with 'up' pointing away from the disc centre, as the label rings are. Visual only (ASM-0004); sizes are fractions of the disc radius (MOON_PHASE_VISUALIZATION). It supersedes ASM-0055's plain moon images and the full-moon-aligned image geometry (moonImageLocalAngle, kept but no longer drawn). No kinematic or domain change.",
+    scope: "Moon phase disc texture (visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

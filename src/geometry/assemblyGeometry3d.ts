@@ -822,6 +822,22 @@ export const MOON_PHASE_VISUALIZATION = {
   moonColor: "#f0ead9",
   starColor: "#cfd8e6",
   /**
+   * The printed phase series (ASM-0073): this many evenly spaced phases
+   * (new, waxing crescent, first quarter, waxing gibbous, full, waning
+   * gibbous, last quarter, waning crescent) per image-spacing of the disc,
+   * repeated once per moon image, replacing the two plain moon discs the
+   * texture used to carry.
+   */
+  phasesPerImage: 8,
+  /** Radius of the ring the phase icons sit on, as a fraction of the disc's own radius. */
+  iconRingRadiusFraction: 0.66,
+  /** Each phase icon's own radius, as a fraction of the disc's own radius. */
+  iconRadiusFraction: 0.115,
+  /** The unlit part of an icon (the moon's own dark limb), a little lighter than the sky so a new moon still reads. */
+  iconDarkColor: "#1f3252",
+  iconOutlineColor: "#6b7f9c",
+  iconOutlineWidthPx: 2,
+  /**
    * Fixed, declared star positions (fraction of the disc's own radius,
    * angle in radians, dot radius in px at `DIAL_WINDOW_VISUALIZATION`'s
    * own texture size) — decorative only (ASM-0004), not a real star
@@ -891,14 +907,83 @@ export function discCapCanvasAngleForMeshAngle(meshAngle: number): number {
 }
 
 /**
- * The dark-sky-and-moon-images texture for a `MoonPhase` disc's own
- * dial-facing face (ASM-0055) — see `MOON_PHASE_VISUALIZATION`'s own
+ * The dark-sky-and-printed-phase-series texture for a `MoonPhase` disc's own
+ * dial-facing face (ASM-0055, ASM-0073: the two plain moon images it used to
+ * carry were replaced by `moonPhaseIconPlacements`' phase icons) — see `MOON_PHASE_VISUALIZATION`'s own
  * doc comment for the sourcing and the reveal mechanism,
  * `moonImageLocalAngle` for where each image must sit (in true
  * mesh-local terms), and `discCapCanvasAngleForMeshAngle` for why that
  * angle must be transformed before it is usable as a canvas-drawing
  * angle.
  */
+export interface MoonPhaseIconPlacement {
+  /** Phase fraction 0-1 this icon shows, in `moonPhaseFraction`'s own convention (0 new, 0.5 full). */
+  readonly phase: number;
+  /** Canvas-drawing angle of the icon's own centre on the ring, radians. */
+  readonly canvasAngle: number;
+}
+
+/**
+ * Where each printed phase icon goes on a moon disc's texture (ASM-0073): one
+ * series of `phasesPerImage` phases per moon image, so a `DOUBLE` disc carries
+ * the whole series twice, half a turn apart.
+ *
+ * The icon of phase `p` must sit under the window's north reading position
+ * exactly when `moonPhaseFraction` reads `p`, i.e. when the disc arbor has
+ * turned `φ = 2π(p + k) / n` (any of the `n` equivalent copies `k`). Where a
+ * canvas feature lands under rotation is the same disc-cap mapping every label
+ * ring already depends on, and that was calibrated against the real render
+ * (`DISC_LABEL_RING_DIRECTION`, ASM-0071): a label placed at canvas angle
+ * `−φ + DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS` reads at north when the
+ * disc has turned `φ`. So the icon sits at that same angle, and its phase then
+ * advances through the series in the same direction the disc turns.
+ */
+export function moonPhaseIconPlacements(imageCount: number): MoonPhaseIconPlacement[] {
+  if (!(Number.isInteger(imageCount) && imageCount > 0)) return [];
+  const perImage = MOON_PHASE_VISUALIZATION.phasesPerImage;
+  const placements: MoonPhaseIconPlacement[] = [];
+  for (let k = 0; k < imageCount; k += 1) {
+    for (let j = 0; j < perImage; j += 1) {
+      const phase = j / perImage;
+      const turned = (2 * Math.PI * (phase + k)) / imageCount;
+      placements.push({ phase, canvasAngle: -turned + DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS });
+    }
+  }
+  return placements;
+}
+
+/**
+ * The lit part of a moon of phase fraction `phase` (0 new, 0.5 full, 1 new
+ * again), as a polygon in an icon's own frame (x right, y down, unit up = −y,
+ * radius `radius`) — empty for a new moon. Waxing phases (0 < phase < 0.5) are
+ * lit on the LEFT, waning (0.5 < phase < 1) on the RIGHT as seen by the viewer:
+ * the declared Southern Hemisphere convention (ASM-0072/0073), the reverse of
+ * the Northern one.
+ *
+ * The lit region is bounded by the lit-side limb (a half circle) and the
+ * terminator, a half ellipse whose equatorial offset is `radius·cos(2π·phase)`
+ * toward the lit side (full semicircle at the quarters, bulging past the centre
+ * for gibbous phases): its area fraction is the textbook illuminated fraction
+ * `(1 − cos 2π·phase) / 2`.
+ */
+export function moonPhaseLitPolygon(phase: number, radius: number, samples = 48): Point2D[] {
+  const wrapped = ((phase % 1) + 1) % 1;
+  if (wrapped === 0) return [];
+  const waxing = wrapped <= 0.5;
+  const side = waxing ? -1 : 1; // lit-side x sign: left for waxing, right for waning
+  const terminatorOffset = side * radius * Math.cos(2 * Math.PI * wrapped);
+  const points: Point2D[] = [];
+  for (let i = 0; i <= samples; i += 1) {
+    const t = -Math.PI / 2 + (Math.PI * i) / samples; // top → bottom along the lit limb
+    points.push({ x: side * radius * Math.cos(t), y: radius * Math.sin(t) });
+  }
+  for (let i = 0; i <= samples; i += 1) {
+    const t = Math.PI / 2 - (Math.PI * i) / samples; // bottom → top along the terminator
+    points.push({ x: terminatorOffset * Math.cos(t), y: radius * Math.sin(t) });
+  }
+  return points;
+}
+
 export function createMoonPhaseTexture(windowCount: MoonPhaseWindowCount): THREE.CanvasTexture | null {
   const v = MOON_PHASE_VISUALIZATION;
   const size = DIAL_WINDOW_VISUALIZATION.textureSizePx;
@@ -921,17 +1006,33 @@ export function createMoonPhaseTexture(windowCount: MoonPhaseWindowCount): THREE
     ctx.fill();
   }
 
-  const n = windowsPerRevolution(windowCount);
-  const moonPosPx = v.moonPositionRadiusFraction * centre;
-  const moonRadiusPx = v.moonImageRadiusFraction * centre;
-  ctx.fillStyle = v.moonColor;
-  for (let k = 0; k < n; k += 1) {
-    const canvasAngle = discCapCanvasAngleForMeshAngle(moonImageLocalAngle(k, n));
-    const x = centre + moonPosPx * Math.cos(canvasAngle);
-    const y = centre + moonPosPx * Math.sin(canvasAngle);
+  // The printed phase series (ASM-0073): each icon is drawn in its own frame with "up" pointing
+  // away from the disc centre, the same convention `discLabelPlacements` already uses, so a
+  // quarter lit on the left reads as lit on the viewer's left when it passes under the window.
+  const ringRadiusPx = v.iconRingRadiusFraction * centre;
+  const iconRadiusPx = v.iconRadiusFraction * centre;
+  for (const placement of moonPhaseIconPlacements(windowsPerRevolution(windowCount))) {
+    ctx.save();
+    ctx.translate(centre + ringRadiusPx * Math.cos(placement.canvasAngle), centre + ringRadiusPx * Math.sin(placement.canvasAngle));
+    ctx.rotate(placement.canvasAngle + Math.PI / 2);
+    ctx.fillStyle = v.iconDarkColor;
     ctx.beginPath();
-    ctx.arc(x, y, moonRadiusPx, 0, Math.PI * 2);
+    ctx.arc(0, 0, iconRadiusPx, 0, Math.PI * 2);
     ctx.fill();
+    const lit = moonPhaseLitPolygon(placement.phase, iconRadiusPx);
+    if (lit.length > 0) {
+      ctx.fillStyle = v.moonColor;
+      ctx.beginPath();
+      lit.forEach(({ x, y }, i) => { if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.strokeStyle = v.iconOutlineColor;
+    ctx.lineWidth = v.iconOutlineWidthPx;
+    ctx.beginPath();
+    ctx.arc(0, 0, iconRadiusPx, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
   }
 
   const texture = new THREE.CanvasTexture(canvas);

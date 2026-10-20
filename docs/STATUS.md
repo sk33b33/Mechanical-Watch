@@ -2,6 +2,25 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 15: phases printed on the moon wheel itself
+
+At the user's request the two plain moon discs on the dark moon wheel are gone, replaced by a ring
+of moon-phase icons printed on the wheel (`createMoonPhaseTexture`, ASM-0073); the north pointer
+stays and points at whichever printed phase is current. The dial ring of fixed icons from
+follow-up 14 is switched off (`phaseMarks: false` on the teaching movement's Moon phase window; the
+field and its schema v29 stay, available for other designs). **What is printed:** eight phases per
+moon image — new, waxing crescent, first quarter, waxing gibbous, full, waning gibbous, last
+quarter, waning crescent — repeated for each image, so the two-image wheel shows the series twice,
+half a turn apart (16 icons). The lit part is the real illuminated fraction, lit on the left while
+waxing and on the right while waning (Southern Hemisphere, as declared). **Verified live** by
+setting the disc to 0, 12.5, 25, 37.5, 50 and 75 % of a lunation and reading the icon under the
+pointer: empty ring, thin crescent, half, gibbous, full, half (waning). Placement reuses the
+label-ring calibration (ASM-0071), so the icon under the pointer is the phase the model reports;
+between two icons the pointer sits between two phases. **Layout:** with the dial icons gone, the
+moon train's V is back at the follow-up 13 geometry (disc 8.6mm below the hour wheel, ≈0.45mm clear
+of the 6 o'clock marker). **To revert:** restore the two-circle drawing in `createMoonPhaseTexture`
+(git history, follow-up 14) and set `phaseMarks: true` for the dial ring.
+
 ## Phase 8.15 follow-up 14: lunar-phase marks around the moon window
 
 At the user's request the whole-disc moon window now has fixed phase icons printed on the dial

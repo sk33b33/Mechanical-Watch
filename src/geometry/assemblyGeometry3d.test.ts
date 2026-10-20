@@ -17,6 +17,7 @@ import {
   cylinderXAxisCanvasUForLocalAngle,
   discCapCanvasAngleForMeshAngle,
   discLabelFittedFontSizePx,
+  DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS,
   DISC_LABEL_RING_DIRECTION,
   createMoonPhaseMarkGeometry,
   discLabelPlacements,
@@ -31,6 +32,8 @@ import {
   moonImageLocalAngle,
   MOON_PHASE_VISUALIZATION,
   rayCircleInward,
+  moonPhaseIconPlacements,
+  moonPhaseLitPolygon,
   moonPhaseMarks,
   seasonWedgeBoundaryAngles,
   yearDigitAxleProjection,
@@ -1087,3 +1090,76 @@ describe("createMoonPhaseMarkGeometry (ASM-0072)", () => {
     expect(Math.abs(top("NEW", 1).cx)).toBeLessThan(1e-9);
   });
 });
+
+describe("moonPhaseLitPolygon (ASM-0073)", () => {
+  const r = 100;
+  const polygonArea = (pts: { x: number; y: number }[]): number => {
+    let a = 0;
+    pts.forEach((p, i) => {
+      const q = pts[(i + 1) % pts.length];
+      if (q !== undefined) a += p.x * q.y - q.x * p.y;
+    });
+    return Math.abs(a) / 2;
+  };
+  const centroidX = (pts: { x: number; y: number }[]): number => pts.reduce((sum, p) => sum + p.x, 0) / pts.length;
+
+  it("is empty for a new moon and the whole disc for a full moon", () => {
+    expect(moonPhaseLitPolygon(0, r)).toEqual([]);
+    expect(moonPhaseLitPolygon(1, r)).toEqual([]);
+    expect(polygonArea(moonPhaseLitPolygon(0.5, r)) / (Math.PI * r * r)).toBeCloseTo(1, 2);
+  });
+
+  it("lights the textbook illuminated fraction (1 − cos 2π·phase) / 2 at every phase of the printed series", () => {
+    for (let j = 1; j < 8; j += 1) {
+      const phase = j / 8;
+      const expected = (1 - Math.cos(2 * Math.PI * phase)) / 2;
+      expect(polygonArea(moonPhaseLitPolygon(phase, r, 400)) / (Math.PI * r * r)).toBeCloseTo(expected, 2);
+    }
+  });
+
+  it("lights the LEFT (viewer) side while waxing and the RIGHT while waning — the declared Southern Hemisphere convention", () => {
+    for (const phase of [0.125, 0.25, 0.375]) expect(centroidX(moonPhaseLitPolygon(phase, r))).toBeLessThan(0);
+    for (const phase of [0.625, 0.75, 0.875]) expect(centroidX(moonPhaseLitPolygon(phase, r))).toBeGreaterThan(0);
+  });
+
+  it("mirrors exactly between a waxing phase and its waning counterpart", () => {
+    const waxing = moonPhaseLitPolygon(0.25, r);
+    const waning = moonPhaseLitPolygon(0.75, r);
+    expect(polygonArea(waxing)).toBeCloseTo(polygonArea(waning), 6);
+    expect(centroidX(waxing)).toBeCloseTo(-centroidX(waning), 6);
+  });
+});
+
+describe("moonPhaseIconPlacements (ASM-0073)", () => {
+  it("prints the whole eight-phase series once per moon image (16 icons on a two-image disc, 8 on a single)", () => {
+    expect(moonPhaseIconPlacements(2)).toHaveLength(16);
+    expect(moonPhaseIconPlacements(1)).toHaveLength(8);
+    expect(moonPhaseIconPlacements(0)).toEqual([]);
+    expect(moonPhaseIconPlacements(1.5)).toEqual([]);
+  });
+
+  it("places each icon where a label of the same disc turn would be: at north exactly when the disc has turned 2π(phase + k)/n", () => {
+    // Calibrated by the label rings (DISC_LABEL_RING_DIRECTION, ASM-0071): a label at canvas angle
+    // −φ + DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS reads at north once the disc has turned φ.
+    for (const n of [1, 2]) {
+      const placements = moonPhaseIconPlacements(n);
+      placements.forEach((placement, index) => {
+        const k = Math.floor(index / 8);
+        const turned = (2 * Math.PI * (placement.phase + k)) / n;
+        expect(placement.canvasAngle).toBeCloseTo(-turned + DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS, 9);
+        expect(moonPhaseFraction(radians(turned), n)).toBeCloseTo(placement.phase, 9);
+      });
+    }
+  });
+
+  it("repeats the series half a turn apart on a two-image disc, so each phase appears twice", () => {
+    const placements = moonPhaseIconPlacements(2);
+    for (let j = 0; j < 8; j += 1) {
+      const a = placements[j];
+      const b = placements[8 + j];
+      expect(a?.phase).toBeCloseTo(b?.phase ?? NaN, 12);
+      expect(Math.abs(((a?.canvasAngle ?? 0) - (b?.canvasAngle ?? 0)) % (2 * Math.PI))).toBeCloseTo(Math.PI, 9);
+    }
+  });
+});
+

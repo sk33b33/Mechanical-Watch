@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { millimetres } from "@/units/length";
-import { setTolerance, updateGear, updateShaft, type Movement } from "@/domain/movement";
+import { setTolerance, updateDialWindow, updateGear, updateShaft, type Movement } from "@/domain/movement";
 import { createTolerance } from "@/domain/tolerance";
 import { createDemoMovement } from "@/app/demoMovement";
 import { createTeachingMovement } from "@/app/teachingMovement";
@@ -211,12 +211,15 @@ describe("schema migration v28 → v29 (ASM-0072, DialWindow.phaseMarks)", () =>
     for (const w of Object.values(loaded.dialWindows)) expect(w.phaseMarks).toBe(false);
   });
 
-  it("round-trips the teaching movement's own moon window phase marks", () => {
+  it("round-trips a moon window's phase marks", () => {
     const teaching = createTeachingMovement();
-    const loaded = decodeDesign(encodeDesign(teaching));
-    const named = (m: typeof teaching): boolean[] => Object.values(m.dialWindows).map((w) => w.phaseMarks);
-    expect(named(loaded)).toEqual(named(teaching));
-    expect(named(loaded)).toContain(true);
+    const moon = Object.values(teaching.dialWindows).find((w) => w.name === "Moon phase window");
+    if (moon === undefined) throw new Error("no moon phase window");
+    const marked = updateDialWindow(teaching, moon.id, { phaseMarks: true });
+    const flags = (m: Movement): boolean[] => Object.values(m.dialWindows).map((w) => w.phaseMarks);
+    const loaded = decodeDesign(encodeDesign(marked));
+    expect(flags(loaded)).toEqual(flags(marked));
+    expect(flags(loaded)).toContain(true);
   });
 });
 
