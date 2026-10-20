@@ -40,7 +40,7 @@ describe("dial window rules", () => {
       .toContain("DIALWIN-001:error:its width and height must be positive lengths");
   });
 
-  it("the teaching movement's own month and leap-year windows are rectangular; date and moon phase stay circular", () => {
+  it("the teaching movement's own month window is rectangular; date, moon phase, leap-year and season (whole-wheel windows) are circular", () => {
     const byName = (name: string): string => {
       const w = Object.values(teaching.dialWindows).find((x) => x.name === name);
       if (w === undefined) throw new Error(`no dial window named ${name}`);
@@ -49,7 +49,8 @@ describe("dial window rules", () => {
     expect(byName("Moon phase window")).toBe("CIRCLE");
     expect(byName("Date window")).toBe("CIRCLE");
     expect(byName("Month window")).toBe("RECTANGLE");
-    expect(byName("Leap-year window")).toBe("RECTANGLE");
+    expect(byName("Leap-year window")).toBe("CIRCLE");
+    expect(byName("Season window")).toBe("CIRCLE");
   });
 
   it("DIALWIN-001: centre must be finite", () => {

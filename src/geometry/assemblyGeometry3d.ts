@@ -1100,8 +1100,15 @@ export const YEAR_DIGIT_BARREL_VISUALIZATION = {
    * same "verified against real pixel data" standard this project's
    * own angle-math functions already hold themselves to). 105px keeps
    * a comfortable, clearly non-touching gap while staying legible.
+   *
+   * Phase 8.15 follow-up 7 ("I can barely see the year") raised this to
+   * 125px: the cap-height extent (≈89px, measured with `ctx.measureText`)
+   * still leaves a visible gap inside the 102.4px slot, and the year
+   * window (0.235mm tall) sits between that glyph extent (≈0.218mm) and
+   * the 0.251mm slot arc. Going larger would merge adjacent digits; the
+   * barrel diameter itself is capped by the mainplate-to-dial clearance.
    */
-  fontSizePx: 105,
+  fontSizePx: 125,
   /**
    * Each digit glyph is painted rotated by this many radians (canvas
    * `ctx.rotate` convention: positive turns the glyph clockwise, since

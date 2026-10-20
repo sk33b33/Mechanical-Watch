@@ -22,7 +22,6 @@ import {
   createYearDigitBarrelTexture,
   createZCylinder,
   DATE_LINKAGE_VISUALIZATION,
-  discCapCanvasAngleForMeshAngle,
   DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS,
   escapeWheelHubRadius,
   generateEscapeWheelOutline,
@@ -724,13 +723,12 @@ export class Viewport {
         ? Math.atan2(wheelCentre.y - driverCentre.y, wheelCentre.x - driverCentre.x)
         : null;
       const baseAngle = directionWheelFromDriver === null ? 0 : directionWheelFromDriver + Math.PI;
-      // Centre each position label between two slots (ASM-0050's own rim cutouts), not on one —
-      // left at the label ring's own default phase, every label lands exactly on a slot's own
-      // cutout (see `discLabelPlacements`'s own doc comment), invisible regardless of texture
-      // content. `discCapCanvasAngleForMeshAngle` converts the desired mesh-local mid-gap angle
-      // into the matching canvas-drawing angle (ASM-0051's own −Z-cap UV reflection).
-      const slotSpacing = (2 * Math.PI) / LEAP_YEAR_SLOT_COUNT;
-      const labelCanvasAngleOffset = discCapCanvasAngleForMeshAngle(baseAngle + slotSpacing / 2);
+      // The label of the wheel's current position sits at the dial window's north (ASM-0068's own
+      // correction, shared with date/month/season). That label is only visible if north falls
+      // BETWEEN two rim slots (ASM-0050's cutouts, at baseAngle + k·π/2) — true when baseAngle ≡ π/4
+      // (mod π/2), i.e. when the driver sits on a diagonal from the wheel, as the teaching
+      // movement's own layout declares. Any other layout would put that label on a cutout.
+      const labelCanvasAngleOffset = DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS;
       const mesh = new THREE.Mesh(
         createGenevaWheelGeometry(year.wheelTipDiameter / 2, year.wheelThickness, LEAP_YEAR_SLOT_COUNT, baseAngle),
         discMaterials(COLORS.leapYearWheel, { metalness: 0.1, roughness: 0.7 }, yearLabels, labelCanvasAngleOffset),

@@ -2,6 +2,30 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 7: leap-year whole-wheel window with north pointer; larger year digits
+
+Two requests, live: (1) do the season-window treatment for the leap-year wheel
+(window the size of the wheel, upside-down triangle at north); (2) the year
+window is too small to read.
+
+**Leap-year window.** Now a CIRCLE centred on the wheel's axis, radius 5% over
+its declared tip radius, with `pointer: "NORTH"` (ASM-0069). Its labels use
+`DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS` so the current position reads at
+the window's north. **Layout change:** the Geneva wheel's rim slots face its
+driver (slot angles = direction-to-driver + π + kπ/2); labels sit between
+slots, so a label can only land at north if the driver lies on a diagonal from
+the wheel. The teaching movement's leap-year arbor therefore moved from due
+west of the month star to its south-west diagonal at the same 4mm centre
+distance (`teachingMovement.ts`). This is a declared teaching-layout change,
+not a physical-validation claim.
+
+**Year window / digits.** Digit font 105→125px and window height 0.22→0.235mm
+(inside the glyph-extent ≈0.218mm / slot-arc 0.251mm band). This is ≈19%
+larger, not more: digit size is bounded by the barrel diameter (≈0.82mm cap
+from the 1.4mm mainplate-to-dial clearance), so larger digits would merge into
+their neighbours. A genuinely larger year display needs a larger barrel
+(clearance) or more digit slots' worth of circumference — a design decision.
+
 ## Phase 8.15 follow-up 6: four aesthetic requests, two of which uncovered real pre-existing bugs
 
 Four requests, live: (1) the year window still too small to see the full number;

@@ -327,9 +327,17 @@ export function createTeachingMovement(): Movement {
   // offset from the date star by more than both their tip radii combined (ASSY-002 clearance).
   m = updateShaft(m, monthStarArbor.id, { placement: fixedAt(mm(-6), mm(-5)) });
   // Declared, not mesh-derived (the leap-year wheel is not meshed with anything either,
-  // ASM-0050) — further along the same line from the month star, by more than their tip radii
-  // combined (ASSY-002 clearance), comfortably inside the mainplate.
-  m = updateShaft(m, leapYearWheelArbor.id, { placement: fixedAt(mm(-6), mm(-9)) });
+  // ASM-0050) — 4mm from the month star (more than their tip radii combined, ASSY-002
+  // clearance), comfortably inside the mainplate, along the SOUTH-WEST diagonal from it. The
+  // diagonal is deliberate: the Geneva wheel's own rim slots always face the driver (the month
+  // star) at dwell, so they sit on the diagonals when the wheel is placed there, leaving the
+  // wheel's own N/E/S/W free for its four position labels — which is what lets the leap-year
+  // window show the whole wheel with a north index pointer reading the label at north, instead of
+  // that label landing on a slot cutout (as it would at the previous straight-below placement,
+  // where a slot points straight up at the pointer).
+  m = updateShaft(m, leapYearWheelArbor.id, {
+    placement: fixedAt(mm(-6 - 4 * Math.SQRT1_2), mm(-5 - 4 * Math.SQRT1_2)),
+  });
   // Declared, not mesh-derived (the season wheel is not meshed with anything either, ASM-0057) —
   // on the date star's own line but the opposite direction from the month/leap-year wheels, by
   // more than their tip radii combined (ASSY-002 clearance), comfortably inside the mainplate.
@@ -548,8 +556,16 @@ export function createTeachingMovement(): Movement {
     name: "Leap-year window",
     dialId: dial.id,
     complicationId: leapYearComplication.id,
-    centre: windowAbove(leapYearWheelArbor.id, 1.5, 0.72),
-    outline: { kind: "RECTANGLE", width: mm(1.2), height: mm(0.55) },
+    // Same treatment as the season window below (raised directly by the user): the whole wheel
+    // shows, radius 5% over its own declared tip radius, centred on its own solved axis, with a
+    // north index pointer naming the label currently at north.
+    centre: (() => {
+      const at = solved.shaftPositions.get(leapYearWheelArbor.id);
+      if (at === undefined) throw new Error("teaching movement: no solved position for the leap-year wheel arbor");
+      return { x: metres(at.x), y: metres(at.y) };
+    })(),
+    outline: { kind: "CIRCLE", radius: (leapYearComplication.wheelTipDiameter / 2) * 1.05 as Length },
+    pointer: "NORTH",
   }));
   // Season window: NOT the small "catch one label" aperture every other disc window above uses
   // — raised directly by the user ("the window for the seasons needs to be the same size or a
@@ -605,7 +621,7 @@ export function createTeachingMovement(): Movement {
   // order to see the full number"): 0.15mm is itself smaller than a digit glyph's own real
   // rendered extent along that same circumferential direction, so the window now cropped the
   // TOP and BOTTOM off every digit instead of revealing a neighbour. Measured directly against
-  // the real rendered canvas (`YEAR_DIGIT_BARREL_VISUALIZATION`'s `fontSizePx: 105`, bold
+  // the real rendered canvas (`YEAR_DIGIT_BARREL_VISUALIZATION`'s original `fontSizePx: 105`, bold
   // sans-serif), `ctx.measureText(d).actualBoundingBoxAscent + actualBoundingBoxDescent` peaks
   // at 75px (digits 0/3/6/8/9) out of the texture's 1024px full width, which maps onto the
   // barrel's own full circumference (π × 0.8mm ≈ 2.513mm) — 75/1024 × 2.513mm ≈ 0.184mm, the
@@ -615,12 +631,19 @@ export function createTeachingMovement(): Movement {
   // past the glyph on each side (well inside the ≈0.034mm blank gap either side of a digit's own
   // slot, the same "verified against real pixel data" standard the digit font-size fix (Phase
   // 8.15 follow-up 3) already used) without approaching the next digit or its divider.
+  //
+  // Phase 8.15 follow-up 7 ("I can barely see the year"): the digits were raised to
+  // `fontSizePx: 125` (glyph extent ≈ 89px → ≈0.218mm on the barrel) and the window to 0.235mm,
+  // which still sits inside the (0.218mm, 0.251mm) band. That is the practical ceiling: the
+  // barrel diameter (and so the glyph's circumferential extent per digit slot) is capped at
+  // ≈0.82mm by the 1.4mm mainplate-to-dial clearance, so digits cannot grow further without
+  // crowding the neighbouring digit's slot.
   m = addDialWindow(m, createDialWindow({
     name: "Year window",
     dialId: dial.id,
     complicationId: yearOnesComplication.id,
     centre: { x: metres(mm(-3)), y: metres(mm(8)) },
-    outline: { kind: "RECTANGLE", width: mm(3.4), height: mm(0.22) },
+    outline: { kind: "RECTANGLE", width: mm(3.4), height: mm(0.235) },
   }));
 
   // Pallet arbor and balance staff: fixed positions along a line from the escape arbor
