@@ -2,6 +2,24 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 11: date window trial — whole-wheel window with north pointer
+
+A trial at the user's request ("do the same for the date window"), kept or reverted after
+they look. The Date window changed from a 0.175mm-radius catch-one-number circle to a CIRCLE
+centred on the date star's own axis, radius 5% over its declared 2.5mm tip radius, with
+`pointer: "NORTH"` (ASM-0069) — the same treatment as month, season and leap-year. The
+current day reads at north under the pointer (verified live: day 20 on 20 Oct 2026).
+**Layout side effect:** the whole-wheel date window (2.625mm radius) and its pointer would
+have overlapped the season window (wheel at (−6, 4.5)mm), so the season wheel moved to
+(−10.5, 3)mm (seen from the dial side, beside the date wheel, clear of the hour markers);
+no mechanism connects it (ASM-0057), so nothing else changes. The month linkage's small
+declutch wheel (ASM-0054), which sits between the date and month stars, is now visible
+through the date window. **To revert:** restore `centre: windowAbove(dateStarArbor.id, 2.5,
+0.72)`, `outline: { kind: "CIRCLE", radius: mm(0.175) }` and drop `pointer` on the Date
+window, and the season wheel's `fixedAt(mm(-6), mm(4.5))`, in `teachingMovement.ts`. The 31
+labels are small (auto-fit to their slots, ASM-0067); that is the cost of showing the
+whole ring.
+
 ## Phase 8.15 follow-up 10: "Set to browser time" now sets the calendar too
 
 Reported live: after "Set to browser time" the month read January and the date the 1st

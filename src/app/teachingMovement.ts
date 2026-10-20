@@ -341,7 +341,7 @@ export function createTeachingMovement(): Movement {
   // Declared, not mesh-derived (the season wheel is not meshed with anything either, ASM-0057) —
   // on the date star's own line but the opposite direction from the month/leap-year wheels, by
   // more than their tip radii combined (ASSY-002 clearance), comfortably inside the mainplate.
-  m = updateShaft(m, seasonWheelArbor.id, { placement: fixedAt(mm(-6), mm(4.5)) });
+  m = updateShaft(m, seasonWheelArbor.id, { placement: fixedAt(mm(-10.5), mm(3)) });
 
   // Put the crown wheel and setting wheel on the stem line y = 0 (the centre arbor is at the origin).
   // Each is placed from its partner by its mesh; the angle is the one that lands on y = 0 on the crown side.
@@ -542,8 +542,18 @@ export function createTeachingMovement(): Movement {
     name: "Date window",
     dialId: dial.id,
     complicationId: dateComplication.id,
-    centre: windowAbove(dateStarArbor.id, 2.5, 0.72),
-    outline: { kind: "CIRCLE", radius: mm(0.175) },
+    // Whole-wheel window (Phase 8.15 follow-up 11, a trial at the user's request — easy to revert
+    // to the former 0.175mm-radius catch-one-number window at `windowAbove(dateStarArbor.id, 2.5,
+    // 0.72)`, see the derivation above): same treatment as the month, season and leap-year wheels.
+    // Centred on the date star's own axis, radius 5% over its declared tip radius, with the north
+    // index pointer (ASM-0069) naming the day read there.
+    centre: (() => {
+      const at = solved.shaftPositions.get(dateStarArbor.id);
+      if (at === undefined) throw new Error("teaching movement: no solved position for the date star arbor");
+      return { x: metres(at.x), y: metres(at.y) };
+    })(),
+    outline: { kind: "CIRCLE", radius: (dateComplication.starTipDiameter / 2) * 1.05 as Length },
+    pointer: "NORTH",
   }));
   m = addDialWindow(m, createDialWindow({
     name: "Month window",
