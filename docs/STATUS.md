@@ -2,6 +2,127 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 6: four aesthetic requests, two of which uncovered real pre-existing bugs
+
+Four requests, live: (1) the year window still too small to see the full number;
+(2) the season window should match the wheel's own size to show its wedge
+artwork, with a north index-pointer triangle; (3)/(4) check the date and month
+gears for the same clumping/size bug. (1) and the font-size half of (3)/(4)
+were genuine continuations of follow-up 5's own bug category; (2) and the rest
+of (3)/(4) led to two further, previously-undetected real bugs.
+
+**Year window height (real bug).** Follow-up 5's own fix (0.15mm) stayed under
+the 0.251mm neighbour-bleed ceiling but was itself smaller than a digit
+glyph's own real rendered extent (measured via `ctx.measureText`: 75px of
+105px-font cap height, ≈0.184mm on the real barrel), so the window now
+*cropped* every digit's top and bottom instead of leaking a neighbour.
+Raised to 0.22mm — inside the (0.184mm, 0.251mm) band with margin either side.
+
+**Season window + north pointer (feature, correctly scoped only once a real
+bug underneath it was found and fixed — see below).** Unlike date/month/leap-
+year, the season wheel carries real wedge art (sun/leaf/snowflake/flower,
+ASM-0058) that a small "catch one label" window would hide almost entirely.
+Rebuilt as a CIRCLE centred directly on the wheel's own axis, radius 5% over
+the wheel's own declared tip radius, showing the whole wheel. A window this
+large no longer answers "which position is current" by its own small size,
+so `DialWindow` gained an optional `pointer: "NORTH" | null` field (ASM-0069
+schema migration v27→v28) and a new upside-down-triangle index mark
+(`DIAL_WINDOW_POINTER_VISUALIZATION`, sized as a fraction of the dial's own
+radius, same derivation convention as the hour markers) drawn on the dial
+just outside the window's own north edge.
+
+**Disc label ring auto-fit font size (ASM-0067, real bug).**
+`DIAL_WINDOW_VISUALIZATION.fontSizePx` (105px) was a single constant shared
+by every disc's own label ring regardless of label count or width — tuned,
+apparently, only against the lowest-density rings (leap-year/season, 4
+positions) and never re-checked against a denser one. Measured directly
+against the real rendered canvas: date (31 positions, up to 2 digits) needed
+113.4px in a 37.4px slot (≈3× overflow); month (12 three-letter
+abbreviations) needed 196.9px in a 96.5px slot (≈2× overflow) — both
+genuinely overlapping/clumped, exactly as reported. Fixed by
+`discLabelSlotArcLengthPx`/`discLabelFittedFontSizePx`: the shared base font
+scales down (never up) only as far as the real measured widest-label width
+demands to stay within 75% of its own slot; leap-year/season clamp at scale
+1 (unchanged, confirmed never actually broken).
+
+**Date window radius (real bug, a second, independent instance of the same
+category).** Even after the font fix, the date window's own 0.6mm radius
+was itself more than 3× the date ring's own 0.365mm label pitch (31
+positions on a small disc), so it always revealed several adjacent date
+numbers at once — previously masked as unreadable overlapping mush by the
+font bug, now, after fixing the font, cleanly separated but still wrong
+(several distinct numbers in one window). Measured the real fitted-font
+glyph's own bounding box (0.287mm × 0.176mm) against the 0.365mm slot pitch:
+the valid window radius band is (0.168mm, 0.182mm) — tight, but real.
+Shrunk to 0.175mm. Month's own window (0.65×0.6mm against a 0.754mm slot)
+and leap-year's (1.2×0.55mm against a 1.696mm slot) were both already
+comfortably inside their own valid bands — never actually broken.
+
+**Disc label ring north-alignment (ASM-0068, a major, previously-undetected
+real bug, found only by chasing the above).** With the font/size bugs fixed,
+date/month/season windows each started showing a single, cleanly isolated,
+but *wrong* label — month showed "Jul" against `MonthComplication`'s own
+reported "Current position: January" (exactly 6 of 12 months, a half turn);
+the season pointer showed "WI" against a true "SU" (exactly 2 of 4 quarters,
+again a half turn). Derived directly from `discCapCanvasAngleForMeshAngle`'s
+own verified cap reflection and `windowAbove`'s own "+Y = north = current"
+convention: label `i`, drawn at `discLabelPlacements`' own un-corrected
+default canvas angle, lands at world angle `−π/2` (south) once its own
+`shaftAngle = i·step` is applied — exactly `π` (half a turn) short of the
+window's own `+π/2` (north), for any `i` or any label count algebraically
+(the `i`-dependent terms cancel). Invisible until now: a circular window or
+a single centred digit never betrays a left-right or front-back swap, and
+this is a front-back (north-south) one — a 4/12/31-way ring was the first
+place it could show at all, and only once sized correctly enough to isolate
+one label. Fixed with a new, explicit, declared correction
+(`DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS = −π`) passed by date, month
+and season's own callers (`discMaterials`'s 4th argument;
+`createSeasonTexture` gained the same `canvasAngleOffset` parameter
+`discLabelPlacements` already has) — not a changed default on the shared
+geometry function itself, so a future caller never silently inherits a
+window-placement assumption it didn't ask for. Leap-year's own offset is
+independently derived to dodge its real Geneva slot cutouts (a different,
+unrelated constraint) and was deliberately left untouched — not verified
+either way against this same question, flagged here rather than changed
+without evidence.
+
+**`crossesRevolution`'s own `previousAngle = 0` boundary (a second, deeper,
+genuinely pre-existing kinematic bug, found while verifying the alignment
+fix against `DateComplication`'s own reported truth).** Even with the
+alignment and sizing fixes both correct, the date window still read one
+step off from "Current position" — "1" expected at the very first simulated
+instant, "2" actually shown. Root cause has nothing to do with rendering:
+`crossesRevolution` mirrors a `forwardSign = -1` drive shaft's own angle as
+`2π − previousAngle` so the same "crosses 2π" check works for either sign —
+but left un-reduced, this evaluates to exactly `2π` (not the `0` a shaft
+that has not yet moved should read) when `previousAngle` is exactly `0`,
+every fresh simulation's own starting angle — so a date complication whose
+own drive shaft happens to solve with negative angular velocity (ordinary
+mesh-parity bookkeeping, not a design error) fired one spurious extra jump
+in the very first simulated instant after every load. Fixed with `% (2π)`
+on the mirrored angle — the one boundary case this reduces; every
+`previousAngle > 0` already fell strictly inside `(0, 2π)`, needing no
+change. Confirmed live: date now reads "1" at t≈0, matching
+`DateComplication`'s own "Current position" exactly, with no change to any
+other complication's behaviour (verified via a clean single-navigation
+Playwright session with a direct debug trace of `shaftAngle`/`driveOmega`,
+after first ruling out — and fully explaining away — an earlier, misleading
+"two complications" symptom that turned out to be an artifact of chaining
+`goto()` then `reload()` in the SAME test harness, not a real duplication).
+
+Verified live throughout via precise canvas/DOM measurement (never
+eyeballing a screenshot where a number was actually in question): real
+`ctx.measureText` glyph metrics for every font-size and window-size
+derivation above; a `DialWindow`'s own "Currently shows" field (the same
+`discComplicationLabel` function the Inspector and the rendered texture both
+ultimately read from) cross-checked against a pixel-cropped, upscaled
+screenshot of the actual rendered aperture, for date, month and season, both
+before and after each fix. `tsc -b`, `eslint`, 787 Vitest tests (12 new:
+`discLabelSlotArcLengthPx`/`discLabelFittedFontSizePx`,
+`createDialWindowPointerOutline`, and `crossesRevolution`'s own
+`previousAngle = 0` regression), production build, and the 38-test
+Playwright e2e suite all green.
+
 ## Phase 8.15 follow-up 5: year window showing two stacked digits, and reading "6202" instead of "2026"
 
 Reported live, with an annotated screenshot: "the other text is jumbled

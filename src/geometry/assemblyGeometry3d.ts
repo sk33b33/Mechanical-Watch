@@ -56,6 +56,48 @@ export const DIAL_VISUALIZATION = {
   assumption: "ASM-0020" satisfies AssumptionId,
 } as const;
 
+/**
+ * A `DialWindow.pointer` index mark (ASM-0069): a fixed upside-down
+ * (apex-down) triangle printed on the dial just outside a window's own
+ * edge, naming which position reads as "current" — needed only once a
+ * window is big enough to show more than one position at a time (e.g.
+ * SeasonComplication's own window, ASM-0069, enlarged to reveal the
+ * whole wedge illustration rather than catch one short label). Sized as
+ * a fraction of the DIAL's own radius, the same derivation convention
+ * `DIAL_VISUALIZATION.markerLengthFraction` already uses for the hour
+ * markers, so this mark's size stays proportionate to whatever dial it
+ * sits on rather than being a fixed absolute size.
+ */
+export const DIAL_WINDOW_POINTER_VISUALIZATION = {
+  heightFraction: 0.04,
+  baseWidthFraction: 0.03,
+  /** Visible gap between the triangle's own apex and the window's own edge it points at, as a further fraction of the dial radius — enough to read as pointing AT the window, not touching it. */
+  gapFraction: 0.01,
+  assumption: "ASM-0069" satisfies AssumptionId,
+} as const;
+
+/**
+ * An upside-down (apex-down) triangle outline for a `DialWindowPointer`
+ * (ASM-0069) — apex at the local origin (the end nearest the window it
+ * points at), base at local `y = height` (the end farthest from it).
+ */
+export function createDialWindowPointerOutline(baseWidth: number, height: number): Point2D[] {
+  return [
+    { x: 0, y: 0 },
+    { x: -baseWidth / 2, y: height },
+    { x: baseWidth / 2, y: height },
+  ];
+}
+
+/** Extruded upside-down-triangle mesh geometry for a `DialWindowPointer` (ASM-0069), spanning z ∈ [0, thickness], apex at the local origin. */
+export function createDialWindowPointerGeometry(baseWidth: number, height: number, thickness: number): THREE.ExtrudeGeometry {
+  const outline = createDialWindowPointerOutline(baseWidth, height);
+  const shape = new THREE.Shape();
+  outline.forEach(({ x, y }, i) => { if (i === 0) shape.moveTo(x, y); else shape.lineTo(x, y); });
+  shape.closePath();
+  return new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false });
+}
+
 type HandKind = keyof Omit<typeof HAND_VISUALIZATION, "thicknessMetres" | "assumption">;
 
 /** 2D outline of a hand's tapered blade (not the hub hole), pointing +Y from the axis (ASM-0016, visual). */
@@ -205,7 +247,25 @@ export function createDiscWithHolesGeometry(radius: number, thickness: number, h
 export const DIAL_WINDOW_VISUALIZATION = {
   textureSizePx: 512,
   labelRadiusFraction: 0.72,
+  /**
+   * The BASE font size: used as-is for a low-density ring (4 positions —
+   * leap-year, season), and as the starting point `discLabelFittedFontSizePx`
+   * scales DOWN from for a denser one (31-position date, 12-position
+   * month), never up. See that function's own doc comment.
+   */
   fontSizePx: 105,
+  /**
+   * The fraction of a label's own available circumferential slot
+   * (`discLabelSlotArcLengthPx`) its glyph width may fill, leaving a
+   * visible gap either side — the same "comfortable, clearly
+   * non-touching gap" standard `YEAR_DIGIT_BARREL_VISUALIZATION.fontSizePx`
+   * was independently tuned to (Phase 8.15 follow-up 3: 105px there gave
+   * an 11-run, ~28px-gap result judged comfortable, out of a 102.4px
+   * slot — a ratio of ≈0.73).
+   */
+  labelFillFraction: 0.75,
+  /** A defensive floor only: no real label set here needs it (the densest real case, 31-position date, fits at ≈26px); guards a pathological future configuration from scaling to an unreadable or non-positive size. */
+  minFontSizePx: 16,
   textColor: "#1a1e22",
   /**
    * An opaque fill behind the glyphs. `MeshStandardMaterial.map` is not
@@ -221,6 +281,47 @@ export const DIAL_WINDOW_VISUALIZATION = {
   backgroundColor: "#eee8da",
   assumption: "ASM-0051" satisfies AssumptionId,
 } as const;
+
+/**
+ * Real bug (ASM-0068), reported live: a date/month/season window
+ * consistently showed a label diametrically OPPOSITE the disc's own
+ * currently-indicated position — month's window read "Jul" while
+ * `MonthComplication`'s own `starPosition`-derived "Current position"
+ * reported "January" (exactly 6 of 12 months, a half turn, apart);
+ * season's equivalent pointer read "WI" (Winter) against a true "SU"
+ * (Summer) — exactly 2 of 4 quarters, again a half turn. Root cause,
+ * derived from `discCapCanvasAngleForMeshAngle`'s own verified reflection
+ * (`canvas angle θ → mesh angle −π/2 − θ`, not a rotation) and
+ * `windowAbove`'s own "+Y = north = current reading position"
+ * convention (`src/app/teachingMovement.ts`): label `i`, drawn at
+ * `discLabelPlacements`' own default canvas angle `(i/n)·2π` (no
+ * correction), lands — once `shaftAngle = i·(2π/n)` is applied, the
+ * angle at which label `i` IS the disc's own logically current one — at
+ * world angle `(−π/2 − (i/n)·2π) + i·(2π/n) = −π/2` (south), not the
+ * window's own `+π/2` (north): the two `(i/n)·2π` terms cancel
+ * algebraically regardless of `i`, leaving a constant, label-independent
+ * `π` (half-turn) gap between where the window sits and where the
+ * logically-current label actually lands — exactly the discrepancy
+ * found live, for any `i`. (Fully correct alignment never depended on
+ * `i`, so this went unnoticed: `createDiscLabelTexture`'s own doc
+ * comment previously reasoned "a label only needs to pass under *some*
+ * fixed window at *roughly* even intervals" — true for a PLAUSIBLE
+ * reading, but not a CORRECT one against the domain's own reported
+ * index.)
+ *
+ * `discLabelPlacements`'/`createDiscLabelTexture`'s own default
+ * `canvasAngleOffset` (0) is left unchanged — a pure geometry function
+ * should not silently bake in a specific window's own placement
+ * assumption — so each caller that wants its currently-indicated label
+ * to land at a north-positioned window passes this constant explicitly,
+ * the same "declared, not implicit" convention the leap-year wheel's own
+ * slot-avoidance offset already follows. Does NOT apply to the leap-year
+ * wheel (whose own offset is independently derived to dodge its real
+ * Geneva slot cutouts, a different and unrelated constraint) or to
+ * moon-phase (no discrete labels at all, synced instead via
+ * `moonImageLocalAngle`).
+ */
+export const DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS = -Math.PI;
 
 export interface DiscLabelPlacement {
   readonly label: string;
@@ -267,6 +368,58 @@ export function discLabelPlacements(labels: readonly string[], canvasAngleOffset
   });
 }
 
+/**
+ * The circumferential space (canvas px) available to each of `labelCount`
+ * evenly spaced labels around the ring `discLabelPlacements` lays out —
+ * the full ring circumference (`2π × labelRadius`) divided by the count.
+ * Pure geometry, no canvas/DOM dependency, so it is unit-testable the same
+ * way `discLabelPlacements` already is.
+ */
+export function discLabelSlotArcLengthPx(labelCount: number): number {
+  const v = DIAL_WINDOW_VISUALIZATION;
+  const labelRadius = (v.textureSizePx / 2) * v.labelRadiusFraction;
+  return (2 * Math.PI * labelRadius) / labelCount;
+}
+
+/**
+ * The font size (canvas px, bold sans-serif) a disc's own label ring must
+ * actually draw at so its widest label fits its own slot
+ * (`discLabelSlotArcLengthPx`) with a visible gap either side — a real,
+ * live bug otherwise (reported directly: "check the numbers for the date
+ * gear it looks clumped up together... check the month text gear for the
+ * same bug"). `DIAL_WINDOW_VISUALIZATION.fontSizePx` (105px) was tuned
+ * once, apparently against the lowest-density rings (leap-year/season, 4
+ * positions, 1-2 characters) and never re-checked against a denser one.
+ * Measured directly against the real rendered canvas at that 105px base
+ * (`ctx.measureText`, the same "verified against real pixel data"
+ * standard the year-digit barrel's own font-size fix already used):
+ * - date (31 numeric positions, up to 2 digits): widest label ("24") is
+ *   113.4px wide, in a 37.4px slot — nearly 3× overflow.
+ * - month (12 three-letter abbreviations): widest label ("May") is
+ *   196.9px wide, in a 96.5px slot — roughly 2× overflow.
+ * - leap-year/season (4 positions, 1-2 characters): widest label ("WI")
+ *   measures only 57-144px against a 289.5px slot — comfortably under,
+ *   confirming the 105px base was never actually wrong for THOSE rings.
+ *
+ * Rather than hand-tune a second constant per complication (which would
+ * silently drift out of sync again the next time a label set changes —
+ * e.g. `starToothCount`), this scales the base font size down only as
+ * far as the real measured glyph width demands, leaving
+ * `DIAL_WINDOW_VISUALIZATION.labelFillFraction` (0.75) of the slot as
+ * the glyph's own target width; low-density rings clamp at `scale = 1`
+ * (unchanged). `maxLabelWidthAtBaseFontPx` must be measured by the
+ * caller (`createDiscLabelTexture`, the only place with a real canvas
+ * context to call `ctx.measureText` on — this function itself stays
+ * pure/DOM-free so it can be unit tested directly).
+ */
+export function discLabelFittedFontSizePx(maxLabelWidthAtBaseFontPx: number, labelCount: number): number {
+  const v = DIAL_WINDOW_VISUALIZATION;
+  if (!(maxLabelWidthAtBaseFontPx > 0) || !(labelCount > 0)) return v.fontSizePx;
+  const slotArc = discLabelSlotArcLengthPx(labelCount);
+  const scale = Math.min(1, (slotArc * v.labelFillFraction) / maxLabelWidthAtBaseFontPx);
+  return Math.max(v.minFontSizePx, v.fontSizePx * scale);
+}
+
 export function createDiscLabelTexture(labels: readonly string[], canvasAngleOffset = 0): THREE.CanvasTexture | null {
   if (labels.length === 0) return null;
   const v = DIAL_WINDOW_VISUALIZATION;
@@ -281,6 +434,14 @@ export function createDiscLabelTexture(labels: readonly string[], canvasAngleOff
   ctx.font = `bold ${String(v.fontSizePx)}px sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+  const maxLabelWidthAtBaseFontPx = Math.max(
+    ...labels.map((label) => {
+      const m = ctx.measureText(label);
+      return m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
+    }),
+  );
+  const fittedFontSizePx = discLabelFittedFontSizePx(maxLabelWidthAtBaseFontPx, labels.length);
+  ctx.font = `bold ${String(fittedFontSizePx)}px sans-serif`;
   for (const placement of discLabelPlacements(labels, canvasAngleOffset)) {
     ctx.save();
     ctx.translate(placement.x, placement.y);
@@ -423,7 +584,7 @@ const SEASON_ICON_DRAWERS: readonly ((ctx: CanvasRenderingContext2D, size: numbe
   drawFlowerIcon,
 ];
 
-export function createSeasonTexture(labels: readonly string[]): THREE.CanvasTexture | null {
+export function createSeasonTexture(labels: readonly string[], canvasAngleOffset = 0): THREE.CanvasTexture | null {
   if (labels.length === 0) return null;
   const v = SEASON_VISUALIZATION;
   const size = DIAL_WINDOW_VISUALIZATION.textureSizePx;
@@ -437,11 +598,15 @@ export function createSeasonTexture(labels: readonly string[]): THREE.CanvasText
 
   // Four equal wedges (ASM-0058), cutting the disc as requested; dividers sit at the
   // half-slot-offset boundary between adjacent labels, same convention as the Geneva wheel's own
-  // rim slots relative to its labels.
-  const boundaries = seasonWedgeBoundaryAngles(labels.length);
+  // rim slots relative to its labels. `canvasAngleOffset` (default 0, same convention as
+  // `discLabelPlacements`) rotates the whole wedge ring in canvas-drawing space — the caller
+  // passes `DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS` (ASM-0068) so the currently-indicated
+  // quarter actually lands at the dial window's own north-positioned pointer, not diametrically
+  // opposite it.
+  const boundaries = seasonWedgeBoundaryAngles(labels.length).map((a) => a + canvasAngleOffset);
   for (let i = 0; i < labels.length; i += 1) {
-    const start = boundaries[(i - 1 + labels.length) % labels.length] ?? 0;
-    const end = boundaries[i] ?? Math.PI * 2;
+    const start = boundaries[(i - 1 + labels.length) % labels.length] ?? canvasAngleOffset;
+    const end = boundaries[i] ?? canvasAngleOffset + Math.PI * 2;
     ctx.fillStyle = v.wedgeColors[i % v.wedgeColors.length] ?? DIAL_WINDOW_VISUALIZATION.backgroundColor;
     ctx.beginPath();
     ctx.moveTo(centre, centre);
@@ -464,7 +629,7 @@ export function createSeasonTexture(labels: readonly string[]): THREE.CanvasText
   ctx.textBaseline = "middle";
   ctx.font = `bold ${String(v.fontSizePx)}px sans-serif`;
   for (let i = 0; i < labels.length; i += 1) {
-    const angle = (i / labels.length) * Math.PI * 2;
+    const angle = (i / labels.length) * Math.PI * 2 + canvasAngleOffset;
     const rotation = angle + Math.PI / 2;
     const draw = SEASON_ICON_DRAWERS[i % SEASON_ICON_DRAWERS.length];
 

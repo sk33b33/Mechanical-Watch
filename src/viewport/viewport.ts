@@ -23,6 +23,7 @@ import {
   createZCylinder,
   DATE_LINKAGE_VISUALIZATION,
   discCapCanvasAngleForMeshAngle,
+  DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS,
   escapeWheelHubRadius,
   generateEscapeWheelOutline,
   generateHandOutline,
@@ -222,7 +223,7 @@ function moonPhaseMaterials(color: number, extra: THREE.MeshStandardMaterialPara
  */
 function seasonMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, labels: readonly string[] | null): THREE.MeshStandardMaterial[] {
   const plain = material(color, extra);
-  const texture = labels === null ? null : createSeasonTexture(labels);
+  const texture = labels === null ? null : createSeasonTexture(labels, DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS);
   const illustrated = texture === null ? plain : material(0xffffff, { ...extra, map: texture });
   return [plain, plain, illustrated];
 }
@@ -601,7 +602,10 @@ export class Viewport {
       // the jump writes straight into simulation.shaftAngle; no special-case rotation code needed.
       const meshZ = this.displayZ(date.starZCentre);
       const dateLabels = findDiscComplication(movement, date.id)?.positionLabels ?? null;
-      const mesh = new THREE.Mesh(createZCylinder(date.starTipDiameter / 2, meshZ - date.starThickness / 2, meshZ + date.starThickness / 2, 64), discMaterials(COLORS.dateStar, { metalness: 0.1, roughness: 0.7 }, dateLabels));
+      const mesh = new THREE.Mesh(
+        createZCylinder(date.starTipDiameter / 2, meshZ - date.starThickness / 2, meshZ + date.starThickness / 2, 64),
+        discMaterials(COLORS.dateStar, { metalness: 0.1, roughness: 0.7 }, dateLabels, DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS),
+      );
       this.addPickable(group, mesh, { kind: "dateStar", entityId: date.id, baseColor: COLORS.dateStar });
       this.cappableSolids.push({
         positionX: group.position.x,
@@ -658,7 +662,10 @@ export class Viewport {
       // loop that spins every other shaft group spins this one too; no special-case rotation code needed.
       const meshZ = this.displayZ(month.starZCentre);
       const monthLabels = findDiscComplication(movement, month.id)?.positionLabels ?? null;
-      const mesh = new THREE.Mesh(createZCylinder(month.starTipDiameter / 2, meshZ - month.starThickness / 2, meshZ + month.starThickness / 2, 64), discMaterials(COLORS.monthStar, { metalness: 0.1, roughness: 0.7 }, monthLabels));
+      const mesh = new THREE.Mesh(
+        createZCylinder(month.starTipDiameter / 2, meshZ - month.starThickness / 2, meshZ + month.starThickness / 2, 64),
+        discMaterials(COLORS.monthStar, { metalness: 0.1, roughness: 0.7 }, monthLabels, DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS),
+      );
       this.addPickable(group, mesh, { kind: "monthStar", entityId: month.id, baseColor: COLORS.monthStar });
       this.cappableSolids.push({
         positionX: group.position.x,

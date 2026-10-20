@@ -40,6 +40,17 @@ describe("crossesRevolution (ASM-0048)", () => {
       expect(crossesRevolution(degrees(1), radiansPerSecond(0), 1, -1)).toBe(false);
       expect(crossesRevolution(degrees(359), radiansPerSecond(degrees(2)), 1, -1)).toBe(false);
     });
+
+    it("does NOT fire at the very first instant of a fresh simulation (real bug, found live: previousAngle exactly 0 spuriously satisfied the un-reduced mirror formula's own >= 2π check before any motion at all)", () => {
+      expect(crossesRevolution(radians(0), radiansPerSecond(degrees(-2)), 1, -1)).toBe(false);
+      // A tiny nonzero dt should likewise not yet cross (needs a full forward lap, ~180s at 2°/s).
+      expect(crossesRevolution(radians(0), radiansPerSecond(degrees(-2)), 0.001, -1)).toBe(false);
+    });
+
+    it("still fires exactly at its own boundary (next forward angle === 2π) starting from 0", () => {
+      const fullLapSeconds = 1;
+      expect(crossesRevolution(radians(0), radiansPerSecond(-(2 * Math.PI) / fullLapSeconds), fullLapSeconds, -1)).toBe(true);
+    });
   });
 });
 

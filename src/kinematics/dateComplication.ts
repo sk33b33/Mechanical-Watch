@@ -30,6 +30,25 @@ import type { AngularVelocity } from "@/units/angularVelocity";
  * `src/simulation/simulationState.ts`), so a drive shaft that is one mesh
  * away from its neighbours (and therefore negative while still turning
  * the real, intended "forward" way) still fires correctly.
+ *
+ * `forwardAngle` mirrors the raw angle for a `forwardSign = -1` shaft
+ * (`2π − previousAngle`) so the SAME "crosses 2π" check below works for
+ * either sign — a decreasing raw angle's own forward lap (0 → wraps to
+ * just under 2π → continues down to 0) becomes an increasing mirrored
+ * one. Real bug, found live (a date complication whose own drive shaft
+ * happens to solve with negative angular velocity — ordinary mesh-parity
+ * bookkeeping, not a design error — jumped once, spuriously, in the very
+ * first simulated instant after every fresh load): at the fresh-
+ * simulation starting angle `previousAngle = 0` exactly, the un-wrapped
+ * mirror formula gives `2π − 0 = 2π` rather than the `0` a shaft that
+ * has not yet moved should read (0 and 2π are the same physical point,
+ * but the check below is a literal `>= 2π` on this un-reduced value) —
+ * so the crossing check was already satisfied before any time at all
+ * had elapsed. `% (2π)` reduces that one boundary case (the only one:
+ * for any `previousAngle > 0`, `2π − previousAngle` already falls
+ * strictly inside `(0, 2π)`, needing no reduction) back to the correct
+ * `0`, matching `forwardSign = 1`'s own behaviour at the same starting
+ * angle.
  */
 export function crossesRevolution(
   previousAngle: Angle,
@@ -39,7 +58,7 @@ export function crossesRevolution(
 ): boolean {
   const forwardOmega = angularVelocity * forwardSign;
   if (forwardOmega <= 0) return false;
-  const forwardAngle = forwardSign === 1 ? previousAngle : (2 * Math.PI - previousAngle) as Angle;
+  const forwardAngle = forwardSign === 1 ? previousAngle : ((2 * Math.PI - previousAngle) % (2 * Math.PI)) as Angle;
   return forwardAngle + forwardOmega * dtSeconds >= 2 * Math.PI;
 }
 

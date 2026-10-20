@@ -22,6 +22,8 @@ function complicationOptions(store: AppStore): { value: string; label: string }[
     ...Object.values(movement.dateComplications).map((d) => ({ value: d.id, label: `${d.name} (date)` })),
     ...Object.values(movement.monthComplications).map((m) => ({ value: m.id, label: `${m.name} (month)` })),
     ...Object.values(movement.leapYearComplications).map((y) => ({ value: y.id, label: `${y.name} (leap year)` })),
+    ...Object.values(movement.seasonComplications).map((s) => ({ value: s.id, label: `${s.name} (season)` })),
+    ...Object.values(movement.yearDigitComplications).map((d) => ({ value: d.id, label: `${d.name} (year digit)` })),
   ];
 }
 
@@ -88,6 +90,11 @@ export function dialWindowSection(store: AppStore, win: DialWindow): Section {
           },
         }),
       ]),
+    selectRow("Pointer", win.pointer ?? "", [
+      { value: "", label: "None" },
+      { value: "NORTH", label: "North (index mark)" },
+    ], (value) => { edit({ pointer: value === "" ? null : (value as "NORTH") }); },
+      "A fixed index mark printed on the dial just outside the window's own north edge, naming which position reads as \"current\" (ASM-0069) — needed only once a window is big enough to show more than one position at a time (e.g. a season window sized to the whole wheel, to reveal its wedge artwork, rather than catching one label)."),
     readonlyRow("Model", "a circular or rectangular cutout in the dial, in plan — not a real date/month window's actual bevelled aperture (ASM-0051)",
       "Visual only — this project does not claim manufacturing accuracy for the window's shape (same treatment as ASM-0005's tooth proportions and ASM-0020's dial markers)."),
     readonlyRow("Currently shows", reading ?? "—",

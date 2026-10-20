@@ -516,12 +516,26 @@ export function createTeachingMovement(): Movement {
     centre: windowAbove(moonDiscArbor.id, 3, 0.4),
     outline: { kind: "CIRCLE", radius: mm(0.7) },
   }));
+  // Date window radius (real bug, reported live: "check the numbers for the date gear it looks
+  // clumped up together") is NOT just the font-size fix above (ASM-0067) — the window itself was
+  // sized without checking it against the date ring's own tight pitch. The date star has 31
+  // positions (far denser than month's 12 or leap-year's 4), so its own per-label slot — the
+  // circumferential spacing between adjacent label centres, 2π × (2.5mm × 0.72) / 31 ≈ 0.365mm —
+  // is tiny; the old 0.6mm radius (1.2mm diameter) is more than 3× that, so the window always
+  // revealed several adjacent date numbers side by side, not one — previously an unreadable
+  // overlapping mass (the same font-size bug every other ring had), now, after the font fix,
+  // several CLEARLY SEPARATE numbers in one window ("…4 15 16 1…"), still wrong either way.
+  // Measured directly against the real rendered canvas at the fitted font (ASM-0067's own
+  // discLabelFittedFontSizePx, ≈26px here): the widest label ("24") needs a window radius of at
+  // least 0.168mm (half its own bounding-box diagonal) to show whole, and under 0.182mm (half the
+  // 0.365mm slot) to stay clear of its neighbour — a genuinely tight band, the tightest of any
+  // ring here, but a real one. 0.175mm sits inside it.
   m = addDialWindow(m, createDialWindow({
     name: "Date window",
     dialId: dial.id,
     complicationId: dateComplication.id,
     centre: windowAbove(dateStarArbor.id, 2.5, 0.72),
-    outline: { kind: "CIRCLE", radius: mm(0.6) },
+    outline: { kind: "CIRCLE", radius: mm(0.175) },
   }));
   m = addDialWindow(m, createDialWindow({
     name: "Month window",
@@ -537,14 +551,35 @@ export function createTeachingMovement(): Movement {
     centre: windowAbove(leapYearWheelArbor.id, 1.5, 0.72),
     outline: { kind: "RECTANGLE", width: mm(1.2), height: mm(0.55) },
   }));
+  // Season window: NOT the small "catch one label" aperture every other disc window above uses
+  // — raised directly by the user ("the window for the seasons needs to be the same size or a
+  // tiny bit bigger than the actual gear in order to see the artwork"). SeasonComplication's own
+  // wheel carries real pictorial wedge art (sun/leaf/snowflake/flower, SEASON_VISUALIZATION,
+  // ASM-0058), not just a short text label — a small offset window built to catch one label
+  // (like date/month/leap-year's own windows) would hide that art almost entirely, revealing only
+  // the current label. Centred directly on the wheel's own solved axis (not offset north via
+  // `windowAbove`, since the goal here is to show the WHOLE disc, not catch one rotating
+  // position), with radius 5% over the wheel's own declared 1.5mm tip radius (wheelTipDiameter /
+  // 2, the same dimension SeasonComplication's own domain entity already declares) so the full
+  // wedge illustration clears the window's own edge with a small margin, never clipped.
+  //
+  // Because the window no longer catches just one label, which wedge is "current" is no longer
+  // obvious from the window alone (every other window's own small size already answers that by
+  // construction) — `pointer: "NORTH"` (ASM-0069) adds a fixed upside-down-triangle index mark on
+  // the dial, just outside the window's own north edge, naming the position read there: the same
+  // "north = current" convention `windowAbove`'s own north offset already uses for every other
+  // disc window, now made visible since the window itself is too big to make it obvious by sight.
   m = addDialWindow(m, createDialWindow({
     name: "Season window",
     dialId: dial.id,
     complicationId: seasonComplication.id,
-    // Slightly wider than the leap-year window: SEASON_SHORT_LABELS prints two characters
-    // ("SU"-"SP") instead of one digit.
-    centre: windowAbove(seasonWheelArbor.id, 1.5, 0.72),
-    outline: { kind: "RECTANGLE", width: mm(1.3), height: mm(0.55) },
+    centre: (() => {
+      const at = solved.shaftPositions.get(seasonWheelArbor.id);
+      if (at === undefined) throw new Error("teaching movement: no solved position for the season wheel arbor");
+      return { x: metres(at.x), y: metres(at.y) };
+    })(),
+    outline: { kind: "CIRCLE", radius: (seasonComplication.wheelTipDiameter / 2) * 1.05 as Length },
+    pointer: "NORTH",
   }));
   // One shared window over the whole barrel (Phase 8.15, replacing the earlier four separate
   // windows): the user's own explicit request ("it needs to be 1 large rectangular window...
@@ -563,13 +598,29 @@ export function createTeachingMovement(): Movement {
   // digits — since the barrel's own tangent direction at that point is locally vertical
   // (`yearDigitBarrelRestAngle`'s own doc comment), not its radius. A window taller than that
   // arc length inevitably reveals part of the next digit (and its divider) above or below the
-  // current one. 0.15mm stays comfortably under it, showing exactly one digit per segment.
+  // current one.
+  //
+  // The follow-up fix (0.15mm) stayed safely under that 0.251mm ceiling but introduced a SECOND
+  // real bug the other direction, reported live ("the window for 2026 needs to be bigger in
+  // order to see the full number"): 0.15mm is itself smaller than a digit glyph's own real
+  // rendered extent along that same circumferential direction, so the window now cropped the
+  // TOP and BOTTOM off every digit instead of revealing a neighbour. Measured directly against
+  // the real rendered canvas (`YEAR_DIGIT_BARREL_VISUALIZATION`'s `fontSizePx: 105`, bold
+  // sans-serif), `ctx.measureText(d).actualBoundingBoxAscent + actualBoundingBoxDescent` peaks
+  // at 75px (digits 0/3/6/8/9) out of the texture's 1024px full width, which maps onto the
+  // barrel's own full circumference (π × 0.8mm ≈ 2.513mm) — 75/1024 × 2.513mm ≈ 0.184mm, the
+  // digit glyph's own real circumferential extent. The window height must sit strictly between
+  // that figure (0.184mm, or the digit is cropped) and the 0.251mm slot ceiling above (or the
+  // neighbour bleeds in); 0.22mm sits at roughly the midpoint, giving ≈0.018mm of clearance
+  // past the glyph on each side (well inside the ≈0.034mm blank gap either side of a digit's own
+  // slot, the same "verified against real pixel data" standard the digit font-size fix (Phase
+  // 8.15 follow-up 3) already used) without approaching the next digit or its divider.
   m = addDialWindow(m, createDialWindow({
     name: "Year window",
     dialId: dial.id,
     complicationId: yearOnesComplication.id,
     centre: { x: metres(mm(-3)), y: metres(mm(8)) },
-    outline: { kind: "RECTANGLE", width: mm(3.4), height: mm(0.15) },
+    outline: { kind: "RECTANGLE", width: mm(3.4), height: mm(0.22) },
   }));
 
   // Pallet arbor and balance staff: fixed positions along a line from the escape arbor

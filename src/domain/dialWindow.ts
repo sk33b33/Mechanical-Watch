@@ -45,6 +45,22 @@ export type DialWindowOutline =
  * that doesn't is a real design error (a hole showing nothing, or
  * showing dial material where a disc should be), not a kinematic one.
  */
+/**
+ * A fixed index mark printed on the dial itself, just outside a window's
+ * own edge, naming which position is "current" — needed only when the
+ * window is large enough to show more than one position's own printed
+ * art/label at once (e.g. a window sized to a whole disc, ASM-0069-style:
+ * SeasonComplication's own window, which shows the full four-wedge
+ * season illustration rather than catching one short text label at a
+ * time the way date/month/leap-year's own small windows already do).
+ * `"NORTH"` is the only direction modeled: the position reads at the
+ * window's own north edge, the same "north = the position currently
+ * shown" convention `windowAbove` already uses for every small, offset
+ * disc window (`src/app/teachingMovement.ts`) — this just makes that
+ * convention visible on a window too big to make it obvious by itself.
+ */
+export type DialWindowPointer = "NORTH";
+
 export interface DialWindow {
   readonly id: DialWindowId;
   readonly type: "DialWindow";
@@ -54,6 +70,8 @@ export interface DialWindow {
   complicationId: EntityId;
   centre: Vec2;
   outline: DialWindowOutline;
+  /** A fixed reading-position index mark on the dial, or null for none (the usual case — a small window that already catches only one position). */
+  pointer: DialWindowPointer | null;
 }
 
 export interface CreateDialWindowParams {
@@ -62,8 +80,9 @@ export interface CreateDialWindowParams {
   complicationId: EntityId;
   centre: Vec2;
   outline: DialWindowOutline;
+  pointer?: DialWindowPointer | null;
 }
 
 export function createDialWindow(params: CreateDialWindowParams): DialWindow {
-  return { ...params, id: createId("dialWindow"), type: "DialWindow" };
+  return { pointer: null, ...params, id: createId("dialWindow"), type: "DialWindow" };
 }

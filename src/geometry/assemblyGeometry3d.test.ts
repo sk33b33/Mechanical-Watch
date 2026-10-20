@@ -7,13 +7,17 @@ import {
   balanceRimInnerRadius,
   createDiscWithHolesGeometry,
   createFrameGeometry,
+  createDialWindowPointerOutline,
   createGenevaWheelGeometry,
   createRodGeometry,
   createXAxisCylinder,
   createZCylinder,
   cylinderXAxisCanvasUForLocalAngle,
   discCapCanvasAngleForMeshAngle,
+  discLabelFittedFontSizePx,
   discLabelPlacements,
+  discLabelSlotArcLengthPx,
+  DIAL_WINDOW_VISUALIZATION,
   escapeWheelHubRadius,
   generateEscapeWheelOutline,
   generateHandOutline,
@@ -205,6 +209,33 @@ describe("generateHandOutline", () => {
     const seconds = generateHandOutline("SECONDS");
     const tip = (outline: ReturnType<typeof generateHandOutline>): number => outline[2]?.y ?? 0;
     expect(tip(hours)).not.toBe(tip(seconds));
+  });
+});
+
+describe("createDialWindowPointerOutline (ASM-0069, DialWindow.pointer)", () => {
+  it("is an upside-down (apex-down) triangle: a single point at the local origin, a flat base above it", () => {
+    const outline = createDialWindowPointerOutline(0.6e-3, 0.5e-3);
+    expect(outline).toHaveLength(3);
+    const [apex, baseLeft, baseRight] = outline;
+    expect(apex?.x).toBe(0);
+    expect(apex?.y).toBe(0);
+    expect(baseLeft?.y).toBeGreaterThan(0);
+    expect(baseRight?.y).toBeGreaterThan(0);
+    expect(baseLeft?.y).toBe(baseRight?.y);
+    expect(baseLeft?.x).toBeLessThan(0);
+    expect(baseRight?.x).toBeGreaterThan(0);
+  });
+
+  it("the base spans exactly the declared width, centred on the apex's own x", () => {
+    const outline = createDialWindowPointerOutline(0.8e-3, 0.3e-3);
+    const [, baseLeft, baseRight] = outline;
+    expect((baseRight?.x ?? 0) - (baseLeft?.x ?? 0)).toBeCloseTo(0.8e-3, 12);
+    expect((baseLeft?.x ?? 0) + (baseRight?.x ?? 0)).toBeCloseTo(0, 12);
+  });
+
+  it("the apex-to-base height matches the declared height exactly", () => {
+    const outline = createDialWindowPointerOutline(0.5e-3, 0.42e-3);
+    expect(outline[1]?.y).toBeCloseTo(0.42e-3, 12);
   });
 });
 
@@ -485,6 +516,64 @@ describe("discLabelPlacements", () => {
       expect(placement.y).toBeCloseTo(centre + centre * 0.72 * Math.sin(angle), 6);
       expect(placement.rotation).toBeCloseTo(angle + Math.PI / 2, 9);
     }
+  });
+});
+
+describe("discLabelSlotArcLengthPx", () => {
+  it("is the ring's own circumference divided by the label count", () => {
+    const labelRadius = (DIAL_WINDOW_VISUALIZATION.textureSizePx / 2) * DIAL_WINDOW_VISUALIZATION.labelRadiusFraction;
+    expect(discLabelSlotArcLengthPx(4)).toBeCloseTo((2 * Math.PI * labelRadius) / 4, 9);
+    expect(discLabelSlotArcLengthPx(31)).toBeCloseTo((2 * Math.PI * labelRadius) / 31, 9);
+  });
+
+  it("is inversely proportional to label count (double the labels, half the slot)", () => {
+    expect(discLabelSlotArcLengthPx(24)).toBeCloseTo(discLabelSlotArcLengthPx(12) / 2, 9);
+  });
+});
+
+describe("discLabelFittedFontSizePx (ASM-0051, real bug — date/month labels reported live as clumped together)", () => {
+  it("clamps to the unscaled base font when the glyph already fits with the declared fill fraction (leap-year/season: 4 wide slots)", () => {
+    // Measured directly against the real rendered canvas (ctx.measureText, bold 105px
+    // sans-serif): the widest leap-year/season label ("WI") is 57-144px wide, well under
+    // 0.75 × a 4-label slot (≈289.5px) — these two rings were never actually broken.
+    expect(discLabelFittedFontSizePx(144, 4)).toBe(DIAL_WINDOW_VISUALIZATION.fontSizePx);
+  });
+
+  it("scales the font down to fit a real dense ring without reaching the next label (date: 31 positions, up to 2 digits)", () => {
+    // Measured directly against the real rendered canvas: the widest date label ("24") is
+    // 113.4px wide at the 105px base font, against a 37.4px slot — a real ≈3x overflow
+    // (clumped digits), confirmed live before this fix.
+    const slotArc = discLabelSlotArcLengthPx(31);
+    const fitted = discLabelFittedFontSizePx(113.4, 31);
+    expect(fitted).toBeLessThan(DIAL_WINDOW_VISUALIZATION.fontSizePx);
+    // The glyph scales down by exactly the same factor as the font size (both linear in
+    // font size), so it must now fit within the declared fill fraction of its own slot.
+    const scaledGlyphWidth = 113.4 * (fitted / DIAL_WINDOW_VISUALIZATION.fontSizePx);
+    expect(scaledGlyphWidth).toBeLessThanOrEqual(slotArc * DIAL_WINDOW_VISUALIZATION.labelFillFraction + 1e-9);
+  });
+
+  it("scales the font down for month's own real 12-position, 3-letter ring", () => {
+    // Measured directly against the real rendered canvas: the widest month abbreviation
+    // ("May") is 196.9px wide at the 105px base font, against a 96.5px slot — a real ≈2x
+    // overflow, confirmed live before this fix.
+    const slotArc = discLabelSlotArcLengthPx(12);
+    const fitted = discLabelFittedFontSizePx(196.9, 12);
+    expect(fitted).toBeLessThan(DIAL_WINDOW_VISUALIZATION.fontSizePx);
+    const scaledGlyphWidth = 196.9 * (fitted / DIAL_WINDOW_VISUALIZATION.fontSizePx);
+    expect(scaledGlyphWidth).toBeLessThanOrEqual(slotArc * DIAL_WINDOW_VISUALIZATION.labelFillFraction + 1e-9);
+  });
+
+  it("never scales up (a short label never gets a larger-than-base font)", () => {
+    expect(discLabelFittedFontSizePx(1, 4)).toBe(DIAL_WINDOW_VISUALIZATION.fontSizePx);
+  });
+
+  it("never returns below the declared floor even for a pathologically dense ring", () => {
+    expect(discLabelFittedFontSizePx(1000, 500)).toBeGreaterThanOrEqual(DIAL_WINDOW_VISUALIZATION.minFontSizePx);
+  });
+
+  it("falls back to the base font for degenerate inputs (no measured width, or no labels)", () => {
+    expect(discLabelFittedFontSizePx(0, 31)).toBe(DIAL_WINDOW_VISUALIZATION.fontSizePx);
+    expect(discLabelFittedFontSizePx(113.4, 0)).toBe(DIAL_WINDOW_VISUALIZATION.fontSizePx);
   });
 });
 

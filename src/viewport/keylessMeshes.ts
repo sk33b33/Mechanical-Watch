@@ -9,7 +9,15 @@ import { metres } from "@/units/length";
 import type { PlacementSolution } from "@/kinematics/solvePlacement";
 import { isDefinedPinion, mainplateEdgeAlongStem, stemEngagement, stemLine } from "@/kinematics/keylessGeometry";
 import { createGearGeometry } from "@/geometry/gearGeometry";
-import { DIAL_VISUALIZATION, KEYLESS_VISUALIZATION, createDiscWithHolesGeometry, createZCylinder, type DiscHole } from "@/geometry/assemblyGeometry3d";
+import {
+  DIAL_VISUALIZATION,
+  DIAL_WINDOW_POINTER_VISUALIZATION,
+  KEYLESS_VISUALIZATION,
+  createDiscWithHolesGeometry,
+  createDialWindowPointerGeometry,
+  createZCylinder,
+  type DiscHole,
+} from "@/geometry/assemblyGeometry3d";
 
 /**
  * Presentation of the keyless works and the dial. Positions, heights and
@@ -158,6 +166,19 @@ export function buildDialMeshes(
     marker.position.set(-radius * Math.sin(angle), radius * Math.cos(angle), face - d.markerThicknessMetres / 2);
     marker.rotation.z = angle;
     root.add(marker);
+  }
+  const pv = DIAL_WINDOW_POINTER_VISUALIZATION;
+  const pointerHeight = r * pv.heightFraction;
+  const pointerBaseWidth = r * pv.baseWidthFraction;
+  const pointerGap = r * pv.gapFraction;
+  for (const w of ownWindows) {
+    if (w.pointer !== "NORTH") continue;
+    // The window's own extent toward the dial's north (+Y) at its own edge: a CIRCLE's radius,
+    // or a RECTANGLE's half-height — the point the pointer's own apex sits just beyond (ASM-0069).
+    const halfExtentAtNorth = w.outline.kind === "CIRCLE" ? w.outline.radius : w.outline.height / 2;
+    const pointer = new THREE.Mesh(createDialWindowPointerGeometry(pointerBaseWidth, pointerHeight, d.markerThicknessMetres), materials.marker);
+    pointer.position.set(w.centre.x - centre.x, w.centre.y - centre.y + halfExtentAtNorth + pointerGap, face - d.markerThicknessMetres / 2);
+    root.add(pointer);
   }
   return { root, disc };
 }
