@@ -320,8 +320,33 @@ export const DIAL_WINDOW_VISUALIZATION = {
  * Geneva slot cutouts, a different and unrelated constraint) or to
  * moon-phase (no discrete labels at all, synced instead via
  * `moonImageLocalAngle`).
+ *
+ * NOTE (ASM-0071): the claim above that the two `(i/n)·2π` terms cancel
+ * "regardless of `i`" was wrong in sign and only ever checked at `i = 0`;
+ * this constant fixes the half-turn at position 0 only. The per-position
+ * direction is `DISC_LABEL_RING_DIRECTION`, below.
  */
 export const DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS = -Math.PI;
+
+/**
+ * Real bug (ASM-0071), reported live after "Set to browser time" first put
+ * a calendar wheel on a non-zero position (it reads October, the 20th): the
+ * window's own DOM "Currently shows" said October while the wheel's own
+ * north label read April (month), "4" against "Year 2" (leap-year) and "AU"
+ * against Spring (season) — always the label `−i` for a true position `i`.
+ * Every earlier live check (and the half-turn derivation above) was made at
+ * position 0 only, where `i = −i`, so a ring laid out in the wrong DIRECTION
+ * could not show. Measured on the real render: the canvas angle sitting at
+ * the window's north DEcreases by one slot (2π/n) per position as the disc
+ * advances, so for label `i` to be the one at north when the position is `i`
+ * the ring must be laid out the opposite way round — label `k` at canvas
+ * angle `−(k/n)·2π + offset`. The direction is applied here, in one named
+ * constant, to every label ring (`discLabelPlacements`, `createSeasonTexture`).
+ * Consequence, a real mechanical fact and not a styling choice: as the disc
+ * advances one step the next label arrives at the window, so the labels run
+ * counter-clockwise as seen from the dial side.
+ */
+export const DISC_LABEL_RING_DIRECTION = -1;
 
 export interface DiscLabelPlacement {
   readonly label: string;
@@ -358,7 +383,7 @@ export function discLabelPlacements(labels: readonly string[], canvasAngleOffset
   const centre = v.textureSizePx / 2;
   const labelRadius = centre * v.labelRadiusFraction;
   return labels.map((label, i) => {
-    const angle = (i / labels.length) * Math.PI * 2 + canvasAngleOffset;
+    const angle = DISC_LABEL_RING_DIRECTION * (i / labels.length) * Math.PI * 2 + canvasAngleOffset;
     return {
       label,
       x: centre + labelRadius * Math.cos(angle),
@@ -604,9 +629,13 @@ export function createSeasonTexture(labels: readonly string[], canvasAngleOffset
   // quarter actually lands at the dial window's own north-positioned pointer, not diametrically
   // opposite it.
   const boundaries = seasonWedgeBoundaryAngles(labels.length).map((a) => a + canvasAngleOffset);
+  // Wedge `i` is centred on its own label's angle (laid out in `DISC_LABEL_RING_DIRECTION`, ASM-0071)
+  // and spans half a slot either side of it; the boundary SET is the same either way round.
+  const halfSlot = Math.PI / labels.length;
   for (let i = 0; i < labels.length; i += 1) {
-    const start = boundaries[(i - 1 + labels.length) % labels.length] ?? canvasAngleOffset;
-    const end = boundaries[i] ?? canvasAngleOffset + Math.PI * 2;
+    const centreAngle = DISC_LABEL_RING_DIRECTION * (i / labels.length) * Math.PI * 2 + canvasAngleOffset;
+    const start = centreAngle - halfSlot;
+    const end = centreAngle + halfSlot;
     ctx.fillStyle = v.wedgeColors[i % v.wedgeColors.length] ?? DIAL_WINDOW_VISUALIZATION.backgroundColor;
     ctx.beginPath();
     ctx.moveTo(centre, centre);
@@ -629,7 +658,7 @@ export function createSeasonTexture(labels: readonly string[], canvasAngleOffset
   ctx.textBaseline = "middle";
   ctx.font = `bold ${String(v.fontSizePx)}px sans-serif`;
   for (let i = 0; i < labels.length; i += 1) {
-    const angle = (i / labels.length) * Math.PI * 2 + canvasAngleOffset;
+    const angle = DISC_LABEL_RING_DIRECTION * (i / labels.length) * Math.PI * 2 + canvasAngleOffset;
     const rotation = angle + Math.PI / 2;
     const draw = SEASON_ICON_DRAWERS[i % SEASON_ICON_DRAWERS.length];
 

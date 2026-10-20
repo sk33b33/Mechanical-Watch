@@ -2,6 +2,30 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 10: "Set to browser time" now sets the calendar too
+
+Reported live: after "Set to browser time" the month read January and the date the 1st
+instead of October 20th. **Root cause:** the button only fast-forwarded the going train to
+the browser's *time of day*; every calendar wheel (date, month, leap-year, season) started
+at its own arbitrary reference (day 1, January, position 0) and the jump mechanism only
+advances them from there, so no amount of clock time reaches today's date. **Fix:**
+`setToBrowserTime` now also positions the date, month, leap-year and season wheels and the
+year-digit segments from the browser's date (`withCalendarDate`, ASM-0070). The clock
+fast-forward (`advanceToBrowserTimeOfDay`) now targets the full 24-hour day rather than the
+12-hour dial reading, so the 24-hour arbor (the date-jump drive) is in phase and the date
+changes at the right midnight. **Second, deeper bug this exposed (ASM-0071):** with the wheels
+finally on non-zero positions, the month window's north label read *April* while the domain
+said *October* (leap-year "4" against "Year 2", season "AU" against Spring) — always label
+−i for position i. Every earlier alignment check (ASM-0068) had been made at position 0, where
+i = −i, and its "terms cancel" derivation was wrong in sign. The label rings (date, month,
+leap-year, season wedges/icons/labels) are now laid out in the opposite direction
+(`DISC_LABEL_RING_DIRECTION = −1`), so the next label arrives at the window each time a disc
+advances; verified live on 20 Oct 2026 and 31 Dec 2028 against every window's own reading
+(date 20/31, October/December, Year 2/Year 4 (leap), Spring). Limits, declared: the 4-position leap-year wheel cannot
+express the 1900/2100 century exceptions; the moon-phase disc is not set from the date
+(not requested, no sourced epoch in the model); this is a set-by-hand action, not a claim
+a real watch could do it unaided.
+
 ## Phase 8.15 follow-up 9: month window trial — whole-wheel window with north pointer
 
 A trial at the user's request, to be kept or reverted after they look at it. The

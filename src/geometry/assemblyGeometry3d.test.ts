@@ -15,6 +15,7 @@ import {
   cylinderXAxisCanvasUForLocalAngle,
   discCapCanvasAngleForMeshAngle,
   discLabelFittedFontSizePx,
+  DISC_LABEL_RING_DIRECTION,
   discLabelPlacements,
   discLabelSlotArcLengthPx,
   DIAL_WINDOW_VISUALIZATION,
@@ -483,12 +484,21 @@ describe("discLabelPlacements", () => {
       expect(placement.label).toBe(["Jan", "Feb", "Mar", "Apr"][i]);
       const radius = Math.hypot(placement.x - centre, placement.y - centre);
       expect(radius).toBeCloseTo(centre * 0.72, 6);
-      const angle = (i / 4) * Math.PI * 2;
+      const angle = DISC_LABEL_RING_DIRECTION * (i / 4) * Math.PI * 2;
       expect(placement.rotation).toBeCloseTo(angle + Math.PI / 2, 9);
     }
     // Evenly spaced: the first and third labels sit on opposite sides of the centre.
     expect(placements[0]?.x).toBeCloseTo(2 * centre - (placements[2]?.x ?? 0), 6);
     expect(placements[0]?.y).toBeCloseTo(2 * centre - (placements[2]?.y ?? 0), 6);
+  });
+
+  it("lays the ring out counter-clockwise in canvas angle (label 1 one slot BEFORE label 0), so the next label arrives at the window as the disc advances (ASM-0071)", () => {
+    expect(DISC_LABEL_RING_DIRECTION).toBe(-1);
+    const placements = discLabelPlacements(["a", "b", "c", "d"]);
+    const centre = 512 / 2;
+    const angleOf = (i: number): number => Math.atan2((placements[i]?.y ?? 0) - centre, (placements[i]?.x ?? 0) - centre);
+    expect(angleOf(1)).toBeCloseTo(-Math.PI / 2, 9);
+    expect(Math.cos(angleOf(2))).toBeCloseTo(-1, 9);
   });
 
   it("returns an empty array for an empty label set, same as createDiscLabelTexture returning null", () => {
@@ -511,7 +521,7 @@ describe("discLabelPlacements", () => {
     const rotated = discLabelPlacements(["Jan", "Feb", "Mar", "Apr"], offset);
     const centre = 512 / 2;
     for (const [i, placement] of rotated.entries()) {
-      const angle = (i / 4) * Math.PI * 2 + offset;
+      const angle = DISC_LABEL_RING_DIRECTION * (i / 4) * Math.PI * 2 + offset;
       expect(placement.x).toBeCloseTo(centre + centre * 0.72 * Math.cos(angle), 6);
       expect(placement.y).toBeCloseTo(centre + centre * 0.72 * Math.sin(angle), 6);
       expect(placement.rotation).toBeCloseTo(angle + Math.PI / 2, 9);

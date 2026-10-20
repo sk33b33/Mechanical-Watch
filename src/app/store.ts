@@ -30,9 +30,12 @@ import {
   type WindTrack,
 } from "@/simulation/simulationState";
 import { HAND_PERIOD_SECONDS } from "@/kinematics/timeDisplay";
+import { calendarDateOf, withCalendarDate } from "@/simulation/calendarState";
 import { NUMERICAL_PARAMETERS } from "@/reference/numericalParameters";
 
 const HISTORY_LIMIT = 200;
+/** One full civil day: twice the 12-hour dial period (ASM-0014's nominal correspondence). */
+const CLOCK_DAY_SECONDS = 2 * HAND_PERIOD_SECONDS.HOURS;
 
 /**
  * Direct hand-setting speed (movements without keyless works): the minutes
@@ -517,11 +520,25 @@ export class AppStore {
   }
 
   /**
+   * Sets the whole watch to the browser's own current local date and time:
+   * `advanceToBrowserTimeOfDay` for the clock, then the calendar wheels
+   * (date, month, leap-year, season, year digits) positioned directly to
+   * today's date (`withCalendarDate`, ASM-0070).
+   */
+  setToBrowserTime(now: Date = new Date()): void {
+    this.advanceToBrowserTimeOfDay(now);
+    this.simulation = withCalendarDate(this.simulation, this.movement, calendarDateOf(now));
+    this.recompute();
+    this.notify();
+  }
+
+  /**
    * Fast-forwards the RUNNING simulation (switching the crown back to
    * "running" first, if it was mid-setting or mid-winding) by exactly the
    * simulated time needed for the nominal 12-hour dial correspondence
    * (ASM-0014: hours 1 rev/12 h, minutes 1 rev/h, seconds 1 rev/min) to
-   * land on the browser's own current local time. This is a computed
+   * land on the browser's own current local time (the clock only; the
+   * calendar wheels are set by `setToBrowserTime`). This is a computed
    * jump, not a literal simulated crown-setting action (ASM-0015's own
    * "no stop-seconds" limitation means the going train keeps running
    * during a real setting action, so the seconds hand can't be landed on
@@ -541,10 +558,12 @@ export class AppStore {
    * cover up to 12 h, multiple seconds of UI-blocking work for the exact
    * same final result.
    */
-  setToBrowserTime(): void {
-    const now = new Date();
-    const targetSeconds = (now.getHours() % 12) * 3600 + now.getMinutes() * 60 + now.getSeconds() + now.getMilliseconds() / 1000;
-    const period = HAND_PERIOD_SECONDS.HOURS;
+  advanceToBrowserTimeOfDay(now: Date = new Date()): void {
+    // Matched against the full 24-hour day, not the 12-hour dial: the 24-hour arbor that drives
+    // the date jump (ASM-0048) turns once per 24 h, so landing on 2:37 instead of 14:37 would
+    // put the next date change 12 hours out of step (ASM-0070). The hands read the same either way.
+    const targetSeconds = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds() + now.getMilliseconds() / 1000;
+    const period = CLOCK_DAY_SECONDS;
     const currentSeconds = this.simulation.time % period;
     const delta = (((targetSeconds - currentSeconds) % period) + period) % period;
     if (delta < NUMERICAL_PARAMETERS.simulationTimestepSeconds) return;

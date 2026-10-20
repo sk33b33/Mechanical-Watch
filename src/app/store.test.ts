@@ -122,6 +122,36 @@ describe("AppStore setToBrowserTime", () => {
     expect(handReading(store, "MINUTES")).toBeCloseTo(15, 1);
   });
 
+  it("also sets the calendar from the browser's date: the 20th of October 2026 (ASM-0070)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 20, 15, 5, 0));
+    const movement = setNominalTimeDrive(createTeachingMovement());
+    const store = new AppStore(movement);
+    store.setToBrowserTime();
+    const date = Object.values(movement.dateComplications)[0];
+    const month = Object.values(movement.monthComplications)[0];
+    if (date === undefined || month === undefined) throw new Error("teaching movement is missing the date or month complication");
+    expect(starPosition(store.simulation.shaftAngle[date.starShaftId] ?? radians(0), date.starToothCount)).toBe(19);
+    expect(starPosition(store.simulation.shaftAngle[month.starShaftId] ?? radians(0), 12)).toBe(9);
+  });
+
+  it("lands the 24-hour arbor on the real time of day, so PM and AM differ at the same hand reading (ASM-0070)", () => {
+    vi.useFakeTimers();
+    const movement = setNominalTimeDrive(createTeachingMovement());
+    const arbor = Object.values(movement.shafts).find((s) => s.name === "24-hour arbor");
+    if (arbor === undefined) throw new Error("teaching movement is missing the 24-hour arbor");
+    const angleAt = (hour: number): number => {
+      vi.setSystemTime(new Date(2026, 9, 20, hour, 0, 0));
+      const store = new AppStore(movement);
+      store.setToBrowserTime();
+      return store.simulation.shaftAngle[arbor.id] ?? 0;
+    };
+    const am = angleAt(2);
+    const pm = angleAt(14);
+    // Half a turn (12 h of a 24 h revolution) apart, whichever way the arbor's own sign runs.
+    expect(Math.abs(pm - am)).toBeCloseTo(Math.PI, 6);
+  });
+
   it("a date-jump drive-shaft revolution crossed mid-fast-forward still fires the jump (the coarse step stays safely under its period)", () => {
     vi.useFakeTimers();
     const movement = setNominalTimeDrive(createTeachingMovement());
@@ -146,7 +176,9 @@ describe("AppStore setToBrowserTime", () => {
     store.simulation = { ...store.simulation, time: seconds(0), shaftAngle: { ...store.simulation.shaftAngle, [twentyFourHourArbor.id]: almostOneRevolution } };
     const before = starPosition(store.simulation.shaftAngle[dateStarArbor.id] ?? radians(0), date.starToothCount);
     vi.setSystemTime(new Date(2026, 0, 1, 11, 0, 20)); // any target past the 10 s remaining to the revolution forces the crossing
-    store.setToBrowserTime();
+    // The clock fast-forward alone: `setToBrowserTime` would then overwrite the date star with
+    // the browser's own calendar date (ASM-0070), masking whether the jump itself fired.
+    store.advanceToBrowserTimeOfDay();
     const after = starPosition(store.simulation.shaftAngle[dateStarArbor.id] ?? radians(0), date.starToothCount);
     expect(after).not.toBe(before);
   });
