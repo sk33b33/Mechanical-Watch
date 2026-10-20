@@ -2,6 +2,19 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 19: labels toward the wheel edge; seconds numerals moved to the seconds hand
+
+**Labels:** the date numbers and month names now sit at 0.86 of their wheel's radius instead of
+0.72 (`DIAL_WINDOW_VISUALIZATION.edgeLabelRadiusFraction`, passed only for date and month; leap-year
+and season rings are unchanged). The slot arc, and with it the auto-fitted font (ASM-0067), grows with
+the ring radius, so the labels are a little larger too; checked live that the text clears the rim and the
+spoke gaps (which still stop at 0.58, so the solid rim is now a little wider than the label band needs —
+the gaps could be lengthened outward if wanted). **Seconds numerals (correction):** follow-up 18 had
+put 60/15/30/45 on the big hour circles; they belong around the small gold seconds hand. They are now
+printed around that hand's own pivot (the Fourth arbor, ≈(9.8, −2.7)mm), 60 north, 15 east (the dial's
+right), 30 south, 45 west, at 0.95 of the hand's length so the tip reaches them; the hour circles carry
+no numerals. **To revert the label move:** pass no radius to `discMaterials` for date/month.
+
 ## Phase 8.15 follow-up 18: round hour markers, seconds numerals, hand and date-wheel colours
 
 Four dial/colour changes at the user's request. **Round markers:** the twelve rectangular hour bars

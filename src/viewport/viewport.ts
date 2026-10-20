@@ -24,6 +24,8 @@ import {
   YEAR_DIGIT_BARREL_VISUALIZATION,
   createZCylinder,
   DATE_LINKAGE_VISUALIZATION,
+  DIAL_VISUALIZATION,
+  DIAL_WINDOW_VISUALIZATION,
   DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS,
   escapeWheelHubRadius,
   generateEscapeWheelOutline,
@@ -198,9 +200,9 @@ function material(color: number, extra: THREE.MeshStandardMaterialParameters = {
  * plain colour otherwise. Three entries always, matching the geometry's
  * own three material groups regardless.
  */
-function discMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, labels: readonly string[] | null, labelCanvasAngleOffset = 0): THREE.MeshStandardMaterial[] {
+function discMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, labels: readonly string[] | null, labelCanvasAngleOffset = 0, labelRadiusFraction?: number): THREE.MeshStandardMaterial[] {
   const plain = material(color, extra);
-  const texture = labels === null ? null : createDiscLabelTexture(labels, labelCanvasAngleOffset);
+  const texture = labels === null ? null : createDiscLabelTexture(labels, labelCanvasAngleOffset, labelRadiusFraction);
   const labeled = texture === null ? plain : material(color, { ...extra, map: texture });
   // CylinderGeometry's own group order after createZCylinder's rotateX(π/2): [side, +Z cap, −Z cap].
   return [plain, plain, labeled];
@@ -612,7 +614,7 @@ export class Viewport {
       const dateLabels = findDiscComplication(movement, date.id)?.positionLabels ?? null;
       const mesh = new THREE.Mesh(
         createSpokedWheelGeometry(date.starTipDiameter / 2, date.starThickness),
-        discMaterials(COLORS.dateStar, { metalness: 0.1, roughness: 0.7 }, dateLabels, DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS),
+        discMaterials(COLORS.dateStar, { metalness: 0.1, roughness: 0.7 }, dateLabels, DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS, DIAL_WINDOW_VISUALIZATION.edgeLabelRadiusFraction),
       );
       mesh.position.z = meshZ;
       this.addPickable(group, mesh, { kind: "dateStar", entityId: date.id, baseColor: COLORS.dateStar });
@@ -673,7 +675,7 @@ export class Viewport {
       const monthLabels = findDiscComplication(movement, month.id)?.positionLabels ?? null;
       const mesh = new THREE.Mesh(
         createSpokedWheelGeometry(month.starTipDiameter / 2, month.starThickness),
-        discMaterials(COLORS.monthStar, { metalness: 0.1, roughness: 0.7 }, monthLabels, DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS),
+        discMaterials(COLORS.monthStar, { metalness: 0.1, roughness: 0.7 }, monthLabels, DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS, DIAL_WINDOW_VISUALIZATION.edgeLabelRadiusFraction),
       );
       mesh.position.z = meshZ;
       this.addPickable(group, mesh, { kind: "monthStar", entityId: month.id, baseColor: COLORS.monthStar });
@@ -1026,11 +1028,17 @@ export class Viewport {
         const moon = movement.moonPhases[w.complicationId as MoonPhaseId];
         if (w.phaseMarks && moon !== undefined) moonImageCounts.set(w.id, windowsPerRevolution(moon.windowCount));
       }
+      // The seconds-scale numerals go around the seconds hand's own pivot, just inside its tip.
+      const secondsShaft = Object.values(movement.shafts).find((s) => s.hand === "SECONDS");
+      const secondsPivot = secondsShaft === undefined ? undefined : analysis.placement.shaftPositions.get(secondsShaft.id);
+      const secondsScale = secondsPivot === undefined
+        ? null
+        : { pivot: { x: secondsPivot.x, y: secondsPivot.y }, ringRadius: HAND_VISUALIZATION.SECONDS.lengthMetres * DIAL_VISUALIZATION.secondsNumeralRingFraction };
       for (const dial of Object.values(movement.dials)) {
         const built = buildDialMeshes(dial, analysis.placement, (z) => this.displayZ(z), {
           disc: material(COLORS.dial, { metalness: 0.05, roughness: 0.8 }),
           marker: material(COLORS.dialMarker, { metalness: 0.2, roughness: 0.5 }),
-        }, Object.values(movement.dialWindows), moonImageCounts);
+        }, Object.values(movement.dialWindows), moonImageCounts, secondsScale);
         if (built === null) continue;
         this.content.add(built.root);
         built.disc.userData = {

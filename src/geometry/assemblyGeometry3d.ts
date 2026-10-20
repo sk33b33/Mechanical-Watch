@@ -53,9 +53,9 @@ export const KEYLESS_VISUALIZATION = {
  * (Phase 8.15 follow-up 18, at the user's request, replacing the earlier
  * rectangular bars): the 12, 3, 6 and 9 o'clock markers are big circles and
  * the other eight are half their size. Radii and the inset from the dial's
- * edge are fractions of the dial's own radius, as before. The big circles
- * also carry the seconds-scale numerals (60 at 12, 15 at 3, 30 at 6, 45 at 9)
- * for the seconds hand, in pale type on the dark dot.
+ * edge are fractions of the dial's own radius, as before. The seconds-scale
+ * numerals (60 north, 15 east, 30 south, 45 west) are printed around the
+ * seconds hand's own pivot, not on the hour circles.
  */
 export const DIAL_VISUALIZATION = {
   /** Radius of a 12/3/6/9 o'clock circle as a fraction of the dial radius. */
@@ -65,16 +65,23 @@ export const DIAL_VISUALIZATION = {
   /** How far each marker's own centre sits in from the dial's edge, as a fraction of the dial radius. */
   markerInsetFraction: 0.09,
   markerThicknessMetres: 0.03e-3,
-  /** Seconds numerals printed in the four big circles, by hour position (0 = 12 o'clock). */
+  /**
+   * Seconds-scale numerals printed on the dial around the seconds hand's own pivot (Phase 8.15
+   * follow-up 19: first placed on the big hour circles, then moved to the small seconds hand at
+   * the user's correction). `dx`/`dy` are unit steps in the dial plane from the pivot: north is
+   * world +Y, and east — the right of the dial as read from its −Z side — is world −X.
+   */
   secondsNumerals: [
-    { hour: 0, text: "60" },
-    { hour: 3, text: "15" },
-    { hour: 6, text: "30" },
-    { hour: 9, text: "45" },
-  ] as readonly { hour: number; text: string }[],
+    { text: "60", dx: 0, dy: 1 },
+    { text: "15", dx: -1, dy: 0 },
+    { text: "30", dx: 0, dy: -1 },
+    { text: "45", dx: 1, dy: 0 },
+  ] as readonly { text: string; dx: number; dy: number }[],
+  /** How far from the seconds hand's pivot the numerals sit, as a fraction of that hand's own length: just inside its tip. */
+  secondsNumeralRingFraction: 0.95,
   /** Numeral text height as a fraction of the dial radius. */
   numeralHeightFraction: 0.04,
-  numeralColor: "#f4efe3",
+  numeralColor: "#1a1e22",
   assumption: "ASM-0020" satisfies AssumptionId,
 } as const;
 
@@ -86,6 +93,21 @@ export interface DialMarkerPlacement {
   /** Centre in the dial plane relative to the dial's own centre; world +Y is 12 o'clock and world −X is 3 o'clock (the dial is read from its −Z side). */
   readonly x: number;
   readonly y: number;
+}
+
+export interface SecondsNumeralPlacement {
+  readonly text: string;
+  /** Centre in the same frame as the pivot passed in (world metres). */
+  readonly x: number;
+  readonly y: number;
+}
+
+/**
+ * Where the seconds numerals go around the seconds hand's own pivot (ASM-0020, follow-up 19):
+ * 60 north, 15 east, 30 south, 45 west, each `ringRadius` from the pivot. Pure geometry.
+ */
+export function secondsNumeralPlacements(pivot: { x: number; y: number }, ringRadius: number): SecondsNumeralPlacement[] {
+  return DIAL_VISUALIZATION.secondsNumerals.map((n) => ({ text: n.text, x: pivot.x + n.dx * ringRadius, y: pivot.y + n.dy * ringRadius }));
 }
 
 /**
@@ -495,6 +517,15 @@ export const DIAL_WINDOW_VISUALIZATION = {
   textureSizePx: 512,
   labelRadiusFraction: 0.72,
   /**
+   * Where the date and month wheels' own label rings sit (Phase 8.15 follow-up 19, at the user's
+   * request: "move the date numbers and months text closer to the edge of their respective
+   * wheels"), as a fraction of the wheel's own radius. Labels extend only a few hundredths of the
+   * radius either side of their ring, so 0.86 keeps the outer edge of the text clear of the rim
+   * (checked live). The leap-year ring keeps `labelRadiusFraction`: its Geneva slots cut in from
+   * the rim.
+   */
+  edgeLabelRadiusFraction: 0.86,
+  /**
    * The BASE font size: used as-is for a low-density ring (4 positions —
    * leap-year, season), and as the starting point `discLabelFittedFontSizePx`
    * scales DOWN from for a denser one (31-position date, 12-position
@@ -625,10 +656,10 @@ export interface DiscLabelPlacement {
  * offset there (half a slot's own spacing) to centre each label between
  * two slots instead.
  */
-export function discLabelPlacements(labels: readonly string[], canvasAngleOffset = 0): DiscLabelPlacement[] {
+export function discLabelPlacements(labels: readonly string[], canvasAngleOffset = 0, labelRadiusFraction: number = DIAL_WINDOW_VISUALIZATION.labelRadiusFraction): DiscLabelPlacement[] {
   const v = DIAL_WINDOW_VISUALIZATION;
   const centre = v.textureSizePx / 2;
-  const labelRadius = centre * v.labelRadiusFraction;
+  const labelRadius = centre * labelRadiusFraction;
   return labels.map((label, i) => {
     const angle = DISC_LABEL_RING_DIRECTION * (i / labels.length) * Math.PI * 2 + canvasAngleOffset;
     return {
@@ -647,9 +678,9 @@ export function discLabelPlacements(labels: readonly string[], canvasAngleOffset
  * Pure geometry, no canvas/DOM dependency, so it is unit-testable the same
  * way `discLabelPlacements` already is.
  */
-export function discLabelSlotArcLengthPx(labelCount: number): number {
+export function discLabelSlotArcLengthPx(labelCount: number, labelRadiusFraction: number = DIAL_WINDOW_VISUALIZATION.labelRadiusFraction): number {
   const v = DIAL_WINDOW_VISUALIZATION;
-  const labelRadius = (v.textureSizePx / 2) * v.labelRadiusFraction;
+  const labelRadius = (v.textureSizePx / 2) * labelRadiusFraction;
   return (2 * Math.PI * labelRadius) / labelCount;
 }
 
@@ -684,15 +715,15 @@ export function discLabelSlotArcLengthPx(labelCount: number): number {
  * context to call `ctx.measureText` on — this function itself stays
  * pure/DOM-free so it can be unit tested directly).
  */
-export function discLabelFittedFontSizePx(maxLabelWidthAtBaseFontPx: number, labelCount: number): number {
+export function discLabelFittedFontSizePx(maxLabelWidthAtBaseFontPx: number, labelCount: number, labelRadiusFraction: number = DIAL_WINDOW_VISUALIZATION.labelRadiusFraction): number {
   const v = DIAL_WINDOW_VISUALIZATION;
   if (!(maxLabelWidthAtBaseFontPx > 0) || !(labelCount > 0)) return v.fontSizePx;
-  const slotArc = discLabelSlotArcLengthPx(labelCount);
+  const slotArc = discLabelSlotArcLengthPx(labelCount, labelRadiusFraction);
   const scale = Math.min(1, (slotArc * v.labelFillFraction) / maxLabelWidthAtBaseFontPx);
   return Math.max(v.minFontSizePx, v.fontSizePx * scale);
 }
 
-export function createDiscLabelTexture(labels: readonly string[], canvasAngleOffset = 0): THREE.CanvasTexture | null {
+export function createDiscLabelTexture(labels: readonly string[], canvasAngleOffset = 0, labelRadiusFraction: number = DIAL_WINDOW_VISUALIZATION.labelRadiusFraction): THREE.CanvasTexture | null {
   if (labels.length === 0) return null;
   const v = DIAL_WINDOW_VISUALIZATION;
   const canvas = document.createElement("canvas");
@@ -712,9 +743,9 @@ export function createDiscLabelTexture(labels: readonly string[], canvasAngleOff
       return m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
     }),
   );
-  const fittedFontSizePx = discLabelFittedFontSizePx(maxLabelWidthAtBaseFontPx, labels.length);
+  const fittedFontSizePx = discLabelFittedFontSizePx(maxLabelWidthAtBaseFontPx, labels.length, labelRadiusFraction);
   ctx.font = `bold ${String(fittedFontSizePx)}px sans-serif`;
-  for (const placement of discLabelPlacements(labels, canvasAngleOffset)) {
+  for (const placement of discLabelPlacements(labels, canvasAngleOffset, labelRadiusFraction)) {
     ctx.save();
     ctx.translate(placement.x, placement.y);
     ctx.rotate(placement.rotation);

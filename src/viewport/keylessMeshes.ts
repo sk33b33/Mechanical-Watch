@@ -21,6 +21,7 @@ import {
   createDialWindowPointerGeometry,
   dialMarkerPlacements,
   dialWindowCaptionOffset,
+  secondsNumeralPlacements,
   createMoonPhaseMarkGeometry,
   moonPhaseMarks,
   createZCylinder,
@@ -139,6 +140,8 @@ export function buildDialMeshes(
   windows: readonly DialWindow[] = [],
   /** Moon-image count (1 or 2) of each window's own moon-phase disc, for windows with `phaseMarks` (ASM-0072). */
   moonImageCounts: ReadonlyMap<string, number> = new Map(),
+  /** The seconds hand's own pivot (world metres) and the radius of its numeral ring, or null for none (follow-up 19). */
+  secondsScale: { pivot: { x: number; y: number }; ringRadius: number } | null = null,
 ): { root: THREE.Group; disc: THREE.Mesh } | null {
   const centre = placement.shaftPositions.get(dial.centreShaftId);
   const valid = Number.isFinite(dial.diameter) && dial.diameter > 0 && Number.isFinite(dial.thickness) && dial.thickness > 0 && Number.isFinite(dial.faceHeight);
@@ -164,9 +167,7 @@ export function buildDialMeshes(
   root.add(disc);
   const d = DIAL_VISUALIZATION;
   const r = dial.diameter / 2;
-  // Round hour markers (ASM-0020): big circles at 12/3/6/9, half-size elsewhere; the four big ones
-  // carry the seconds-scale numerals (60/15/30/45) in pale type.
-  const numeralHeight = r * d.numeralHeightFraction;
+  // Round hour markers (ASM-0020): big circles at 12/3/6/9, half-size elsewhere.
   for (const marker of dialMarkerPlacements(r)) {
     const dot = new THREE.Mesh(
       new THREE.CylinderGeometry(marker.radiusMetres, marker.radiusMetres, d.markerThicknessMetres, 48).rotateX(Math.PI / 2),
@@ -174,19 +175,24 @@ export function buildDialMeshes(
     );
     dot.position.set(marker.x, marker.y, face - d.markerThicknessMetres / 2);
     root.add(dot);
-    const numeral = marker.big ? d.secondsNumerals.find((n) => n.hour === marker.hour) : undefined;
-    if (numeral === undefined) continue;
-    const built = createDialWindowCaptionTexture(numeral.text, d.numeralColor);
-    if (built === null) continue;
-    const plane = new THREE.Mesh(
-      new THREE.PlaneGeometry(numeralHeight * built.aspect, numeralHeight),
-      new THREE.MeshBasicMaterial({ map: built.texture, transparent: true, depthWrite: false, side: THREE.DoubleSide }),
-    );
-    // Read from the dial's −Z side, where world +X runs leftward on screen: half a turn about Y so
-    // the text reads left to right (same treatment as the window captions).
-    plane.rotation.y = Math.PI;
-    plane.position.set(marker.x, marker.y, face - 1.3 * d.markerThicknessMetres);
-    root.add(plane);
+  }
+  // Seconds-scale numerals around the seconds hand's own pivot (follow-up 19): 60 north, 15 east,
+  // 30 south, 45 west, just inside the hand's tip, printed on the dial like the window captions.
+  if (secondsScale !== null) {
+    const numeralHeight = r * d.numeralHeightFraction;
+    for (const numeral of secondsNumeralPlacements(secondsScale.pivot, secondsScale.ringRadius)) {
+      const built = createDialWindowCaptionTexture(numeral.text, d.numeralColor);
+      if (built === null) continue;
+      const plane = new THREE.Mesh(
+        new THREE.PlaneGeometry(numeralHeight * built.aspect, numeralHeight),
+        new THREE.MeshBasicMaterial({ map: built.texture, transparent: true, depthWrite: false, side: THREE.DoubleSide }),
+      );
+      // Read from the dial's −Z side, where world +X runs leftward on screen: half a turn about Y so
+      // the text reads left to right (same treatment as the window captions).
+      plane.rotation.y = Math.PI;
+      plane.position.set(numeral.x - centre.x, numeral.y - centre.y, face - 1.3 * d.markerThicknessMetres);
+      root.add(plane);
+    }
   }
   const pv = DIAL_WINDOW_POINTER_VISUALIZATION;
   const pointerHeight = r * pv.heightFraction;

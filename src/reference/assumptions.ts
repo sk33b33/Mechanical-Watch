@@ -125,7 +125,7 @@ export const ASSUMPTIONS = {
   },
   "ASM-0020": {
     summary:
-      "The dial is a flat disc of uniform thickness; feet, holes and printing are not modeled, and the hour markers drawn on it are visual: round dots (Phase 8.15 follow-up 18, replacing bars) -- big circles at 12, 3, 6 and 9 o'clock carrying the seconds-scale numerals 60, 15, 30 and 45, and half-size circles at the other eight positions -- sized as fractions of the dial radius (DIAL_VISUALIZATION); the numerals are decoration for the seconds hand, not a calibrated scale",
+      "The dial is a flat disc of uniform thickness; feet, holes and printing are not modeled, and the hour markers drawn on it are visual: round dots (Phase 8.15 follow-up 18, replacing bars) -- big circles at 12, 3, 6 and 9 o'clock and half-size circles at the other eight positions -- sized as fractions of the dial radius (DIAL_VISUALIZATION); the seconds-scale numerals 60 (north), 15 (east), 30 (south) and 45 (west) are printed around the seconds hand's own pivot, just inside its tip (follow-up 19), as decoration for that hand and not a calibrated scale",
     scope: "Dial",
     status: "Active",
   },

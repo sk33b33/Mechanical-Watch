@@ -22,6 +22,7 @@ import {
   DIAL_VISUALIZATION,
   createDialWindowBezelGeometry,
   dialMarkerPlacements,
+  secondsNumeralPlacements,
   createMoonPhaseMarkGeometry,
   createSpokedWheelGeometry,
   SPOKED_WHEEL_VISUALIZATION,
@@ -1330,14 +1331,49 @@ describe("dialMarkerPlacements (ASM-0020, round hour markers)", () => {
     expect(at(9).x).toBeGreaterThan(0);
   });
 
-  it("prints the seconds numerals 60 at north, 15 at east, 30 at south and 45 at west — each on a big circle", () => {
-    const byHour = new Map(DIAL_VISUALIZATION.secondsNumerals.map((n) => [n.hour, n.text]));
-    expect(byHour.get(0)).toBe("60");
-    expect(byHour.get(3)).toBe("15");
-    expect(byHour.get(6)).toBe("30");
-    expect(byHour.get(9)).toBe("45");
-    for (const n of DIAL_VISUALIZATION.secondsNumerals) expect(placements.find((p) => p.hour === n.hour)?.big).toBe(true);
+  it("prints the seconds numerals around the seconds hand's pivot: 60 north, 15 east (the dial's right, world −X), 30 south, 45 west", () => {
+    const pivot = { x: 9.777e-3, y: -2.7e-3 };
+    const ring = 2.85e-3;
+    const byText = new Map(secondsNumeralPlacements(pivot, ring).map((n) => [n.text, n]));
+    expect(byText.size).toBe(4);
+    const at = (text: string): { x: number; y: number } => {
+      const n = byText.get(text);
+      if (n === undefined) throw new Error(`no numeral ${text}`);
+      return n;
+    };
+    expect(at("60").x).toBeCloseTo(pivot.x, 12);
+    expect(at("60").y).toBeCloseTo(pivot.y + ring, 12);
+    expect(at("15").x).toBeCloseTo(pivot.x - ring, 12);
+    expect(at("15").y).toBeCloseTo(pivot.y, 12);
+    expect(at("30").y).toBeCloseTo(pivot.y - ring, 12);
+    expect(at("45").x).toBeCloseTo(pivot.x + ring, 12);
+    // None are printed on the hour circles any more.
     expect(DIAL_VISUALIZATION.secondsNumerals).toHaveLength(4);
+  });
+});
+
+describe("date/month label ring moved toward the wheel's edge (follow-up 19)", () => {
+  it("places labels at a given radius fraction, defaulting to the shared ring", () => {
+    const centre = 512 / 2;
+    const edge = DIAL_WINDOW_VISUALIZATION.edgeLabelRadiusFraction;
+    for (const placement of discLabelPlacements(["a", "b", "c"], 0, edge)) {
+      expect(Math.hypot(placement.x - centre, placement.y - centre)).toBeCloseTo(centre * edge, 6);
+    }
+    const [defaulted] = discLabelPlacements(["a"]);
+    expect(Math.hypot((defaulted?.x ?? 0) - centre, (defaulted?.y ?? 0) - centre)).toBeCloseTo(centre * DIAL_WINDOW_VISUALIZATION.labelRadiusFraction, 6);
+  });
+
+  it("sits further out than the shared ring but leaves the text clear of the rim", () => {
+    const v = DIAL_WINDOW_VISUALIZATION;
+    expect(v.edgeLabelRadiusFraction).toBeGreaterThan(v.labelRadiusFraction);
+    // Labels reach about 0.06 of the radius beyond their ring (measured live): the outer edge stays inside the rim.
+    expect(v.edgeLabelRadiusFraction + 0.06).toBeLessThan(1);
+  });
+
+  it("gives a wider slot, so the fitted font never shrinks below the shared ring's", () => {
+    const edge = DIAL_WINDOW_VISUALIZATION.edgeLabelRadiusFraction;
+    expect(discLabelSlotArcLengthPx(31, edge)).toBeGreaterThan(discLabelSlotArcLengthPx(31));
+    expect(discLabelFittedFontSizePx(400, 31, edge)).toBeGreaterThanOrEqual(discLabelFittedFontSizePx(400, 31));
   });
 });
 
