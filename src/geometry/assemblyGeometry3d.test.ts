@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import type * as THREE from "three";
+import * as THREE from "three";
 import { metres } from "@/units/length";
+import { radians } from "@/units/angle";
+import { moonPhaseFraction } from "@/kinematics/moonPhase";
 import type { Point2D } from "./gearOutline";
 import {
   balanceArmHalfExtents,
@@ -16,6 +18,7 @@ import {
   discCapCanvasAngleForMeshAngle,
   discLabelFittedFontSizePx,
   DISC_LABEL_RING_DIRECTION,
+  createMoonPhaseMarkGeometry,
   discLabelPlacements,
   discLabelSlotArcLengthPx,
   DIAL_WINDOW_VISUALIZATION,
@@ -28,6 +31,7 @@ import {
   moonImageLocalAngle,
   MOON_PHASE_VISUALIZATION,
   rayCircleInward,
+  moonPhaseMarks,
   seasonWedgeBoundaryAngles,
   yearDigitAxleProjection,
   yearDigitBarrelAlongBounds,
@@ -992,5 +996,94 @@ describe("yearDigitBarrelDividerPositions (ASM-0066)", () => {
   it("returns no dividers for zero or one segment", () => {
     expect(yearDigitBarrelDividerPositions([])).toEqual([]);
     expect(yearDigitBarrelDividerPositions([{ along: 0 }])).toEqual([]);
+  });
+});
+
+describe("moonPhaseMarks (ASM-0072)", () => {
+  const angleOf = (n: number, kind: string): number[] =>
+    moonPhaseMarks(n).filter((m) => m.kind === kind).map((m) => m.worldAngle).sort((a, b) => a - b);
+
+  it("for the usual two-image disc puts full at north and south, new at east and west and the quarters on the diagonals", () => {
+    const near = (actual: number[], expected: number[]): void => {
+      expect(actual).toHaveLength(expected.length);
+      expected.forEach((e, i) => { expect(actual[i]).toBeCloseTo(e, 9); });
+    };
+    near(angleOf(2, "FULL"), [Math.PI / 2, (3 * Math.PI) / 2]);
+    near(angleOf(2, "NEW"), [0, Math.PI]);
+    near(angleOf(2, "FIRST_QUARTER"), [Math.PI / 4, (5 * Math.PI) / 4]);
+    near(angleOf(2, "LAST_QUARTER"), [(3 * Math.PI) / 4, (7 * Math.PI) / 4]);
+  });
+
+  it("for a single-image disc puts full at north and new at south", () => {
+    expect(angleOf(1, "FULL")[0]).toBeCloseTo(Math.PI / 2, 9);
+    expect(angleOf(1, "NEW")[0]).toBeCloseTo((3 * Math.PI) / 2, 9);
+    expect(moonPhaseMarks(1)).toHaveLength(4);
+  });
+
+  it("agrees with the real kinematics: an image sits on a mark of each phase exactly when moonPhaseFraction reads that phase", () => {
+    for (const n of [1, 2]) {
+      for (const [kind, fraction] of [["NEW", 0], ["FIRST_QUARTER", 0.25], ["FULL", 0.5], ["LAST_QUARTER", 0.75]] as const) {
+        // Disc angle whose phase fraction is `fraction` (moonPhaseFraction: (turns × n) mod 1).
+        const shaftAngle = (2 * Math.PI * fraction) / n;
+        expect(moonPhaseFraction(radians(shaftAngle), n)).toBeCloseTo(fraction, 9);
+        for (let k = 0; k < n; k += 1) {
+          const world = ((moonImageLocalAngle(k, n) + shaftAngle) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+          expect(angleOf(n, kind).some((a) => Math.abs(Math.atan2(Math.sin(a - world), Math.cos(a - world))) < 1e-9)).toBe(true);
+        }
+      }
+    }
+    expect(MOON_PHASE_VISUALIZATION.windowWorldAngleRadians).toBeCloseTo(Math.PI / 2, 12);
+  });
+
+  it("returns no marks for an invalid image count", () => {
+    expect(moonPhaseMarks(0)).toEqual([]);
+    expect(moonPhaseMarks(1.5)).toEqual([]);
+    expect(moonPhaseMarks(-2)).toEqual([]);
+  });
+});
+
+describe("createMoonPhaseMarkGeometry (ASM-0072)", () => {
+  const radius = 1e-3;
+  const bounds = (kind: Parameters<typeof createMoonPhaseMarkGeometry>[0], litSide: 1 | -1): THREE.Box3 => {
+    const g = createMoonPhaseMarkGeometry(kind, radius, 1e-4, litSide);
+    g.computeBoundingBox();
+    return g.boundingBox ?? new THREE.Box3();
+  };
+
+  it("every icon spans the icon radius, centred on the origin, with the requested thickness", () => {
+    for (const kind of ["NEW", "FIRST_QUARTER", "FULL", "LAST_QUARTER"] as const) {
+      const box = bounds(kind, 1);
+      expect(box.max.x).toBeCloseTo(radius, 6);
+      expect(box.min.x).toBeCloseTo(-radius, 6);
+      expect(box.max.z - box.min.z).toBeCloseTo(1e-4, 9);
+    }
+  });
+
+  it("a quarter icon carries more material than a new-moon ring and less than the full disc, weighted toward the lit side", () => {
+    // Area and area-weighted x-centroid of the extrusion's own top face (z at its max).
+    const top = (kind: Parameters<typeof createMoonPhaseMarkGeometry>[0], litSide: 1 | -1): { area: number; cx: number } => {
+      const g = createMoonPhaseMarkGeometry(kind, radius, 1e-4, litSide);
+      const pos = g.attributes.position;
+      const index = g.index;
+      if (pos === undefined) throw new Error("no positions");
+      let area = 0;
+      let moment = 0;
+      const tri = (a: number, b: number, c: number): void => {
+        const za = pos.getZ(a); const zb = pos.getZ(b); const zc = pos.getZ(c);
+        if (!(Math.abs(za - zb) < 1e-12 && Math.abs(zb - zc) < 1e-12 && za > 5e-5)) return;
+        const t = Math.abs((pos.getX(b) - pos.getX(a)) * (pos.getY(c) - pos.getY(a)) - (pos.getX(c) - pos.getX(a)) * (pos.getY(b) - pos.getY(a))) / 2;
+        area += t;
+        moment += (t * (pos.getX(a) + pos.getX(b) + pos.getX(c))) / 3;
+      };
+      if (index === null) for (let i = 0; i < pos.count; i += 3) tri(i, i + 1, i + 2);
+      else for (let i = 0; i < index.count; i += 3) tri(index.getX(i), index.getX(i + 1), index.getX(i + 2));
+      return { area, cx: area > 0 ? moment / area : 0 };
+    };
+    expect(top("FIRST_QUARTER", 1).area).toBeGreaterThan(top("NEW", 1).area);
+    expect(top("FULL", 1).area).toBeGreaterThan(top("FIRST_QUARTER", 1).area);
+    expect(top("FIRST_QUARTER", 1).cx).toBeGreaterThan(0);
+    expect(top("LAST_QUARTER", -1).cx).toBeLessThan(0);
+    expect(Math.abs(top("FULL", 1).cx)).toBeLessThan(1e-9);
+    expect(Math.abs(top("NEW", 1).cx)).toBeLessThan(1e-9);
   });
 });

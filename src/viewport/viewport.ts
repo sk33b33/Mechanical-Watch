@@ -40,7 +40,7 @@ import { arborZRange, frameBearingHoles, frameScrewHoles, frameZRange, isComplet
 import { partReferencePoint, type Point3 } from "@/assembly/measure";
 import { stemBodyId, type KeylessWorksId } from "@/domain/keyless";
 import { findDiscComplication } from "@/domain/discComplication";
-import type { MoonPhaseWindowCount } from "@/domain/moonPhase";
+import { windowsPerRevolution, type MoonPhaseId, type MoonPhaseWindowCount } from "@/domain/moonPhase";
 import type { DateComplicationId } from "@/domain/dateComplication";
 import type { LeapYearComplicationId } from "@/domain/leapYearComplication";
 import { LEAP_YEAR_INDEX_STROKE_SECONDS, LEAP_YEAR_SLOT_COUNT } from "@/domain/leapYearComplication";
@@ -1009,11 +1009,17 @@ export class Viewport {
     this.addEscapementMeshes();
 
     if (this.showDial) {
+      // How many moon images each moon-phase window's own disc carries, for its fixed phase marks (ASM-0072).
+      const moonImageCounts = new Map<string, number>();
+      for (const w of Object.values(movement.dialWindows)) {
+        const moon = movement.moonPhases[w.complicationId as MoonPhaseId];
+        if (w.phaseMarks && moon !== undefined) moonImageCounts.set(w.id, windowsPerRevolution(moon.windowCount));
+      }
       for (const dial of Object.values(movement.dials)) {
         const built = buildDialMeshes(dial, analysis.placement, (z) => this.displayZ(z), {
           disc: material(COLORS.dial, { metalness: 0.05, roughness: 0.8 }),
           marker: material(COLORS.dialMarker, { metalness: 0.2, roughness: 0.5 }),
-        }, Object.values(movement.dialWindows));
+        }, Object.values(movement.dialWindows), moonImageCounts);
         if (built === null) continue;
         this.content.add(built.root);
         built.disc.userData = {

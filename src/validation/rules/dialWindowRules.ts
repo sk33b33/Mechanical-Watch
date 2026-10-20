@@ -32,6 +32,8 @@ export const dialWindowRules: Rule = ({ movement, placement }) => {
       problems.push(win.outline.kind === "CIRCLE" ? "its radius must be a positive length" : "its width and height must be positive lengths");
     }
     if (!(Number.isFinite(win.centre.x) && Number.isFinite(win.centre.y))) problems.push("its centre must be finite");
+    if (win.phaseMarks && complication !== undefined && complication.kind !== "MoonPhase") problems.push("phase marks apply only to a moon-phase window");
+    if (win.phaseMarks && win.outline.kind !== "CIRCLE") problems.push("phase marks need a circular window");
     if (dial === undefined) problems.push("it does not reference an existing dial");
     if (complication === undefined) problems.push("it does not reference an existing complication");
     for (const problem of problems) {

@@ -435,6 +435,12 @@ export const ASSUMPTIONS = {
     scope: "Disc label ring layout (visual/L0 display only)",
     status: "Active",
   },
+  "ASM-0072": {
+    summary:
+      "Moon-phase marks (Phase 8.15 follow-up 14): DialWindow.phaseMarks, an optional ring of fixed lunar-phase icons printed on the dial around a CIRCULAR moon-phase window -- an unlit ring for new moon, a filled disc for full, and a ring with its lit half filled for each quarter -- raised by the user after the moon window was enlarged to show the whole disc ('add phase marks to the moon window'), because a whole-disc window shows where the moons are but not what phase that position means. Placement is derived, not chosen: moonPhaseFraction runs 0 to 1 as a moon image advances one image-spacing (2*pi / n) and moonImageLocalAngle puts an image under the window's fixed north at fraction 0.5, so at fraction f an image sits at north + (2*pi / n)(f - 0.5), repeated every 2*pi / n -- for the two-image disc full at north and south, new at east and west, quarters on the diagonals. At north the existing pointer (ASM-0069) already marks full moon, so no icon is drawn there when a north pointer is set. Quarter icons are lit on the left (first quarter, waxing) and right (last quarter) as seen from the dial side: the declared Southern Hemisphere convention, the reverse of the Northern Hemisphere one. Visual only (ASM-0004), sized as fractions of the dial radius (MOON_PHASE_MARK_VISUALIZATION). Domain schema change: DialWindow.phaseMarks (false by default), persistence schema v28 to v29 backfills false on every existing window. No kinematic change; the teaching movement turns it on for the moon phase window only.",
+    scope: "DialWindow.phaseMarks lunar-phase icon ring (Phase 8.15 follow-up, visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

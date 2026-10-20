@@ -72,6 +72,11 @@ export interface DialWindow {
   outline: DialWindowOutline;
   /** A fixed reading-position index mark on the dial, or null for none (the usual case — a small window that already catches only one position). */
   pointer: DialWindowPointer | null;
+  /**
+   * Fixed lunar-phase marks printed on the dial in a ring around a circular moon-phase window (ASM-0072): new, first quarter,
+   * full and last quarter, at the positions a moon image occupies at each phase. False (the usual case) for none.
+   */
+  phaseMarks: boolean;
 }
 
 export interface CreateDialWindowParams {
@@ -81,8 +86,9 @@ export interface CreateDialWindowParams {
   centre: Vec2;
   outline: DialWindowOutline;
   pointer?: DialWindowPointer | null;
+  phaseMarks?: boolean;
 }
 
 export function createDialWindow(params: CreateDialWindowParams): DialWindow {
-  return { pointer: null, ...params, id: createId("dialWindow"), type: "DialWindow" };
+  return { pointer: null, phaseMarks: false, ...params, id: createId("dialWindow"), type: "DialWindow" };
 }

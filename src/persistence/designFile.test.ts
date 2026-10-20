@@ -3,6 +3,7 @@ import { millimetres } from "@/units/length";
 import { setTolerance, updateGear, updateShaft, type Movement } from "@/domain/movement";
 import { createTolerance } from "@/domain/tolerance";
 import { createDemoMovement } from "@/app/demoMovement";
+import { createTeachingMovement } from "@/app/teachingMovement";
 import { analyzeMovement } from "@/analysis/analyzeMovement";
 import { decodeDesign, DESIGN_FORMAT, DESIGN_SCHEMA_VERSION, DesignFileError, encodeDesign } from "./designFile";
 import { AUTOSAVE_KEY, loadAutosave, RECOVERY_KEY, writeAutosave, type KeyValueStore } from "./autosave";
@@ -198,3 +199,24 @@ describe("schema migration v1 → v2", () => {
     expect(decodeDesign(asV1(noDrive))).toEqual(noDrive);
   });
 });
+
+describe("schema migration v28 → v29 (ASM-0072, DialWindow.phaseMarks)", () => {
+  it("backfills phaseMarks: false on every dial window of a v28 file", () => {
+    const doc = rawDoc(createTeachingMovement());
+    const movement = doc.movement as Record<string, Record<string, Record<string, unknown>>>;
+    const windows = movement.dialWindows ?? {};
+    expect(Object.keys(windows).length).toBeGreaterThan(0);
+    for (const w of Object.values(windows)) Reflect.deleteProperty(w, "phaseMarks");
+    const loaded = decodeDesign(JSON.stringify({ ...doc, schemaVersion: 28 }));
+    for (const w of Object.values(loaded.dialWindows)) expect(w.phaseMarks).toBe(false);
+  });
+
+  it("round-trips the teaching movement's own moon window phase marks", () => {
+    const teaching = createTeachingMovement();
+    const loaded = decodeDesign(encodeDesign(teaching));
+    const named = (m: typeof teaching): boolean[] => Object.values(m.dialWindows).map((w) => w.phaseMarks);
+    expect(named(loaded)).toEqual(named(teaching));
+    expect(named(loaded)).toContain(true);
+  });
+});
+

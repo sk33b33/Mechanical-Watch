@@ -95,6 +95,11 @@ export function dialWindowSection(store: AppStore, win: DialWindow): Section {
       { value: "NORTH", label: "North (index mark)" },
     ], (value) => { edit({ pointer: value === "" ? null : (value as "NORTH") }); },
       "A fixed index mark printed on the dial just outside the window's own north edge, naming which position reads as \"current\" (ASM-0069) — needed only once a window is big enough to show more than one position at a time (e.g. a season window sized to the whole wheel, to reveal its wedge artwork, rather than catching one label)."),
+    selectRow("Phase marks", win.phaseMarks ? "ON" : "", [
+      { value: "", label: "None" },
+      { value: "ON", label: "Lunar phase icons" },
+    ], (value) => { edit({ phaseMarks: value === "ON" }); },
+      "Fixed lunar-phase icons (new, first quarter, full, last quarter) printed on the dial in a ring around a circular moon-phase window, at the positions a moon image occupies at each phase (ASM-0072). Applies only to a moon-phase window."),
     readonlyRow("Model", "a circular or rectangular cutout in the dial, in plan — not a real date/month window's actual bevelled aperture (ASM-0051)",
       "Visual only — this project does not claim manufacturing accuracy for the window's shape (same treatment as ASM-0005's tooth proportions and ASM-0020's dial markers)."),
     readonlyRow("Currently shows", reading ?? "—",

@@ -46,7 +46,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 28;
+export const DESIGN_SCHEMA_VERSION = 29;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -412,6 +412,19 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
       Object.entries(movement.dialWindows).map(([id, w]) => [id, isRecord(w) ? { ...w, pointer: null } : w]),
     );
     return { ...doc, schemaVersion: 28, movement: { ...movement, dialWindows } };
+  },
+  /**
+   * v28 → v29: a dial window gains `phaseMarks` (ASM-0072), fixed lunar-phase
+   * marks around a circular moon-phase window. Every existing window gets
+   * `phaseMarks: false` — none of them had this concept before.
+   */
+  28: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.dialWindows)) return doc;
+    const dialWindows = Object.fromEntries(
+      Object.entries(movement.dialWindows).map(([id, w]) => [id, isRecord(w) ? { ...w, phaseMarks: false } : w]),
+    );
+    return { ...doc, schemaVersion: 29, movement: { ...movement, dialWindows } };
   },
 };
 
@@ -782,6 +795,7 @@ const dialWindow: Decoder<DialWindow> = (value, path) => {
     centre: field(o, "centre", vec2, path),
     outline: field(o, "outline", dialWindowOutline, path),
     pointer: field(o, "pointer", nullable(literal("NORTH")), path),
+    phaseMarks: field(o, "phaseMarks", boolean, path),
   };
 };
 

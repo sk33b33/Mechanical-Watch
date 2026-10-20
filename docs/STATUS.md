@@ -2,6 +2,24 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 14: lunar-phase marks around the moon window
+
+At the user's request the whole-disc moon window now has fixed phase icons printed on the dial
+around it: an unlit ring for new moon, a filled disc for full, and a ring with its lit half
+filled for each quarter. New domain field `DialWindow.phaseMarks` (default false; ASM-0072;
+persistence schema v28 → v29 backfills false; inspector "Phase marks" row; DIALWIN-001 rejects
+it on a non-moon or non-circular window). **Placement is derived, not chosen:** at phase
+fraction f a moon image sits at north + (2π/n)(f − 0.5), repeated every 2π/n
+(`moonPhaseMarks`, tested against the real `moonPhaseFraction`/`moonImageLocalAngle`), so for the
+two-image disc: full at north and south, new at east and west, the quarters on the diagonals. The
+north pointer already stands for full moon, so no icon is drawn under it; the south icon is the
+second image's full moon. Quarter icons are lit on the left (first quarter) and right (last
+quarter) as seen from the dial side — the declared Southern Hemisphere convention. **Layout:** the
+icon ring needs ≈0.7mm beyond the window, so the moon train's V (follow-up 13) was deepened from
+a 4.3mm half-base to 4.0mm (disc 8.0mm below the hour wheel, polar angles 237.37° / 302.63°)
+to stay clear of the 6 o'clock marker. **To revert:** set `phaseMarks: false` on the Moon phase
+window (the code can stay), and the moon polar angles back as noted in follow-up 13.
+
 ## Phase 8.15 follow-up 13: moon phase window trial — whole-disc window with north pointer
 
 A trial at the user's request (option A of the three proposed), kept or reverted after they

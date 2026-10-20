@@ -13,8 +13,11 @@ import {
   DIAL_VISUALIZATION,
   DIAL_WINDOW_POINTER_VISUALIZATION,
   KEYLESS_VISUALIZATION,
+  MOON_PHASE_MARK_VISUALIZATION,
   createDiscWithHolesGeometry,
   createDialWindowPointerGeometry,
+  createMoonPhaseMarkGeometry,
+  moonPhaseMarks,
   createZCylinder,
   type DiscHole,
 } from "@/geometry/assemblyGeometry3d";
@@ -129,6 +132,8 @@ export function buildDialMeshes(
   displayZ: (z: number) => number,
   materials: { disc: THREE.Material; marker: THREE.Material },
   windows: readonly DialWindow[] = [],
+  /** Moon-image count (1 or 2) of each window's own moon-phase disc, for windows with `phaseMarks` (ASM-0072). */
+  moonImageCounts: ReadonlyMap<string, number> = new Map(),
 ): { root: THREE.Group; disc: THREE.Mesh } | null {
   const centre = placement.shaftPositions.get(dial.centreShaftId);
   const valid = Number.isFinite(dial.diameter) && dial.diameter > 0 && Number.isFinite(dial.thickness) && dial.thickness > 0 && Number.isFinite(dial.faceHeight);
@@ -179,6 +184,28 @@ export function buildDialMeshes(
     const pointer = new THREE.Mesh(createDialWindowPointerGeometry(pointerBaseWidth, pointerHeight, d.markerThicknessMetres), materials.marker);
     pointer.position.set(w.centre.x - centre.x, w.centre.y - centre.y + halfExtentAtNorth + pointerGap, face - d.markerThicknessMetres / 2);
     root.add(pointer);
+  }
+  // Lunar-phase marks (ASM-0072): a ring of small icons around a circular moon-phase window, at
+  // the angles a moon image sits at each phase, level with the pointer. A north pointer already
+  // stands for the full moon at north, so no icon is drawn on top of it.
+  const mv = MOON_PHASE_MARK_VISUALIZATION;
+  const iconRadius = r * mv.iconRadiusFraction;
+  for (const w of ownWindows) {
+    const imageCount = moonImageCounts.get(w.id);
+    if (!w.phaseMarks || w.outline.kind !== "CIRCLE" || imageCount === undefined) continue;
+    const ringRadius = w.outline.radius + r * mv.gapFraction + iconRadius;
+    for (const mark of moonPhaseMarks(imageCount)) {
+      const atNorth = Math.abs(Math.cos(mark.worldAngle)) < 1e-9 && Math.sin(mark.worldAngle) > 0;
+      if (atNorth && w.pointer === "NORTH") continue;
+      const litSide: 1 | -1 = mark.kind === "FIRST_QUARTER" ? mv.firstQuarterLitSide : mv.firstQuarterLitSide === 1 ? -1 : 1;
+      const icon = new THREE.Mesh(createMoonPhaseMarkGeometry(mark.kind, iconRadius, d.markerThicknessMetres, litSide), materials.marker);
+      icon.position.set(
+        w.centre.x - centre.x + ringRadius * Math.cos(mark.worldAngle),
+        w.centre.y - centre.y + ringRadius * Math.sin(mark.worldAngle),
+        face - d.markerThicknessMetres / 2,
+      );
+      root.add(icon);
+    }
   }
   return { root, disc };
 }

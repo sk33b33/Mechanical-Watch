@@ -98,6 +98,102 @@ export function createDialWindowPointerGeometry(baseWidth: number, height: numbe
   return new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false });
 }
 
+/** The four lunar phases a moon-phase window's fixed marks name (ASM-0072). */
+export type MoonPhaseMarkKind = "NEW" | "FIRST_QUARTER" | "FULL" | "LAST_QUARTER";
+
+export interface MoonPhaseMark {
+  readonly kind: MoonPhaseMarkKind;
+  /** World angle (radians, [0, 2π), CCW from +X seen from +Z) from the window centre at which a moon image sits at this phase. */
+  readonly worldAngle: number;
+}
+
+/**
+ * Where a moon image sits, around its window, at each of the four principal
+ * phases (ASM-0072). `moonPhaseFraction` (`src/kinematics/moonPhase.ts`) runs
+ * 0 → 1 as an image advances by one image-spacing (2π / n) of the disc, and
+ * `moonImageLocalAngle` puts an image straight under the window's own fixed
+ * world angle (`windowWorldAngleRadians`, north) at fraction 0.5. So at phase
+ * fraction `f` an image sits at `windowWorldAngle + (2π / n)(f − 0.5)`, and —
+ * the n images being evenly spaced — one more at every further 2π / n. New moon
+ * (f = 0) sits half a spacing before full, first quarter (f = 0.25) a quarter
+ * before, last quarter (f = 0.75) a quarter after; for the usual two-image disc
+ * (spacing 180°) that is full at north and south, new at east and west, and the
+ * quarters on the diagonals. Pure geometry, no canvas/DOM.
+ */
+export function moonPhaseMarks(imageCount: number): MoonPhaseMark[] {
+  if (!(Number.isInteger(imageCount) && imageCount > 0)) return [];
+  const spacing = (2 * Math.PI) / imageCount;
+  const phases: readonly (readonly [MoonPhaseMarkKind, number])[] = [
+    ["NEW", 0],
+    ["FIRST_QUARTER", 0.25],
+    ["FULL", 0.5],
+    ["LAST_QUARTER", 0.75],
+  ];
+  const marks: MoonPhaseMark[] = [];
+  for (const [kind, fraction] of phases) {
+    for (let j = 0; j < imageCount; j += 1) {
+      const angle = MOON_PHASE_VISUALIZATION.windowWorldAngleRadians + spacing * (fraction - 0.5 + j);
+      marks.push({ kind, worldAngle: ((angle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) });
+    }
+  }
+  return marks;
+}
+
+/**
+ * Sizing of the moon-phase marks (ASM-0072, visual only, ASM-0004): each mark's
+ * icon radius and how far out from the window it sits are fractions of the
+ * dial's own radius, the same derivation convention `DIAL_WINDOW_POINTER_
+ * VISUALIZATION` and the hour markers use.
+ */
+export const MOON_PHASE_MARK_VISUALIZATION = {
+  /** Icon radius as a fraction of the dial's own radius. */
+  iconRadiusFraction: 0.018,
+  /** Inner radius of an unlit ring, as a fraction of the icon radius. */
+  ringInnerFraction: 0.68,
+  /** Gap between the window's own edge and the icon's own nearest edge, as a fraction of the dial's own radius. */
+  gapFraction: 0.012,
+  /**
+   * Which side of a quarter icon is lit: +1 puts it on world +X (screen-LEFT when viewed from the dial side, whose
+   * camera looks along +Z), −1 on world −X. Southern Hemisphere (declared user context): the waxing first quarter is
+   * lit on the left, the waning last quarter on the right — the reverse of the Northern Hemisphere convention.
+   */
+  firstQuarterLitSide: 1 as 1 | -1,
+  assumption: "ASM-0072" satisfies AssumptionId,
+} as const;
+
+/**
+ * Extruded geometry for one lunar-phase icon (ASM-0072), centred on the local
+ * origin, spanning z ∈ [0, thickness]: NEW an unlit ring, FULL a filled disc,
+ * and each quarter a ring with its lit half filled. `litSide` is +1/−1 (world
+ * +X / −X) and only matters for the quarters.
+ */
+export function createMoonPhaseMarkGeometry(kind: MoonPhaseMarkKind, radius: number, thickness: number, litSide: 1 | -1): THREE.ExtrudeGeometry {
+  const segments = 32;
+  const inner = radius * MOON_PHASE_MARK_VISUALIZATION.ringInnerFraction;
+  const shapes: THREE.Shape[] = [];
+  if (kind === "FULL") {
+    const disc = new THREE.Shape();
+    disc.absarc(0, 0, radius, 0, Math.PI * 2, false);
+    shapes.push(disc);
+  } else {
+    const ring = new THREE.Shape();
+    ring.absarc(0, 0, radius, 0, Math.PI * 2, false);
+    const hole = new THREE.Path();
+    hole.absarc(0, 0, inner, 0, Math.PI * 2, true);
+    ring.holes.push(hole);
+    shapes.push(ring);
+    if (kind !== "NEW") {
+      // The lit half-disc, a hair inside the ring so the two read as one icon.
+      const half = new THREE.Shape();
+      const start = litSide === 1 ? -Math.PI / 2 : Math.PI / 2;
+      half.absarc(0, 0, inner, start, start + Math.PI, false);
+      half.closePath();
+      shapes.push(half);
+    }
+  }
+  return new THREE.ExtrudeGeometry(shapes, { depth: thickness, bevelEnabled: false, curveSegments: segments });
+}
+
 type HandKind = keyof Omit<typeof HAND_VISUALIZATION, "thicknessMetres" | "assumption">;
 
 /** 2D outline of a hand's tapered blade (not the hub hole), pointing +Y from the axis (ASM-0016, visual). */
