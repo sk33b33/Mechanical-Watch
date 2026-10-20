@@ -2,6 +2,20 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 9: month window trial — whole-wheel window with north pointer
+
+A trial at the user's request, to be kept or reverted after they look at it. The
+Month window changed from a small 0.65 × 0.6mm RECTANGLE (above the star's label
+ring) to a CIRCLE centred on the month star's own axis, radius 5% over its declared
+tip radius, with `pointer: "NORTH"` (ASM-0069) — the same treatment as the season
+and leap-year windows. The month labels already used
+`DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS`, so the current month reads at north
+under the pointer (verified live: "January"/"Jan"). **To revert:** restore
+`centre: windowAbove(monthStarArbor.id, 2, 0.72)`, `outline: { kind: "RECTANGLE",
+width: mm(0.65), height: mm(0.6) }` and drop `pointer` in `teachingMovement.ts`
+(and the `Month window` expectation in `dialWindowRules.test.ts`).
+`dialWindowRules.test.ts`'s rectangle-case tests now use the Year window.
+
 ## Phase 8.15 follow-up 8: year window enlarged, barrel and digits unchanged
 
 Per the user's direction ("keep the barrel and digits exactly as they are now,

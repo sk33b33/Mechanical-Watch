@@ -10,14 +10,14 @@ import { validateMovement } from "./validateMovement";
 
 const teaching = createTeachingMovement();
 const win = Object.values(teaching.dialWindows).find((w) => w.name === "Date window");
-const monthWin = Object.values(teaching.dialWindows).find((w) => w.name === "Month window");
-if (win === undefined || monthWin === undefined) throw new Error("teaching movement is missing an expected dial window");
+const rectWin = Object.values(teaching.dialWindows).find((w) => w.name === "Year window");
+if (win === undefined || rectWin === undefined) throw new Error("teaching movement is missing an expected dial window");
 if (win.outline.kind !== "CIRCLE") throw new Error("expected the date window to stay circular");
-if (monthWin.outline.kind !== "RECTANGLE") throw new Error("expected the month window to be rectangular");
+if (rectWin.outline.kind !== "RECTANGLE") throw new Error("expected the year window to be rectangular");
 const found = (m: Movement, prefix: string): string[] =>
   validateMovement(m).filter((i) => i.rule.startsWith(prefix)).map((i) => `${i.rule}:${i.severity}:${i.id.split(":")[1] ?? ""}`);
 const edit = (patch: Parameters<typeof updateDialWindow>[2]): Movement => updateDialWindow(teaching, win.id, patch);
-const editMonth = (patch: Parameters<typeof updateDialWindow>[2]): Movement => updateDialWindow(teaching, monthWin.id, patch);
+const editRect = (patch: Parameters<typeof updateDialWindow>[2]): Movement => updateDialWindow(teaching, rectWin.id, patch);
 
 describe("dial window rules", () => {
   it("the teaching movement's own four dial windows report no errors (DIALWIN-001, DIALWIN-002)", () => {
@@ -32,15 +32,15 @@ describe("dial window rules", () => {
   });
 
   it("DIALWIN-001: a rectangle window's width and height must be positive, finite lengths", () => {
-    expect(found(editMonth({ outline: { kind: "RECTANGLE", width: mm(0), height: mm(0.5) } }), "DIALWIN-001"))
+    expect(found(editRect({ outline: { kind: "RECTANGLE", width: mm(0), height: mm(0.5) } }), "DIALWIN-001"))
       .toContain("DIALWIN-001:error:its width and height must be positive lengths");
-    expect(found(editMonth({ outline: { kind: "RECTANGLE", width: mm(1), height: mm(Number.NaN) } }), "DIALWIN-001"))
+    expect(found(editRect({ outline: { kind: "RECTANGLE", width: mm(1), height: mm(Number.NaN) } }), "DIALWIN-001"))
       .toContain("DIALWIN-001:error:its width and height must be positive lengths");
-    expect(found(editMonth({ outline: { kind: "RECTANGLE", width: mm(-1), height: mm(0.5) } }), "DIALWIN-001"))
+    expect(found(editRect({ outline: { kind: "RECTANGLE", width: mm(-1), height: mm(0.5) } }), "DIALWIN-001"))
       .toContain("DIALWIN-001:error:its width and height must be positive lengths");
   });
 
-  it("the teaching movement's own month window is rectangular; date, moon phase, leap-year and season (whole-wheel windows) are circular", () => {
+  it("the teaching movement's own year window is rectangular; date, moon phase, month, leap-year and season (whole-wheel windows) are circular", () => {
     const byName = (name: string): string => {
       const w = Object.values(teaching.dialWindows).find((x) => x.name === name);
       if (w === undefined) throw new Error(`no dial window named ${name}`);
@@ -48,7 +48,8 @@ describe("dial window rules", () => {
     };
     expect(byName("Moon phase window")).toBe("CIRCLE");
     expect(byName("Date window")).toBe("CIRCLE");
-    expect(byName("Month window")).toBe("RECTANGLE");
+    expect(byName("Year window")).toBe("RECTANGLE");
+    expect(byName("Month window")).toBe("CIRCLE");
     expect(byName("Leap-year window")).toBe("CIRCLE");
     expect(byName("Season window")).toBe("CIRCLE");
   });
@@ -81,13 +82,13 @@ describe("dial window rules", () => {
     expect(validateMovement(teaching).filter((i) => i.rule === "DIALWIN-002" && i.entityIds.includes(win.id))).toEqual([]);
   });
 
-  it("DIALWIN-002: the rectangle case (circle-rectangle overlap) flags a month window placed far from its star's own disc", () => {
-    const farAway = editMonth({ centre: vec2(mm(1000), mm(1000)) });
+  it("DIALWIN-002: the rectangle case (circle-rectangle overlap) flags a rectangular (year) window placed far from its star's own disc", () => {
+    const farAway = editRect({ centre: vec2(mm(1000), mm(1000)) });
     expect(found(farAway, "DIALWIN-002")).toContain("DIALWIN-002:error:no-overlap");
   });
 
-  it("DIALWIN-002: the teaching movement's own rectangular month and leap-year windows report no overlap error", () => {
-    expect(validateMovement(teaching).filter((i) => i.rule === "DIALWIN-002" && i.entityIds.includes(monthWin.id))).toEqual([]);
+  it("DIALWIN-002: the teaching movement's own rectangular year window reports no overlap error", () => {
+    expect(validateMovement(teaching).filter((i) => i.rule === "DIALWIN-002" && i.entityIds.includes(rectWin.id))).toEqual([]);
   });
 
   it("several dial windows are each checked independently", () => {

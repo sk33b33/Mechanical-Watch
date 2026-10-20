@@ -549,8 +549,18 @@ export function createTeachingMovement(): Movement {
     name: "Month window",
     dialId: dial.id,
     complicationId: monthComplication.id,
-    centre: windowAbove(monthStarArbor.id, 2, 0.72),
-    outline: { kind: "RECTANGLE", width: mm(0.65), height: mm(0.6) },
+    // Whole-wheel window (Phase 8.15 follow-up 9, a trial at the user's request — easy to revert
+    // to the former small 0.65 × 0.6mm RECTANGLE at `windowAbove(monthStarArbor.id, 2, 0.72)`):
+    // same treatment as the season and leap-year wheels. Centred on the month star's own axis,
+    // radius 5% over its declared tip radius, with the north index pointer (ASM-0069) naming the
+    // position read there (the month labels use `DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS`).
+    centre: (() => {
+      const at = solved.shaftPositions.get(monthStarArbor.id);
+      if (at === undefined) throw new Error("teaching movement: no solved position for the month star arbor");
+      return { x: metres(at.x), y: metres(at.y) };
+    })(),
+    outline: { kind: "CIRCLE", radius: (monthComplication.starTipDiameter / 2) * 1.05 as Length },
+    pointer: "NORTH",
   }));
   m = addDialWindow(m, createDialWindow({
     name: "Leap-year window",
