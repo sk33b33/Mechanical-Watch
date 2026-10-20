@@ -321,8 +321,8 @@ export function createTeachingMovement(): Movement {
   // 9 o'clock from the hour wheel, clear of the moonphase train (6 o'clock) and the stem line.
   polar(twentyFourHourArbor, hourWheel, hourToTwentyFourHour, 180);
   // Declared, not mesh-derived (the star is not meshed with anything, ASM-0048) — a plausible
-  // clearance further along the same 9 o'clock line.
-  m = updateShaft(m, dateStarArbor.id, { placement: fixedAt(mm(-6), mm(0)) });
+  // clearance further along the same 9 o'clock line, raised 0.8mm so its whole-wheel window clears the month window's own north pointer.
+  m = updateShaft(m, dateStarArbor.id, { placement: fixedAt(mm(-6), mm(0.8)) });
   // Declared, not mesh-derived (the month star is not meshed with anything either, ASM-0049) —
   // offset from the date star by more than both their tip radii combined (ASSY-002 clearance).
   m = updateShaft(m, monthStarArbor.id, { placement: fixedAt(mm(-6), mm(-5)) });

@@ -12,7 +12,7 @@ current day reads at north under the pointer (verified live: day 20 on 20 Oct 20
 **Layout side effect:** the whole-wheel date window (2.625mm radius) and its pointer would
 have overlapped the season window (wheel at (−6, 4.5)mm), so the season wheel moved to
 (−10.5, 3)mm (seen from the dial side, beside the date wheel, clear of the hour markers);
-no mechanism connects it (ASM-0057), so nothing else changes. The month linkage's small
+no mechanism connects it (ASM-0057), so nothing else changes. The date star itself also moved up 0.8mm (y 0 → 0.8mm) because the bigger window's bottom edge encroached on the month window's own north pointer (checked live: clear afterwards); its revert line is `fixedAt(mm(-6), mm(0))`. The month linkage's small
 declutch wheel (ASM-0054), which sits between the date and month stars, is now visible
 through the date window. **To revert:** restore `centre: windowAbove(dateStarArbor.id, 2.5,
 0.72)`, `outline: { kind: "CIRCLE", radius: mm(0.175) }` and drop `pointer` on the Date
