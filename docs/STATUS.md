@@ -2,6 +2,17 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 12: leap-year wheel prints words, not digits
+
+At the user's request the leap-year wheel's printed ring now reads "Year 1", "Year 2",
+"Year 3" and "Leap year" instead of "1".."4" (`LEAP_YEAR_SHORT_LABELS`,
+`src/domain/leapYearComplication.ts`). The label auto-fit (ASM-0067) scales the font to the
+widest label ("Leap year") so every label shares one size; checked live that all four sit
+between the Geneva rim slots with no overlap, and that the current position (e.g. "Year 2" in
+2026) reads at north under the pointer. The words rotate with the disc, so the one at the
+bottom of the ring reads upside-down, as on any real rotating printed ring. The inspector and
+validation text keep the full "Year 4 (leap)" wording.
+
 ## Phase 8.15 follow-up 11: date window trial — whole-wheel window with north pointer
 
 A trial at the user's request ("do the same for the date window"), kept or reverted after
