@@ -1308,6 +1308,11 @@ export const SPOKED_WHEEL_VISUALIZATION = {
   hubRadiusFraction: 0.2,
   /** Where the gaps stop, outward: the solid rim runs from here to the tip. */
   openingOuterRadiusFraction: 0.58,
+  /**
+   * The moon wheel's own gap limit (follow-up 20): its printed phase icons occupy 0.725-0.955 of the
+   * radius (`MOON_PHASE_VISUALIZATION` ring 0.84, icon radius 0.115), so the gaps stop well below that.
+   */
+  moonOpeningOuterRadiusFraction: 0.62,
   /** Segments used to approximate each gap's own inner and outer circular edge. */
   arcSegments: 14,
   assumption: "ASM-0075" satisfies AssumptionId,
@@ -1320,12 +1325,12 @@ export const SPOKED_WHEEL_VISUALIZATION = {
  * opening radius, with straight, parallel-to-the-spoke sides one half spoke-width
  * off each spoke's centreline. Pure geometry, no THREE dependency.
  */
-export function spokedWheelOpenings(tipRadius: number, baseAngle = 0): Point2D[][] {
+export function spokedWheelOpenings(tipRadius: number, baseAngle = 0, openingOuterRadiusFraction: number = SPOKED_WHEEL_VISUALIZATION.openingOuterRadiusFraction): Point2D[][] {
   const v = SPOKED_WHEEL_VISUALIZATION;
   const n = v.spokeCount;
   const spacing = (2 * Math.PI) / n;
   const rIn = tipRadius * v.hubRadiusFraction;
-  const rOut = tipRadius * v.openingOuterRadiusFraction;
+  const rOut = tipRadius * openingOuterRadiusFraction;
   const halfWidth = (tipRadius * v.spokeWidthFraction) / 2;
   const edgeAngle = (radius: number): number => Math.asin(halfWidth / radius);
   const openings: Point2D[][] = [];
@@ -1358,10 +1363,10 @@ export function spokedWheelOpenings(tipRadius: number, baseAngle = 0): Point2D[]
  * `CylinderGeometry`'s own convention (`reshapeCapGroupsForDiscMaterials`), so the same
  * `discMaterials` label ring paints onto it exactly as on a plain `createZCylinder` disc.
  */
-export function createSpokedWheelGeometry(tipRadius: number, thickness: number, baseAngle = 0): THREE.ExtrudeGeometry {
+export function createSpokedWheelGeometry(tipRadius: number, thickness: number, baseAngle = 0, openingOuterRadiusFraction: number = SPOKED_WHEEL_VISUALIZATION.openingOuterRadiusFraction): THREE.ExtrudeGeometry {
   const shape = new THREE.Shape();
   shape.absarc(0, 0, tipRadius, 0, Math.PI * 2, false);
-  for (const opening of spokedWheelOpenings(tipRadius, baseAngle)) {
+  for (const opening of spokedWheelOpenings(tipRadius, baseAngle, openingOuterRadiusFraction)) {
     const hole = new THREE.Path();
     opening.forEach(({ x, y }, i) => { if (i === 0) hole.moveTo(x, y); else hole.lineTo(x, y); });
     hole.closePath();

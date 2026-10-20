@@ -2,6 +2,17 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 20: five-spoke moon wheel
+
+The moon phase wheel is now an open five-spoke wheel too, matching the date and month wheels
+(`createSpokedWheelGeometry` with the moon's own opening radius, ASM-0075). Its gaps stop at 0.62 of
+the radius; the printed phase icons occupy 0.725–0.955 (ring 0.84, icon radius 0.115), so no gap meets an
+icon (tested against the visualization constants, and checked live). Spokes, hub and spoke width are
+the shared fractions (hub 0.2, spoke 0.13 of the radius). The stars painted in the middle of the sky
+are now cut away with the gaps; through them you see what is behind the wheel. Visual only: size,
+thickness, phase kinematics and the north pointer reading are unchanged. **To revert:** use
+`createZCylinder` for the moon mesh in `viewport.ts` (git history).
+
 ## Phase 8.15 follow-up 19: labels toward the wheel edge; seconds numerals moved to the seconds hand
 
 **Labels:** the date numbers and month names now sit at 0.86 of their wheel's radius instead of

@@ -15,6 +15,7 @@ import {
   createFrameGeometry,
   createGenevaWheelGeometry,
   createSpokedWheelGeometry,
+  SPOKED_WHEEL_VISUALIZATION,
   createHandGeometry,
   createMoonPhaseTexture,
   createRodGeometry,
@@ -590,7 +591,13 @@ export class Viewport {
       // same applyKinematicRotation() loop that spins every other shaft group spins this one too.
       const zLo = this.displayZ(moon.faceHeight);
       const zHi = zLo + moon.thickness;
-      const mesh = new THREE.Mesh(createZCylinder(moon.diameter / 2, zLo, zHi, 64), moonPhaseMaterials(COLORS.moonPhase, { metalness: 0.1, roughness: 0.7 }, moon.windowCount));
+      // An open five-spoke wheel like the date and month wheels (follow-up 20, ASM-0075), its gaps
+      // stopping below the ring of printed phase icons.
+      const mesh = new THREE.Mesh(
+        createSpokedWheelGeometry(moon.diameter / 2, moon.thickness, 0, SPOKED_WHEEL_VISUALIZATION.moonOpeningOuterRadiusFraction),
+        moonPhaseMaterials(COLORS.moonPhase, { metalness: 0.1, roughness: 0.7 }, moon.windowCount),
+      );
+      mesh.position.z = (zLo + zHi) / 2;
       this.addPickable(group, mesh, { kind: "moonPhase", entityId: moon.id, baseColor: COLORS.moonPhase });
       this.cappableSolids.push({
         positionX: group.position.x,

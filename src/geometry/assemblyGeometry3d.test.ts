@@ -1256,6 +1256,17 @@ describe("spoked date/month wheels (ASM-0075)", () => {
     expect(v.openingOuterRadiusFraction + 0.1).toBeLessThanOrEqual(DIAL_WINDOW_VISUALIZATION.labelRadiusFraction);
   });
 
+  it("lets the opening radius be set (the moon wheel's own, 0.62), and keeps its gaps below the printed phase icon ring", () => {
+    const moonOuter = v.moonOpeningOuterRadiusFraction;
+    for (const opening of spokedWheelOpenings(3e-3, 0, moonOuter)) {
+      for (const p of opening) expect(Math.hypot(p.x, p.y)).toBeLessThanOrEqual(3e-3 * moonOuter + 1e-12);
+    }
+    expect(moonOuter).toBeGreaterThan(v.openingOuterRadiusFraction);
+    // The phase icons occupy ring ± icon radius from the centre outward; the gaps stop clear below that.
+    const iconInnerEdge = MOON_PHASE_VISUALIZATION.iconRingRadiusFraction - MOON_PHASE_VISUALIZATION.iconRadiusFraction;
+    expect(moonOuter + 0.05).toBeLessThanOrEqual(iconInnerEdge);
+  });
+
   it("builds a disc of the tip radius whose face area is the full circle minus the five gaps, grouped like a cylinder disc", () => {
     const thickness = 0.15e-3;
     const g = createSpokedWheelGeometry(R, thickness);
