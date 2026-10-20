@@ -19,7 +19,9 @@ import {
   discLabelFittedFontSizePx,
   DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS,
   DISC_LABEL_RING_DIRECTION,
+  DIAL_VISUALIZATION,
   createDialWindowBezelGeometry,
+  dialMarkerPlacements,
   createMoonPhaseMarkGeometry,
   createSpokedWheelGeometry,
   SPOKED_WHEEL_VISUALIZATION,
@@ -1294,6 +1296,48 @@ describe("spoked date/month wheels (ASM-0075)", () => {
         expect(uv.getY(i)).toBeLessThanOrEqual(1 + 1e-9);
       }
     }
+  });
+});
+
+describe("dialMarkerPlacements (ASM-0020, round hour markers)", () => {
+  const R = 14.2e-3;
+  const placements = dialMarkerPlacements(R);
+
+  it("gives twelve markers: big circles at 12, 3, 6 and 9, and half-size circles at the other eight", () => {
+    expect(placements).toHaveLength(12);
+    const big = placements.filter((p) => p.big);
+    const small = placements.filter((p) => !p.big);
+    expect(big.map((p) => p.hour)).toEqual([0, 3, 6, 9]);
+    expect(small.map((p) => p.hour)).toEqual([1, 2, 4, 5, 7, 8, 10, 11]);
+    for (const p of big) expect(p.radiusMetres).toBeCloseTo(R * DIAL_VISUALIZATION.bigMarkerRadiusFraction, 12);
+    for (const p of small) expect(p.radiusMetres).toBeCloseTo((R * DIAL_VISUALIZATION.bigMarkerRadiusFraction) / 2, 12);
+  });
+
+  it("puts every marker on one ring inside the dial's edge, 12 at +Y and 3 at −X (the dial is read from its −Z side)", () => {
+    for (const p of placements) {
+      expect(Math.hypot(p.x, p.y)).toBeCloseTo(R * (1 - DIAL_VISUALIZATION.markerInsetFraction), 12);
+      expect(Math.hypot(p.x, p.y) + p.radiusMetres).toBeLessThan(R);
+    }
+    const at = (hour: number): { x: number; y: number } => {
+      const p = placements.find((m) => m.hour === hour);
+      if (p === undefined) throw new Error("missing marker");
+      return p;
+    };
+    expect(at(0).y).toBeGreaterThan(0);
+    expect(at(0).x).toBeCloseTo(0, 12);
+    expect(at(3).x).toBeLessThan(0);
+    expect(at(6).y).toBeLessThan(0);
+    expect(at(9).x).toBeGreaterThan(0);
+  });
+
+  it("prints the seconds numerals 60 at north, 15 at east, 30 at south and 45 at west — each on a big circle", () => {
+    const byHour = new Map(DIAL_VISUALIZATION.secondsNumerals.map((n) => [n.hour, n.text]));
+    expect(byHour.get(0)).toBe("60");
+    expect(byHour.get(3)).toBe("15");
+    expect(byHour.get(6)).toBe("30");
+    expect(byHour.get(9)).toBe("45");
+    for (const n of DIAL_VISUALIZATION.secondsNumerals) expect(placements.find((p) => p.hour === n.hour)?.big).toBe(true);
+    expect(DIAL_VISUALIZATION.secondsNumerals).toHaveLength(4);
   });
 });
 

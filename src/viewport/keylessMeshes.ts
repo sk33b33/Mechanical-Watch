@@ -19,6 +19,7 @@ import {
   createDialWindowBezelGeometry,
   createDialWindowCaptionTexture,
   createDialWindowPointerGeometry,
+  dialMarkerPlacements,
   dialWindowCaptionOffset,
   createMoonPhaseMarkGeometry,
   moonPhaseMarks,
@@ -163,18 +164,29 @@ export function buildDialMeshes(
   root.add(disc);
   const d = DIAL_VISUALIZATION;
   const r = dial.diameter / 2;
-  const length = r * d.markerLengthFraction;
-  for (let hour = 0; hour < 12; hour += 1) {
-    // Hands point +Y at 12 and turn counter-clockwise seen from +Z (clockwise from the dial, ASM-0014).
-    const angle = (hour * Math.PI) / 6;
-    const marker = new THREE.Mesh(
-      new THREE.BoxGeometry(d.markerWidthMetres * (hour % 3 === 0 ? 2 : 1), length, d.markerThicknessMetres),
+  // Round hour markers (ASM-0020): big circles at 12/3/6/9, half-size elsewhere; the four big ones
+  // carry the seconds-scale numerals (60/15/30/45) in pale type.
+  const numeralHeight = r * d.numeralHeightFraction;
+  for (const marker of dialMarkerPlacements(r)) {
+    const dot = new THREE.Mesh(
+      new THREE.CylinderGeometry(marker.radiusMetres, marker.radiusMetres, d.markerThicknessMetres, 48).rotateX(Math.PI / 2),
       materials.marker,
     );
-    const radius = r - length * 0.9;
-    marker.position.set(-radius * Math.sin(angle), radius * Math.cos(angle), face - d.markerThicknessMetres / 2);
-    marker.rotation.z = angle;
-    root.add(marker);
+    dot.position.set(marker.x, marker.y, face - d.markerThicknessMetres / 2);
+    root.add(dot);
+    const numeral = marker.big ? d.secondsNumerals.find((n) => n.hour === marker.hour) : undefined;
+    if (numeral === undefined) continue;
+    const built = createDialWindowCaptionTexture(numeral.text, d.numeralColor);
+    if (built === null) continue;
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(numeralHeight * built.aspect, numeralHeight),
+      new THREE.MeshBasicMaterial({ map: built.texture, transparent: true, depthWrite: false, side: THREE.DoubleSide }),
+    );
+    // Read from the dial's −Z side, where world +X runs leftward on screen: half a turn about Y so
+    // the text reads left to right (same treatment as the window captions).
+    plane.rotation.y = Math.PI;
+    plane.position.set(marker.x, marker.y, face - 1.3 * d.markerThicknessMetres);
+    root.add(plane);
   }
   const pv = DIAL_WINDOW_POINTER_VISUALIZATION;
   const pointerHeight = r * pv.heightFraction;

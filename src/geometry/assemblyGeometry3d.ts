@@ -48,13 +48,71 @@ export const KEYLESS_VISUALIZATION = {
   assumption: "ASM-0012" satisfies AssumptionId,
 } as const;
 
-/** Hour markers drawn on the dial face; visual only (ASM-0020). */
+/**
+ * Hour markers drawn on the dial face; visual only (ASM-0020). Round dots
+ * (Phase 8.15 follow-up 18, at the user's request, replacing the earlier
+ * rectangular bars): the 12, 3, 6 and 9 o'clock markers are big circles and
+ * the other eight are half their size. Radii and the inset from the dial's
+ * edge are fractions of the dial's own radius, as before. The big circles
+ * also carry the seconds-scale numerals (60 at 12, 15 at 3, 30 at 6, 45 at 9)
+ * for the seconds hand, in pale type on the dark dot.
+ */
 export const DIAL_VISUALIZATION = {
-  markerLengthFraction: 0.1,
-  markerWidthMetres: 0.35e-3,
+  /** Radius of a 12/3/6/9 o'clock circle as a fraction of the dial radius. */
+  bigMarkerRadiusFraction: 0.05,
+  /** The other eight markers' radius as a multiple of the big circles' — half the size. */
+  smallMarkerRadiusFactor: 0.5,
+  /** How far each marker's own centre sits in from the dial's edge, as a fraction of the dial radius. */
+  markerInsetFraction: 0.09,
   markerThicknessMetres: 0.03e-3,
+  /** Seconds numerals printed in the four big circles, by hour position (0 = 12 o'clock). */
+  secondsNumerals: [
+    { hour: 0, text: "60" },
+    { hour: 3, text: "15" },
+    { hour: 6, text: "30" },
+    { hour: 9, text: "45" },
+  ] as readonly { hour: number; text: string }[],
+  /** Numeral text height as a fraction of the dial radius. */
+  numeralHeightFraction: 0.04,
+  numeralColor: "#f4efe3",
   assumption: "ASM-0020" satisfies AssumptionId,
 } as const;
+
+export interface DialMarkerPlacement {
+  /** 0 = 12 o'clock, going clockwise as read from the dial (ASM-0014). */
+  readonly hour: number;
+  readonly big: boolean;
+  readonly radiusMetres: number;
+  /** Centre in the dial plane relative to the dial's own centre; world +Y is 12 o'clock and world −X is 3 o'clock (the dial is read from its −Z side). */
+  readonly x: number;
+  readonly y: number;
+}
+
+/**
+ * Where each of the twelve round hour markers goes on a dial of the given
+ * radius (ASM-0020): big circles at 12, 3, 6, 9, half-size at the rest, all
+ * on one ring `markerInsetFraction` of the radius in from the edge. Hands
+ * point +Y at 12 and turn counter-clockwise seen from +Z — clockwise from
+ * the dial (ASM-0014) — so hour `h` sits at angle h·π/6 with x = −ρ sin θ.
+ * Pure geometry, no THREE dependency.
+ */
+export function dialMarkerPlacements(dialRadius: number): DialMarkerPlacement[] {
+  const v = DIAL_VISUALIZATION;
+  const ring = dialRadius * (1 - v.markerInsetFraction);
+  const placements: DialMarkerPlacement[] = [];
+  for (let hour = 0; hour < 12; hour += 1) {
+    const angle = (hour * Math.PI) / 6;
+    const big = hour % 3 === 0;
+    placements.push({
+      hour,
+      big,
+      radiusMetres: dialRadius * v.bigMarkerRadiusFraction * (big ? 1 : v.smallMarkerRadiusFactor),
+      x: -ring * Math.sin(angle),
+      y: ring * Math.cos(angle),
+    });
+  }
+  return placements;
+}
 
 /**
  * A `DialWindow.pointer` index mark (ASM-0069): a fixed upside-down
@@ -166,7 +224,7 @@ export function dialWindowCaptionOffset(southExtent: number, bezelWidth: number,
  * canvas exists. The texture is drawn at a fixed pixel height; `aspect` (width / height) lets
  * the caller size a plane to the dial's own scale.
  */
-export function createDialWindowCaptionTexture(text: string): { texture: THREE.CanvasTexture; aspect: number } | null {
+export function createDialWindowCaptionTexture(text: string, color: string = DIAL_WINDOW_PRINT_VISUALIZATION.captionColor): { texture: THREE.CanvasTexture; aspect: number } | null {
   const v = DIAL_WINDOW_PRINT_VISUALIZATION;
   const height = v.captionTexturePx;
   const fontPx = Math.round(height * 0.78);
@@ -181,7 +239,7 @@ export function createDialWindowCaptionTexture(text: string): { texture: THREE.C
   const ctx = canvas.getContext("2d");
   if (ctx === null) return null;
   ctx.font = `bold ${String(fontPx)}px sans-serif`;
-  ctx.fillStyle = v.captionColor;
+  ctx.fillStyle = color;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(text, width / 2, height / 2);

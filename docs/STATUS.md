@@ -2,6 +2,20 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 18: round hour markers, seconds numerals, hand and date-wheel colours
+
+Four dial/colour changes at the user's request. **Round markers:** the twelve rectangular hour bars
+are now circles — big at 12, 3, 6 and 9, half the size at the other eight (`DIAL_VISUALIZATION`,
+`dialMarkerPlacements`, ASM-0020). **Seconds numerals:** the four big circles carry **60** (north),
+**15** (east), **30** (south) and **45** (west) in pale type; they sit inside the circles rather
+than beside them because the moon wheel's window comes within ≈0.4mm of the 6 o'clock circle, and the
+numerals are decoration for the seconds hand, not a calibrated scale. The big circles also clear the
+moon window slightly more than the old bars did. **Hands:** the hour and minute hands now share the
+seconds hand's amber (`COLORS.hand`). **Date wheel:** now a mid blue (`#5a8fd8`), distinct from the
+month wheel's grey-blue; the date linkage's cam and rod, which share that colour constant, follow it.
+**To revert:** bar markers and the old colours are in git history (`0xe6e9ec` hands, `0xc2a06a` date
+wheel).
+
 ## Phase 8.15 follow-up 17: five-spoke date and month wheels
 
 At the user's request the date and month star wheels are drawn as open five-spoke wheels — hub,
