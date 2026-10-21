@@ -471,6 +471,12 @@ export const ASSUMPTIONS = {
     scope: "Gear.spoked open five-spoke wheel (visual/L0 display only)",
     status: "Active",
   },
+  "ASM-0078": {
+    summary:
+      "Faceted ruby jewels (Phase 8.15 follow-up 24): at the user's request the red cylinders that stand for bearing jewels (HOLE_JEWEL) are drawn as faceted ruby ring jewels -- a flat table, bevelled crown, straight girdle and a funnel into a through hole (the olive the pivot runs in), mirrored at both ends so it reads from either side of the plate -- as a 12-facet lathe with flat shading, in a glossy, faintly self-lit ruby. The balance's impulse ruby pin gets the same faceted look as a solid stone (no hole). A PLAIN_HOLE stays a plain grey cylinder. Proportions (hole 0.28, table 0.74, funnel 0.5, crown 0.5 of the outer radius, crown capped at a quarter of the stone's height) are declared visual choices in JEWEL_VISUALIZATION, not a real jewel's catalogue shape; the stone still spans the frame's thickness plus a small proud margin as before. Visual only (ASM-0004, ASM-0006): outer radius, position, bore diameter and every bearing-clearance result are unchanged -- the drawn funnel hole is not the declared bore diameter.",
+    scope: "Bearing jewel and impulse pin appearance (visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

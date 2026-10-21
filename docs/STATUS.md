@@ -2,6 +2,17 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 24: faceted ruby jewels
+
+At the user's request the red cylinders standing for bearing jewels are drawn as faceted ruby ring
+jewels (`createJewelGeometry`, ASM-0078): flat table, bevelled crown, straight girdle and a funnel
+into a through hole, mirrored at both ends so they read from either side of a plate; 12 flat-shaded
+facets in a glossy, faintly self-lit ruby. The balance's impulse ruby pin gets the same faceted look
+as a solid stone. Plain holes (no jewel) stay plain grey cylinders. Visual only: outer radius,
+position, declared bore diameter and every bearing-clearance result are unchanged — the drawn funnel
+hole is a visual choice, not the declared bore. **To revert:** use `createZCylinder` for the jewel
+mesh in `viewport.ts` (git history).
+
 ## Phase 8.15 follow-up 23: Moon wheel 2 solid again
 
 At the user's request the teaching movement's **Moon wheel 2** (87 teeth) is a solid disc again; it is

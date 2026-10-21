@@ -24,6 +24,8 @@ import {
   dialMarkerPlacements,
   secondsNumeralPlacements,
   createFlutedCylinderGeometry,
+  createJewelGeometry,
+  JEWEL_VISUALIZATION,
   createMoonPhaseMarkGeometry,
   dialWindowPointerSize,
   DIAL_WINDOW_POINTER_VISUALIZATION,
@@ -1503,6 +1505,66 @@ describe("createFlutedCylinderGeometry (crown knurl, ASM-0076)", () => {
       if (prev !== undefined && next !== undefined && p.r < prev.r - 1e-12 && p.r <= next.r + 1e-12) minima += 1;
     });
     expect(minima).toBe(12);
+  });
+});
+
+describe("createJewelGeometry (faceted ruby jewels, ASM-0078)", () => {
+  const R = 0.5e-3;
+  const H = 1.2e-3;
+  const radii = (g: ReturnType<typeof createJewelGeometry>): { rMin: number; rMax: number; zMin: number; zMax: number } => {
+    const pos = g.attributes.position;
+    if (pos === undefined) throw new Error("no positions");
+    let rMin = Number.POSITIVE_INFINITY;
+    let rMax = 0;
+    let zMin = Number.POSITIVE_INFINITY;
+    let zMax = Number.NEGATIVE_INFINITY;
+    for (let i = 0; i < pos.count; i += 1) {
+      const r = Math.hypot(pos.getX(i), pos.getY(i));
+      rMin = Math.min(rMin, r);
+      rMax = Math.max(rMax, r);
+      zMin = Math.min(zMin, pos.getZ(i));
+      zMax = Math.max(zMax, pos.getZ(i));
+    }
+    return { rMin, rMax, zMin, zMax };
+  };
+
+  it("is a ring along Z: outer radius at the girdle, the through hole at its declared fraction, the requested height, centred", () => {
+    const { rMin, rMax, zMin, zMax } = radii(createJewelGeometry(R, H));
+    expect(rMax).toBeCloseTo(R, 9);
+    expect(rMin).toBeCloseTo(R * JEWEL_VISUALIZATION.holeRadiusFraction, 9);
+    expect(zMax).toBeCloseTo(H / 2, 9);
+    expect(zMin).toBeCloseTo(-H / 2, 9);
+  });
+
+  it("with no hole it is a solid stone that reaches the axis (the balance's impulse ruby)", () => {
+    const { rMin, rMax } = radii(createJewelGeometry(0.2e-3, 0.35e-3, 0));
+    expect(rMin).toBeCloseTo(0, 12);
+    expect(rMax).toBeCloseTo(0.2e-3, 9);
+  });
+
+  it("has a bevelled crown: the table is narrower than the girdle, so the ends are domed rather than flat cylinder ends", () => {
+    const g = createJewelGeometry(R, H);
+    const pos = g.attributes.position;
+    if (pos === undefined) throw new Error("no positions");
+    let tableMax = 0;
+    for (let i = 0; i < pos.count; i += 1) {
+      if (Math.abs(pos.getZ(i) - H / 2) < 1e-9) tableMax = Math.max(tableMax, Math.hypot(pos.getX(i), pos.getY(i)));
+    }
+    expect(tableMax).toBeCloseTo(R * JEWEL_VISUALIZATION.tableRadiusFraction, 9);
+    expect(tableMax).toBeLessThan(R);
+  });
+
+  it("is faceted: few radial segments, not a smooth cylinder", () => {
+    const g = createJewelGeometry(R, H);
+    // The lathe's own segment count is the facet count.
+    const params = g.parameters as { segments: number };
+    expect(params.segments).toBe(JEWEL_VISUALIZATION.facetCount);
+    expect(JEWEL_VISUALIZATION.facetCount).toBeLessThanOrEqual(16);
+  });
+
+  it("keeps a short stone's crowns inside its height (crown capped at a quarter of the height)", () => {
+    const { zMin, zMax } = radii(createJewelGeometry(R, 0.4e-3));
+    expect(zMax - zMin).toBeCloseTo(0.4e-3, 9);
   });
 });
 

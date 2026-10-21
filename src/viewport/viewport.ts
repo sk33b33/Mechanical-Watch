@@ -14,6 +14,8 @@ import {
   createDiscLabelTexture,
   createFrameGeometry,
   createGenevaWheelGeometry,
+  createJewelGeometry,
+  JEWEL_VISUALIZATION,
   createSpokedWheelGeometry,
   SPOKED_WHEEL_VISUALIZATION,
   createHandGeometry,
@@ -191,6 +193,12 @@ interface CappableSolid {
 /** Double-sided so the inside of a part shows where the section plane cuts it. */
 function material(color: number, extra: THREE.MeshStandardMaterialParameters = {}): THREE.MeshStandardMaterial {
   return new THREE.MeshStandardMaterial({ color, metalness: 0.35, roughness: 0.55, side: THREE.DoubleSide, ...extra });
+}
+
+/** A glossy, faintly self-lit, flat-shaded ruby so the stone's facets catch the light (ASM-0078). */
+function rubyMaterial(): THREE.MeshStandardMaterial {
+  const v = JEWEL_VISUALIZATION;
+  return material(v.color, { metalness: 0.05, roughness: v.roughness, flatShading: true, emissive: v.emissive, emissiveIntensity: v.emissiveIntensity });
 }
 
 /**
@@ -1009,11 +1017,15 @@ export class Viewport {
       const color = jewel.kind === "HOLE_JEWEL" ? COLORS.jewel : COLORS.plainHole;
       // Drawn slightly proud of the slab so it reads through the translucent frame.
       const proud = (hi - lo) * 0.05;
+      // A real jewel (HOLE_JEWEL) is drawn as a faceted ruby ring jewel (ASM-0078); a plain hole stays a plain cylinder.
+      const isStone = jewel.kind === "HOLE_JEWEL";
       const mesh = new THREE.Mesh(
-        createZCylinder(ASSEMBLY_VISUALIZATION.jewelOuterRadiusMetres, lo - proud, hi + proud),
-        material(color, { metalness: 0.1, roughness: 0.25 }),
+        isStone
+          ? createJewelGeometry(ASSEMBLY_VISUALIZATION.jewelOuterRadiusMetres, hi - lo + 2 * proud)
+          : createZCylinder(ASSEMBLY_VISUALIZATION.jewelOuterRadiusMetres, lo - proud, hi + proud),
+        isStone ? rubyMaterial() : material(color, { metalness: 0.1, roughness: 0.25 }),
       );
-      mesh.position.set(axis.x, axis.y, 0);
+      mesh.position.set(axis.x, axis.y, isStone ? (lo + hi) / 2 : 0);
       this.addPickable(this.content, mesh, { kind: "jewel", entityId: jewel.id, baseColor: color });
       this.cappableSolids.push({
         positionX: axis.x,
@@ -1209,11 +1221,12 @@ export class Viewport {
         const pinX = b.impulseRadius * Math.cos(towardPallet);
         const pinY = b.impulseRadius * Math.sin(towardPallet);
         const pinHalfThickness = v.rubyPinThicknessMetres / 2;
+        // The impulse ruby is a solid faceted stone (no hole) like the bearing jewels (ASM-0078).
         const pinMesh = new THREE.Mesh(
-          createZCylinder(v.rubyPinRadiusMetres, meshZ - pinHalfThickness, meshZ + pinHalfThickness),
-          material(COLORS.jewel, { metalness: 0.1, roughness: 0.25 }),
+          createJewelGeometry(v.rubyPinRadiusMetres, 2 * pinHalfThickness, 0),
+          rubyMaterial(),
         );
-        pinMesh.position.set(pinX, pinY, 0);
+        pinMesh.position.set(pinX, pinY, meshZ);
         pick(pinMesh, COLORS.jewel, balanceGroup);
         this.cappableSolids.push({
           positionX: balanceGroup.position.x,

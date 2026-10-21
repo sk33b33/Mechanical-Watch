@@ -208,6 +208,58 @@ export function createDialWindowPointerGeometry(baseWidth: number, height: numbe
 }
 
 /**
+ * How a jewel is drawn (ASM-0078, visual only, ASM-0004): a faceted ruby ring jewel instead of a
+ * plain cylinder (Phase 8.15 follow-up 24, at the user's request). Proportions are fractions of
+ * the jewel's outer radius.
+ */
+export const JEWEL_VISUALIZATION = {
+  /** Radial facets around the stone — few, so the flat-shaded faces read as cut facets. */
+  facetCount: 12,
+  /** Bore radius (the olive hole the pivot runs in) as a fraction of the outer radius; 0 for a solid stone such as the balance's impulse pin. */
+  holeRadiusFraction: 0.28,
+  /** Where the flat table ends and the bevelled crown begins, as a fraction of the outer radius. */
+  tableRadiusFraction: 0.74,
+  /** Inner radius of the table: where the funnel into the hole starts, as a fraction of the outer radius. */
+  funnelRadiusFraction: 0.5,
+  /** Height of each domed crown (table to girdle), as a fraction of the outer radius, capped at a quarter of the stone's height. */
+  crownHeightFraction: 0.5,
+  /** Ruby red, a glossy, faintly self-lit stone. */
+  color: 0xc0304f,
+  emissive: 0x5a0a1c,
+  emissiveIntensity: 0.45,
+  roughness: 0.08,
+  assumption: "ASM-0078" satisfies AssumptionId,
+} as const;
+
+/**
+ * A faceted ring-jewel mesh geometry (ASM-0078): a lathe of the stone's own cross-section — flat
+ * table, bevelled crown, straight girdle, and a funnel into the through hole, mirrored at both ends
+ * so it reads from either side of the plate. Axis along Z, centred on the origin, `height` long;
+ * `holeRadiusFraction` of 0 gives a solid stone. Use with `flatShading` so the facets show.
+ */
+export function createJewelGeometry(outerRadius: number, height: number, holeRadiusFraction: number = JEWEL_VISUALIZATION.holeRadiusFraction): THREE.LatheGeometry {
+  const v = JEWEL_VISUALIZATION;
+  const hh = height / 2;
+  const crown = Math.min(outerRadius * v.crownHeightFraction, height / 4);
+  const rHole = outerRadius * holeRadiusFraction;
+  const rFunnel = outerRadius * v.funnelRadiusFraction;
+  const rTable = outerRadius * v.tableRadiusFraction;
+  const profile: THREE.Vector2[] = [];
+  if (rHole > 0) profile.push(new THREE.Vector2(rHole, hh - 0.3 * crown));
+  profile.push(new THREE.Vector2(rHole > 0 ? rFunnel : 0, hh));
+  profile.push(new THREE.Vector2(rTable, hh));
+  profile.push(new THREE.Vector2(outerRadius, hh - crown));
+  profile.push(new THREE.Vector2(outerRadius, -hh + crown));
+  profile.push(new THREE.Vector2(rTable, -hh));
+  profile.push(new THREE.Vector2(rHole > 0 ? rFunnel : 0, -hh));
+  if (rHole > 0) profile.push(new THREE.Vector2(rHole, -hh + 0.3 * crown));
+  const geometry = new THREE.LatheGeometry(profile, v.facetCount);
+  // Lathe revolves about Y; turn that axis to Z.
+  geometry.rotateX(Math.PI / 2);
+  return geometry;
+}
+
+/**
  * Printed furniture around a dial window (ASM-0074, visual only, ASM-0004): a thin
  * dark bezel frame hugging the window's edge, and a short caption just below it.
  * Sized as fractions of the DIAL's own radius — the same derivation convention the
