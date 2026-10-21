@@ -54,6 +54,12 @@ export function bootstrapApp(root: HTMLElement): void {
   const outputs = mountOutputsDialog(root, store, (message, kind) => { toolbar.notify(message, kind); });
   toolbar.addFileAction("Outputs…", "Engineering report, BOM, drawings and exports", () => { outputs.open(); });
   mountTutorialBanner(store, storage);
+  // The tutorial points at buttons in the Components and Inspector panels, so starting it slides those flyouts out.
+  let tutorialWasActive = false;
+  store.subscribe(() => {
+    if (store.tutorialActive && !tutorialWasActive) layout.openFlyouts(["tree", "inspector"]);
+    tutorialWasActive = store.tutorialActive;
+  });
   toolbar.addFileAction("Tutorial…", "Guided walkthrough: build a movement from scratch", () => { store.startTutorial(); });
 
   if (saved.status === "UNREADABLE") {

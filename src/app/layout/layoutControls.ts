@@ -4,6 +4,7 @@ import type { PanelLayout } from "./panelWindows";
 const WHERE: Record<PanelMode, string> = {
   DOCKED: "docked",
   FLOATING: "floating over the movement",
+  FLYOUT: "a flyout on the screen edge",
   WINDOW: "in its own window",
   HIDDEN: "hidden",
 };
@@ -30,10 +31,14 @@ export function mountLayoutControls(container: HTMLElement, layout: PanelLayout)
   const render = (): void => {
     const state = layout.layout;
     for (const [id, button] of buttons) {
-      const shown = isShown(state, id);
+      const flyout = effectiveMode(state, id) === "FLYOUT";
+      // A flyout counts as "shown" while it is slid out; its header button slides it out or back.
+      const shown = flyout ? layout.isFlyoutOpen(id) : isShown(state, id);
       button.classList.toggle("active", shown);
       button.setAttribute("aria-pressed", String(shown));
-      button.title = `${PANEL_TITLES[id]}: ${WHERE[effectiveMode(state, id)]}. Click to ${shown ? "hide" : state.focus ? "open floating" : "reopen"}.`;
+      button.title = flyout
+        ? `${PANEL_TITLES[id]}: ${WHERE.FLYOUT}. Click to slide it ${shown ? "back" : "out"}.`
+        : `${PANEL_TITLES[id]}: ${WHERE[effectiveMode(state, id)]}. Click to ${shown ? "hide" : state.focus ? "open floating" : "reopen"}.`;
     }
     focus.textContent = state.focus ? "Exit focus" : "Focus";
     focus.classList.toggle("active", state.focus);

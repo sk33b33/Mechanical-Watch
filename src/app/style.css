@@ -279,6 +279,127 @@ button.panel-control:hover:not(:disabled) {
   cursor: move;
 }
 
+/*
+ * Flyout panels: out of the way until the tab that hugs their screen edge is pressed, then slid out
+ * over the movement (Components from the left, Inspector from the right, Validation from the bottom).
+ * Closed, a flyout is hidden (so it takes no focus) and only its edge tab shows; the tab rides the
+ * panel's inner edge, so it stays at the screen edge closed and moves out with the panel when open.
+ */
+.panel-frame[data-mode="FLYOUT"] {
+  position: fixed;
+  overflow: visible;
+  z-index: 45;
+  border-radius: 0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  visibility: hidden;
+  transition: transform 220ms ease, visibility 0s linear 220ms;
+}
+
+.panel-frame[data-mode="FLYOUT"][data-open="true"] {
+  visibility: visible;
+  transform: none;
+  transition: transform 220ms ease, visibility 0s;
+}
+
+.panel-frame-tree[data-mode="FLYOUT"] {
+  left: 0;
+  top: 76px;
+  bottom: 0;
+  width: var(--flyout-size, 260px);
+  transform: translateX(-100%);
+}
+
+.panel-frame-inspector[data-mode="FLYOUT"] {
+  right: 0;
+  top: 76px;
+  bottom: 0;
+  width: var(--flyout-size, 320px);
+  z-index: 46;
+  transform: translateX(100%);
+}
+
+.panel-frame-console[data-mode="FLYOUT"] {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--flyout-size, 200px);
+  transform: translateY(100%);
+}
+
+.panel-frame-tree[data-mode="FLYOUT"][data-open="true"] {
+  z-index: 47;
+}
+
+.panel-frame[data-mode="FLYOUT"] > .panel {
+  overflow: auto;
+}
+
+.panel-frame[data-mode="FLYOUT"] .panel-control[data-action="flyout"],
+.panel-frame:not([data-mode="FLYOUT"]) .flyout-tab {
+  display: none;
+}
+
+/* The edge tab: visible even while its (hidden) panel is slid away. */
+.flyout-tab {
+  position: absolute;
+  visibility: visible;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 5px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  color: var(--text-1);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+.flyout-tab:hover,
+.flyout-tab:focus-visible {
+  color: var(--text-0);
+  border-color: #4fa3ff;
+  outline: none;
+}
+
+.flyout-tab[data-edge="left"],
+.flyout-tab[data-edge="right"] {
+  top: 50%;
+  writing-mode: vertical-rl;
+  transform: translateY(-50%);
+}
+
+.flyout-tab[data-edge="left"] {
+  left: 100%;
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+}
+
+.flyout-tab[data-edge="right"] {
+  right: 100%;
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.flyout-tab[data-edge="bottom"] {
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 14px;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+}
+
+.flyout-tab-arrow {
+  font-size: 14px;
+  line-height: 1;
+}
+
 /* A panel in its own browser window fills it. */
 .popout-body {
   overflow: hidden;

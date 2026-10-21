@@ -5,6 +5,8 @@ import {
   defaultRect,
   dockedTracks,
   effectiveMode,
+  FLYOUT_EDGE,
+  flyoutSize,
   KEYBOARD_RESIZE_STEP,
   LAYOUT_STORAGE_KEY,
   maxDockedSize,
@@ -29,6 +31,10 @@ export interface PanelWindow {
   id: PanelId;
   frame: HTMLElement;
   body: HTMLDivElement;
+  /** The title bar and the edge tab (for flyouts). */
+  bar: HTMLElement;
+  tab: HTMLButtonElement;
+  tabArrow: HTMLElement;
   /** Sets the title bar text (e.g. the validation counts). */
   setTitle: (text: string) => void;
 }
@@ -38,11 +44,19 @@ type Notify = (message: string, kind: "info" | "error") => void;
 /** Which edge of a docked panel faces the movement view, and so carries its resize handle. */
 const RESIZE_EDGE: Record<PanelId, "right" | "left" | "top"> = { tree: "right", inspector: "left", console: "top" };
 
-const CONTROL_LABELS: Record<"dock" | "float" | "window" | "hide", { glyph: string; title: string; name: (panel: string) => string }> = {
+const CONTROL_LABELS: Record<"flyout" | "dock" | "float" | "window" | "hide", { glyph: string; title: string; name: (panel: string) => string }> = {
+  flyout: { glyph: "⇥", title: "Tuck away as a flyout: a tab on the screen edge slides it out", name: (p) => `Make the ${p} panel a flyout` },
   dock: { glyph: "⇲", title: "Dock back into the workspace", name: (p) => `Dock the ${p} panel` },
   float: { glyph: "⧉", title: "Float over the movement (drag the title bar; resize from the corner)", name: (p) => `Float the ${p} panel` },
   window: { glyph: "↗", title: "Open in its own browser window (e.g. on a second screen)", name: (p) => `Open the ${p} panel in its own window` },
   hide: { glyph: "✕", title: "Hide (reopen from the header)", name: (p) => `Hide the ${p} panel` },
+};
+
+/** The tab's arrow, closed then open: it points the way the panel will move. */
+const FLYOUT_ARROWS: Record<"left" | "right" | "bottom", readonly [string, string]> = {
+  left: ["›", "‹"],
+  right: ["‹", "›"],
+  bottom: ["˄", "˅"],
 };
 
 function readLayout(storage: KeyValueStore | null): LayoutState {
@@ -66,6 +80,8 @@ export class PanelLayout {
   private readonly popups = new Map<PanelId, Window>();
   private readonly resizers = new Map<PanelId, HTMLElement>();
   private readonly listeners = new Set<() => void>();
+  /** Flyouts currently slid out. Transient: panels start closed after a reload. */
+  private readonly slidOut = new Set<PanelId>();
   private zTop = 30;
   private saveTimer: number | null = null;
 
@@ -80,6 +96,44 @@ export class PanelLayout {
       for (const popup of this.popups.values()) popup.close();
     });
     window.addEventListener("resize", () => { this.apply(); });
+    // Escape slides every open flyout back (unless the key is for a field being edited).
+    window.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || this.slidOut.size === 0) return;
+      const target = event.target as HTMLElement | null;
+      if (target !== null && ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName)) return;
+      this.closeAllFlyouts();
+    });
+  }
+
+  /** Whether a flyout panel is currently slid out. */
+  isFlyoutOpen(id: PanelId): boolean {
+    return this.slidOut.has(id) && effectiveMode(this.state, id) === "FLYOUT";
+  }
+
+  /** Slides a flyout panel out or back (its edge tab, or the header button). */
+  toggleFlyout(id: PanelId): void {
+    if (effectiveMode(this.state, id) !== "FLYOUT") return;
+    if (this.slidOut.has(id)) this.slidOut.delete(id);
+    else this.slidOut.add(id);
+    this.commit();
+  }
+
+  /** Slides the given flyouts out (those not in flyout mode are left as they are). */
+  openFlyouts(ids: readonly PanelId[]): void {
+    let changed = false;
+    for (const id of ids) {
+      if (effectiveMode(this.state, id) === "FLYOUT" && !this.slidOut.has(id)) {
+        this.slidOut.add(id);
+        changed = true;
+      }
+    }
+    if (changed) this.commit();
+  }
+
+  closeAllFlyouts(): void {
+    if (this.slidOut.size === 0) return;
+    this.slidOut.clear();
+    this.commit();
   }
 
   get layout(): LayoutState {
@@ -105,7 +159,7 @@ export class PanelLayout {
     title.textContent = PANEL_TITLES[id];
     const controls = document.createElement("span");
     controls.className = "panel-controls";
-    for (const action of ["dock", "float", "window", "hide"] as const) {
+    for (const action of ["flyout", "dock", "float", "window", "hide"] as const) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "panel-control";
@@ -114,7 +168,7 @@ export class PanelLayout {
       button.title = CONTROL_LABELS[action].title;
       button.setAttribute("aria-label", CONTROL_LABELS[action].name(PANEL_TITLES[id]));
       button.addEventListener("click", () => {
-        const mode: PanelMode = action === "dock" ? "DOCKED" : action === "float" ? "FLOATING" : action === "window" ? "WINDOW" : "HIDDEN";
+        const mode: PanelMode = action === "flyout" ? "FLYOUT" : action === "dock" ? "DOCKED" : action === "float" ? "FLOATING" : action === "window" ? "WINDOW" : "HIDDEN";
         this.setMode(id, mode);
       });
       controls.appendChild(button);
@@ -124,7 +178,21 @@ export class PanelLayout {
 
     const body = document.createElement("div");
     body.className = bodyClass;
-    frame.append(bar, body, this.createResizer(id));
+    // The tab that hugs the screen edge while the panel is a flyout: pressing it slides the panel out or back.
+    const tab = document.createElement("button");
+    tab.type = "button";
+    tab.className = "flyout-tab";
+    tab.dataset.testid = `flyout-tab-${id}`;
+    tab.dataset.edge = FLYOUT_EDGE[id];
+    const tabLabel = document.createElement("span");
+    tabLabel.className = "flyout-tab-label";
+    tabLabel.textContent = PANEL_TITLES[id];
+    const tabArrow = document.createElement("span");
+    tabArrow.className = "flyout-tab-arrow";
+    tabArrow.setAttribute("aria-hidden", "true");
+    tab.append(tabLabel, tabArrow);
+    tab.addEventListener("click", () => { this.toggleFlyout(id); });
+    frame.append(bar, body, this.createResizer(id), tab);
     this.workspace.appendChild(frame);
 
     // Record a floating window's size after the user resizes it from the corner.
@@ -139,7 +207,14 @@ export class PanelLayout {
     }).observe(frame);
     frame.addEventListener("pointerdown", () => { this.raise(frame); });
 
-    const win: PanelWindow = { id, frame, body, setTitle: (text) => { title.textContent = text; } };
+    const win: PanelWindow = {
+      id, frame, body, bar, tab, tabArrow,
+      setTitle: (text) => {
+        title.textContent = text;
+        // The edge tab carries the same text, so e.g. the validation counts show without opening it.
+        tabLabel.textContent = text;
+      },
+    };
     this.windows.set(id, win);
     this.apply();
     return win;
@@ -151,11 +226,22 @@ export class PanelLayout {
       return;
     }
     this.state = withMode(this.state, id, mode);
+    // Tucking a panel away as a flyout slides it out at once, so the change is visible; any other mode closes it.
+    if (mode === "FLYOUT") this.slidOut.add(id);
+    else this.slidOut.delete(id);
     this.commit();
   }
 
   toggle(id: PanelId): void {
+    // A flyout's header button slides it out or back; hidden or other panels hide/reopen as before.
+    if (effectiveMode(this.state, id) === "FLYOUT") {
+      this.toggleFlyout(id);
+      return;
+    }
+    const before = this.state.panels[id].mode;
     this.state = togglePanel(this.state, id);
+    // A hidden flyout that is reopened comes back slid out.
+    if (before === "HIDDEN" && this.state.panels[id].mode === "FLYOUT") this.slidOut.add(id);
     this.commit();
   }
 
@@ -183,11 +269,20 @@ export class PanelLayout {
       const { frame } = win;
       frame.dataset.mode = mode;
       frame.hidden = mode === "HIDDEN";
+      const open = mode === "FLYOUT" && this.slidOut.has(id);
+      frame.dataset.open = String(open);
+      // A flyout slid away must not take focus or be read by assistive technology; its edge tab stays live.
+      win.bar.inert = mode === "FLYOUT" && !open;
+      win.body.inert = mode === "FLYOUT" && !open;
+      win.tab.setAttribute("aria-expanded", String(open));
+      win.tab.title = `${PANEL_TITLES[id]}: ${open ? "slide back" : "slide out"} (Esc closes flyouts)`;
+      win.tabArrow.textContent = FLYOUT_ARROWS[FLYOUT_EDGE[id]][open ? 1 : 0];
+      if (mode === "FLYOUT") frame.style.setProperty("--flyout-size", `${String(flyoutSize(this.state, id, bounds))}px`);
       if (mode === "FLOATING") {
         const rect = clampRect(this.state.panels[id].rect ?? defaultRect(id, bounds), bounds);
         this.state = withRect(this.state, id, rect);
         this.place(frame, rect);
-      } else if (mode === "DOCKED") {
+      } else if (mode === "DOCKED" || mode === "FLYOUT") {
         frame.style.removeProperty("left");
         frame.style.removeProperty("top");
         frame.style.removeProperty("width");

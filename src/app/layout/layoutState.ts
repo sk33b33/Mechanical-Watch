@@ -3,6 +3,10 @@
  * never part of a design and never affects the domain model.
  *
  * - DOCKED: in its column or row of the workspace grid.
+ * - FLYOUT: out of the way until its tab, which hugs the screen edge, is pressed; the
+ *   panel then slides out over the movement (Components from the left, Inspector from the
+ *   right, Validation from the bottom) and slides back when the tab is pressed again.
+ *   Whether it is open is transient (not stored): panels start closed.
  * - FLOATING: a movable, resizable window over the viewport.
  * - WINDOW: its own browser window (for a second screen). Not restored
  *   after a reload, since browsers only open windows on a user action.
@@ -15,9 +19,9 @@
 export const PANEL_IDS = ["tree", "inspector", "console"] as const;
 export type PanelId = (typeof PANEL_IDS)[number];
 
-export type PanelMode = "DOCKED" | "FLOATING" | "WINDOW" | "HIDDEN";
+export type PanelMode = "DOCKED" | "FLOATING" | "FLYOUT" | "WINDOW" | "HIDDEN";
 /** The modes a hidden panel can reopen to. */
-export type VisibleMode = "DOCKED" | "FLOATING";
+export type VisibleMode = "DOCKED" | "FLOATING" | "FLYOUT";
 
 /** A floating window's position and size in CSS pixels, relative to the browser window. */
 export interface Rect {
@@ -60,9 +64,32 @@ export const MIN_FLOATING_SIZE = { w: 200, h: 120 };
 
 export const PANEL_TITLES: Record<PanelId, string> = { tree: "Components", inspector: "Inspector", console: "Validation" };
 
-export function defaultLayout(): LayoutState {
+/** Every panel docked in the grid — the layout before flyouts, still available from each panel's own controls. */
+export function dockedLayout(): LayoutState {
   const docked = (id: PanelId): PanelState => ({ mode: "DOCKED", lastVisible: "DOCKED", rect: null, dockedSize: DEFAULT_DOCKED_SIZE[id] });
   return { panels: { tree: docked("tree"), inspector: docked("inspector"), console: docked("console") }, focus: false };
+}
+
+/** Every panel a flyout, sliding out from its screen-edge tab (the default). */
+export function defaultLayout(): LayoutState {
+  const flyout = (id: PanelId): PanelState => ({ mode: "FLYOUT", lastVisible: "FLYOUT", rect: null, dockedSize: DEFAULT_DOCKED_SIZE[id] });
+  return { panels: { tree: flyout("tree"), inspector: flyout("inspector"), console: flyout("console") }, focus: false };
+}
+
+/** Which screen edge each flyout slides out from. */
+export const FLYOUT_EDGE: Record<PanelId, "left" | "right" | "bottom"> = { tree: "left", inspector: "right", console: "bottom" };
+
+/** Room always left on the far side of a flyout, so the movement and the tab to close it stay in view (CSS px). */
+export const FLYOUT_MARGIN = 48;
+
+/**
+ * How far a flyout reaches in from its edge: the panel's own size, never more than leaves
+ * `FLYOUT_MARGIN` of the window clear (side panels measure width, the validation panel height).
+ */
+export function flyoutSize(state: LayoutState, id: PanelId, bounds: { w: number; h: number }): number {
+  const wanted = state.panels[id].dockedSize;
+  const room = FLYOUT_EDGE[id] === "bottom" ? bounds.h - WORKSPACE_CHROME_HEIGHT - FLYOUT_MARGIN : bounds.w - FLYOUT_MARGIN;
+  return Math.max(MIN_DOCKED_SIZE[id], Math.floor(Math.min(wanted, room)));
 }
 
 /** The mode the panel is actually shown in: focus view hides docked panels. */
@@ -77,7 +104,7 @@ export function isShown(state: LayoutState, id: PanelId): boolean {
 
 export function withMode(state: LayoutState, id: PanelId, mode: PanelMode): LayoutState {
   const panel = state.panels[id];
-  const lastVisible: VisibleMode = mode === "DOCKED" || mode === "FLOATING" ? mode : panel.lastVisible;
+  const lastVisible: VisibleMode = mode === "DOCKED" || mode === "FLOATING" || mode === "FLYOUT" ? mode : panel.lastVisible;
   // Docking a panel while in focus view would leave it hidden, so docking ends focus view.
   const focus = mode === "DOCKED" ? false : state.focus;
   return { focus, panels: { ...state.panels, [id]: { ...panel, mode, lastVisible } } };
@@ -176,7 +203,8 @@ export function clampRect(rect: Rect, bounds: { w: number; h: number }): Rect {
   return { x, y, w, h };
 }
 
-export const LAYOUT_STORAGE_KEY = "mw3d.layout";
+/** Versioned: v2 (flyouts as the default) deliberately ignores layouts saved by earlier versions, which would keep every panel docked. */
+export const LAYOUT_STORAGE_KEY = "mw3d.layout.v2";
 
 export function serializeLayout(state: LayoutState): string {
   return JSON.stringify(state);
@@ -213,8 +241,8 @@ export function parseLayout(text: string | null): LayoutState {
     const p = panels[id];
     if (typeof p !== "object" || p === null) continue;
     const { mode, lastVisible, rect, dockedSize } = p as Record<string, unknown>;
-    const visible: VisibleMode = lastVisible === "FLOATING" ? "FLOATING" : "DOCKED";
-    const restored: PanelMode = mode === "FLOATING" || mode === "HIDDEN" || mode === "DOCKED" ? mode : visible;
+    const visible: VisibleMode = lastVisible === "FLOATING" ? "FLOATING" : lastVisible === "DOCKED" ? "DOCKED" : "FLYOUT";
+    const restored: PanelMode = mode === "FLOATING" || mode === "HIDDEN" || mode === "DOCKED" || mode === "FLYOUT" ? mode : visible;
     // Clamped to the window when applied; here only nonsense is rejected.
     const size = finite(dockedSize) && dockedSize >= MIN_DOCKED_SIZE[id] ? dockedSize : DEFAULT_DOCKED_SIZE[id];
     layout.panels[id] = { mode: restored, lastVisible: visible, rect: parseRect(rect), dockedSize: size };

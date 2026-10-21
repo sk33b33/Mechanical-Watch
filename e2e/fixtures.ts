@@ -4,12 +4,22 @@ import { test as base, expect, type Page } from "@playwright/test";
  * Every test starts from a fresh browser profile with the default design
  * (the teaching movement) and fails if the page throws.
  */
-export const test = base.extend<{ app: Page }>({
-  app: async ({ page }, use) => {
+export const test = base.extend<{ app: Page; layout: "docked" | "default" }>({
+  /** "docked" (the default for tests) seeds the old docked layout; "default" starts from the real default, panels as flyouts. */
+  layout: ["docked", { option: true }],
+  app: async ({ page, layout }, use) => {
+    const options = { layout };
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(String(error)));
     await page.goto("/");
     await page.evaluate(() => { localStorage.clear(); });
+    if (options.layout === "docked") {
+      // The default layout tucks the panels away as flyouts; most tests drive the panels directly, so they start docked.
+      await page.evaluate(() => {
+        const docked = (size: number): object => ({ mode: "DOCKED", lastVisible: "DOCKED", rect: null, dockedSize: size });
+        localStorage.setItem("mw3d.layout.v2", JSON.stringify({ panels: { tree: docked(260), inspector: docked(320), console: docked(200) }, focus: false }));
+      });
+    }
     await page.reload();
     await expect(page.locator("canvas")).toBeVisible();
     await use(page);

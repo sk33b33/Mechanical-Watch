@@ -2,6 +2,25 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 27: Components, Inspector and Validation as flyouts
+
+At the user's request the three side panels are now **flyouts**: each is tucked away until the tab that
+hugs its screen edge is pressed, then slides out over the movement and slides back when the tab is pressed
+again. Components slides from the left edge, Inspector from the right and Validation from the bottom; the
+tab rides the panel's inner edge, so it sits at the screen edge when closed and moves out with the panel
+when open. The Validation tab carries the live counts ("Validation: 22 info"). The header's Components /
+Inspector / Validation buttons slide the flyouts out too, **Esc** slides every open one back, and
+several can be out at once (they overlay the movement rather than squeezing it, so the viewport now has
+the whole window). A closed flyout is hidden and inert, so it takes no keyboard focus. Each panel's title
+bar has a new "flyout" control next to dock / float / pop-out / hide, so you can put a panel back as a
+dock or a flyout at will; the layout (mode and size) is remembered, which panels are *open* is not.
+Starting the tutorial slides out Components and Inspector, which it points at. **One-off reset:** the
+saved-layout key is now `mw3d.layout.v2`, so layouts saved by earlier versions (all docked) are ignored
+once and everyone gets the flyout default. This is per-viewer UI state only (no schema or design change).
+Tests: flyout layout maths in `layoutState.test.ts`; four browser tests in `e2e/flyouts.spec.ts`; the
+existing browser tests start from a docked layout seeded by the fixture (option `layout: "default"` runs
+a test from the real default). **To revert:** change `defaultLayout()` to `dockedLayout()`.
+
 ## Phase 8.15 follow-up 26: Moon wheel 1 in the escapement colour
 
 Moon wheel 1 is now drawn in the escapement's own gold. There was no way to colour one gear differently,
