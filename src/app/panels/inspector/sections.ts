@@ -145,6 +145,16 @@ export function gearSection(store: AppStore, gear: Gear, storage: KeyValueStore 
       onCommit: (raw) => { edit({ zCentre: millimetres(parseRequired(raw)) }); },
     }),
     selectRow(
+      "Wheel style",
+      gear.spoked ? "SPOKED" : "",
+      [
+        { value: "", label: "Solid disc" },
+        { value: "SPOKED", label: "Five spokes with gaps" },
+      ],
+      (value) => { edit({ spoked: value === "SPOKED" }); },
+      "Draws the gear as an open five-spoke wheel — hub, spokes and gaps inside a solid ring under the teeth — instead of a solid disc (ASM-0077). Visual only: the teeth, pitch diameter and every simulation result are unchanged. Needs at least 24 teeth (GEAR-105).",
+    ),
+    selectRow(
       "Tooth profile",
       gear.profileModel,
       [

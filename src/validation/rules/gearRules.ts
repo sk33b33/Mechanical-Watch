@@ -1,5 +1,5 @@
 import { toDegrees } from "@/units/angle";
-import type { Gear } from "@/domain/gear";
+import { GEAR_SPOKE_MIN_TOOTH_COUNT, type Gear } from "@/domain/gear";
 import type { EntityId } from "@/domain/ids";
 import { isValidModule, isValidToothCount } from "@/math/gearMath";
 import { minimumToothCountForNoUndercut } from "@/math/involute";
@@ -56,6 +56,14 @@ export const gearParameterRules: Rule = ({ movement }) => {
             ["REF-ENG §6", "ASM-0031"]),
         );
       }
+    }
+    if (gear.spoked && isValidToothCount(gear.toothCount) && gear.toothCount < GEAR_SPOKE_MIN_TOOTH_COUNT) {
+      issues.push(
+        issue("GEAR-105", "too-few-teeth", "warning", "L1_GEOMETRIC", [gear.id],
+          `${gear.name}: ${String(gear.toothCount)} teeth is too few for open spokes (at least ${String(GEAR_SPOKE_MIN_TOOTH_COUNT)} `
+          + `needed for the gaps to fit between hub and rim); it is drawn as a solid disc instead.`,
+          ["ASM-0077"]),
+      );
     }
     if (gear.profileModel === "WATCH_SPECIFIC_PROFILE" && isValidToothCount(gear.toothCount)) {
       const leafCount = effectiveLeafCount(gear, movement);

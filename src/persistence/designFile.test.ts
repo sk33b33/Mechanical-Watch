@@ -252,3 +252,23 @@ describe("schema migration v29 → v30 (ASM-0074, DialWindow.bezel and caption)"
   });
 });
 
+describe("schema migration v30 → v31 (ASM-0077, Gear.spoked)", () => {
+  it("backfills spoked: false on every gear of a v30 file, so older designs look unchanged", () => {
+    const doc = rawDoc(createTeachingMovement());
+    const movement = doc.movement as Record<string, Record<string, Record<string, unknown>>>;
+    const gears = movement.gears ?? {};
+    expect(Object.keys(gears).length).toBeGreaterThan(0);
+    for (const g of Object.values(gears)) Reflect.deleteProperty(g, "spoked");
+    const loaded = decodeDesign(JSON.stringify({ ...doc, schemaVersion: 30 }));
+    for (const g of Object.values(loaded.gears)) expect(g.spoked).toBe(false);
+  });
+
+  it("round-trips the teaching movement's spoked wheels", () => {
+    const teaching = createTeachingMovement();
+    const loaded = decodeDesign(encodeDesign(teaching));
+    const flags = (m: Movement): Record<string, boolean> => Object.fromEntries(Object.values(m.gears).map((g) => [g.name, g.spoked]));
+    expect(flags(loaded)).toEqual(flags(teaching));
+    expect(Object.values(flags(loaded))).toContain(true);
+  });
+});
+

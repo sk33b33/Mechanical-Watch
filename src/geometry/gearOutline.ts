@@ -2,6 +2,7 @@ import type { Gear } from "@/domain/gear";
 import { gearPitchDiameter } from "@/domain/gear";
 import { toMetres } from "@/units/length";
 import type { AssumptionId } from "@/reference/assumptions";
+import { spokedWheelOpenings } from "./assemblyGeometry3d";
 
 export interface Point2D {
   x: number;
@@ -73,4 +74,28 @@ export function generateGearOutline(gear: Gear): Point2D[] {
   }
 
   return points;
+}
+
+/**
+ * Proportions of a spoked gear's gaps (ASM-0077, visual only, ASM-0004): they run from the hub to
+ * `rimFraction` of the root radius below the tooth roots, so a solid ring (20% of the radius, the
+ * user's pick) always carries the teeth. Spoke width and hub size are the shared fractions of
+ * `SPOKED_WHEEL_VISUALIZATION` (the dial wheels' own), of the root radius.
+ */
+export const GEAR_SPOKE_VISUALIZATION = {
+  /** Width of the solid ring under the teeth, as a fraction of the root radius. */
+  rimFraction: 0.2,
+  assumption: "ASM-0077" satisfies AssumptionId,
+} as const;
+
+/**
+ * The gaps between a spoked gear's five spokes, as polygons in the gear's own frame, metres. The
+ * wheel's spokes are laid out as the dial wheels' are (`spokedWheelOpenings`), measured against
+ * the gear's own root radius, with one spoke pointing +Y.
+ */
+export function gearSpokeOpenings(gear: Gear): Point2D[][] {
+  const p = GEAR_VISUALIZATION_PROPORTIONS;
+  const pitchRadius = toMetres(gearPitchDiameter(gear)) / 2;
+  const rootRadius = Math.max(pitchRadius - p.dedendumInModules * toMetres(gear.module), pitchRadius * p.minRootRadiusFractionOfPitch);
+  return spokedWheelOpenings(rootRadius, Math.PI / 2, 1 - GEAR_SPOKE_VISUALIZATION.rimFraction);
 }

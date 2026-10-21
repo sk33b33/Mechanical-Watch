@@ -8,6 +8,9 @@ import type { ShaftId } from "./shaft";
 
 export type GearId = EntityId<"gear">;
 
+/** The fewest teeth a spoked gear needs for its gaps to fit between hub and rim (ASM-0077, GEAR-105): a pitch radius of about 1.4mm at the teaching module. */
+export const GEAR_SPOKE_MIN_TOOTH_COUNT = 24;
+
 /**
  * Tooth-profile scope, per reference/REFERENCE_ENGINEERING.md §6. A gear
  * is never silently promoted between these. PITCH_MODEL, INVOLUTE_PROFILE
@@ -44,6 +47,12 @@ export interface Gear {
    */
   zCentre: Length;
   shaftId: ShaftId;
+  /**
+   * Drawn as an open five-spoke wheel — hub, spokes and gaps inside a solid tooth rim — instead of a
+   * solid disc (ASM-0077, visual only: tooth form, pitch diameter and every kinematic result are
+   * unchanged). Needs at least `GEAR_SPOKE_MIN_TOOTH_COUNT` teeth to leave room for gaps (GEAR-105).
+   */
+  spoked: boolean;
 }
 
 export interface CreateGearParams {
@@ -56,6 +65,7 @@ export interface CreateGearParams {
   zCentre?: Length;
   profileModel?: GearProfileModel;
   pressureAngle?: Angle | null;
+  spoked?: boolean;
 }
 
 export function createGear(params: CreateGearParams): Gear {
@@ -70,6 +80,7 @@ export function createGear(params: CreateGearParams): Gear {
     shaftId: params.shaftId,
     profileModel: params.profileModel ?? "PITCH_MODEL",
     pressureAngle: params.pressureAngle ?? null,
+    spoked: params.spoked ?? false,
   };
 }
 

@@ -465,6 +465,12 @@ export const ASSUMPTIONS = {
     scope: "Dial window bezels, equilateral pointers, hour numerals, crown knurl, hour/minute hand arrowheads (visual/L0 display only)",
     status: "Active",
   },
+  "ASM-0077": {
+    summary:
+      "Spoked gears (Phase 8.15 follow-up 22): at the user's request, after answering four questions (large wheels only; five straight spokes like the dial wheels; a solid ring of about 20% of the radius under the teeth; a per-gear setting that the teaching movement turns on), a Gear can be drawn as an open five-spoke wheel -- a hub, five constant-width spokes and the gaps between them inside a solid ring under the teeth -- instead of a solid disc. Domain field Gear.spoked (false by default); persistence schema v30 to v31 backfills false on every existing gear, so older designs look unchanged; Inspector row 'Wheel style'. The gaps run from the hub to 0.8 of the gear's own root radius (the 20% ring, GEAR_SPOKE_VISUALIZATION.rimFraction) using the dial wheels' shared hub and spoke-width fractions (SPOKED_WHEEL_VISUALIZATION) of that root radius, one spoke pointing +Y. Needs at least 24 teeth (GEAR_SPOKE_MIN_TOOTH_COUNT); below that the gear is drawn solid and GEAR-105 says so rather than hiding it. The teaching movement turns it on for every wheel of 30 or more teeth (barrel drum, ratchet, centre, third, fourth, minute, hour and the two moon wheels); pinions and smaller wheels stay solid. Visual only (ASM-0004): tooth form, pitch diameter, bore, thickness and every kinematic and mesh result are unchanged, mass and inertia are not modelled from the gaps, and the section-view cap footprint stays the full disc. The STL export uses the same geometry, so a spoked gear exports with its gaps; that is the model's own geometry, not a manufacturing claim.",
+    scope: "Gear.spoked open five-spoke wheel (visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

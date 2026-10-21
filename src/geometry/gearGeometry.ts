@@ -3,7 +3,8 @@ import type { Gear } from "@/domain/gear";
 import type { Movement } from "@/domain/movement";
 import { toMetres } from "@/units/length";
 import { CYCLOID_TOOTH_PROPORTIONS } from "@/math/cycloidTooth";
-import { generateGearOutline, visualBoreRadius } from "./gearOutline";
+import { GEAR_SPOKE_MIN_TOOTH_COUNT } from "@/domain/gear";
+import { generateGearOutline, gearSpokeOpenings, visualBoreRadius } from "./gearOutline";
 import { generateInvoluteGearOutline } from "./involuteGearOutline";
 import { effectiveLeafCount, generateWatchSpecificGearOutline } from "./watchSpecificGearOutline";
 
@@ -43,6 +44,17 @@ export function createGearGeometry(gear: Gear, movement?: Movement): THREE.Extru
   const bore = new THREE.Path();
   bore.absarc(0, 0, visualBoreRadius(gear), 0, Math.PI * 2, false);
   shape.holes.push(bore);
+
+  // An open five-spoke wheel (ASM-0077): gaps between hub and rim, if the gear is flagged and big
+  // enough. A flagged gear below the floor stays solid — GEAR-105 says so instead of this hiding it.
+  if (gear.spoked && Number.isInteger(gear.toothCount) && gear.toothCount >= GEAR_SPOKE_MIN_TOOTH_COUNT) {
+    for (const opening of gearSpokeOpenings(gear)) {
+      const hole = new THREE.Path();
+      opening.forEach(({ x, y }, i) => { if (i === 0) hole.moveTo(x, y); else hole.lineTo(x, y); });
+      hole.closePath();
+      shape.holes.push(hole);
+    }
+  }
 
   const thickness = toMetres(gear.thickness);
   const geometry = new THREE.ExtrudeGeometry(shape, {

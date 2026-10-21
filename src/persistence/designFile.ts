@@ -46,7 +46,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 30;
+export const DESIGN_SCHEMA_VERSION = 31;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -439,6 +439,19 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
     );
     return { ...doc, schemaVersion: 30, movement: { ...movement, dialWindows } };
   },
+  /**
+   * v30 → v31: a gear gains `spoked` (ASM-0077), drawn as an open five-spoke wheel. Every
+   * existing gear gets `spoked: false` — none of them had this concept before, so older designs
+   * look exactly as they did.
+   */
+  30: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.gears)) return doc;
+    const gears = Object.fromEntries(
+      Object.entries(movement.gears).map(([id, g]) => [id, isRecord(g) ? { ...g, spoked: false } : g]),
+    );
+    return { ...doc, schemaVersion: 31, movement: { ...movement, gears } };
+  },
 };
 
 export class DesignFileError extends Error {}
@@ -610,6 +623,7 @@ const gear: Decoder<Gear> = (value, path) => {
     thickness: field(o, "thickness", length, path),
     zCentre: field(o, "zCentre", length, path),
     shaftId: field(o, "shaftId", id<Shaft["id"]>(), path),
+    spoked: field(o, "spoked", boolean, path),
   };
 };
 

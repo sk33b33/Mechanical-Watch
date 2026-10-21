@@ -111,6 +111,9 @@ const mm = millimetres;
  * and tested, `src/kinematics/genevaDrive.ts`, but not wired into the live
  * simulation).
  */
+/** The fewest teeth for a wheel in the teaching movement to be drawn as an open five-spoke wheel (follow-up 22, ASM-0077). */
+const SPOKED_WHEEL_MIN_TEETH = 30;
+
 export function createTeachingMovement(): Movement {
   const trainModule = mm(0.12);
   const motionModule = mm(0.1);
@@ -154,7 +157,9 @@ export function createTeachingMovement(): Movement {
   const settingWheelArbor = shaft("Setting wheel", null, { kind: "STUD", frameId: mainplate.id });
 
   const gear = (name: string, s: Shaft, toothCount: number, module: Length, zCentre: number, thickness: number): Gear =>
-    createGear({ name, toothCount, module, shaftId: s.id, zCentre: mm(zCentre), thickness: mm(thickness) });
+    // Large wheels are drawn as open five-spoke wheels (follow-up 22, ASM-0077): any wheel big enough
+    // (30+ teeth) to leave room for gaps. Pinions and the smaller wheels stay solid discs.
+    createGear({ name, toothCount, module, shaftId: s.id, zCentre: mm(zCentre), thickness: mm(thickness), spoked: toothCount >= SPOKED_WHEEL_MIN_TEETH });
 
   // Going train, between the mainplate (top at 1.0 mm) and the bridge (underside at 4.0 mm).
   const barrelDrum = gear("Barrel drum", barrel, 72, trainModule, 1.4, 0.3);

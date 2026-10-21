@@ -69,6 +69,7 @@ export const RULE_IDS = [
   "TOL-002",
   "VAL-001",
   "GEAR-104",
+  "GEAR-105",
   "MOON-001",
   "MOON-002",
   "DATE-001",

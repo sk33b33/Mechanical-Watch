@@ -2,6 +2,22 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 22: spoked gears on the bridge side
+
+Asked first (four questions), then built: **large wheels only**, **five straight spokes** like the dial
+wheels, a **solid ring of ≈20% of the radius** under the teeth, and a **per-gear setting** the teaching
+movement turns on. New domain field `Gear.spoked` (default false; ASM-0077; persistence schema
+v30 → v31 backfills false, so older designs are unchanged; Inspector row "Wheel style"). A flagged gear
+with 24 or more teeth is extruded with five gaps between hub and ring (`gearSpokeOpenings`, the dial
+wheels' own polar spoke geometry measured against the gear's root radius); below 24 teeth it is drawn
+solid and **GEAR-105** (warning) says so rather than hiding it. In the teaching movement every wheel of
+30+ teeth is spoked — barrel drum, ratchet, centre, third, fourth, minute, hour and the two moon wheels;
+pinions and the 16- and 20-tooth wheels stay solid. Visual only: tooth form, pitch diameter, bore,
+thickness and every kinematic and mesh result are unchanged; mass and inertia are not modelled from the
+gaps; the section-view cap footprint stays the full disc. The STL export uses the same geometry, so a
+spoked gear exports with its gaps (the model's own geometry, not a manufacturing claim). **To revert:**
+set `Wheel style` back to solid per gear, or drop `spoked:` from the teaching movement's `gear()` helper.
+
 ## Phase 8.15 follow-up 21: window frames, equilateral pointers, hour numerals, knurled crown, arrowhead hands
 
 Five visual changes at the user's request (ASM-0076; frames reuse ASM-0074). **Frames:** every dial
