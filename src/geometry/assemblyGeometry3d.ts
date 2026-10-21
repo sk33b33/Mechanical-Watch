@@ -45,6 +45,9 @@ export const KEYLESS_VISUALIZATION = {
   pulledOutMetres: 0.6e-3,
   slidingPinionTravelMetres: 0.3e-3,
   stemInnerOverhangMetres: 0.6e-3,
+  /** The crown's knurl (follow-up 21, ASM-0076): this many ridges around its rim, each groove cut this fraction of the radius deep. */
+  crownRidgeCount: 36,
+  crownRidgeDepthFraction: 0.09,
   assumption: "ASM-0012" satisfies AssumptionId,
 } as const;
 
@@ -79,6 +82,19 @@ export const DIAL_VISUALIZATION = {
   ] as readonly { text: string; dx: number; dy: number }[],
   /** How far from the seconds hand's pivot the numerals sit, as a fraction of that hand's own length: just inside its tip. */
   secondsNumeralRingFraction: 0.95,
+  /**
+   * The hour numerals printed inside the four big circles (follow-up 21): 12 north, 3 east, 6 south,
+   * 9 west (the same hour positions as the circles; east is the dial's right as read from its −Z
+   * side). Drawn in the year digits' own text colour (`YEAR_DIGIT_BARREL_VISUALIZATION.textColor`).
+   */
+  hourNumerals: [
+    { hour: 0, text: "12" },
+    { hour: 3, text: "3" },
+    { hour: 6, text: "6" },
+    { hour: 9, text: "9" },
+  ] as readonly { hour: number; text: string }[],
+  /** Hour numeral text height as a fraction of the dial radius (a big circle is 0.1 across). */
+  hourNumeralHeightFraction: 0.046,
   /** Numeral text height as a fraction of the dial radius. */
   numeralHeightFraction: 0.04,
   numeralColor: "#1a1e22",
@@ -149,12 +165,25 @@ export function dialMarkerPlacements(dialRadius: number): DialMarkerPlacement[] 
  * sits on rather than being a fixed absolute size.
  */
 export const DIAL_WINDOW_POINTER_VISUALIZATION = {
-  heightFraction: 0.04,
-  baseWidthFraction: 0.03,
+  /**
+   * Side length of the pointer's own EQUILATERAL triangle (follow-up 21, at the user's request:
+   * "make all sides of the triangles equal in length" — the earlier 0.03-wide, 0.04-tall one was
+   * too tall), as a fraction of the dial's radius. Base width = side, height = side·√3/2.
+   */
+  sideFraction: 0.034,
   /** Visible gap between the triangle's own apex and the window's own edge it points at, as a further fraction of the dial radius — enough to read as pointing AT the window, not touching it. */
   gapFraction: 0.01,
   assumption: "ASM-0069" satisfies AssumptionId,
 } as const;
+
+/**
+ * The pointer triangle's own width and height on a dial of the given radius: equilateral, so
+ * all three sides equal `sideFraction` of the radius and the height is side·√3/2 (ASM-0076).
+ */
+export function dialWindowPointerSize(dialRadius: number): { baseWidth: number; height: number } {
+  const side = dialRadius * DIAL_WINDOW_POINTER_VISUALIZATION.sideFraction;
+  return { baseWidth: side, height: (side * Math.sqrt(3)) / 2 };
+}
 
 /**
  * An upside-down (apex-down) triangle outline for a `DialWindowPointer`
@@ -367,12 +396,70 @@ export function createMoonPhaseMarkGeometry(kind: MoonPhaseMarkKind, radius: num
   return new THREE.ExtrudeGeometry(shapes, { depth: thickness, bevelEnabled: false, curveSegments: segments });
 }
 
+/**
+ * A cylinder with a ridge pattern around its rim (ASM-0076, visual only, ASM-0004): the
+ * cross-section is a circle of `radius` whose edge is cut by `ridgeCount` rounded grooves, each
+ * `depthFraction` of the radius deep (ridge crests at the full radius). Its axis runs along local
+ * +X, centred on the origin, `length` long — the orientation the stem's crown needs.
+ */
+export function createFlutedCylinderGeometry(radius: number, length: number, ridgeCount: number, depthFraction: number): THREE.ExtrudeGeometry {
+  const stepsPerRidge = 6;
+  const total = ridgeCount * stepsPerRidge;
+  const shape = new THREE.Shape();
+  for (let i = 0; i < total; i += 1) {
+    const angle = (2 * Math.PI * i) / total;
+    // 0 at a ridge crest, 1 at the bottom of a groove, smooth between.
+    const groove = (1 - Math.cos(ridgeCount * angle)) / 2;
+    const r = radius * (1 - depthFraction * groove);
+    const x = r * Math.cos(angle);
+    const y = r * Math.sin(angle);
+    if (i === 0) shape.moveTo(x, y); else shape.lineTo(x, y);
+  }
+  shape.closePath();
+  const geometry = new THREE.ExtrudeGeometry(shape, { depth: length, bevelEnabled: false });
+  geometry.translate(0, 0, -length / 2);
+  // Extrusion runs along local Z; turn it to run along X (z → x).
+  geometry.rotateY(Math.PI / 2);
+  return geometry;
+}
+
+/**
+ * The arrowhead on the hour and minute hands (follow-up 21, ASM-0076, visual only): all sizes are
+ * multiples of the hand's own width so the head scales with each hand.
+ */
+export const HAND_ARROWHEAD_VISUALIZATION = {
+  /** Length of the head from its barbs to the tip, in hand widths. */
+  headLengthInWidths: 2.4,
+  /** Half the head's own width at the barbs, in hand widths (so the barbs overhang the shaft). */
+  headHalfWidthInWidths: 1.0,
+  /** Shaft width where it meets the head, as a fraction of the hand's own width. */
+  shaftTipFraction: 0.5,
+  assumption: "ASM-0076" satisfies AssumptionId,
+} as const;
+
 type HandKind = keyof Omit<typeof HAND_VISUALIZATION, "thicknessMetres" | "assumption">;
 
 /** 2D outline of a hand's tapered blade (not the hub hole), pointing +Y from the axis (ASM-0016, visual). */
 export function generateHandOutline(hand: HandKind): Point2D[] {
   const { lengthMetres: l, widthMetres: w } = HAND_VISUALIZATION[hand];
   const tail = l * 0.18;
+  if (hand === "HOURS" || hand === "MINUTES") {
+    // Arrowhead tip (follow-up 21, ASM-0076): the shaft tapers from the full width at the tail to
+    // `ARROW_SHAFT_TIP_FRACTION` of it at the head, where two barbs sweep out to
+    // `ARROW_HEAD_HALF_WIDTH_FRACTION` of a width either side and close to a point at the tip.
+    const v = HAND_ARROWHEAD_VISUALIZATION;
+    const headLength = w * v.headLengthInWidths;
+    const headBase = l - headLength;
+    return [
+      { x: -w / 2, y: -tail },
+      { x: w / 2, y: -tail },
+      { x: (w * v.shaftTipFraction) / 2, y: headBase },
+      { x: w * v.headHalfWidthInWidths, y: headBase },
+      { x: 0, y: l },
+      { x: -w * v.headHalfWidthInWidths, y: headBase },
+      { x: -(w * v.shaftTipFraction) / 2, y: headBase },
+    ];
+  }
   return [
     { x: -w / 2, y: -tail },
     { x: w / 2, y: -tail },

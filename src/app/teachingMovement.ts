@@ -548,6 +548,8 @@ export function createTeachingMovement(): Movement {
     })(),
     outline: { kind: "CIRCLE", radius: (moonPhase.diameter / 2) * 1.05 as Length },
     pointer: "NORTH",
+    // A thin dark printed frame around every window (follow-up 21, ASM-0074/0076).
+    bezel: true,
     // The dial ring of fixed phase icons (follow-up 14, ASM-0072) is off: at the user's request
     // (follow-up 15, ASM-0073) the phases are printed on the moon wheel itself instead, and this
     // window's north pointer points at the one that is current.
@@ -583,6 +585,8 @@ export function createTeachingMovement(): Movement {
     })(),
     outline: { kind: "CIRCLE", radius: (dateComplication.starTipDiameter / 2) * 1.05 as Length },
     pointer: "NORTH",
+    // A thin dark printed frame around every window (follow-up 21, ASM-0074/0076).
+    bezel: true,
   }));
   m = addDialWindow(m, createDialWindow({
     name: "Month window",
@@ -600,6 +604,8 @@ export function createTeachingMovement(): Movement {
     })(),
     outline: { kind: "CIRCLE", radius: (monthComplication.starTipDiameter / 2) * 1.05 as Length },
     pointer: "NORTH",
+    // A thin dark printed frame around every window (follow-up 21, ASM-0074/0076).
+    bezel: true,
   }));
   m = addDialWindow(m, createDialWindow({
     name: "Leap-year window",
@@ -615,6 +621,8 @@ export function createTeachingMovement(): Movement {
     })(),
     outline: { kind: "CIRCLE", radius: (leapYearComplication.wheelTipDiameter / 2) * 1.05 as Length },
     pointer: "NORTH",
+    // A thin dark printed frame around every window (follow-up 21, ASM-0074/0076).
+    bezel: true,
   }));
   // Season window: NOT the small "catch one label" aperture every other disc window above uses
   // — raised directly by the user ("the window for the seasons needs to be the same size or a
@@ -645,6 +653,8 @@ export function createTeachingMovement(): Movement {
     })(),
     outline: { kind: "CIRCLE", radius: (seasonComplication.wheelTipDiameter / 2) * 1.05 as Length },
     pointer: "NORTH",
+    // A thin dark printed frame around every window (follow-up 21, ASM-0074/0076).
+    bezel: true,
   }));
   // One shared window over the whole barrel (Phase 8.15, replacing the earlier four separate
   // windows): the user's own explicit request ("it needs to be 1 large rectangular window...

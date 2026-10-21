@@ -459,6 +459,12 @@ export const ASSUMPTIONS = {
     scope: "Date/month star wheel geometry (visual/L0 display only)",
     status: "Active",
   },
+  "ASM-0076": {
+    summary:
+      "Dial polish batch (Phase 8.15 follow-up 21), all visual only (ASM-0004), at the user's request: (1) every dial window in the teaching movement now carries the thin dark printed bezel the year window got (ASM-0074); a window's north pointer clears the bezel as well as the window edge. (2) The window pointer triangles are equilateral -- all three sides one declared fraction of the dial radius (DIAL_WINDOW_POINTER_VISUALIZATION.sideFraction, 0.034), height side*sqrt(3)/2 -- replacing the earlier taller 0.03-wide, 0.04-tall triangle (amends ASM-0069's sizing only). (3) The four big hour circles carry the numerals 12 (north), 3 (east), 6 (south) and 9 (west) in the year digits' own text colour (YEAR_DIGIT_BARREL_VISUALIZATION.textColor, ASM-0064), sized as a fraction of the dial radius; east is the dial's right as read from its -Z side. (4) The crown carries a knurl -- 36 rounded ridges, each groove 0.09 of the radius deep (KEYLESS_VISUALIZATION.crownRidgeCount/crownRidgeDepthFraction, cut as a fluted cross-section along the stem) -- instead of a smooth cylinder; the crown's size, position and spin are unchanged (ASM-0012/0019). (5) The hour and minute hands end in an arrowhead -- a shaft tapering to half its width at the head, two barbs sweeping out to one hand-width either side, closing to a point at the hand's own declared length (HAND_ARROWHEAD_VISUALIZATION); the seconds hand keeps its plain taper, and hand length, hub and mounting heights are unchanged (ASM-0016). None of these is a sourced real-watch design; they are declared visual choices and feed no kinematic or clearance result.",
+    scope: "Dial window bezels, equilateral pointers, hour numerals, crown knurl, hour/minute hand arrowheads (visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

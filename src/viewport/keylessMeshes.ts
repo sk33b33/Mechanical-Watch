@@ -21,6 +21,9 @@ import {
   createDialWindowPointerGeometry,
   dialMarkerPlacements,
   dialWindowCaptionOffset,
+  dialWindowPointerSize,
+  createFlutedCylinderGeometry,
+  YEAR_DIGIT_BARREL_VISUALIZATION,
   secondsNumeralPlacements,
   createMoonPhaseMarkGeometry,
   moonPhaseMarks,
@@ -99,8 +102,8 @@ export function buildStemMeshes(
   pickMeshes.push(rod);
 
   // Crown, with a flat so its rotation is visible.
-  const crown = new THREE.Mesh(new THREE.CylinderGeometry(v.crownRadiusMetres, v.crownRadiusMetres, v.crownLengthMetres, 24), materials.crown);
-  crown.geometry.rotateZ(Math.PI / 2);
+  // Knurled: a ridge pattern around the crown's own rim (follow-up 21, ASM-0076), cut as a fluted cross-section along the stem.
+  const crown = new THREE.Mesh(createFlutedCylinderGeometry(v.crownRadiusMetres, v.crownLengthMetres, v.crownRidgeCount, v.crownRidgeDepthFraction), materials.crown);
   crown.position.x = crownStart + v.crownLengthMetres / 2;
   const flat = new THREE.Mesh(new THREE.BoxGeometry(v.crownLengthMetres * 1.02, v.crownRadiusMetres * 0.25, v.crownRadiusMetres * 0.25), materials.pinion);
   flat.position.set(crown.position.x, v.crownRadiusMetres, 0);
@@ -175,6 +178,20 @@ export function buildDialMeshes(
     );
     dot.position.set(marker.x, marker.y, face - d.markerThicknessMetres / 2);
     root.add(dot);
+    // The hour numeral inside each big circle (follow-up 21), in the year digits' own text colour.
+    const hourNumeral = marker.big ? d.hourNumerals.find((n) => n.hour === marker.hour) : undefined;
+    if (hourNumeral === undefined) continue;
+    const builtHour = createDialWindowCaptionTexture(hourNumeral.text, YEAR_DIGIT_BARREL_VISUALIZATION.textColor);
+    if (builtHour === null) continue;
+    const hourHeight = r * d.hourNumeralHeightFraction;
+    const hourPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(hourHeight * builtHour.aspect, hourHeight),
+      new THREE.MeshBasicMaterial({ map: builtHour.texture, transparent: true, depthWrite: false, side: THREE.DoubleSide }),
+    );
+    // Read from the dial's −Z side: half a turn about Y so the text reads left to right.
+    hourPlane.rotation.y = Math.PI;
+    hourPlane.position.set(marker.x, marker.y, face - 1.3 * d.markerThicknessMetres);
+    root.add(hourPlane);
   }
   // Seconds-scale numerals around the seconds hand's own pivot (follow-up 19): 60 north, 15 east,
   // 30 south, 45 west, just inside the hand's tip, printed on the dial like the window captions.
@@ -195,8 +212,7 @@ export function buildDialMeshes(
     }
   }
   const pv = DIAL_WINDOW_POINTER_VISUALIZATION;
-  const pointerHeight = r * pv.heightFraction;
-  const pointerBaseWidth = r * pv.baseWidthFraction;
+  const { baseWidth: pointerBaseWidth, height: pointerHeight } = dialWindowPointerSize(r);
   const pointerGap = r * pv.gapFraction;
   for (const w of ownWindows) {
     if (w.pointer !== "NORTH") continue;
@@ -204,7 +220,9 @@ export function buildDialMeshes(
     // or a RECTANGLE's half-height — the point the pointer's own apex sits just beyond (ASM-0069).
     const halfExtentAtNorth = w.outline.kind === "CIRCLE" ? w.outline.radius : w.outline.height / 2;
     const pointer = new THREE.Mesh(createDialWindowPointerGeometry(pointerBaseWidth, pointerHeight, d.markerThicknessMetres), materials.marker);
-    pointer.position.set(w.centre.x - centre.x, w.centre.y - centre.y + halfExtentAtNorth + pointerGap, face - d.markerThicknessMetres / 2);
+    // With a printed bezel the apex clears the frame, not just the window's own edge.
+    const bezelClearance = w.bezel ? r * DIAL_WINDOW_PRINT_VISUALIZATION.bezelWidthFraction : 0;
+    pointer.position.set(w.centre.x - centre.x, w.centre.y - centre.y + halfExtentAtNorth + bezelClearance + pointerGap, face - d.markerThicknessMetres / 2);
     root.add(pointer);
   }
   // Lunar-phase marks (ASM-0072): a ring of small icons around a circular moon-phase window, at

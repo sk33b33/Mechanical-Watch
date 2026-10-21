@@ -23,7 +23,10 @@ import {
   createDialWindowBezelGeometry,
   dialMarkerPlacements,
   secondsNumeralPlacements,
+  createFlutedCylinderGeometry,
   createMoonPhaseMarkGeometry,
+  dialWindowPointerSize,
+  DIAL_WINDOW_POINTER_VISUALIZATION,
   createSpokedWheelGeometry,
   SPOKED_WHEEL_VISUALIZATION,
   spokedWheelOpenings,
@@ -34,6 +37,7 @@ import {
   escapeWheelHubRadius,
   generateEscapeWheelOutline,
   generateHandOutline,
+  HAND_ARROWHEAD_VISUALIZATION,
   generatePalletStoneOutline,
   GENEVA_WHEEL_VISUALIZATION,
   handHubRadius,
@@ -206,25 +210,63 @@ describe("balanceArmHalfExtents", () => {
 });
 
 describe("generateHandOutline", () => {
-  it("produces a 4-point taper, narrow at the tail and widening toward the tip", () => {
-    const outline = generateHandOutline("MINUTES");
+  it("the seconds hand keeps its plain 4-point taper, narrow at the tail and widening toward the tip", () => {
+    const outline = generateHandOutline("SECONDS");
     expect(outline).toHaveLength(4);
     const tailWidth = Math.abs((outline[0]?.x ?? 0) - (outline[1]?.x ?? 0));
     const tipWidth = Math.abs((outline[2]?.x ?? 0) - (outline[3]?.x ?? 0));
     expect(tailWidth).toBeGreaterThan(0);
     expect(tipWidth).toBeGreaterThan(0);
-    // All points lie within the hand's own declared length along +Y.
     for (const point of outline) {
-      expect(point.y).toBeGreaterThanOrEqual(-5e-3);
-      expect(point.y).toBeLessThanOrEqual(8e-3);
+      expect(point.y).toBeGreaterThanOrEqual(-3e-3);
+      expect(point.y).toBeLessThanOrEqual(3e-3);
     }
   });
 
   it("each hand kind has its own width and length", () => {
-    const hours = generateHandOutline("HOURS");
-    const seconds = generateHandOutline("SECONDS");
-    const tip = (outline: ReturnType<typeof generateHandOutline>): number => outline[2]?.y ?? 0;
-    expect(tip(hours)).not.toBe(tip(seconds));
+    const tipY = (outline: ReturnType<typeof generateHandOutline>): number => Math.max(...outline.map((p) => p.y));
+    expect(tipY(generateHandOutline("HOURS"))).toBeCloseTo(5e-3, 12);
+    expect(tipY(generateHandOutline("MINUTES"))).toBeCloseTo(8e-3, 12);
+    expect(tipY(generateHandOutline("SECONDS"))).toBeCloseTo(3e-3, 12);
+  });
+
+  it("the hour and minute hands end in an arrowhead (ASM-0076): a pointed tip at the hand's own length, barbs overhanging the shaft", () => {
+    for (const [hand, length, width] of [["HOURS", 5e-3, 0.6e-3], ["MINUTES", 8e-3, 0.4e-3]] as const) {
+      const outline = generateHandOutline(hand);
+      expect(outline).toHaveLength(7);
+      const tip = outline[4];
+      expect(tip?.x).toBe(0);
+      expect(tip?.y).toBeCloseTo(length, 12);
+      const barbRight = outline[3];
+      const barbLeft = outline[5];
+      const shaftRight = outline[2];
+      // Barbs mirror each other and sit wider than the shaft where it meets the head.
+      expect(barbRight?.x).toBeCloseTo(-(barbLeft?.x ?? 0), 12);
+      expect(barbRight?.y).toBeCloseTo(barbLeft?.y ?? 0, 12);
+      expect(barbRight?.x ?? 0).toBeGreaterThan(shaftRight?.x ?? 0);
+      expect(barbRight?.x ?? 0).toBeGreaterThan(width / 2);
+      // The head is longer than it is wide-ish and the barbs sit below the tip.
+      expect(barbRight?.y ?? length).toBeLessThan(length);
+      expect(length - (barbRight?.y ?? 0)).toBeCloseTo(width * HAND_ARROWHEAD_VISUALIZATION.headLengthInWidths, 12);
+    }
+  });
+
+  it("the arrowhead hands' outline is a simple polygon (no self-intersection) so it extrudes cleanly", () => {
+    const segmentsCross = (a: { x: number; y: number }, b: { x: number; y: number }, c: { x: number; y: number }, d: { x: number; y: number }): boolean => {
+      const o = (p: { x: number; y: number }, q: { x: number; y: number }, r: { x: number; y: number }): number => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+      return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0;
+    };
+    for (const hand of ["HOURS", "MINUTES"] as const) {
+      const pts = generateHandOutline(hand);
+      for (let i = 0; i < pts.length; i += 1) {
+        for (let j = i + 2; j < pts.length; j += 1) {
+          if (i === 0 && j === pts.length - 1) continue; // adjacent via wrap-around
+          const a = pts[i]; const b = pts[(i + 1) % pts.length]; const c = pts[j]; const d = pts[(j + 1) % pts.length];
+          if (a === undefined || b === undefined || c === undefined || d === undefined) continue;
+          expect(segmentsCross(a, b, c, d)).toBe(false);
+        }
+      }
+    }
   });
 });
 
@@ -1385,6 +1427,82 @@ describe("date/month label ring moved toward the wheel's edge (follow-up 19)", (
     const edge = DIAL_WINDOW_VISUALIZATION.edgeLabelRadiusFraction;
     expect(discLabelSlotArcLengthPx(31, edge)).toBeGreaterThan(discLabelSlotArcLengthPx(31));
     expect(discLabelFittedFontSizePx(400, 31, edge)).toBeGreaterThanOrEqual(discLabelFittedFontSizePx(400, 31));
+  });
+});
+
+describe("equilateral window pointers (ASM-0076)", () => {
+  it("makes all three sides of the pointer triangle the same length", () => {
+    const R = 14e-3;
+    const { baseWidth, height } = dialWindowPointerSize(R);
+    expect(baseWidth).toBeCloseTo(R * DIAL_WINDOW_POINTER_VISUALIZATION.sideFraction, 12);
+    const [apex, left, right] = createDialWindowPointerOutline(baseWidth, height);
+    if (apex === undefined || left === undefined || right === undefined) throw new Error("bad outline");
+    const side = (a: { x: number; y: number }, b: { x: number; y: number }): number => Math.hypot(a.x - b.x, a.y - b.y);
+    expect(side(left, right)).toBeCloseTo(side(apex, left), 12);
+    expect(side(left, right)).toBeCloseTo(side(apex, right), 12);
+  });
+
+  it("is shorter than the old 0.04-tall triangle", () => {
+    const R = 14e-3;
+    expect(dialWindowPointerSize(R).height).toBeLessThan(R * 0.04);
+  });
+});
+
+describe("hour numerals (follow-up 21)", () => {
+  it("are 12 north, 3 east, 6 south and 9 west, each on a big circle", () => {
+    const byHour = new Map(DIAL_VISUALIZATION.hourNumerals.map((n) => [n.hour, n.text]));
+    expect(byHour.get(0)).toBe("12");
+    expect(byHour.get(3)).toBe("3");
+    expect(byHour.get(6)).toBe("6");
+    expect(byHour.get(9)).toBe("9");
+    const placements = dialMarkerPlacements(14e-3);
+    for (const n of DIAL_VISUALIZATION.hourNumerals) expect(placements.find((p) => p.hour === n.hour)?.big).toBe(true);
+    // The text height fits inside a big circle (radius 0.05 of the dial radius, so 0.1 across).
+    expect(DIAL_VISUALIZATION.hourNumeralHeightFraction).toBeLessThan(2 * DIAL_VISUALIZATION.bigMarkerRadiusFraction);
+  });
+});
+
+describe("createFlutedCylinderGeometry (crown knurl, ASM-0076)", () => {
+  it("runs along +X for the requested length, with crests at the full radius and grooves cut the declared depth", () => {
+    const radius = 1.4e-3;
+    const depth = 0.09;
+    const g = createFlutedCylinderGeometry(radius, 1.4e-3, 36, depth);
+    g.computeBoundingBox();
+    const box = g.boundingBox ?? new THREE.Box3();
+    expect(box.max.x - box.min.x).toBeCloseTo(1.4e-3, 9);
+    expect(box.min.x).toBeCloseTo(-0.7e-3, 9);
+    const pos = g.attributes.position;
+    if (pos === undefined) throw new Error("no positions");
+    let rMax = 0;
+    let rMin = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < pos.count; i += 1) {
+      const r = Math.hypot(pos.getY(i), pos.getZ(i));
+      rMax = Math.max(rMax, r);
+      rMin = Math.min(rMin, r);
+    }
+    expect(rMax).toBeCloseTo(radius, 6);
+    expect(rMin).toBeCloseTo(radius * (1 - depth), 6);
+  });
+
+  it("has one groove per ridge around the rim", () => {
+    const g = createFlutedCylinderGeometry(1e-3, 1e-3, 12, 0.1);
+    const pos = g.attributes.position;
+    if (pos === undefined) throw new Error("no positions");
+    // Count local minima of the rim radius around one end cap's outline (x at its minimum).
+    const end = pos.getX(0);
+    const ring: { angle: number; r: number }[] = [];
+    for (let i = 0; i < pos.count; i += 1) {
+      if (Math.abs(pos.getX(i) - end) > 1e-12) continue;
+      ring.push({ angle: Math.atan2(pos.getZ(i), pos.getY(i)), r: Math.hypot(pos.getY(i), pos.getZ(i)) });
+    }
+    const unique = [...new Map(ring.map((p) => [p.angle.toFixed(9), p])).values()].sort((a, b) => a.angle - b.angle);
+    let minima = 0;
+    unique.forEach((p, i) => {
+      const prev = unique[(i - 1 + unique.length) % unique.length];
+      const next = unique[(i + 1) % unique.length];
+      if (prev !== undefined && next !== undefined && p.r < prev.r - 1e-12 && p.r <= next.r + 1e-12) minima += 1;
+    });
+    expect(minima).toBe(12);
   });
 });
 

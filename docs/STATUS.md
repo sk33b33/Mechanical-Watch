@@ -2,6 +2,21 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 21: window frames, equilateral pointers, hour numerals, knurled crown, arrowhead hands
+
+Five visual changes at the user's request (ASM-0076; frames reuse ASM-0074). **Frames:** every dial
+window in the teaching movement now has the thin dark printed bezel the year window got (a window's
+north pointer clears the frame as well as the edge). **Pointers:** the triangles are equilateral — all
+three sides 0.034 of the dial radius, height side·√3/2 — shorter than the old 0.03-wide, 0.04-tall
+ones. **Hour numerals:** 12 (north), 3 (east), 6 (south) and 9 (west) are printed inside the four big
+circles in the year digits' own text colour (white). **Crown:** now knurled — 36 rounded ridges, each
+groove 0.09 of the radius deep — instead of a smooth cylinder; its size, position and spin are
+unchanged (the small flat that shows its rotation is kept). **Hands:** the hour and minute hands end in
+an arrowhead (shaft tapering to half width, barbs one width either side, point at the hand's declared
+length); the seconds hand keeps its plain taper, and lengths, hubs and heights are unchanged. All are
+visual choices, not a real watch's design, and feed no kinematic or clearance result. **To revert:** set
+`bezel: false` on a window; the old pointer size, plain crown and four-point hands are in git history.
+
 ## Phase 8.15 follow-up 20: five-spoke moon wheel
 
 The moon phase wheel is now an open five-spoke wheel too, matching the date and month wheels
