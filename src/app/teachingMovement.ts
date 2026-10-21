@@ -193,7 +193,8 @@ export function createTeachingMovement(): Movement {
   const moonWheel1 = gear("Moon wheel 1", moonReductionArbor, 87, motionModule, -1.15, 0.06);
   const moonPinion2 = gear("Moon pinion 2", moonReductionArbor, 8, motionModule, -1.26, 0.06);
   const moonDiscArbor = shaft("Moon disc arbor", null, { kind: "STUD", frameId: mainplate.id });
-  const moonWheel2 = gear("Moon wheel 2", moonDiscArbor, 87, motionModule, -1.26, 0.06);
+  // Kept a solid disc at the user's request (follow-up 23) although it is big enough to be spoked.
+  const moonWheel2 = { ...gear("Moon wheel 2", moonDiscArbor, 87, motionModule, -1.26, 0.06), spoked: false };
 
   // Simple instantaneous date (Phase 8.2, ASM-0048): the "24-hour wheel" is an ordinary
   // continuous reduction, same engine as the moonphase train above — 2:1 off the hour wheel's

@@ -2,6 +2,12 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 23: Moon wheel 2 solid again
+
+At the user's request the teaching movement's **Moon wheel 2** (87 teeth) is a solid disc again; it is
+the one wheel of 30+ teeth that is not spoked (the other eight still are). It is an ordinary
+`Gear.spoked = false`, so it can be switched back on from the Inspector's "Wheel style" row.
+
 ## Phase 8.15 follow-up 22: spoked gears on the bridge side
 
 Asked first (four questions), then built: **large wheels only**, **five straight spokes** like the dial

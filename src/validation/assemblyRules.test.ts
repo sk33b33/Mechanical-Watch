@@ -257,8 +257,9 @@ describe("assembly rules", () => {
     const gear105 = (movement: Movement): string[] => validateMovement(movement).filter((i) => i.rule === "GEAR-105").map((i) => `${i.rule}:${i.severity}:${i.id.split(":")[1] ?? ""}`);
     expect(gear105(m)).toEqual([]);
     const spokedNames = Object.values(m.gears).filter((g) => g.spoked).map((g) => g.name).sort();
-    expect(spokedNames).toEqual(["Barrel drum", "Centre wheel", "Fourth wheel", "Hour wheel", "Minute wheel", "Moon wheel 1", "Moon wheel 2", "Ratchet wheel", "Third wheel"]);
-    for (const g of Object.values(m.gears)) expect(g.spoked).toBe(g.toothCount >= 30);
+    expect(spokedNames).toEqual(["Barrel drum", "Centre wheel", "Fourth wheel", "Hour wheel", "Minute wheel", "Moon wheel 1", "Ratchet wheel", "Third wheel"]);
+    // Every wheel of 30+ teeth is spoked except Moon wheel 2, kept solid at the user's request.
+    for (const g of Object.values(m.gears)) expect(g.spoked).toBe(g.toothCount >= 30 && g.name !== "Moon wheel 2");
     const small = Object.values(m.gears).find((g) => g.toothCount < 24);
     if (small === undefined) throw new Error("no small gear");
     expect(gear105(updateGear(m, small.id, { spoked: true }))).toEqual(["GEAR-105:warning:too-few-teeth"]);
