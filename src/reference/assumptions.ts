@@ -483,6 +483,12 @@ export const ASSUMPTIONS = {
     scope: "EscapeWheel.spoked open five-spoke wheel (visual/L0 display only)",
     status: "Active",
   },
+  "ASM-0080": {
+    summary:
+      "Gear display colour (Phase 8.15 follow-up 26): at the user's request Moon wheel 1 is shown in the escapement's own colour. A Gear gains a presentation-only colour, DEFAULT (the usual steel grey) or ESCAPEMENT (the escape wheel's gold, the same viewport constant, so the two stay in step); persistence schema v32 to v33 backfills DEFAULT on every existing gear; Inspector row 'Colour'. The teaching movement sets ESCAPEMENT on Moon wheel 1 only. Never read by any simulation, validation, mesh or export: it changes only the colour a gear is drawn in (and the colour its section-view cap takes), and selection highlighting still overrides it. ASM-0004 applies: colour implies nothing about material or finish.",
+    scope: "Gear.colour display colour (visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

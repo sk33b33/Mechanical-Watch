@@ -190,7 +190,8 @@ export function createTeachingMovement(): Movement {
   // (illustrative tooth counts, ASM-0009, same as the rest of this movement).
   const moonPinion = gear("Moon pinion", hourWheel, 8, motionModule, -1.15, 0.06);
   const moonReductionArbor = shaft("Moon reduction arbor", null, { kind: "STUD", frameId: mainplate.id });
-  const moonWheel1 = gear("Moon wheel 1", moonReductionArbor, 87, motionModule, -1.15, 0.06);
+  // Shown in the escapement's own gold (follow-up 26, ASM-0080), at the user's request.
+  const moonWheel1 = { ...gear("Moon wheel 1", moonReductionArbor, 87, motionModule, -1.15, 0.06), colour: "ESCAPEMENT" as const };
   const moonPinion2 = gear("Moon pinion 2", moonReductionArbor, 8, motionModule, -1.26, 0.06);
   const moonDiscArbor = shaft("Moon disc arbor", null, { kind: "STUD", frameId: mainplate.id });
   // Kept a solid disc at the user's request (follow-up 23) although it is big enough to be spoked.

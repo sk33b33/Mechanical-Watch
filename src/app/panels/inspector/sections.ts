@@ -5,7 +5,7 @@ import { degrees, toDegrees } from "@/units/angle";
 import { toRpm } from "@/units/angularVelocity";
 import { toMillimetresPerSecond } from "@/units/linearVelocity";
 import type { Vec2 } from "@/math/vec2";
-import { gearPitchDiameter, type Gear, type GearProfileModel } from "@/domain/gear";
+import { gearPitchDiameter, type Gear, type GearColour, type GearProfileModel } from "@/domain/gear";
 import type { BearingKind, Jewel } from "@/domain/jewel";
 import type { Frame, FrameKind, Outline } from "@/domain/frame";
 import {
@@ -144,6 +144,16 @@ export function gearSection(store: AppStore, gear: Gear, storage: KeyValueStore 
       title: "Height of the gear's mid-plane.",
       onCommit: (raw) => { edit({ zCentre: millimetres(parseRequired(raw)) }); },
     }),
+    selectRow(
+      "Colour",
+      gear.colour,
+      [
+        { value: "DEFAULT", label: "Steel grey" },
+        { value: "ESCAPEMENT", label: "Escapement gold" },
+      ],
+      (value) => { edit({ colour: value as GearColour }); },
+      "The gear's display colour (ASM-0080): the usual steel grey, or the escape wheel's own gold to pick a wheel out. Presentation only — nothing in the simulation or validation reads it.",
+    ),
     selectRow(
       "Wheel style",
       gear.spoked ? "SPOKED" : "",

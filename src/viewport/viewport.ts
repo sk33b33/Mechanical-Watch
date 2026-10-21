@@ -575,10 +575,12 @@ export class Viewport {
       } catch {
         continue;
       }
-      const mesh = new THREE.Mesh(geometry, material(COLORS.gear, { metalness: 0.55, roughness: 0.4 }));
+      // The gear's display colour (ASM-0080): steel grey, or the escapement's own gold.
+      const gearColour = gear.colour === "ESCAPEMENT" ? COLORS.escapeWheel : COLORS.gear;
+      const mesh = new THREE.Mesh(geometry, material(gearColour, { metalness: 0.55, roughness: 0.4 }));
       const meshZ = this.displayZ(gear.zCentre);
       mesh.position.z = meshZ;
-      this.addPickable(group, mesh, { kind: "gear", entityId: gear.id, baseColor: COLORS.gear });
+      this.addPickable(group, mesh, { kind: "gear", entityId: gear.id, baseColor: gearColour });
       this.cappableSolids.push({
         positionX: group.position.x,
         positionY: group.position.y,
@@ -587,7 +589,7 @@ export class Viewport {
         zLo: meshZ - gear.thickness / 2,
         zHi: meshZ + gear.thickness / 2,
         footprint: { kind: "polygonWithHole", points: generateGearOutline(gear), holeRadius: visualBoreRadius(gear), holeCentre: { x: 0, y: 0 } },
-        color: COLORS.gear,
+        color: gearColour,
       });
     }
 

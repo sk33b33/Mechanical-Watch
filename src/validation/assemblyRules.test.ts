@@ -265,6 +265,13 @@ describe("assembly rules", () => {
     expect(gear105(updateGear(m, small.id, { spoked: true }))).toEqual(["GEAR-105:warning:too-few-teeth"]);
   });
 
+  it("only Moon wheel 1 is drawn in the escapement colour in the teaching movement; every other gear is the default (ASM-0080)", () => {
+    const m = createTeachingMovement();
+    const coloured = Object.values(m.gears).filter((g) => g.colour === "ESCAPEMENT").map((g) => g.name);
+    expect(coloured).toEqual(["Moon wheel 1"]);
+    for (const g of Object.values(m.gears)) if (g.name !== "Moon wheel 1") expect(g.colour).toBe("DEFAULT");
+  });
+
   it("GEAR-103: an involute gear needs a pressure angle", () => {
     const m = updateGear(demo, gear(demo, "Wheel C").id, { profileModel: "INVOLUTE_PROFILE" });
     expect(variants(m)).toContain("GEAR-103:pressure-angle-required");

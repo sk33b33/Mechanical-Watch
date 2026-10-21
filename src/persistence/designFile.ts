@@ -46,7 +46,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 32;
+export const DESIGN_SCHEMA_VERSION = 33;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -467,6 +467,18 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
     );
     return { ...doc, schemaVersion: 32, movement: { ...movement, escapements } };
   },
+  /**
+   * v32 → v33: a gear gains `colour` (ASM-0080), its display colour. Every existing gear gets
+   * "DEFAULT" (the usual steel grey), so older designs look exactly as they did.
+   */
+  32: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.gears)) return doc;
+    const gears = Object.fromEntries(
+      Object.entries(movement.gears).map(([id, g]) => [id, isRecord(g) ? { ...g, colour: "DEFAULT" } : g]),
+    );
+    return { ...doc, schemaVersion: 33, movement: { ...movement, gears } };
+  },
 };
 
 export class DesignFileError extends Error {}
@@ -639,6 +651,7 @@ const gear: Decoder<Gear> = (value, path) => {
     zCentre: field(o, "zCentre", length, path),
     shaftId: field(o, "shaftId", id<Shaft["id"]>(), path),
     spoked: field(o, "spoked", boolean, path),
+    colour: field(o, "colour", oneOf(["DEFAULT", "ESCAPEMENT"]), path),
   };
 };
 

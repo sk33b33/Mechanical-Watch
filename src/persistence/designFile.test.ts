@@ -291,3 +291,23 @@ describe("schema migration v31 → v32 (ASM-0079, EscapeWheel.spoked)", () => {
   });
 });
 
+describe("schema migration v32 → v33 (ASM-0080, Gear.colour)", () => {
+  it("backfills colour: DEFAULT on every gear of a v32 file", () => {
+    const doc = rawDoc(createTeachingMovement());
+    const movement = doc.movement as Record<string, Record<string, Record<string, unknown>>>;
+    const gears = movement.gears ?? {};
+    expect(Object.keys(gears).length).toBeGreaterThan(0);
+    for (const g of Object.values(gears)) Reflect.deleteProperty(g, "colour");
+    const loaded = decodeDesign(JSON.stringify({ ...doc, schemaVersion: 32 }));
+    for (const g of Object.values(loaded.gears)) expect(g.colour).toBe("DEFAULT");
+  });
+
+  it("round-trips a gear's escapement colour", () => {
+    const teaching = createTeachingMovement();
+    const loaded = decodeDesign(encodeDesign(teaching));
+    const colours = (m: Movement): Record<string, string> => Object.fromEntries(Object.values(m.gears).map((g) => [g.name, g.colour]));
+    expect(colours(loaded)).toEqual(colours(teaching));
+    expect(colours(loaded)["Moon wheel 1"]).toBe("ESCAPEMENT");
+  });
+});
+

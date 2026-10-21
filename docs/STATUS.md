@@ -2,6 +2,15 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 26: Moon wheel 1 in the escapement colour
+
+Moon wheel 1 is now drawn in the escapement's own gold. There was no way to colour one gear differently,
+so a presentation-only `Gear.colour` was added (`DEFAULT` steel grey or `ESCAPEMENT` gold — the same
+viewport constant the escape wheel uses, so they stay in step; ASM-0080; persistence schema v32 → v33
+backfills `DEFAULT`; Inspector row "Colour"). Only Moon wheel 1 is set; nothing in the simulation,
+validation or exports reads it. **To revert:** set Moon wheel 1's Colour back to Steel grey (Inspector), or
+drop `colour:` from the teaching movement's `moonWheel1`.
+
 ## Phase 8.15 follow-up 25: spoked escape wheel
 
 At the user's request the escape wheel is drawn as an open five-spoke wheel too, in the same style as the
