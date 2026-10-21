@@ -226,7 +226,7 @@ export function newEscapement(movement: Movement): Escapement {
   return createEscapement({
     name: nextName(Object.values(movement.escapements), "Escapement"),
     escapeArborShaftId: none,
-    escapeWheel: { toothCount: Number.NaN, toothKind: "CLUB", tipDiameter: EMPTY, thickness: EMPTY, zCentre: EMPTY },
+    escapeWheel: { toothCount: Number.NaN, toothKind: "CLUB", tipDiameter: EMPTY, thickness: EMPTY, zCentre: EMPTY, spoked: false },
     palletArborShaftId: none,
     leverAngle: angle,
     balanceShaftId: none,

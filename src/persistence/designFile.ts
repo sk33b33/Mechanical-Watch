@@ -46,7 +46,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 31;
+export const DESIGN_SCHEMA_VERSION = 32;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -451,6 +451,21 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
       Object.entries(movement.gears).map(([id, g]) => [id, isRecord(g) ? { ...g, spoked: false } : g]),
     );
     return { ...doc, schemaVersion: 31, movement: { ...movement, gears } };
+  },
+  /**
+   * v31 → v32: an escape wheel gains `spoked` (ASM-0079), drawn as an open five-spoke wheel. Every
+   * existing escape wheel gets `spoked: false`, so older designs look exactly as they did.
+   */
+  31: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.escapements)) return doc;
+    const escapements = Object.fromEntries(
+      Object.entries(movement.escapements).map(([id, e]) => [
+        id,
+        isRecord(e) && isRecord(e.escapeWheel) ? { ...e, escapeWheel: { ...e.escapeWheel, spoked: false } } : e,
+      ]),
+    );
+    return { ...doc, schemaVersion: 32, movement: { ...movement, escapements } };
   },
 };
 
@@ -877,6 +892,7 @@ const escapement: Decoder<Escapement> = (value, path) => {
       tipDiameter: field(wheel, "tipDiameter", length, wp),
       thickness: field(wheel, "thickness", length, wp),
       zCentre: field(wheel, "zCentre", length, wp),
+      spoked: field(wheel, "spoked", boolean, wp),
     },
     palletArborShaftId: field(o, "palletArborShaftId", id<Shaft["id"]>(), path),
     leverAngle: field(o, "leverAngle", angle, path),

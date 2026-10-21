@@ -2,6 +2,18 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 25: spoked escape wheel
+
+At the user's request the escape wheel is drawn as an open five-spoke wheel too, in the same style as the
+spoked gears (follow-up 22): five straight spokes, a solid ring of 20% of the tooth root radius under
+the teeth, gaps between. New field `EscapeWheel.spoked` (default false; ASM-0079; persistence schema
+v31 → v32 backfills false; Inspector row "Wheel style" in the escapement section); the teaching
+movement turns it on. Because this wheel is small (2.3mm tip radius) and its arbor bore is large, the
+hub ring is 1.5 × the bore radius so the bore is never cut through — which leaves narrower gaps than
+the larger gears have. Visual only: club tooth form, tip diameter, thickness, bore and every escapement
+result are unchanged. **To revert:** set `spoked: false` on the escape wheel (Inspector, or the teaching
+movement's `escapeWheel`).
+
 ## Phase 8.15 follow-up 24: faceted ruby jewels
 
 At the user's request the red cylinders standing for bearing jewels are drawn as faceted ruby ring

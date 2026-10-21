@@ -72,6 +72,11 @@ export function escapementSection(store: AppStore, esc: Escapement): Section {
       { value: "RATCHET", label: "Ratchet (English)" },
     ], (value) => { setWheel({ toothKind: value as Escapement["escapeWheel"]["toothKind"] }); },
       "Tooth form (ASM-0038, SRC-0036). Club: the tooth has its own impulse face, so the derived tooth width must stay positive. Ratchet: a bare point, the entire lift is on the pallet, so the derived tooth width may be exactly zero."),
+    selectRow("Wheel style", w.spoked ? "SPOKED" : "", [
+      { value: "", label: "Solid disc" },
+      { value: "SPOKED", label: "Five spokes with gaps" },
+    ], (value) => { setWheel({ spoked: value === "SPOKED" }); },
+      "Draws the escape wheel as an open five-spoke wheel — a hub ring, spokes and gaps inside a solid ring under the teeth — instead of a solid disc (ASM-0079). Visual only: the teeth, tip diameter and every escapement result are unchanged."),
     length("Tip Ø (mm)", w.tipDiameter, (v) => { setWheel({ tipDiameter: v }); }),
     length("Thickness (mm)", w.thickness, (v) => { setWheel({ thickness: v }); }),
     length("Mid-plane height (mm)", w.zCentre, (v) => { setWheel({ zCentre: v }); }, false),

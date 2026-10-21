@@ -1134,7 +1134,7 @@ export class Viewport {
           }
         : undefined;
     if (escapeGroup !== undefined && Number.isInteger(w.toothCount) && w.toothCount > 0 && tipR > 0 && w.thickness > 0 && Number.isFinite(w.zCentre)) {
-      const mesh = new THREE.Mesh(createEscapeWheelGeometry(w.toothCount, tipR, w.thickness, escapeToothFace), material(COLORS.escapeWheel, { metalness: 0.6, roughness: 0.35 }));
+      const mesh = new THREE.Mesh(createEscapeWheelGeometry(w.toothCount, tipR, w.thickness, escapeToothFace, w.spoked), material(COLORS.escapeWheel, { metalness: 0.6, roughness: 0.35 }));
       const meshZ = this.displayZ(w.zCentre);
       mesh.position.z = meshZ;
       pick(mesh, COLORS.escapeWheel, escapeGroup);

@@ -45,6 +45,12 @@ export interface EscapeWheel {
   tipDiameter: Length;
   thickness: Length;
   zCentre: Length;
+  /**
+   * Drawn as an open five-spoke wheel — a hub ring, spokes and gaps inside a solid ring under the teeth —
+   * instead of a solid disc (ASM-0079, visual only: tooth form, tip diameter and every escapement result
+   * are unchanged).
+   */
+  spoked: boolean;
 }
 
 export interface Balance {

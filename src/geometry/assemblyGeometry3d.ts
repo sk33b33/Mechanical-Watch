@@ -1464,11 +1464,16 @@ export const SPOKED_WHEEL_VISUALIZATION = {
  * opening radius, with straight, parallel-to-the-spoke sides one half spoke-width
  * off each spoke's centreline. Pure geometry, no THREE dependency.
  */
-export function spokedWheelOpenings(tipRadius: number, baseAngle = 0, openingOuterRadiusFraction: number = SPOKED_WHEEL_VISUALIZATION.openingOuterRadiusFraction): Point2D[][] {
+export function spokedWheelOpenings(
+  tipRadius: number,
+  baseAngle = 0,
+  openingOuterRadiusFraction: number = SPOKED_WHEEL_VISUALIZATION.openingOuterRadiusFraction,
+  hubRadiusFraction: number = SPOKED_WHEEL_VISUALIZATION.hubRadiusFraction,
+): Point2D[][] {
   const v = SPOKED_WHEEL_VISUALIZATION;
   const n = v.spokeCount;
   const spacing = (2 * Math.PI) / n;
-  const rIn = tipRadius * v.hubRadiusFraction;
+  const rIn = tipRadius * hubRadiusFraction;
   const rOut = tipRadius * openingOuterRadiusFraction;
   const halfWidth = (tipRadius * v.spokeWidthFraction) / 2;
   const edgeAngle = (radius: number): number => Math.asin(halfWidth / radius);
@@ -2162,7 +2167,7 @@ export function generateEscapeWheelOutline(toothCount: number, tipRadius: number
 }
 
 /** Escape wheel with pointed, leaning teeth (visual), spanning z ∈ [−t/2, t/2]. */
-export function createEscapeWheelGeometry(toothCount: number, tipRadius: number, thickness: number, face?: EscapeToothFace): THREE.ExtrudeGeometry {
+export function createEscapeWheelGeometry(toothCount: number, tipRadius: number, thickness: number, face?: EscapeToothFace, spoked = false): THREE.ExtrudeGeometry {
   const outline = generateEscapeWheelOutline(toothCount, tipRadius, face);
   const shape = new THREE.Shape();
   outline.forEach(({ x, y }, i) => { if (i === 0) shape.moveTo(x, y); else shape.lineTo(x, y); });
@@ -2170,10 +2175,27 @@ export function createEscapeWheelGeometry(toothCount: number, tipRadius: number,
   const hub = new THREE.Path();
   hub.absarc(0, 0, escapeWheelHubRadius(tipRadius), 0, Math.PI * 2, true);
   shape.holes.push(hub);
+  // An open five-spoke wheel (follow-up 25, ASM-0079): gaps between a hub ring around the arbor bore and
+  // a solid ring under the teeth, laid out like the gears' own (ASM-0077) against the tooth root radius.
+  if (spoked) {
+    const root = tipRadius * ESCAPEMENT_VISUALIZATION.escapeRootFraction;
+    const hubFraction = (escapeWheelHubRadius(tipRadius) * ESCAPE_SPOKE_HUB_CLEARANCE) / root;
+    for (const opening of spokedWheelOpenings(root, Math.PI / 2, 1 - GEAR_RIM_FRACTION_FOR_SPOKES, hubFraction)) {
+      const gap = new THREE.Path();
+      opening.forEach(({ x, y }, i) => { if (i === 0) gap.moveTo(x, y); else gap.lineTo(x, y); });
+      gap.closePath();
+      shape.holes.push(gap);
+    }
+  }
   const geometry = new THREE.ExtrudeGeometry(shape, { depth: thickness, bevelEnabled: false });
   geometry.translate(0, 0, -thickness / 2);
   return geometry;
 }
+
+/** The solid ring under the teeth of a spoked wheel, as a fraction of the root radius — the same 20% the spoked gears use (ASM-0077). */
+const GEAR_RIM_FRACTION_FOR_SPOKES = 0.2;
+/** How much bigger than the arbor bore the hub ring the spokes meet in is, so the bore is never cut through (ASM-0079). */
+const ESCAPE_SPOKE_HUB_CLEARANCE = 1.5;
 
 /** Radius of the balance rim's inner edge, in metres (ASM-0012). */
 export function balanceRimInnerRadius(radius: number): number {

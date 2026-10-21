@@ -24,7 +24,9 @@ import {
   dialMarkerPlacements,
   secondsNumeralPlacements,
   createFlutedCylinderGeometry,
+  createEscapeWheelGeometry,
   createJewelGeometry,
+  ESCAPEMENT_VISUALIZATION,
   JEWEL_VISUALIZATION,
   createMoonPhaseMarkGeometry,
   dialWindowPointerSize,
@@ -1565,6 +1567,51 @@ describe("createJewelGeometry (faceted ruby jewels, ASM-0078)", () => {
   it("keeps a short stone's crowns inside its height (crown capped at a quarter of the height)", () => {
     const { zMin, zMax } = radii(createJewelGeometry(R, 0.4e-3));
     expect(zMax - zMin).toBeCloseTo(0.4e-3, 9);
+  });
+});
+
+describe("spoked escape wheel (ASM-0079)", () => {
+  const tip = 2.3e-3;
+  const topFaceArea = (g: ReturnType<typeof createEscapeWheelGeometry>): number => {
+    const pos = g.attributes.position;
+    const index = g.index;
+    if (pos === undefined) throw new Error("no positions");
+    let area = 0;
+    const tri = (a: number, b: number, c: number): void => {
+      if (!(pos.getZ(a) > 0 && pos.getZ(b) > 0 && pos.getZ(c) > 0)) return;
+      area += Math.abs((pos.getX(b) - pos.getX(a)) * (pos.getY(c) - pos.getY(a)) - (pos.getX(c) - pos.getX(a)) * (pos.getY(b) - pos.getY(a))) / 2;
+    };
+    if (index === null) for (let i = 0; i < pos.count; i += 3) tri(i, i + 1, i + 2);
+    else for (let i = 0; i < index.count; i += 3) tri(index.getX(i), index.getX(i + 1), index.getX(i + 2));
+    return area;
+  };
+
+  it("cuts material out of the wheel only when asked, leaving the teeth and tip radius untouched", () => {
+    const solid = createEscapeWheelGeometry(15, tip, 0.15e-3);
+    const spoked = createEscapeWheelGeometry(15, tip, 0.15e-3, undefined, true);
+    expect(topFaceArea(spoked)).toBeLessThan(topFaceArea(solid) * 0.85);
+    expect(topFaceArea(spoked)).toBeGreaterThan(topFaceArea(solid) * 0.4);
+    solid.computeBoundingBox();
+    spoked.computeBoundingBox();
+    expect(spoked.boundingBox?.max.x).toBeCloseTo(solid.boundingBox?.max.x ?? NaN, 12);
+    expect(spoked.boundingBox?.min.y).toBeCloseTo(solid.boundingBox?.min.y ?? NaN, 12);
+  });
+
+  it("keeps the gaps clear of the arbor bore (the hub ring is wider than the bore)", () => {
+    const root = tip * ESCAPEMENT_VISUALIZATION.escapeRootFraction;
+    const hubFraction = (escapeWheelHubRadius(tip) * 1.5) / root;
+    for (const opening of spokedWheelOpenings(root, Math.PI / 2, 0.8, hubFraction)) {
+      for (const p of opening) expect(Math.hypot(p.x, p.y)).toBeGreaterThan(escapeWheelHubRadius(tip));
+    }
+  });
+
+  it("lets spokedWheelOpenings take a custom hub fraction, defaulting to the shared one", () => {
+    const R = 2e-3;
+    const dflt = spokedWheelOpenings(R);
+    const same = spokedWheelOpenings(R, 0, SPOKED_WHEEL_VISUALIZATION.openingOuterRadiusFraction, SPOKED_WHEEL_VISUALIZATION.hubRadiusFraction);
+    expect(same).toEqual(dflt);
+    const bigger = spokedWheelOpenings(R, 0, 0.58, 0.4);
+    expect(Math.min(...bigger.flat().map((p) => Math.hypot(p.x, p.y)))).toBeCloseTo(R * 0.4, 9);
   });
 });
 

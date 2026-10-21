@@ -477,6 +477,12 @@ export const ASSUMPTIONS = {
     scope: "Bearing jewel and impulse pin appearance (visual/L0 display only)",
     status: "Active",
   },
+  "ASM-0079": {
+    summary:
+      "Spoked escape wheel (Phase 8.15 follow-up 25): at the user's request ('make the escape wheel look like a spoked wheel too') the escape wheel can be drawn as an open five-spoke wheel like the spoked gears (ASM-0077) -- a hub ring around the arbor bore, five constant-width spokes and gaps between them, inside a solid ring of 20% of the tooth root radius under the teeth, one spoke pointing +Y. Domain field EscapeWheel.spoked (false by default); persistence schema v31 to v32 backfills false on every existing escape wheel; Inspector row 'Wheel style' in the escapement section; the teaching movement turns it on. The gaps use the dial and gear wheels' shared spoke width (0.13 of the root radius); the hub ring is 1.5 times the arbor-bore radius so the bore is never cut through, which makes this small wheel's gaps narrower than the gears'. Visual only (ASM-0004): tooth form (ASM-0038/0039/0040), tip diameter, thickness, bore and every escapement, pallet-fork and energy result are unchanged, and the section-view cap footprint stays the full disc.",
+    scope: "EscapeWheel.spoked open five-spoke wheel (visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

@@ -272,3 +272,22 @@ describe("schema migration v30 → v31 (ASM-0077, Gear.spoked)", () => {
   });
 });
 
+describe("schema migration v31 → v32 (ASM-0079, EscapeWheel.spoked)", () => {
+  it("backfills spoked: false on the escape wheel of a v31 file, so older designs look unchanged", () => {
+    const doc = rawDoc(createTeachingMovement());
+    const movement = doc.movement as Record<string, Record<string, { escapeWheel: Record<string, unknown> }>>;
+    const escapements = Object.values(movement.escapements ?? {});
+    expect(escapements.length).toBeGreaterThan(0);
+    for (const e of escapements) Reflect.deleteProperty(e.escapeWheel, "spoked");
+    const loaded = decodeDesign(JSON.stringify({ ...doc, schemaVersion: 31 }));
+    for (const e of Object.values(loaded.escapements)) expect(e.escapeWheel.spoked).toBe(false);
+  });
+
+  it("round-trips the teaching movement's spoked escape wheel", () => {
+    const teaching = createTeachingMovement();
+    expect(Object.values(teaching.escapements).every((e) => e.escapeWheel.spoked)).toBe(true);
+    const loaded = decodeDesign(encodeDesign(teaching));
+    expect(Object.values(loaded.escapements).every((e) => e.escapeWheel.spoked)).toBe(true);
+  });
+});
+
