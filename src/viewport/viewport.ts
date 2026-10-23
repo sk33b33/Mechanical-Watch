@@ -14,6 +14,7 @@ import {
   createDiscLabelTexture,
   createFrameGeometry,
   createGenevaWheelGeometry,
+  createJewelCoreGeometry,
   createJewelGeometry,
   JEWEL_VISUALIZATION,
   createSpokedWheelGeometry,
@@ -87,6 +88,9 @@ const EXPLODE_STRETCH = 3;
 /** When several objects are under the pointer, the most specific wins. */
 const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, escapement: 2, keyless: 2, moonPhase: 2, dateStar: 2, monthStar: 2, leapYearWheel: 2, seasonWheel: 2, yearDigitWheel: 2, arbor: 3, frame: 4, dial: 5 };
 
+/** The escapement's gold, shared by the escape wheel, the crown and any gear set to the ESCAPEMENT colour (ASM-0080). */
+const ESCAPEMENT_GOLD = 0xd9c27a;
+
 const COLORS = {
   selected: 0x4fa3ff,
   gear: 0xb8c4d0,
@@ -109,9 +113,10 @@ const COLORS = {
   seasonWheel: 0xc28ac2,
   yearDigitWheel: 0xc2ac6a,
   stem: 0x9aa4ae,
-  crown: 0xa9b3bd,
+  // The crown is drawn in the escapement's own gold (follow-up 30), the same constant, so the two stay in step.
+  crown: ESCAPEMENT_GOLD,
   pinion: 0xb8c4d0,
-  escapeWheel: 0xd9c27a,
+  escapeWheel: ESCAPEMENT_GOLD,
   fork: 0x8fa3b8,
   balance: 0xc9b37a,
 } as const;
@@ -197,10 +202,36 @@ function material(color: number, extra: THREE.MeshStandardMaterialParameters = {
   return new THREE.MeshStandardMaterial({ color, metalness: 0.35, roughness: 0.55, side: THREE.DoubleSide, ...extra });
 }
 
-/** A glossy, faintly self-lit, flat-shaded ruby so the stone's facets catch the light (ASM-0078). */
-function rubyMaterial(): THREE.MeshStandardMaterial {
+/**
+ * A glossy, translucent, faintly self-lit, flat-shaded ruby with a clear coat so the stone's facets
+ * catch the light and show what is inside (ASM-0078, ASM-0083). It does not write depth, so the inner
+ * pavilion (`jewelCoreMaterial`) shows through it.
+ */
+function rubyMaterial(): THREE.MeshPhysicalMaterial {
   const v = JEWEL_VISUALIZATION;
-  return material(v.color, { metalness: 0.05, roughness: v.roughness, flatShading: true, emissive: v.emissive, emissiveIntensity: v.emissiveIntensity });
+  return new THREE.MeshPhysicalMaterial({
+    color: v.color, metalness: 0.05, roughness: v.roughness, flatShading: true, side: THREE.DoubleSide,
+    emissive: v.emissive, emissiveIntensity: v.emissiveIntensity,
+    transparent: true, opacity: v.opacity, depthWrite: false,
+    clearcoat: v.clearcoat, clearcoatRoughness: 0.02, ior: v.ior, specularIntensity: 1,
+  });
+}
+
+/** The inner pavilion: a bright, additive, flat-shaded glint colour seen through the stone (ASM-0083). */
+function jewelCoreMaterial(): THREE.MeshStandardMaterial {
+  const v = JEWEL_VISUALIZATION;
+  return new THREE.MeshStandardMaterial({
+    color: v.coreColor, emissive: v.coreColor, emissiveIntensity: 0.6, metalness: 0.2, roughness: 0.05, flatShading: true,
+    side: THREE.DoubleSide, transparent: true, opacity: v.coreOpacity, depthWrite: false, blending: THREE.AdditiveBlending,
+  });
+}
+
+/** A jewel's inner pavilion mesh, to be added as a child of the stone's own mesh; it is never picked itself. */
+function jewelCoreMesh(outerRadius: number, height: number, holeRadiusFraction?: number): THREE.Mesh {
+  const core = new THREE.Mesh(createJewelCoreGeometry(outerRadius, height, holeRadiusFraction), jewelCoreMaterial());
+  core.raycast = (): void => undefined;
+  core.renderOrder = 2;
+  return core;
 }
 
 /**
@@ -1031,6 +1062,10 @@ export class Viewport {
         isStone ? rubyMaterial() : material(color, { metalness: 0.1, roughness: 0.25 }),
       );
       mesh.position.set(axis.x, axis.y, isStone ? (lo + hi) / 2 : 0);
+      if (isStone) {
+        mesh.renderOrder = 1;
+        mesh.add(jewelCoreMesh(ASSEMBLY_VISUALIZATION.jewelOuterRadiusMetres, hi - lo + 2 * proud));
+      }
       this.addPickable(this.content, mesh, { kind: "jewel", entityId: jewel.id, baseColor: color });
       this.cappableSolids.push({
         positionX: axis.x,
@@ -1232,6 +1267,8 @@ export class Viewport {
           rubyMaterial(),
         );
         pinMesh.position.set(pinX, pinY, meshZ);
+        pinMesh.renderOrder = 1;
+        pinMesh.add(jewelCoreMesh(v.rubyPinRadiusMetres, 2 * pinHalfThickness, 0));
         pick(pinMesh, COLORS.jewel, balanceGroup);
         this.cappableSolids.push({
           positionX: balanceGroup.position.x,

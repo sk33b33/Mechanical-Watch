@@ -12,6 +12,8 @@ import { mountComponentTree } from "./panels/componentTree";
 import { mountInspector } from "./panels/inspector/index";
 import { mountValidationConsole } from "./panels/validationConsole";
 import { mountTutorialBanner } from "./panels/tutorialBanner";
+import { mountTickSound } from "./audio/tickSound";
+import { unlockAudioOnFirstGesture } from "./audio/audioContext";
 import { PanelLayout } from "./layout/panelWindows";
 import { mountLayoutControls } from "./layout/layoutControls";
 
@@ -54,6 +56,8 @@ export function bootstrapApp(root: HTMLElement): AppStore {
   const outputs = mountOutputsDialog(root, store, (message, kind) => { toolbar.notify(message, kind); });
   toolbar.addFileAction("Outputs…", "Engineering report, BOM, drawings and exports", () => { outputs.open(); });
   mountTutorialBanner(store, storage);
+  toolbar.addSimControl(mountTickSound(store, storage));
+  unlockAudioOnFirstGesture();
   // The tutorial points at buttons in the Components and Inspector panels, so starting it slides those flyouts out.
   let tutorialWasActive = false;
   store.subscribe(() => {

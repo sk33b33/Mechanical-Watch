@@ -19,6 +19,7 @@ import {
   createDialWindowBezelGeometry,
   createDialWindowCaptionTexture,
   createDialWindowPointerGeometry,
+  dialBrandPlacement,
   dialMarkerPlacements,
   dialWindowCaptionOffset,
   dialWindowPointerSize,
@@ -192,6 +193,19 @@ export function buildDialMeshes(
     hourPlane.rotation.y = Math.PI;
     hourPlane.position.set(marker.x, marker.y, face - 1.3 * d.markerThicknessMetres);
     root.add(hourPlane);
+  }
+  // The small black brand line under the big 6 circle, just inside the dial's edge (follow-up 30, ASM-0083).
+  const brand = dialBrandPlacement(r);
+  const builtBrand = createDialWindowCaptionTexture(brand.text, d.brand.color);
+  if (builtBrand !== null) {
+    const brandPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(brand.height * builtBrand.aspect, brand.height),
+      new THREE.MeshBasicMaterial({ map: builtBrand.texture, transparent: true, depthWrite: false, side: THREE.DoubleSide }),
+    );
+    // Read from the dial's −Z side: half a turn about Y so the text reads left to right.
+    brandPlane.rotation.y = Math.PI;
+    brandPlane.position.set(brand.x, brand.y, face - 1.3 * d.markerThicknessMetres);
+    root.add(brandPlane);
   }
   // Seconds-scale numerals around the seconds hand's own pivot (follow-up 19): 60 north, 15 east,
   // 30 south, 45 west, just inside the hand's tip, printed on the dial like the window captions.

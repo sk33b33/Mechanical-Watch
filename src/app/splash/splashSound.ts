@@ -1,3 +1,5 @@
+import { audioContext, unlockAudio } from "@/app/audio/audioContext";
+
 /**
  * The soft mechanical click played when the splash screen is entered, synthesised with the Web Audio
  * API (no audio files): a short band-passed noise burst for the tick and a quiet, quickly decaying
@@ -8,8 +10,9 @@ const SOUND = { peakGain: 0.12, tickSeconds: 0.05, toneHz: 180, toneSeconds: 0.2
 
 export function playEntryClick(): void {
   try {
-    const AudioContextClass = window.AudioContext;
-    const context = new AudioContextClass();
+    const context = audioContext();
+    if (context === null) return;
+    unlockAudio();
     const now = context.currentTime;
 
     const samples = Math.max(1, Math.floor(context.sampleRate * SOUND.tickSeconds));
@@ -35,7 +38,6 @@ export function playEntryClick(): void {
     tone.connect(toneGain).connect(context.destination);
     tone.start(now);
     tone.stop(now + SOUND.toneSeconds);
-    tone.addEventListener("ended", () => { void context.close(); });
   } catch {
     // No Web Audio, or the context was refused: the splash simply enters silently.
   }

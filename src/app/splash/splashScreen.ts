@@ -1,6 +1,7 @@
 import type { KeyValueStore } from "@/persistence/autosave";
 import { gearOutline, splashGearAngles, splashGearTrain, splashTrainBounds } from "./splashGears";
 import { playEntryClick } from "./splashSound";
+import { unlockAudio } from "@/app/audio/audioContext";
 
 export interface SplashOptions {
   /** Where the overlay is mounted (document.body). */
@@ -15,15 +16,26 @@ export interface SplashOptions {
 }
 
 export const SPLASH_SOUND_KEY = "mw3d.splash.sound";
-/** How long the exit fade runs; reduced motion skips it. */
-const LEAVE_MILLISECONDS = 750;
+/** How long the exit zoom-and-fade runs (the app behind zooms in over the same time); reduced motion skips it. */
+const LEAVE_MILLISECONDS = 1200;
 /** Driver angular speed (rad/s): slow enough to read as a mechanism rather than a spinner. */
 const DRIVER_SPEED = 0.16;
 /** Pointer parallax travel in pixels for the gear layer and the plate (opposite directions). */
 const PARALLAX = { gears: 18, plate: 7 } as const;
 /** Fraction of the shorter canvas side the first (largest) gear's radius covers. */
 const GEAR_SCALE_FRACTION = 0.3;
-const PLATE_GLOW = "rgba(92, 200, 255, 0.9)";
+/** The gear outlines' glow: a bright core line, a tight halo and a wide soft bloom (follow-up 30, brighter). */
+const GLOW = {
+  colour: "rgba(120, 220, 255, 1)",
+  core: "rgba(210, 244, 255, 1)",
+  coreWidth: 2,
+  haloBlur: 26,
+  bloomBlur: 60,
+  bloomWidth: 7,
+  bloomAlpha: 0.32,
+  fill: "rgba(70, 170, 235, 0.14)",
+  detail: "rgba(140, 226, 255, 0.55)",
+} as const;
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
@@ -135,18 +147,29 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
       context.beginPath();
       outline.forEach((p, i) => { if (i === 0) context.moveTo(cx + p.x * scale, cy + p.y * scale); else context.lineTo(cx + p.x * scale, cy + p.y * scale); });
       context.closePath();
-      context.fillStyle = "rgba(60, 150, 210, 0.07)";
+      context.fillStyle = GLOW.fill;
       context.fill();
-      context.shadowColor = PLATE_GLOW;
-      context.shadowBlur = 14;
-      context.strokeStyle = "rgba(120, 214, 255, 0.85)";
-      context.lineWidth = 1.4;
+      // Wide soft bloom, then a tight halo, then a bright near-white core line on top.
+      context.shadowColor = GLOW.colour;
+      context.shadowBlur = GLOW.bloomBlur;
+      context.strokeStyle = `rgba(90, 200, 255, ${String(GLOW.bloomAlpha)})`;
+      context.lineWidth = GLOW.bloomWidth;
+      context.stroke();
+      context.shadowBlur = GLOW.haloBlur;
+      context.strokeStyle = GLOW.colour;
+      context.lineWidth = GLOW.coreWidth + 1;
+      context.stroke();
+      context.shadowBlur = 8;
+      context.strokeStyle = GLOW.core;
+      context.lineWidth = GLOW.coreWidth * 0.6;
       context.stroke();
       context.shadowBlur = 0;
 
       const pitchRadius = (gear.teeth / 2) * scale;
-      context.strokeStyle = "rgba(120, 214, 255, 0.3)";
-      context.lineWidth = 1;
+      context.strokeStyle = GLOW.detail;
+      context.shadowColor = GLOW.colour;
+      context.shadowBlur = 10;
+      context.lineWidth = 1.2;
       context.beginPath();
       context.arc(cx, cy, pitchRadius * 0.78, 0, Math.PI * 2);
       context.stroke();
@@ -197,6 +220,7 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
   const dismiss = (): void => {
     if (left) return;
     left = true;
+    unlockAudio(); // the tap is the user gesture that lets the second-hand tick play
     if (soundOn) playEntryClick();
     cancelAnimationFrame(frame);
     window.removeEventListener("resize", resize);
@@ -205,6 +229,11 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
     document.removeEventListener("keydown", onKey, true);
     root.classList.add("splash-leaving");
     appRoot.inert = false;
+    if (!reduced) {
+      // The movement zooms in from slightly small as the splash zooms past the viewer.
+      appRoot.classList.add("app-zoom-in");
+      appRoot.addEventListener("animationend", () => { appRoot.classList.remove("app-zoom-in"); }, { once: true });
+    }
     const finish = (): void => { root.remove(); };
     if (reduced) finish();
     else window.setTimeout(finish, LEAVE_MILLISECONDS);

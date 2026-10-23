@@ -501,6 +501,18 @@ export const ASSUMPTIONS = {
     scope: "src/app/splash/* (visual/L0 display only)",
     status: "Active",
   },
+  "ASM-0083": {
+    summary:
+      "Display polish batch (Phase 8.15 follow-up 30), all visual only (ASM-0004), at the user's request: (1) the hour and minute hands are thunderbolts -- a zigzag polygon (HAND_BOLT_VISUALIZATION) whose sharp end is the hand's tip on the pivot's own axis, so the drawn angle is still the simulated angle -- replacing the arrowheads of ASM-0076, and are longer (hour 5 to 7.5 mm, minute 8 to 11 mm; the minute hand stays inside the hour-marker ring at 0.91 of the 14 mm dial radius); the seconds hand and every mounting height are unchanged (ASM-0016). (2) A small black 'RSA MOVT' brand line is printed under the big 6 circle on the dial's south axis, 0.024 of the dial radius tall, centred at 0.98 of the radius so it clears the circle (outer edge 0.96) and stops short of the edge (DIAL_VISUALIZATION.brand). The text is a label the user chose; it asserts nothing about the movement's maker or provenance. (3) The crown is drawn in the escapement's own gold (one shared viewport constant, so they stay in step). (4) Jewels read as cut stones: translucent (opacity 0.66, no depth write), clear-coated, with a second star bevel on each crown, 16 outer facets, and an inner faceted double-cone pavilion of 8 facets (a point, the culet, for a solid stone like the impulse ruby) drawn additively inside so it glints through the stone (JEWEL_VISUALIZATION, createJewelCoreGeometry). The refractive index used by the shader (1.77) is a display parameter, not an optical simulation. (5) The splash screen's gears glow brighter (core line, halo and bloom) and the screen zooms in on entry (the splash rushes past the viewer, the app zooms in to rest); skipped under prefers-reduced-motion (ASM-0082). None of these is a sourced real-watch design and none feeds a kinematic or clearance result.",
+    scope: "Hand shape/length, dial brand print, crown colour, jewel look, splash glow and zoom (visual/L0 display only)",
+    status: "Active",
+  },
+  "ASM-0084": {
+    summary:
+      "Second-hand tick sound (Phase 8.15 follow-up 30), decorative and not a model of the escapement: a short synthesised tick (a band-passed noise burst plus a brief ping, alternating a higher 'tick' and a lower 'tock') plays each time the simulated seconds hand advances onto the next whole second of its dial (one tick per dial second, reading the hand with readHand). The hand sweeps continuously in this model, so this is NOT the balance's real beat (several per second), the sound has no source in any recording or measurement of a real watch, and it implies nothing about beat rate or amplitude. It is silent when paused, when the simulation runs faster than real time (the ticks would run together), and on any jump or backward move of the hand (setting the hands, reset, set to browser time). The Web Audio context is shared with the splash click and is unlocked by the splash tap or the first pointer press or key press; the toolbar 'Tick' toggle is remembered in local storage.",
+    scope: "src/app/audio/tickSound.ts (decorative audio; no model)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

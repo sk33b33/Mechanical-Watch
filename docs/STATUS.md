@@ -2,6 +2,33 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 30: splash glow and zoom, gold crown, cut-stone jewels, tick, thunderbolt hands, RSA MOVT
+
+Eight requests in one batch (all visual or audio, none feeds a kinematic or clearance result; ASM-0083,
+ASM-0084):
+
+- **Splash gears glow brighter:** each outline is now a bright near-white core over a tight halo over a
+  wide soft bloom, with a stronger fill.
+- **Zoom on entry:** the splash and its gears rush past the viewer (scale ≈ 2.8, blur, fade) while the
+  movement behind zooms in from slightly small to rest, about 1.1 s. Skipped under reduced motion.
+- **Crown in the escapement's gold:** one shared viewport constant, so the crown, the escape wheel and any
+  gear set to the Escapement colour stay in step.
+- **Jewels look cut:** translucent, clear-coated stones with a second star bevel on each crown, 16 outer
+  facets, and an inner faceted double-cone pavilion (8 facets, a point/culet for the solid impulse ruby)
+  that glints through the stone. The refractive index in the shader is a display value, not optics.
+- **Second-hand tick:** a synthesised tick/tock alternates once per dial second while the simulation runs
+  at real time or slower; muted when paused, faster than real time, or when the hand jumps (setting,
+  reset, set to browser time). A toolbar **Tick: on/off** toggle is remembered. It is **not** the
+  escapement's beat: the hand sweeps continuously here, and a real balance beats several times a second.
+  The sound unlocks on the splash tap (or the first click/key press if the splash is skipped).
+- **Hands:** the hour and minute hands are longer (7.5 mm / 11 mm, from 5 / 8) and are thunderbolts (a
+  zigzag polygon whose sharp end is the tip on the pivot axis, so the angle read is still the simulated
+  one). The seconds hand is unchanged.
+- **RSA MOVT:** small black text under the big 6 circle on the south axis, between the circle and the
+  dial edge, 0.024 of the dial radius tall. It is a label you chose; it asserts nothing about provenance.
+- **To revert:** `HAND_VISUALIZATION` / `HAND_BOLT_VISUALIZATION`, `DIAL_VISUALIZATION.brand`,
+  `crown: ESCAPEMENT_GOLD` in `viewport.ts`, `JEWEL_VISUALIZATION`, `mountTickSound` in `bootstrap.ts`.
+
 ## Phase 8.15 follow-up 29: tap-to-enter start screen
 
 A futuristic metal start screen now covers the app on every load until it is tapped, clicked or any key

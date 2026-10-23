@@ -1124,11 +1124,24 @@ button.active {
   background: #05080c;
   transition: opacity 0.7s ease, transform 0.7s ease, filter 0.7s ease;
 }
+/* Zoom in on entry: the splash and its gears rush past the viewer while the app behind zooms in to rest. */
 .splash-leaving {
   opacity: 0;
-  transform: scale(1.06);
-  filter: blur(6px);
+  transform: scale(2.8);
+  filter: blur(10px);
   pointer-events: none;
+  transition: transform 1.1s cubic-bezier(0.3, 0, 0.5, 1), opacity 0.6s ease 0.4s, filter 1.1s ease;
+}
+.splash-leaving .splash-gears {
+  transform: scale(1.7) !important;
+  transition: transform 1.1s cubic-bezier(0.3, 0, 0.5, 1);
+}
+#app.app-zoom-in {
+  animation: app-zoom-in 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
+}
+@keyframes app-zoom-in {
+  from { transform: scale(0.84); opacity: 0.25; }
+  to { transform: scale(1); opacity: 1; }
 }
 .splash-metal {
   position: absolute;

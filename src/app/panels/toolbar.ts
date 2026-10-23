@@ -15,6 +15,8 @@ export interface Toolbar {
   setAutosaveStatus(text: string): void;
   /** Adds a button to the file group (after Save). */
   addFileAction(label: string, title: string, onClick: () => void): void;
+  /** Adds a control to the simulation group, after the playback rate. */
+  addSimControl(control: HTMLElement): void;
 }
 
 function fileName(movement: Movement): string {
@@ -291,6 +293,9 @@ export function mountToolbar(container: HTMLElement, store: AppStore, readoutHos
       noticeText.textContent = message;
       notice.className = `toolbar-notice notice-${kind}`;
       notice.hidden = false;
+    },
+    addSimControl(control) {
+      simGroup.appendChild(control);
     },
     addFileAction(label, title, onClick) {
       fileGroup.insertBefore(button(label, title, onClick), picker);

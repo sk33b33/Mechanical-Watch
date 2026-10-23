@@ -21,10 +21,12 @@ import {
   DISC_LABEL_RING_DIRECTION,
   DIAL_VISUALIZATION,
   createDialWindowBezelGeometry,
+  dialBrandPlacement,
   dialMarkerPlacements,
   secondsNumeralPlacements,
   createFlutedCylinderGeometry,
   createEscapeWheelGeometry,
+  createJewelCoreGeometry,
   createJewelGeometry,
   ESCAPEMENT_VISUALIZATION,
   JEWEL_VISUALIZATION,
@@ -41,7 +43,8 @@ import {
   escapeWheelHubRadius,
   generateEscapeWheelOutline,
   generateHandOutline,
-  HAND_ARROWHEAD_VISUALIZATION,
+  HAND_BOLT_VISUALIZATION,
+  HAND_VISUALIZATION,
   generatePalletStoneOutline,
   GENEVA_WHEEL_VISUALIZATION,
   handHubRadius,
@@ -229,33 +232,47 @@ describe("generateHandOutline", () => {
 
   it("each hand kind has its own width and length", () => {
     const tipY = (outline: ReturnType<typeof generateHandOutline>): number => Math.max(...outline.map((p) => p.y));
-    expect(tipY(generateHandOutline("HOURS"))).toBeCloseTo(5e-3, 12);
-    expect(tipY(generateHandOutline("MINUTES"))).toBeCloseTo(8e-3, 12);
+    expect(tipY(generateHandOutline("HOURS"))).toBeCloseTo(7.5e-3, 12);
+    expect(tipY(generateHandOutline("MINUTES"))).toBeCloseTo(11e-3, 12);
     expect(tipY(generateHandOutline("SECONDS"))).toBeCloseTo(3e-3, 12);
   });
 
-  it("the hour and minute hands end in an arrowhead (ASM-0076): a pointed tip at the hand's own length, barbs overhanging the shaft", () => {
-    for (const [hand, length, width] of [["HOURS", 5e-3, 0.6e-3], ["MINUTES", 8e-3, 0.4e-3]] as const) {
+  it("the hour and minute hands are thunderbolts (ASM-0083): the sharp tip sits on the pivot's own axis at the hand's length, and both are longer than before", () => {
+    for (const [hand, length] of [["HOURS", 7.5e-3], ["MINUTES", 11e-3]] as const) {
       const outline = generateHandOutline(hand);
-      expect(outline).toHaveLength(7);
-      const tip = outline[4];
-      expect(tip?.x).toBe(0);
-      expect(tip?.y).toBeCloseTo(length, 12);
-      const barbRight = outline[3];
-      const barbLeft = outline[5];
-      const shaftRight = outline[2];
-      // Barbs mirror each other and sit wider than the shaft where it meets the head.
-      expect(barbRight?.x).toBeCloseTo(-(barbLeft?.x ?? 0), 12);
-      expect(barbRight?.y).toBeCloseTo(barbLeft?.y ?? 0, 12);
-      expect(barbRight?.x ?? 0).toBeGreaterThan(shaftRight?.x ?? 0);
-      expect(barbRight?.x ?? 0).toBeGreaterThan(width / 2);
-      // The head is longer than it is wide-ish and the barbs sit below the tip.
-      expect(barbRight?.y ?? length).toBeLessThan(length);
-      expect(length - (barbRight?.y ?? 0)).toBeCloseTo(width * HAND_ARROWHEAD_VISUALIZATION.headLengthInWidths, 12);
+      expect(outline).toHaveLength(HAND_BOLT_VISUALIZATION.vertices.length);
+      const tip = outline.reduce((best, p) => (p.y > best.y ? p : best));
+      expect(tip.x).toBe(0);
+      expect(tip.y).toBeCloseTo(length, 12);
+      // Zigzag: the outline steps out on one side and in on the other, so it is wider than the base.
+      const base = outline[0];
+      const widest = Math.max(...outline.map((p) => Math.abs(p.x)));
+      expect(widest).toBeGreaterThan(Math.abs(base?.x ?? 0));
+    }
+    expect(HAND_VISUALIZATION.HOURS.lengthMetres).toBeGreaterThan(5e-3);
+    expect(HAND_VISUALIZATION.MINUTES.lengthMetres).toBeGreaterThan(8e-3);
+    expect(HAND_VISUALIZATION.MINUTES.lengthMetres).toBeGreaterThan(HAND_VISUALIZATION.HOURS.lengthMetres);
+  });
+
+  it("the pivot hub hole lies inside the thunderbolt, so the extrusion has a clean hole", () => {
+    for (const hand of ["HOURS", "MINUTES"] as const) {
+      const outline = generateHandOutline(hand);
+      const hub = handHubRadius(hand);
+      // Even-odd point-in-polygon for the hub's centre and four rim points.
+      const inside = (x: number, y: number): boolean => {
+        let c = false;
+        for (let i = 0, j = outline.length - 1; i < outline.length; j = i, i += 1) {
+          const a = outline[i]; const b = outline[j];
+          if (a === undefined || b === undefined) continue;
+          if ((a.y > y) !== (b.y > y) && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) c = !c;
+        }
+        return c;
+      };
+      for (const [x, y] of [[0, 0], [hub, 0], [-hub, 0], [0, hub], [0, -hub]] as const) expect(inside(x, y)).toBe(true);
     }
   });
 
-  it("the arrowhead hands' outline is a simple polygon (no self-intersection) so it extrudes cleanly", () => {
+  it("the thunderbolt hands' outline is a simple polygon (no self-intersection) so it extrudes cleanly", () => {
     const segmentsCross = (a: { x: number; y: number }, b: { x: number; y: number }, c: { x: number; y: number }, d: { x: number; y: number }): boolean => {
       const o = (p: { x: number; y: number }, q: { x: number; y: number }, r: { x: number; y: number }): number => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
       return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0;
@@ -303,7 +320,7 @@ describe("createDialWindowPointerOutline (ASM-0069, DialWindow.pointer)", () => 
 
 describe("handHubRadius", () => {
   it("is a fixed fraction of the hand's own width", () => {
-    expect(handHubRadius("HOURS")).toBeCloseTo(0.6e-3 * 0.2);
+    expect(handHubRadius("HOURS")).toBeCloseTo(0.8e-3 * 0.2);
     expect(handHubRadius("SECONDS")).toBeCloseTo(0.2e-3 * 0.2);
   });
 });
@@ -1357,6 +1374,33 @@ describe("spoked date/month wheels (ASM-0075)", () => {
   });
 });
 
+describe("dialBrandPlacement (ASM-0083, RSA MOVT)", () => {
+  const R = 14e-3;
+  const brand = dialBrandPlacement(R);
+  const sixMarker = dialMarkerPlacements(R).find((m) => m.hour === 6);
+
+  it("is the text RSA MOVT, in black", () => {
+    expect(brand.text).toBe("RSA MOVT");
+    expect(DIAL_VISUALIZATION.brand.color).toBe("#000000");
+  });
+
+  it("sits below the 6 o'clock circle, on the dial's south axis, small", () => {
+    expect(brand.x).toBe(0);
+    expect(brand.y).toBeLessThan(0);
+    if (sixMarker === undefined) throw new Error("no 6 o'clock marker");
+    expect(sixMarker.x).toBeCloseTo(0, 12);
+    // The text's top edge is below the circle's bottom edge: they do not overlap.
+    expect(brand.y + brand.height / 2).toBeLessThan(sixMarker.y - sixMarker.radiusMetres);
+    expect(brand.height).toBeLessThan(2 * sixMarker.radiusMetres);
+  });
+
+  it("is close to the dial's edge but not on it", () => {
+    const outerEdge = -brand.y + brand.height / 2;
+    expect(outerEdge).toBeLessThan(R);
+    expect(R - outerEdge).toBeLessThan(0.02 * R);
+  });
+});
+
 describe("dialMarkerPlacements (ASM-0020, round hour markers)", () => {
   const R = 14.2e-3;
   const placements = dialMarkerPlacements(R);
@@ -1556,6 +1600,27 @@ describe("createJewelGeometry (faceted ruby jewels, ASM-0078)", () => {
     expect(tableMax).toBeLessThan(R);
   });
 
+  it("has a second, steeper star bevel on each crown between the table and the girdle (ASM-0083)", () => {
+    const g = createJewelGeometry(R, H);
+    const pos = g.attributes.position;
+    if (pos === undefined) throw new Error("no positions");
+    const crown = Math.min(R * JEWEL_VISUALIZATION.crownHeightFraction, H / 4);
+    const starZ = H / 2 - crown * JEWEL_VISUALIZATION.starDropFraction;
+    let found = false;
+    for (let i = 0; i < pos.count; i += 1) {
+      if (Math.abs(pos.getZ(i) - starZ) < 1e-9 && Math.abs(Math.hypot(pos.getX(i), pos.getY(i)) - R * JEWEL_VISUALIZATION.starRadiusFraction) < 1e-9) found = true;
+    }
+    expect(found).toBe(true);
+    expect(JEWEL_VISUALIZATION.starRadiusFraction).toBeGreaterThan(JEWEL_VISUALIZATION.tableRadiusFraction);
+    expect(JEWEL_VISUALIZATION.starRadiusFraction).toBeLessThan(1);
+  });
+
+  it("is translucent and clear-coated, so the inside shows (ASM-0083)", () => {
+    expect(JEWEL_VISUALIZATION.opacity).toBeGreaterThan(0.3);
+    expect(JEWEL_VISUALIZATION.opacity).toBeLessThan(0.9);
+    expect(JEWEL_VISUALIZATION.clearcoat).toBe(1);
+  });
+
   it("is faceted: few radial segments, not a smooth cylinder", () => {
     const g = createJewelGeometry(R, H);
     // The lathe's own segment count is the facet count.
@@ -1567,6 +1632,42 @@ describe("createJewelGeometry (faceted ruby jewels, ASM-0078)", () => {
   it("keeps a short stone's crowns inside its height (crown capped at a quarter of the height)", () => {
     const { zMin, zMax } = radii(createJewelGeometry(R, 0.4e-3));
     expect(zMax - zMin).toBeCloseTo(0.4e-3, 9);
+  });
+});
+
+describe("createJewelCoreGeometry (the inner pavilion, ASM-0083)", () => {
+  const R = 0.5e-3;
+  const H = 1.2e-3;
+  const extent = (g: ReturnType<typeof createJewelCoreGeometry>): { rMin: number; rMax: number; zMin: number; zMax: number } => {
+    const pos = g.attributes.position;
+    if (pos === undefined) throw new Error("no positions");
+    let rMin = Number.POSITIVE_INFINITY; let rMax = 0; let zMin = Number.POSITIVE_INFINITY; let zMax = Number.NEGATIVE_INFINITY;
+    for (let i = 0; i < pos.count; i += 1) {
+      const r = Math.hypot(pos.getX(i), pos.getY(i));
+      rMin = Math.min(rMin, r); rMax = Math.max(rMax, r);
+      zMin = Math.min(zMin, pos.getZ(i)); zMax = Math.max(zMax, pos.getZ(i));
+    }
+    return { rMin, rMax, zMin, zMax };
+  };
+
+  it("is a double cone inside the stone: widest at the girdle planes, narrowest at the mid-plane, inside the outer shell", () => {
+    const { rMin, rMax, zMin, zMax } = extent(createJewelCoreGeometry(R, H));
+    const crown = Math.min(R * JEWEL_VISUALIZATION.crownHeightFraction, H / 4);
+    expect(rMax).toBeCloseTo(R * JEWEL_VISUALIZATION.coreRadiusFraction, 9);
+    expect(rMax).toBeLessThan(R);
+    expect(rMin).toBeCloseTo(R * JEWEL_VISUALIZATION.holeRadiusFraction * JEWEL_VISUALIZATION.coreMidHoleFactor, 9);
+    expect(zMax).toBeCloseTo(H / 2 - crown, 9);
+    expect(zMin).toBeCloseTo(-(H / 2 - crown), 9);
+  });
+
+  it("a solid stone narrows to a point (the culet) on the axis", () => {
+    expect(extent(createJewelCoreGeometry(0.2e-3, 0.35e-3, 0)).rMin).toBeCloseTo(0, 12);
+  });
+
+  it("has half as many facets as the outer stone, so they cross it", () => {
+    const params = createJewelCoreGeometry(R, H).parameters as { segments: number };
+    expect(params.segments).toBe(JEWEL_VISUALIZATION.coreFacetCount);
+    expect(JEWEL_VISUALIZATION.coreFacetCount * 2).toBe(JEWEL_VISUALIZATION.facetCount);
   });
 });
 
