@@ -2,6 +2,26 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 29: tap-to-enter start screen
+
+A futuristic metal start screen now covers the app on every load until it is tapped, clicked or any key
+is pressed (chosen with the user: animated gears, cyan glow, every load, with sound, parallax, version
+and validation chips and an honesty line). Brushed-metal backdrop, a translucent frosted-glass plate with
+a chrome title and a sweeping sheen, and a glowing outline gear train turning behind it. The pointer (or
+device tilt) shifts the layers in parallax; entering plays a soft synthesised click (a **Sound on/off**
+toggle, remembered) and fades the screen away. Reduced-motion settings skip the animation and fade.
+
+- **Honest content:** the chips show the design schema version and the *design's own* declared
+  validation level, plus "Physical validation pending"; the note says teaching demo (when it is one) and
+  that the simulation is an approximation, nothing physically validated.
+- **Gears:** meshing pairs sit at the ideal centre distance and turn at -z1/z2 with interlocking teeth
+  (`src/app/splash/splashGears.ts`, tested), but the teeth are plain trapezoids and the speed is a
+  display rate. Decorative only, ASM-0082.
+- **While it is up** the application behind is inert (no tabbing or clicking through).
+- **`?splash=off`** in the URL skips it (used by the e2e fixture, handy for screenshots/embedding);
+  `e2e/splash.spec.ts` covers the real thing.
+- **To revert:** remove the `mountSplash` call in `src/app/main.ts`.
+
 ## Phase 8.15 follow-up 28: day-of-week window
 
 Researched the real day-of-week mechanism first (SRC-0048, Glashütte patent US8842500B2: a seven-arm

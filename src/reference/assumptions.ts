@@ -495,6 +495,12 @@ export const ASSUMPTIONS = {
     scope: "DateComplication.display, weekday star labels, withCalendarDate weekday (L2 kinematic; presentation of labels)",
     status: "Active",
   },
+  "ASM-0082": {
+    summary:
+      "Start screen (follow-up 29): a decorative, tap-to-enter splash with a brushed-metal backdrop, a translucent glass plate and a glowing gear train, shown on every load (`?splash=off` skips it). It is L0 visual only (ASM-0004) and part of no design: it is never saved and nothing in the domain model, validation or simulation reads it. The gear train reuses the project's own relations (centre distance a = m (z1 + z2) / 2 and speed ratio -z1/z2, REF-ENG 5.2-5.3) so the teeth interlock and turn at the right ratio, but its tooth form is a plain trapezoid, not involute, and its speed is a slow, arbitrary display rate; it implies nothing about a real calibre. The chips and the note are derived from the loaded design (schema version, its declared validation level, teaching-demo flag) plus a fixed 'physical validation pending' caveat. Pointer/tilt parallax and a synthesised click on entry (muted from a toggle, remembered in local storage) are presentation only; motion is skipped under prefers-reduced-motion. While it is up the application root is inert.",
+    scope: "src/app/splash/* (visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

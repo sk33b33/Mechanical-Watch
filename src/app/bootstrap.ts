@@ -22,7 +22,7 @@ function panel(parent: HTMLElement, className: string): HTMLDivElement {
   return el;
 }
 
-export function bootstrapApp(root: HTMLElement): void {
+export function bootstrapApp(root: HTMLElement): AppStore {
   root.innerHTML = "";
   const workspace = panel(root, "workspace");
   const header = panel(workspace, "header");
@@ -72,4 +72,5 @@ export function bootstrapApp(root: HTMLElement): void {
   store.onDesignChange((movement) => {
     toolbar.setAutosaveStatus(writeAutosave(storage, movement) ? "Autosaved" : "Autosave failed");
   });
+  return store;
 }

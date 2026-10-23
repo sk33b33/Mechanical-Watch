@@ -11,7 +11,7 @@ export const test = base.extend<{ app: Page; layout: "docked" | "default" }>({
     const options = { layout };
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(String(error)));
-    await page.goto("/");
+    await page.goto("/?splash=off");
     await page.evaluate(() => { localStorage.clear(); });
     if (options.layout === "docked") {
       // The default layout tucks the panels away as flyouts; most tests drive the panels directly, so they start docked.

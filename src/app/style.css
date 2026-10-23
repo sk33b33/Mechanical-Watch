@@ -1108,3 +1108,229 @@ button.active {
 .tutorial-voice-picker[hidden] {
   display: none;
 }
+
+/* ---- Start screen (tap to enter) ------------------------------------------------------------
+   Decorative (L0 visual): brushed-metal backdrop, glowing gear canvas, translucent glass plate. */
+.splash {
+  --splash-glow: 92, 200, 255;
+  --streak: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='0.002 0.85' numOctaves='2' seed='7'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23f)'/></svg>");
+  position: fixed;
+  inset: 0;
+  z-index: 20000; /* above driver.js's overlay (10000) and every panel */
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  cursor: pointer;
+  background: #05080c;
+  transition: opacity 0.7s ease, transform 0.7s ease, filter 0.7s ease;
+}
+.splash-leaving {
+  opacity: 0;
+  transform: scale(1.06);
+  filter: blur(6px);
+  pointer-events: none;
+}
+.splash-metal {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 28% 18%, rgba(70, 120, 160, 0.38), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 82% 88%, rgba(var(--splash-glow), 0.16), transparent 70%),
+    linear-gradient(160deg, #0b1118 0%, #131d28 38%, #080c11 70%, #0d141c 100%);
+}
+.splash-metal::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--streak);
+  background-size: 600px 600px;
+  opacity: 0.1;
+  mix-blend-mode: overlay;
+}
+.splash-gears {
+  position: absolute;
+  inset: -30px;
+  width: calc(100% + 60px);
+  height: calc(100% + 60px);
+  will-change: transform;
+}
+.splash-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(0, 0, 0, 0.75) 100%);
+  pointer-events: none;
+}
+.splash-scan {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(var(--splash-glow), 0.035) 0 1px, transparent 1px 4px);
+  pointer-events: none;
+  animation: splash-scan-drift 9s linear infinite;
+}
+.splash-plate {
+  position: relative;
+  width: min(640px, calc(100vw - 32px));
+  padding: 44px 40px 28px;
+  text-align: center;
+  border-radius: 20px;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02) 40%, rgba(var(--splash-glow), 0.06)),
+    rgba(14, 26, 38, 0.46);
+  backdrop-filter: blur(14px) saturate(1.35);
+  -webkit-backdrop-filter: blur(14px) saturate(1.35);
+  border: 1px solid rgba(170, 225, 255, 0.34);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.65),
+    0 0 46px rgba(var(--splash-glow), 0.26),
+    0 30px 80px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    inset 0 0 70px rgba(var(--splash-glow), 0.09);
+  will-change: transform;
+}
+.splash-plate::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--streak);
+  background-size: 480px 480px;
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+.splash-plate::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  width: 36%;
+  left: -50%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.16), transparent);
+  transform: skewX(-18deg);
+  animation: splash-sheen 5.5s ease-in-out 0.8s infinite;
+  pointer-events: none;
+}
+.splash-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: rgba(var(--splash-glow), 0.95);
+  text-shadow: 0 0 10px rgba(var(--splash-glow), 0.8);
+}
+.splash-title {
+  margin: 18px 0 0;
+  font-size: clamp(28px, 6vw, 46px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.12;
+  /* Chrome: a bright upper half over a dark horizon line, then a lighter lower half. */
+  background: linear-gradient(180deg, #ffffff 0%, #d4ecfb 34%, #8fb2c9 49%, #2d4a60 52%, #a9cde4 70%, #e9f7ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 14px rgba(var(--splash-glow), 0.55)) drop-shadow(0 2px 0 rgba(0, 0, 0, 0.6));
+}
+.splash-title-3d {
+  letter-spacing: 0.1em;
+}
+.splash-rule {
+  height: 1px;
+  margin: 22px auto 26px;
+  width: 70%;
+  background: linear-gradient(90deg, transparent, rgba(var(--splash-glow), 0.9), transparent);
+  box-shadow: 0 0 12px rgba(var(--splash-glow), 0.8);
+}
+.splash-enter {
+  position: relative;
+  padding: 14px 34px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.42em;
+  padding-left: calc(34px + 0.42em);
+  text-transform: uppercase;
+  color: #e9f8ff;
+  cursor: pointer;
+  background: rgba(var(--splash-glow), 0.08);
+  border: 1px solid rgba(var(--splash-glow), 0.85);
+  border-radius: 999px;
+  text-shadow: 0 0 12px rgba(var(--splash-glow), 0.95);
+  box-shadow: 0 0 18px rgba(var(--splash-glow), 0.45), inset 0 0 18px rgba(var(--splash-glow), 0.18);
+  animation: splash-pulse 2.4s ease-in-out infinite;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.splash-enter:hover,
+.splash-enter:focus-visible {
+  background: rgba(var(--splash-glow), 0.22);
+  transform: scale(1.04);
+  outline: none;
+}
+.splash-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 30px;
+}
+.splash-chip {
+  padding: 4px 11px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: rgba(214, 238, 252, 0.9);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(170, 225, 255, 0.28);
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.splash-note {
+  margin: 16px auto 0;
+  max-width: 46ch;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(170, 196, 214, 0.78);
+}
+.splash-sound {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(214, 238, 252, 0.85);
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(170, 225, 255, 0.28);
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.splash-sound[aria-pressed="false"] {
+  opacity: 0.6;
+}
+
+@keyframes splash-pulse {
+  0%, 100% { box-shadow: 0 0 14px rgba(var(--splash-glow), 0.35), inset 0 0 14px rgba(var(--splash-glow), 0.14); }
+  50% { box-shadow: 0 0 30px rgba(var(--splash-glow), 0.75), inset 0 0 22px rgba(var(--splash-glow), 0.3); }
+}
+@keyframes splash-sheen {
+  0%, 55% { left: -50%; }
+  100% { left: 140%; }
+}
+@keyframes splash-scan-drift {
+  from { background-position: 0 0; }
+  to { background-position: 0 40px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash,
+  .splash-enter,
+  .splash-plate::after,
+  .splash-scan {
+    animation: none;
+    transition: none;
+  }
+}
