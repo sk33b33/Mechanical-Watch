@@ -1,32 +1,41 @@
 import { describe, expect, it } from "vitest";
-import { isForwardTick, secondsStep, TICK_SOUND } from "./tickSound";
+import { createTeachingMovement } from "@/app/teachingMovement";
+import { AppStore } from "@/app/store";
+import { createMovement } from "@/domain/movement";
+import { beatIndex, isForwardBeat, modelBeatHertz, TICK_SOUND } from "./tickSound";
 
-describe("second-hand tick (ASM-0084, decorative)", () => {
-  it("reads the dial second from the seconds-hand angle: 0-59, wrapping once a turn", () => {
-    expect(secondsStep(0)).toBe(0);
-    expect(secondsStep((2 * Math.PI) / 60 + 1e-6)).toBe(1);
-    expect(secondsStep(Math.PI)).toBe(30);
-    expect(secondsStep(2 * Math.PI - 1e-6)).toBe(59);
-    expect(secondsStep(2 * Math.PI)).toBe(0);
-    expect(secondsStep(-1e-6)).toBe(59);
+describe("watch tick on the escapement beat (ASM-0084, decorative)", () => {
+  it("takes its rate from the model: the teaching movement beats 5 times a second (18,000 an hour)", () => {
+    expect(modelBeatHertz(new AppStore(createTeachingMovement()))).toBeCloseTo(5, 3);
   });
 
-  it("ticks on exactly the next second, including 59 → 0", () => {
-    expect(isForwardTick(10, 11, 1)).toBe(true);
-    expect(isForwardTick(59, 0, 1)).toBe(true);
+  it("is silent for a movement with no escapement", () => {
+    expect(modelBeatHertz(new AppStore(createMovement("No escapement", false)))).toBeNull();
   });
 
-  it("does not tick on a jump, a repeat or a backward move (setting the hands, reset, set-to-browser-time)", () => {
-    expect(isForwardTick(10, 10, 1)).toBe(false);
-    expect(isForwardTick(10, 12, 1)).toBe(false);
-    expect(isForwardTick(10, 9, 1)).toBe(false);
-    expect(isForwardTick(0, 59, 1)).toBe(false);
+  it("numbers beats from simulated time", () => {
+    expect(beatIndex(0, 5)).toBe(0);
+    expect(beatIndex(0.199, 5)).toBe(0);
+    expect(beatIndex(0.2, 5)).toBe(1);
+    expect(beatIndex(1, 5)).toBe(5);
+  });
+
+  it("ticks on the next beat, and on a slow frame that spans a few", () => {
+    expect(isForwardBeat(4, 5, 1)).toBe(true);
+    expect(isForwardBeat(4, 7, 1)).toBe(true);
+  });
+
+  it("does not tick on a repeat, a backward move or a jump (setting the hands, reset, set-to-browser-time)", () => {
+    expect(isForwardBeat(5, 5, 1)).toBe(false);
+    expect(isForwardBeat(5, 4, 1)).toBe(false);
+    expect(isForwardBeat(5, 5 + TICK_SOUND.maxBeatsPerFrame + 1, 1)).toBe(false);
+    expect(isForwardBeat(5, 100000, 1)).toBe(false);
   });
 
   it("is muted faster than real time (the ticks would run together) but plays at real time and slower", () => {
     expect(TICK_SOUND.maxPlaybackRate).toBe(1);
-    expect(isForwardTick(10, 11, 0.1)).toBe(true);
-    expect(isForwardTick(10, 11, 10)).toBe(false);
-    expect(isForwardTick(10, 11, 60)).toBe(false);
+    expect(isForwardBeat(4, 5, 0.1)).toBe(true);
+    expect(isForwardBeat(4, 5, 10)).toBe(false);
+    expect(isForwardBeat(4, 5, 60)).toBe(false);
   });
 });

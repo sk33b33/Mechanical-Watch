@@ -2,6 +2,34 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 31: beat-rate tick, straight hands, startup state, smooth splash on phones, more gem facets
+
+Five requests (ASM-0084 updated, ASM-0085):
+
+- **Tick at the watch's real pace:** the tick now follows the escapement beat instead of once a second:
+  the model's own rate (escape arbor speed × teeth × 2 beats per tooth, ASM-0021) is 5 beats a second
+  (18,000 an hour) for the teaching movement, alternating tick and tock. Still a decorative synthesis,
+  muted above 1× and on any jump of the clock; the balance's real beat-by-beat motion is not simulated.
+  A movement with no driven escapement is silent.
+- **Straight hour and minute hands:** plain tapered blades ending in a point (still the longer 7.5 / 11 mm);
+  the thunderbolts are gone.
+- **Startup:** on entering, the app opens the *current* teaching movement, sets the browser date and time
+  (taken at the moment you tap, not at page load) and turns to the dial view with the dial's centre in the
+  middle of the viewport and the whole dial in view (this also re-centres the "Dial side" button). A design
+  autosaved by the previous session is not lost: it is saved in **Projects…** under its own name and a
+  notice says so. `?start=plain` restores the old startup (autosave restored, t = 0, bridge view); the
+  automated tests use it.
+- **Splash smoothness on phones:** while the splash is up the 3D viewport no longer draws or simulates
+  behind it; each glowing gear is drawn once to a sprite and each frame only rotates sprites (the glow's
+  blur was the cost); on touch screens the glass plate is a plain translucent panel (no per-frame backdrop
+  blur) and the sheen and scan lines are off; the viewport's pixel ratio is capped at 2. In a 4×-slowed,
+  software-rendered phone emulation the splash went from about 0.7 to about 19 frames a second; real
+  phone hardware was not available here.
+- **Gems with more cut sides:** 24 outer facets (from 16), two stepped crown bevels, and a deeper inner
+  pavilion (a kneed 12-facet cone with a nested, half-facet-turned 24-facet cone).
+- **To revert:** `startup.ts`/`main.ts` (startup), `JEWEL_VISUALIZATION` (gems), `generateHandOutline`
+  (hands), `modelBeatHertz` (tick).
+
 ## Phase 8.15 follow-up 30: splash glow and zoom, gold crown, cut-stone jewels, tick, thunderbolt hands, RSA MOVT
 
 Eight requests in one batch (all visual or audio, none feeds a kinematic or clearance result; ASM-0083,

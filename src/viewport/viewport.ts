@@ -70,7 +70,7 @@ import { isValidToothCount } from "@/math/gearMath";
 import { metres } from "@/units/length";
 
 type PickKind = "gear" | "jewel" | "escapement" | "keyless" | "arbor" | "frame" | "dial" | "moonPhase" | "dateStar" | "monthStar" | "leapYearWheel" | "seasonWheel" | "yearDigitWheel";
-type ViewSide = "BRIDGE" | "DIAL";
+export type ViewSide = "BRIDGE" | "DIAL";
 
 /**
  * Display-only section plane: vertical (parallel to the shaft axes),
@@ -87,6 +87,9 @@ const EXPLODE_STRETCH = 3;
 
 /** When several objects are under the pointer, the most specific wins. */
 const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, escapement: 2, keyless: 2, moonPhase: 2, dateStar: 2, monthStar: 2, leapYearWheel: 2, seasonWheel: 2, yearDigitWheel: 2, arbor: 3, frame: 4, dial: 5 };
+
+/** How much bigger than the dial the DIAL view frames (1 = the dial just touches the edge of the view). */
+const DIAL_FRAME_MARGIN = 1.12;
 
 /** The escapement's gold, shared by the escape wheel, the crown and any gear set to the ESCAPEMENT colour (ASM-0080). */
 const ESCAPEMENT_GOLD = 0xd9c27a;
@@ -382,7 +385,7 @@ export class Viewport {
     this.store = store;
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setPixelRatio(window.devicePixelRatio);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(this.renderer.domElement);
 
     this.camera = new THREE.PerspectiveCamera(35, 1, 1e-4, 1);
@@ -495,6 +498,15 @@ export class Viewport {
       return;
     }
     const sphere = box.getBoundingSphere(new THREE.Sphere());
+    const dialFit = this.view === "DIAL" ? this.dialFraming() : null;
+    if (dialFit !== null) {
+      // Straight onto the dial, its own centre in the middle of the viewport and the whole dial in view
+      // (follow-up 31): the target is the dial's centre, not the whole movement's, so it sits dead centre.
+      this.camera.position.set(dialFit.centre.x, dialFit.centre.y, dialFit.centre.z - dialFit.distance);
+      this.controls.target.copy(dialFit.centre);
+      this.controls.update();
+      return;
+    }
     const dist = sphere.radius / Math.sin(THREE.MathUtils.degToRad(this.camera.fov / 2));
     // The dial is on the −Z side (ASM-0014): look up at it from below.
     const direction =
@@ -502,6 +514,33 @@ export class Viewport {
     this.camera.position.copy(sphere.center).addScaledVector(direction, dist * (this.view === "DIAL" ? 0.8 : 0.7));
     this.controls.target.copy(sphere.center);
     this.controls.update();
+  }
+
+  /** Where to put the camera to see the first dial whole and centred, or null without one (DIAL view). */
+  private dialFraming(): { centre: THREE.Vector3; distance: number } | null {
+    const dial = Object.values(this.store.movement.dials)[0];
+    if (dial === undefined) return null;
+    const at = this.store.analysis.placement.shaftPositions.get(dial.centreShaftId);
+    if (at === undefined || !Number.isFinite(dial.diameter) || dial.diameter <= 0) return null;
+    // The dial's own front face, so the camera looks at the printed side.
+    const centre = new THREE.Vector3(at.x, at.y, this.displayZ(dial.faceHeight));
+    const halfFov = THREE.MathUtils.degToRad(this.camera.fov / 2);
+    // Fit the dial's radius (plus a margin) into the narrower of the two view angles.
+    const fitTan = Math.tan(halfFov) * Math.min(1, this.camera.aspect);
+    return { centre, distance: ((dial.diameter / 2) * DIAL_FRAME_MARGIN) / fitTan };
+  }
+
+  /** Stops drawing and simulating (the splash screen covers the viewport; nothing should burn the phone's GPU behind it). */
+  suspend(): void {
+    if (this.animationHandle !== null) cancelAnimationFrame(this.animationHandle);
+    this.animationHandle = null;
+  }
+
+  /** Starts drawing and simulating again after `suspend`, without counting the time away as simulated time. */
+  resume(): void {
+    if (this.animationHandle !== null) return;
+    this.lastTimestampMs = null;
+    this.animationHandle = requestAnimationFrame(this.animate);
   }
 
   private addPickable(parent: THREE.Object3D, mesh: THREE.Mesh, pick: Omit<Pickable, "baseRenderOrder" | "baseDepthWrite">): void {

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { Outline } from "@/domain/frame";
 import type { MoonPhaseWindowCount } from "@/domain/moonPhase";
 import { windowsPerRevolution } from "@/domain/moonPhase";
@@ -22,10 +23,9 @@ export const ASSEMBLY_VISUALIZATION = {
  * angle 0 means 12 o'clock. Lengths, widths and stacking gaps are visual.
  */
 export const HAND_VISUALIZATION = {
-  // Hour and minute hands are thunderbolts (follow-up 30, ASM-0083): `widthMetres` is the bolt's half-width
-  // scale (see HAND_BOLT_VISUALIZATION); lengths were lengthened from 5 / 8 mm to 7.5 / 11 mm.
-  HOURS: { lengthMetres: 7.5e-3, widthMetres: 0.8e-3, gapBelowMovementMetres: 0.6e-3 },
-  MINUTES: { lengthMetres: 11e-3, widthMetres: 0.7e-3, gapBelowMovementMetres: 0.9e-3 },
+  // Longer than the original 5 / 8 mm (follow-up 30, ASM-0083); plain straight tapered hands again (follow-up 31).
+  HOURS: { lengthMetres: 7.5e-3, widthMetres: 0.6e-3, gapBelowMovementMetres: 0.6e-3 },
+  MINUTES: { lengthMetres: 11e-3, widthMetres: 0.45e-3, gapBelowMovementMetres: 0.9e-3 },
   SECONDS: { lengthMetres: 3e-3, widthMetres: 0.2e-3, gapBelowMovementMetres: 0.6e-3 },
   thicknessMetres: 0.08e-3,
   assumption: "ASM-0016" satisfies AssumptionId,
@@ -229,7 +229,7 @@ export function createDialWindowPointerGeometry(baseWidth: number, height: numbe
  */
 export const JEWEL_VISUALIZATION = {
   /** Radial facets around the stone — few, so the flat-shaded faces read as cut facets. */
-  facetCount: 16,
+  facetCount: 24,
   /** Bore radius (the olive hole the pivot runs in) as a fraction of the outer radius; 0 for a solid stone such as the balance's impulse pin. */
   holeRadiusFraction: 0.28,
   /** Where the flat table ends and the bevelled crown begins, as a fraction of the outer radius. */
@@ -238,19 +238,26 @@ export const JEWEL_VISUALIZATION = {
   funnelRadiusFraction: 0.5,
   /** Height of each domed crown (table to girdle), as a fraction of the outer radius, capped at a quarter of the stone's height. */
   crownHeightFraction: 0.5,
-  /** Where the star facets end on the crown (follow-up 30, ASM-0083): a second, steeper bevel between the table and the girdle, as a fraction of the outer radius. */
-  starRadiusFraction: 0.88,
-  /** How far down the crown the star facets' edge sits, as a fraction of the crown height. */
-  starDropFraction: 0.4,
+  /**
+   * The crown's bevel steps between the table and the girdle (follow-up 30/31, ASM-0083/0085): each is a
+   * ring at this fraction of the outer radius, this fraction of the way down the crown, so the crown is
+   * cut as table, star facets, upper-girdle facets and girdle rather than one cone.
+   */
+  crownSteps: [
+    { radiusFraction: 0.87, dropFraction: 0.3 },
+    { radiusFraction: 0.95, dropFraction: 0.65 },
+  ] as readonly { radiusFraction: number; dropFraction: number }[],
   /**
    * The stone's inner pavilion (follow-up 30, ASM-0083): a faceted double cone inside the stone that shows
    * through it, like a diamond's pavilion. Its facets are half as many as the outer ones so they cross
    * them. Radius at the girdle end as a fraction of the outer radius, and where it narrows to at the
    * mid-plane as a multiple of the hole radius (a solid stone narrows to a point, the culet).
    */
-  coreFacetCount: 8,
+  coreFacetCount: 12,
   coreRadiusFraction: 0.86,
   coreMidHoleFactor: 1.12,
+  /** A second, smaller pavilion nested inside the first (follow-up 31): this fraction of the first one's size, with twice the facets, turned half a facet so its edges fall between the outer cone's. */
+  innerCoreScale: 0.62,
   /** Ruby red, a glossy, translucent, faintly self-lit stone with a bright clear coat. */
   color: 0xd4264f,
   emissive: 0x5a0a1c,
@@ -282,10 +289,10 @@ export function createJewelGeometry(outerRadius: number, height: number, holeRad
   if (rHole > 0) profile.push(new THREE.Vector2(rHole, hh - 0.3 * crown));
   profile.push(new THREE.Vector2(rHole > 0 ? rFunnel : 0, hh));
   profile.push(new THREE.Vector2(rTable, hh));
-  profile.push(new THREE.Vector2(outerRadius * v.starRadiusFraction, hh - crown * v.starDropFraction));
+  for (const step of v.crownSteps) profile.push(new THREE.Vector2(outerRadius * step.radiusFraction, hh - crown * step.dropFraction));
   profile.push(new THREE.Vector2(outerRadius, hh - crown));
   profile.push(new THREE.Vector2(outerRadius, -hh + crown));
-  profile.push(new THREE.Vector2(outerRadius * v.starRadiusFraction, -hh + crown * v.starDropFraction));
+  for (const step of [...v.crownSteps].reverse()) profile.push(new THREE.Vector2(outerRadius * step.radiusFraction, -hh + crown * step.dropFraction));
   profile.push(new THREE.Vector2(rTable, -hh));
   profile.push(new THREE.Vector2(rHole > 0 ? rFunnel : 0, -hh));
   if (rHole > 0) profile.push(new THREE.Vector2(rHole, -hh + 0.3 * crown));
@@ -299,18 +306,34 @@ export function createJewelGeometry(outerRadius: number, height: number, holeRad
  * The inner pavilion of a jewel (follow-up 30, ASM-0083, visual only): a faceted double cone, wide at the
  * two girdle planes and narrowing to the hole wall (or to a point, the culet, for a solid stone) at the
  * mid-plane, so a translucent stone shows a diamond-like structure inside. Same axis and centring as
- * `createJewelGeometry`; half as many facets, so they cross the outer ones. Flat-shaded.
+ * `createJewelGeometry`; half as many facets on the outer cone, so they cross the stone's, plus a smaller nested
+ * cone with twice the facets (follow-up 31). Flat-shaded.
  */
-export function createJewelCoreGeometry(outerRadius: number, height: number, holeRadiusFraction: number = JEWEL_VISUALIZATION.holeRadiusFraction): THREE.LatheGeometry {
+export function createJewelCoreGeometry(outerRadius: number, height: number, holeRadiusFraction: number = JEWEL_VISUALIZATION.holeRadiusFraction): THREE.BufferGeometry {
   const v = JEWEL_VISUALIZATION;
   const crown = Math.min(outerRadius * v.crownHeightFraction, height / 4);
   const yGirdle = height / 2 - crown;
   const rMid = outerRadius * holeRadiusFraction * v.coreMidHoleFactor;
   const rEdge = outerRadius * v.coreRadiusFraction;
-  const profile = [new THREE.Vector2(rEdge, yGirdle), new THREE.Vector2(rMid, 0), new THREE.Vector2(rEdge, -yGirdle)];
-  const geometry = new THREE.LatheGeometry(profile, v.coreFacetCount);
-  geometry.rotateX(Math.PI / 2);
-  return geometry;
+  // Outer pavilion: a double cone with a slight knee, so each facet is two planes (a bent facet) rather than one.
+  const knee = 0.5;
+  const kneeRadius = rMid + (rEdge - rMid) * 0.62;
+  const outerProfile = [
+    new THREE.Vector2(rEdge, yGirdle), new THREE.Vector2(kneeRadius, yGirdle * knee), new THREE.Vector2(rMid, 0),
+    new THREE.Vector2(kneeRadius, -yGirdle * knee), new THREE.Vector2(rEdge, -yGirdle),
+  ];
+  const outer = new THREE.LatheGeometry(outerProfile, v.coreFacetCount);
+  // Inner pavilion: nested, smaller, twice the facets, turned half a facet so its edges fall between the outer cone's.
+  const inner = new THREE.LatheGeometry(
+    [new THREE.Vector2(rEdge * v.innerCoreScale, yGirdle * v.innerCoreScale), new THREE.Vector2(rMid * v.innerCoreScale, 0), new THREE.Vector2(rEdge * v.innerCoreScale, -yGirdle * v.innerCoreScale)],
+    v.coreFacetCount * 2,
+  );
+  inner.rotateY(Math.PI / (v.coreFacetCount * 2));
+  const merged = mergeGeometries([outer, inner], false);
+  outer.dispose();
+  inner.dispose();
+  merged.rotateX(Math.PI / 2);
+  return merged;
 }
 
 /**
@@ -529,35 +552,26 @@ export function createFlutedCylinderGeometry(radius: number, length: number, rid
   return geometry;
 }
 
-/**
- * The thunderbolt shape of the hour and minute hands (follow-up 30, ASM-0083, visual only, replaces the
- * arrowhead of ASM-0076): a zigzag bolt whose sharp end is the hand's tip, on the pivot's own axis so it
- * still points exactly along the hand's angle. Each vertex is (x as a multiple of the hand's `widthMetres`,
- * y as a fraction of its length); the base sits `tailFraction` of the length below the pivot.
- */
-export const HAND_BOLT_VISUALIZATION = {
-  tailFraction: 0.18,
-  /** Vertices from the base-left, clockwise: base, right shoulder, right notch, tip, left shoulder, left notch. */
-  vertices: [
-    { x: -0.55, v: -0.18 },
-    { x: 0.55, v: -0.18 },
-    { x: 1.0, v: 0.34 },
-    { x: 0.28, v: 0.34 },
-    { x: 0, v: 1 },
-    { x: -1.0, v: 0.58 },
-    { x: -0.25, v: 0.58 },
-  ] as readonly { x: number; v: number }[],
-  assumption: "ASM-0083" satisfies AssumptionId,
-} as const;
-
 type HandKind = keyof Omit<typeof HAND_VISUALIZATION, "thicknessMetres" | "assumption">;
 
-/** 2D outline of a hand's blade (not the hub hole), pointing +Y from the axis: a thunderbolt for the hour and minute hands (ASM-0083), a plain taper for the seconds hand (ASM-0016, visual). */
+/**
+ * 2D outline of a hand's blade (not the hub hole), pointing +Y from the axis (ASM-0016, visual): a
+ * straight tapered blade with a short tail past the pivot. The hour and minute hands end in a point;
+ * the seconds hand keeps a narrow flat tip (follow-up 31: plain hands again, replacing the
+ * thunderbolts of ASM-0083).
+ */
 export function generateHandOutline(hand: HandKind): Point2D[] {
   const { lengthMetres: l, widthMetres: w } = HAND_VISUALIZATION[hand];
   const tail = l * 0.18;
   if (hand === "HOURS" || hand === "MINUTES") {
-    return HAND_BOLT_VISUALIZATION.vertices.map((p) => ({ x: p.x * w, y: p.v * l }));
+    const shoulder = l * 0.9;
+    return [
+      { x: -w / 2, y: -tail },
+      { x: w / 2, y: -tail },
+      { x: w * 0.3, y: shoulder },
+      { x: 0, y: l },
+      { x: -w * 0.3, y: shoulder },
+    ];
   }
   return [
     { x: -w / 2, y: -tail },

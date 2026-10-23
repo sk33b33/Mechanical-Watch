@@ -14,6 +14,7 @@ import { mountValidationConsole } from "./panels/validationConsole";
 import { mountTutorialBanner } from "./panels/tutorialBanner";
 import { mountTickSound } from "./audio/tickSound";
 import { unlockAudioOnFirstGesture } from "./audio/audioContext";
+import { chooseStartupMovement } from "./startup";
 import { PanelLayout } from "./layout/panelWindows";
 import { mountLayoutControls } from "./layout/layoutControls";
 
@@ -24,7 +25,12 @@ function panel(parent: HTMLElement, className: string): HTMLDivElement {
   return el;
 }
 
-export function bootstrapApp(root: HTMLElement): AppStore {
+export interface BootstrappedApp {
+  store: AppStore;
+  viewport: Viewport;
+}
+
+export function bootstrapApp(root: HTMLElement, plainStart = false): BootstrappedApp {
   root.innerHTML = "";
   const workspace = panel(root, "workspace");
   const header = panel(workspace, "header");
@@ -36,7 +42,8 @@ export function bootstrapApp(root: HTMLElement): AppStore {
 
   const storage = browserStore();
   const saved = loadAutosave(storage);
-  const store = new AppStore(saved.status === "LOADED" ? saved.movement : createTeachingMovement());
+  const choice = chooseStartupMovement(saved, storage, createTeachingMovement, plainStart);
+  const store = new AppStore(choice.movement);
 
   mountHeader(headerInfo, store);
   const toolbar = mountToolbar(toolbarEl, store, readouts);
@@ -66,6 +73,14 @@ export function bootstrapApp(root: HTMLElement): AppStore {
   });
   toolbar.addFileAction("Tutorial…", "Guided walkthrough: build a movement from scratch", () => { store.startTutorial(); });
 
+  if (choice.preserved !== null) {
+    toolbar.notify(
+      choice.preserveProblem === null
+        ? `Opened the teaching movement. Your last session's design “${choice.preserved.name}” is kept in Projects…`
+        : `Opened the teaching movement. Your last session's design “${choice.preserved.name}” could not be kept in Projects: ${choice.preserveProblem}`,
+      choice.preserveProblem === null ? "info" : "error",
+    );
+  }
   if (saved.status === "UNREADABLE") {
     toolbar.notify(
       `Your autosaved design could not be read and was set aside, not deleted. Showing the teaching movement instead. (${saved.reason})`,
@@ -76,5 +91,5 @@ export function bootstrapApp(root: HTMLElement): AppStore {
   store.onDesignChange((movement) => {
     toolbar.setAutosaveStatus(writeAutosave(storage, movement) ? "Autosaved" : "Autosave failed");
   });
-  return store;
+  return { store, viewport };
 }

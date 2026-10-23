@@ -1,5 +1,5 @@
 import type { KeyValueStore } from "@/persistence/autosave";
-import { gearOutline, splashGearAngles, splashGearTrain, splashTrainBounds } from "./splashGears";
+import { gearOutline, SPLASH_TOOTH, splashGearAngles, splashGearTrain, splashTrainBounds, type SplashGear } from "./splashGears";
 import { playEntryClick } from "./splashSound";
 import { unlockAudio } from "@/app/audio/audioContext";
 
@@ -13,6 +13,8 @@ export interface SplashOptions {
   chips: readonly string[];
   /** The standing honesty line (CLAUDE.md "Safety of claims"). */
   note: string;
+  /** Called the moment the screen is entered (the caller starts the app and sets its clock). */
+  onEnter: () => void;
 }
 
 export const SPLASH_SOUND_KEY = "mw3d.splash.sound";
@@ -117,6 +119,71 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
   let shownX = 0;
   let shownY = 0;
 
+  /**
+   * Each gear is drawn once, glow and all, to its own small canvas (a sprite) at angle 0; a frame then
+   * only draws those sprites rotated into place. The blur of the glow is by far the costly part, and
+   * it is the same every frame, so paying for it once is what keeps the gears turning smoothly on a
+   * phone (follow-up 31). The sprite is rendered at device resolution so the rotation stays crisp.
+   */
+  interface Sprite { canvas: HTMLCanvasElement; centre: number; ratio: number }
+  let sprites: Sprite[] = [];
+  let originX = 0;
+  let originY = 0;
+
+  const renderSprite = (gear: SplashGear, ratio: number): Sprite => {
+    const radius = (gear.teeth / 2 + SPLASH_TOOTH.addendum) * scale;
+    const half = Math.ceil(radius + GLOW.bloomBlur + GLOW.bloomWidth);
+    const sprite = document.createElement("canvas");
+    sprite.width = Math.round(half * 2 * ratio);
+    sprite.height = sprite.width;
+    const c = sprite.getContext("2d");
+    if (c === null) return { canvas: sprite, centre: half, ratio };
+    c.setTransform(ratio, 0, 0, ratio, 0, 0);
+    c.lineJoin = "round";
+    const outline = gearOutline(gear.teeth, 0);
+    c.beginPath();
+    outline.forEach((p, i) => { if (i === 0) c.moveTo(half + p.x * scale, half + p.y * scale); else c.lineTo(half + p.x * scale, half + p.y * scale); });
+    c.closePath();
+    c.fillStyle = GLOW.fill;
+    c.fill();
+    // Wide soft bloom, then a tight halo, then a bright near-white core line on top.
+    c.shadowColor = GLOW.colour;
+    c.shadowBlur = GLOW.bloomBlur * ratio;
+    c.strokeStyle = `rgba(90, 200, 255, ${String(GLOW.bloomAlpha)})`;
+    c.lineWidth = GLOW.bloomWidth;
+    c.stroke();
+    c.shadowBlur = GLOW.haloBlur * ratio;
+    c.strokeStyle = GLOW.colour;
+    c.lineWidth = GLOW.coreWidth + 1;
+    c.stroke();
+    c.shadowBlur = 8 * ratio;
+    c.strokeStyle = GLOW.core;
+    c.lineWidth = GLOW.coreWidth * 0.6;
+    c.stroke();
+
+    const pitchRadius = (gear.teeth / 2) * scale;
+    c.strokeStyle = GLOW.detail;
+    c.shadowColor = GLOW.colour;
+    c.shadowBlur = 10 * ratio;
+    c.lineWidth = 1.2;
+    c.beginPath();
+    c.arc(half, half, pitchRadius * 0.78, 0, Math.PI * 2);
+    c.stroke();
+    c.beginPath();
+    c.arc(half, half, pitchRadius * 0.18, 0, Math.PI * 2);
+    c.stroke();
+    // Spokes (same five-spoke look as the movement's own wheels) or a fine cross for the small pinions.
+    const spokes = gear.spokes > 0 ? gear.spokes : 4;
+    c.beginPath();
+    for (let k = 0; k < spokes; k += 1) {
+      const a = (k * 2 * Math.PI) / spokes;
+      c.moveTo(half + Math.cos(a) * pitchRadius * 0.18, half + Math.sin(a) * pitchRadius * 0.18);
+      c.lineTo(half + Math.cos(a) * pitchRadius * 0.78, half + Math.sin(a) * pitchRadius * 0.78);
+    }
+    c.stroke();
+    return { canvas: sprite, centre: half, ratio };
+  };
+
   const resize = (): void => {
     const ratio = Math.min(window.devicePixelRatio, 2);
     width = root.clientWidth;
@@ -127,6 +194,10 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
     // The first gear's radius covers GEAR_SCALE_FRACTION of the shorter side; the train spills off-screen on purpose.
     const first = train[0];
     scale = first === undefined ? 1 : (Math.min(width, height) * GEAR_SCALE_FRACTION) / (first.teeth / 2);
+    // Centre the train's bounding box in the canvas.
+    originX = width * 0.5 - ((bounds.minX + bounds.maxX) / 2) * scale;
+    originY = height * 0.5 - ((bounds.minY + bounds.maxY) / 2) * scale;
+    sprites = train.map((gear) => renderSprite(gear, ratio));
     draw();
   };
 
@@ -134,57 +205,17 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
     if (context === null) return;
     context.clearRect(0, 0, width, height);
     const angles = splashGearAngles(train, driverAngle);
-    // Centre the train's bounding box a little right of and below the canvas centre so the plate sits in clear space.
-    const originX = width * 0.5 - ((bounds.minX + bounds.maxX) / 2) * scale;
-    const originY = height * 0.5 - ((bounds.minY + bounds.maxY) / 2) * scale;
     context.globalCompositeOperation = "lighter";
-    context.lineJoin = "round";
     train.forEach((gear, index) => {
-      const angle = angles[index] ?? 0;
+      const sprite = sprites[index];
+      if (sprite === undefined) return;
       const cx = originX + gear.x * scale;
       const cy = originY + gear.y * scale;
-      const outline = gearOutline(gear.teeth, angle);
-      context.beginPath();
-      outline.forEach((p, i) => { if (i === 0) context.moveTo(cx + p.x * scale, cy + p.y * scale); else context.lineTo(cx + p.x * scale, cy + p.y * scale); });
-      context.closePath();
-      context.fillStyle = GLOW.fill;
-      context.fill();
-      // Wide soft bloom, then a tight halo, then a bright near-white core line on top.
-      context.shadowColor = GLOW.colour;
-      context.shadowBlur = GLOW.bloomBlur;
-      context.strokeStyle = `rgba(90, 200, 255, ${String(GLOW.bloomAlpha)})`;
-      context.lineWidth = GLOW.bloomWidth;
-      context.stroke();
-      context.shadowBlur = GLOW.haloBlur;
-      context.strokeStyle = GLOW.colour;
-      context.lineWidth = GLOW.coreWidth + 1;
-      context.stroke();
-      context.shadowBlur = 8;
-      context.strokeStyle = GLOW.core;
-      context.lineWidth = GLOW.coreWidth * 0.6;
-      context.stroke();
-      context.shadowBlur = 0;
-
-      const pitchRadius = (gear.teeth / 2) * scale;
-      context.strokeStyle = GLOW.detail;
-      context.shadowColor = GLOW.colour;
-      context.shadowBlur = 10;
-      context.lineWidth = 1.2;
-      context.beginPath();
-      context.arc(cx, cy, pitchRadius * 0.78, 0, Math.PI * 2);
-      context.stroke();
-      context.beginPath();
-      context.arc(cx, cy, pitchRadius * 0.18, 0, Math.PI * 2);
-      context.stroke();
-      // Spokes (same five-spoke look as the movement's own wheels) or a fine cross for the small pinions.
-      const spokes = gear.spokes > 0 ? gear.spokes : 4;
-      context.beginPath();
-      for (let s = 0; s < spokes; s += 1) {
-        const a = angle + (s * 2 * Math.PI) / spokes;
-        context.moveTo(cx + Math.cos(a) * pitchRadius * 0.18, cy + Math.sin(a) * pitchRadius * 0.18);
-        context.lineTo(cx + Math.cos(a) * pitchRadius * 0.78, cy + Math.sin(a) * pitchRadius * 0.78);
-      }
-      context.stroke();
+      context.save();
+      context.translate(cx, cy);
+      context.rotate(angles[index] ?? 0);
+      context.drawImage(sprite.canvas, -sprite.centre, -sprite.centre, sprite.centre * 2, sprite.centre * 2);
+      context.restore();
     });
     context.globalCompositeOperation = "source-over";
   };
@@ -220,6 +251,7 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
   const dismiss = (): void => {
     if (left) return;
     left = true;
+    options.onEnter();
     unlockAudio(); // the tap is the user gesture that lets the second-hand tick play
     if (soundOn) playEntryClick();
     cancelAnimationFrame(frame);

@@ -42,3 +42,18 @@ test("?splash=off skips the start screen", async ({ page }) => {
   await expect(page.locator("canvas").first()).toBeVisible();
   await expect(page.locator(".splash")).toHaveCount(0);
 });
+
+test("entering opens the teaching movement at the browser's time, in the dial view (follow-up 31, ASM-0085)", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => { localStorage.clear(); });
+  await page.reload();
+  await page.getByRole("button", { name: "Tap to enter" }).click();
+  await expect(page.locator(".splash")).toHaveCount(0);
+  await expect(page.locator("header, .header").first()).toContainText("Teaching movement");
+  const clockText = (d: Date): string => `${String(d.getHours() % 12 === 0 ? 12 : d.getHours() % 12)}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const now = new Date();
+  const soon = new Date(now.getTime() + 60_000);
+  const before = new Date(now.getTime() - 60_000);
+  const reading = (await page.getByTestId("dial-reading").innerText()).replace("Dial ", "");
+  expect([clockText(before), clockText(now), clockText(soon)].some((t) => reading.startsWith(t))).toBe(true);
+});

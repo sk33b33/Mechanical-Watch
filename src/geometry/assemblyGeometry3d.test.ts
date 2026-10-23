@@ -43,7 +43,6 @@ import {
   escapeWheelHubRadius,
   generateEscapeWheelOutline,
   generateHandOutline,
-  HAND_BOLT_VISUALIZATION,
   HAND_VISUALIZATION,
   generatePalletStoneOutline,
   GENEVA_WHEEL_VISUALIZATION,
@@ -237,25 +236,26 @@ describe("generateHandOutline", () => {
     expect(tipY(generateHandOutline("SECONDS"))).toBeCloseTo(3e-3, 12);
   });
 
-  it("the hour and minute hands are thunderbolts (ASM-0083): the sharp tip sits on the pivot's own axis at the hand's length, and both are longer than before", () => {
+  it("the hour and minute hands are straight tapered blades ending in a point on the pivot's axis, and longer than before", () => {
     for (const [hand, length] of [["HOURS", 7.5e-3], ["MINUTES", 11e-3]] as const) {
       const outline = generateHandOutline(hand);
-      expect(outline).toHaveLength(HAND_BOLT_VISUALIZATION.vertices.length);
+      expect(outline).toHaveLength(5);
       const tip = outline.reduce((best, p) => (p.y > best.y ? p : best));
       expect(tip.x).toBe(0);
       expect(tip.y).toBeCloseTo(length, 12);
-      // Zigzag: the outline steps out on one side and in on the other, so it is wider than the base.
-      const base = outline[0];
-      const widest = Math.max(...outline.map((p) => Math.abs(p.x)));
-      expect(widest).toBeGreaterThan(Math.abs(base?.x ?? 0));
+      // Straight and symmetric: the outline mirrors about the hand's own axis and tapers toward the tip.
+      const [tailLeft, tailRight, shoulderRight, , shoulderLeft] = outline;
+      expect(tailLeft?.x).toBeCloseTo(-(tailRight?.x ?? 0), 12);
+      expect(shoulderLeft?.x).toBeCloseTo(-(shoulderRight?.x ?? 0), 12);
+      expect(Math.abs(shoulderRight?.x ?? 0)).toBeLessThan(Math.abs(tailRight?.x ?? 0));
     }
     expect(HAND_VISUALIZATION.HOURS.lengthMetres).toBeGreaterThan(5e-3);
     expect(HAND_VISUALIZATION.MINUTES.lengthMetres).toBeGreaterThan(8e-3);
     expect(HAND_VISUALIZATION.MINUTES.lengthMetres).toBeGreaterThan(HAND_VISUALIZATION.HOURS.lengthMetres);
   });
 
-  it("the pivot hub hole lies inside the thunderbolt, so the extrusion has a clean hole", () => {
-    for (const hand of ["HOURS", "MINUTES"] as const) {
+  it("the pivot hub hole lies inside every hand, so the extrusion has a clean hole", () => {
+    for (const hand of ["HOURS", "MINUTES", "SECONDS"] as const) {
       const outline = generateHandOutline(hand);
       const hub = handHubRadius(hand);
       // Even-odd point-in-polygon for the hub's centre and four rim points.
@@ -272,12 +272,12 @@ describe("generateHandOutline", () => {
     }
   });
 
-  it("the thunderbolt hands' outline is a simple polygon (no self-intersection) so it extrudes cleanly", () => {
+  it("every hand's outline is a simple polygon (no self-intersection) so it extrudes cleanly", () => {
     const segmentsCross = (a: { x: number; y: number }, b: { x: number; y: number }, c: { x: number; y: number }, d: { x: number; y: number }): boolean => {
       const o = (p: { x: number; y: number }, q: { x: number; y: number }, r: { x: number; y: number }): number => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
       return o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0;
     };
-    for (const hand of ["HOURS", "MINUTES"] as const) {
+    for (const hand of ["HOURS", "MINUTES", "SECONDS"] as const) {
       const pts = generateHandOutline(hand);
       for (let i = 0; i < pts.length; i += 1) {
         for (let j = i + 2; j < pts.length; j += 1) {
@@ -320,7 +320,7 @@ describe("createDialWindowPointerOutline (ASM-0069, DialWindow.pointer)", () => 
 
 describe("handHubRadius", () => {
   it("is a fixed fraction of the hand's own width", () => {
-    expect(handHubRadius("HOURS")).toBeCloseTo(0.8e-3 * 0.2);
+    expect(handHubRadius("HOURS")).toBeCloseTo(0.6e-3 * 0.2);
     expect(handHubRadius("SECONDS")).toBeCloseTo(0.2e-3 * 0.2);
   });
 });
@@ -1600,19 +1600,33 @@ describe("createJewelGeometry (faceted ruby jewels, ASM-0078)", () => {
     expect(tableMax).toBeLessThan(R);
   });
 
-  it("has a second, steeper star bevel on each crown between the table and the girdle (ASM-0083)", () => {
+  it("has stepped crown bevels (star and upper-girdle facets) between the table and the girdle (ASM-0083, ASM-0085)", () => {
     const g = createJewelGeometry(R, H);
     const pos = g.attributes.position;
     if (pos === undefined) throw new Error("no positions");
     const crown = Math.min(R * JEWEL_VISUALIZATION.crownHeightFraction, H / 4);
-    const starZ = H / 2 - crown * JEWEL_VISUALIZATION.starDropFraction;
-    let found = false;
-    for (let i = 0; i < pos.count; i += 1) {
-      if (Math.abs(pos.getZ(i) - starZ) < 1e-9 && Math.abs(Math.hypot(pos.getX(i), pos.getY(i)) - R * JEWEL_VISUALIZATION.starRadiusFraction) < 1e-9) found = true;
+    expect(JEWEL_VISUALIZATION.crownSteps.length).toBeGreaterThanOrEqual(2);
+    let previousRadius: number = JEWEL_VISUALIZATION.tableRadiusFraction;
+    let previousDrop = 0;
+    for (const step of JEWEL_VISUALIZATION.crownSteps) {
+      // Each step lies outside and below the last, and inside the girdle.
+      expect(step.radiusFraction).toBeGreaterThan(previousRadius);
+      expect(step.dropFraction).toBeGreaterThan(previousDrop);
+      expect(step.radiusFraction).toBeLessThan(1);
+      expect(step.dropFraction).toBeLessThan(1);
+      previousRadius = step.radiusFraction;
+      previousDrop = step.dropFraction;
+      let found = false;
+      const z = H / 2 - crown * step.dropFraction;
+      for (let i = 0; i < pos.count; i += 1) {
+        if (Math.abs(pos.getZ(i) - z) < 1e-9 && Math.abs(Math.hypot(pos.getX(i), pos.getY(i)) - R * step.radiusFraction) < 1e-9) found = true;
+      }
+      expect(found).toBe(true);
     }
-    expect(found).toBe(true);
-    expect(JEWEL_VISUALIZATION.starRadiusFraction).toBeGreaterThan(JEWEL_VISUALIZATION.tableRadiusFraction);
-    expect(JEWEL_VISUALIZATION.starRadiusFraction).toBeLessThan(1);
+  });
+
+  it("has more cut sides than before: 24 outer facets", () => {
+    expect(JEWEL_VISUALIZATION.facetCount).toBe(24);
   });
 
   it("is translucent and clear-coated, so the inside shows (ASM-0083)", () => {
@@ -1626,7 +1640,7 @@ describe("createJewelGeometry (faceted ruby jewels, ASM-0078)", () => {
     // The lathe's own segment count is the facet count.
     const params = g.parameters as { segments: number };
     expect(params.segments).toBe(JEWEL_VISUALIZATION.facetCount);
-    expect(JEWEL_VISUALIZATION.facetCount).toBeLessThanOrEqual(16);
+    expect(JEWEL_VISUALIZATION.facetCount).toBeLessThanOrEqual(32);
   });
 
   it("keeps a short stone's crowns inside its height (crown capped at a quarter of the height)", () => {
@@ -1655,7 +1669,8 @@ describe("createJewelCoreGeometry (the inner pavilion, ASM-0083)", () => {
     const crown = Math.min(R * JEWEL_VISUALIZATION.crownHeightFraction, H / 4);
     expect(rMax).toBeCloseTo(R * JEWEL_VISUALIZATION.coreRadiusFraction, 9);
     expect(rMax).toBeLessThan(R);
-    expect(rMin).toBeCloseTo(R * JEWEL_VISUALIZATION.holeRadiusFraction * JEWEL_VISUALIZATION.coreMidHoleFactor, 9);
+    // The smallest radius is the nested inner pavilion's waist.
+    expect(rMin).toBeCloseTo(R * JEWEL_VISUALIZATION.holeRadiusFraction * JEWEL_VISUALIZATION.coreMidHoleFactor * JEWEL_VISUALIZATION.innerCoreScale, 9);
     expect(zMax).toBeCloseTo(H / 2 - crown, 9);
     expect(zMin).toBeCloseTo(-(H / 2 - crown), 9);
   });
@@ -1664,10 +1679,19 @@ describe("createJewelCoreGeometry (the inner pavilion, ASM-0083)", () => {
     expect(extent(createJewelCoreGeometry(0.2e-3, 0.35e-3, 0)).rMin).toBeCloseTo(0, 12);
   });
 
-  it("has half as many facets as the outer stone, so they cross it", () => {
-    const params = createJewelCoreGeometry(R, H).parameters as { segments: number };
-    expect(params.segments).toBe(JEWEL_VISUALIZATION.coreFacetCount);
+  it("has half as many facets as the outer stone, so they cross it, and a nested inner pavilion with twice as many", () => {
     expect(JEWEL_VISUALIZATION.coreFacetCount * 2).toBe(JEWEL_VISUALIZATION.facetCount);
+    // The merged geometry carries both pavilions: the outer cone (12 facets, 4 bands) and the inner one (24 facets, 2 bands).
+    const g = createJewelCoreGeometry(R, H);
+    const triangles = (g.index === null ? (g.attributes.position?.count ?? 0) : g.index.count) / 3;
+    const outer = JEWEL_VISUALIZATION.coreFacetCount * 4 * 2;
+    const inner = JEWEL_VISUALIZATION.coreFacetCount * 2 * 2 * 2;
+    expect(triangles).toBe(outer + inner);
+  });
+
+  it("the nested inner pavilion sits inside the outer one", () => {
+    expect(JEWEL_VISUALIZATION.innerCoreScale).toBeGreaterThan(0);
+    expect(JEWEL_VISUALIZATION.innerCoreScale).toBeLessThan(1);
   });
 });
 
