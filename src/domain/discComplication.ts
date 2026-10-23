@@ -13,7 +13,7 @@ import { SEASON_LABELS, SEASON_SHORT_LABELS, SEASON_SLOT_COUNT, type SeasonCompl
 import { YEAR_DIGIT_LABELS, YEAR_DIGIT_SLOT_COUNT, type YearDigitComplicationId } from "./yearDigitComplication";
 import { MONTHS_PER_YEAR, MONTH_ABBREVIATIONS, MONTH_NAMES } from "@/kinematics/monthComplication";
 import { moonPhaseFraction } from "@/kinematics/moonPhase";
-import { starPosition } from "@/kinematics/dateComplication";
+import { WEEKDAY_ABBREVIATIONS, WEEKDAY_NAMES, starPosition } from "@/kinematics/dateComplication";
 
 /**
  * Where to read a disc complication's own plan position from. Every
@@ -63,7 +63,8 @@ export function findDiscComplication(movement: Movement, id: EntityId): DiscComp
       discRadius: (date.starTipDiameter / 2) as Length,
       zLo: (date.starZCentre - date.starThickness / 2) as Length, zHi: (date.starZCentre + date.starThickness / 2) as Length,
       positionLabels: Number.isInteger(date.starToothCount) && date.starToothCount > 0
-        ? Array.from({ length: date.starToothCount }, (_, i) => String(i + 1))
+        ? Array.from({ length: date.starToothCount }, (_, i) =>
+            date.display === "DAY_OF_WEEK" ? (WEEKDAY_ABBREVIATIONS[i] ?? String(i + 1)) : String(i + 1))
         : null,
     };
   }
@@ -136,6 +137,8 @@ export function discComplicationLabel(
   if (date !== undefined) {
     if (!(Number.isInteger(date.starToothCount) && date.starToothCount > 0)) return null;
     const position = starPosition(angles.shaftAngle[date.starShaftId] ?? radians(0), date.starToothCount);
+    // A day-of-week star reads the full name (ASM-0081); the dial label itself is the 3-letter form.
+    if (date.display === "DAY_OF_WEEK") return WEEKDAY_NAMES[position] ?? String(position + 1);
     return String(position + 1);
   }
   const month = movement.monthComplications[id as MonthComplicationId];

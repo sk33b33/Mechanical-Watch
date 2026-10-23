@@ -1,4 +1,5 @@
 import { isValidToothCount } from "@/math/gearMath";
+import { DAYS_PER_WEEK } from "@/kinematics/dateComplication";
 import { periodSeconds } from "@/kinematics/timeDisplay";
 import type { ValidationIssue } from "../validationIssue";
 import { issue, type Rule } from "./context";
@@ -9,8 +10,9 @@ const DAY_PERIOD_TOLERANCE = 0.1;
 
 /**
  * DATE-001 (dimensions and references), DATE-002 (the star arbor must
- * not also be a continuous gear-train member) and DATE-003 (the drive
- * arbor's implied jump period, reported against one day, ASM-0048).
+ * not also be a continuous gear-train member), DATE-003 (the drive
+ * arbor's implied jump period, reported against one day, ASM-0048) and
+ * DATE-004 (a day-of-week star needs exactly seven teeth, ASM-0081).
  */
 export const dateComplicationRules: Rule = ({ movement, train }) => {
   const issues: ValidationIssue[] = [];
@@ -25,6 +27,13 @@ export const dateComplicationRules: Rule = ({ movement, train }) => {
     if (date.driveShaftId === date.starShaftId && date.driveShaftId in movement.shafts) problems.push("its drive and star arbors must be different");
     for (const problem of problems) {
       issues.push(issue("DATE-001", problem, "error", "L1_GEOMETRIC", [date.id], `${date.name}: ${problem}.`, ["ASM-0048"]));
+    }
+
+    if (date.display === "DAY_OF_WEEK" && isValidToothCount(date.starToothCount) && date.starToothCount !== DAYS_PER_WEEK) {
+      issues.push(
+        issue("DATE-004", "weekday-tooth-count", "error", "L1_GEOMETRIC", [date.id],
+          `${date.name}: a day-of-week star must have ${String(DAYS_PER_WEEK)} teeth (one per weekday), not ${String(date.starToothCount)}.`, ["ASM-0081", "SRC-0048", "SRC-0049"]),
+      );
     }
 
     if (date.starShaftId in movement.shafts && train.shaftAngularVelocity.has(date.starShaftId)) {

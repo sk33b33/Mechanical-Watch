@@ -6,6 +6,14 @@ import type { ShaftId } from "./shaft";
 export type DateComplicationId = EntityId<"dateComplication">;
 
 /**
+ * What a date complication's star displays (ASM-0081): the day of the month (the usual 31
+ * positions, labelled 1..N) or the day of the week (seven positions, MON..SUN — SRC-0048's
+ * seven-armed days star). Only the labels, the weekday reading and the validation (DATE-004)
+ * differ: the star-and-jump kinematics are the same, as the note below already says.
+ */
+export type DateDisplay = "DAY_OF_MONTH" | "DAY_OF_WEEK";
+
+/**
  * A simple instantaneous date mechanism (ASM-0048, Phase 8.2): a star
  * wheel that sits still except for one discrete jump per revolution of a
  * continuously-driven arbor — the genuinely new kinematic concept Phase
@@ -55,6 +63,7 @@ export interface DateComplication {
   starTipDiameter: Length;
   starThickness: Length;
   starZCentre: Length;
+  display: DateDisplay;
 }
 
 export interface CreateDateComplicationParams {
@@ -65,10 +74,12 @@ export interface CreateDateComplicationParams {
   starTipDiameter: Length;
   starThickness: Length;
   starZCentre: Length;
+  /** Defaults to the day of the month. */
+  display?: DateDisplay;
 }
 
 export function createDateComplication(params: CreateDateComplicationParams): DateComplication {
-  return { ...params, id: createId("dateComplication"), type: "DateComplication" };
+  return { display: "DAY_OF_MONTH", ...params, id: createId("dateComplication"), type: "DateComplication" };
 }
 
 /** Arbors advanced only by a jump mechanism, never by continuous gear-train propagation (KIN-001 exemption, same pattern as `oscillatingShaftIds`). */

@@ -104,6 +104,7 @@ MOON-002 The moonphase disc's implied lunation period, derived from its own arbo
 DATE-001 A date complication's star dimensions must be positive/finite, its tooth count a positive integer, and its drive and star arbors must exist and be distinct (ASM-0048).
 DATE-002 The date star's own arbor must not also be reached by the continuous gear train: a jump mechanism and continuous meshing on the same arbor conflict (ASM-0048).
 DATE-003 The date mechanism's implied jump period, derived from the drive arbor's own solved angular velocity, is reported against one day; not driven reports as such (ASM-0048).
+DATE-004 A date complication shown as the day of the week must have exactly seven star teeth, one per weekday (ASM-0081, SRC-0048, SRC-0049).
 
 MONTH-001 A month complication's star dimensions must be positive/finite, its star arbor must exist and must not also be reached by the continuous gear train, it must reference a date complication that exists and is distinct from the month's own star arbor, and no two month complications may reference the same date complication (ASM-0049).
 MONTH-002 The month complication's correction schedule (which months get an extra date-star step, and by how many) is reported, with February's fixed 28-day length and the lack of leap-year awareness flagged (ASM-0049).

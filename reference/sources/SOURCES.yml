@@ -1685,3 +1685,55 @@
     reproduction of it. Found while gating Phase 8.4 (leap year / four-
     year cycle) per the roadmap's own research requirement before
     implementation.
+
+- id: SRC-0048
+  title: "Calendar mechanism"
+  author: Peter Schmidt (inventor); Glashuetter Uhrenbetrieb GmbH (original assignee)
+  year: 2014
+  type: patent
+  url: https://patents.google.com/patent/US8842500B2/en
+  topics: [calendar, day-of-week, star-wheel, jumper, phase-8]
+  claims_supported:
+    - "a days of the week star 7 with 7 arms" — the day-of-week wheel is a seven-armed star (seven discrete positions)
+    - "causes it to perform a seventh of a turn each day" — a pin on the 24-hour wheel drives the star one step (1/7 turn) per day
+    - "The 24-hour wheel 2 performs a complete rotation each day" and, in the preferred embodiment, the hour wheel (35 teeth) meshes a 24-hour wheel (70 teeth) — the continuous 2:1 reduction from the hour wheel, as for the date (SRC-0042)
+    - an "elastic indexing element 8" that "positions itself between two teeth of the days of the week star 7" — a spring-loaded jumper-type positioner holds the star between steps
+  claims_to_check:
+    - the exact pawl free angle (about 20-30 degrees) and the 10-11 o'clock meshing sector are specifics of this one design and are not modeled
+    - the manual one-way correction button (advances the star, up to six presses) is not modeled
+  retrieved: true
+  accessed: "2026-10-23"
+  notes: >
+    Tier 1-2 (a granted US patent; read through Google Patents' HTML
+    rendering — the first 100,000 of about 148,000 characters, which
+    covered the days-of-the-week mechanism; the remainder was not read,
+    and the USPTO PDF was not cross-checked). Found while researching a
+    day-of-week display (Phase 8.15 follow-up 28). It confirms the same
+    structure as SRC-0042's date: a continuously-turning 24-hour wheel
+    steps a discrete star once per revolution, held by an indexing
+    spring, so the day-of-week star reuses this project's existing
+    star-and-jump kinematics (ASM-0048) with seven positions instead of
+    thirty-one.
+
+- id: SRC-0049
+  title: "Days of the week (display) — Horopedia"
+  author: Horopedia (horopedia.org)
+  year: null
+  type: specialist_reference
+  url: https://horopedia.org/days/
+  topics: [calendar, day-of-week, phase-8]
+  claims_supported:
+    - "The day driving wheel must make one complete revolution every 24 hours." (the hour wheel turns once per 12 hours, so the drive is a 2:1 reduction)
+    - the weekly cycle is seven steps, one per weekday, then back to the first: a disc has seven positions (not the date's thirty-one) and a star wheel has seven branches
+    - the change is either semi-instantaneous (the most common: a slow drift then a snap as the jumper releases, with two days briefly partly visible) or instantaneous (energy stored in a spring and released at midnight, costlier, mostly higher-end)
+    - day names are usually three-letter abbreviations (for example LUN/MAR or MON/TUE); bilingual watches carry two inscription tracks on one disc
+  claims_to_check:
+    - the pages are thin and template-like; the numeric and structural claims here agree with the patent in SRC-0048 and SRC-0042, but are not independently checked
+  retrieved: true
+  accessed: "2026-10-23"
+  notes: >
+    Tier 3 (an enthusiast/specialist reference, not peer reviewed), used
+    only to corroborate the primary patents (SRC-0048, SRC-0042) on the
+    drive rate, the seven positions and the usual three-letter day names;
+    it supplies no number this project depends on that the patents do not.
+

@@ -144,6 +144,7 @@ export function newDateComplication(movement: Movement): DateComplication {
     starTipDiameter: EMPTY,
     starThickness: EMPTY,
     starZCentre: EMPTY,
+    display: "DAY_OF_MONTH",
   });
 }
 

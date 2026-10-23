@@ -6,6 +6,7 @@ import { createGear } from "@/domain/gear";
 import { createGearMesh } from "@/domain/gearMesh";
 import { removeEntity } from "@/domain/editing";
 import { createTeachingMovement } from "@/app/teachingMovement";
+import { discComplicationLabel, findDiscComplication } from "@/domain/discComplication";
 import { validateMovement } from "./validateMovement";
 
 const teaching = createTeachingMovement();
@@ -61,5 +62,22 @@ describe("date complication rules", () => {
   it("DATE-003: an undriven date complication reports no implied period", () => {
     const info = validateMovement({ ...teaching, drive: null }).find((i) => i.rule === "DATE-003");
     expect(info?.message).toBe(`${date.name}: not driven, so no jump period is implied.`);
+  });
+
+  it("DATE-004: a day-of-week star needs exactly seven teeth, a day-of-month star is not constrained", () => {
+    const weekday = Object.values(teaching.dateComplications).find((d) => d.display === "DAY_OF_WEEK");
+    if (weekday === undefined) throw new Error("teaching movement has no day-of-week star");
+    expect(found(teaching, "DATE-004")).toEqual([]);
+    const six = updateDateComplication(teaching, weekday.id, { starToothCount: 6 });
+    expect(found(six, "DATE-004")).toEqual([`DATE-004:error:weekday-tooth-count`]);
+    const asMonthDay = updateDateComplication(six, weekday.id, { display: "DAY_OF_MONTH" });
+    expect(found(asMonthDay, "DATE-004")).toEqual([]);
+  });
+
+  it("the day-of-week star reads full weekday names and labels its positions MON..SUN (ASM-0081)", () => {
+    const weekday = Object.values(teaching.dateComplications).find((d) => d.display === "DAY_OF_WEEK");
+    if (weekday === undefined) throw new Error("teaching movement has no day-of-week star");
+    expect(findDiscComplication(teaching, weekday.id)?.positionLabels).toEqual(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]);
+    expect(discComplicationLabel(teaching, { shaftAngle: {}, yearDigitAngle: {} }, weekday.id)).toBe("Monday");
   });
 });

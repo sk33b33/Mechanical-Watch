@@ -311,3 +311,23 @@ describe("schema migration v32 → v33 (ASM-0080, Gear.colour)", () => {
   });
 });
 
+
+describe("schema migration v33 → v34 (ASM-0081, DateComplication.display)", () => {
+  it("backfills display: DAY_OF_MONTH on every date complication of a v33 file", () => {
+    const doc = rawDoc(createTeachingMovement());
+    const movement = doc.movement as Record<string, Record<string, Record<string, unknown>>>;
+    const dates = movement.dateComplications ?? {};
+    expect(Object.keys(dates).length).toBeGreaterThan(0);
+    for (const d of Object.values(dates)) Reflect.deleteProperty(d, "display");
+    const loaded = decodeDesign(JSON.stringify({ ...doc, schemaVersion: 33 }));
+    for (const d of Object.values(loaded.dateComplications)) expect(d.display).toBe("DAY_OF_MONTH");
+  });
+
+  it("round-trips the teaching movement's day-of-week star", () => {
+    const teaching = createTeachingMovement();
+    const loaded = decodeDesign(encodeDesign(teaching));
+    const displays = (m: Movement): Record<string, string> => Object.fromEntries(Object.values(m.dateComplications).map((d) => [d.name, d.display]));
+    expect(displays(loaded)).toEqual(displays(teaching));
+    expect(displays(loaded)["Day of week"]).toBe("DAY_OF_WEEK");
+  });
+});

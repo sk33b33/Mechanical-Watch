@@ -489,6 +489,12 @@ export const ASSUMPTIONS = {
     scope: "Gear.colour display colour (visual/L0 display only)",
     status: "Active",
   },
+  "ASM-0081": {
+    summary:
+      "Day-of-week indicator (Phase 8.15 follow-up 28): a DateComplication gains a presentation/labelling field `display`, DAY_OF_MONTH (the existing 1-31 date, the default) or DAY_OF_WEEK; persistence schema v33 to v34 backfills DAY_OF_MONTH on every existing date complication. A DAY_OF_WEEK star uses exactly the existing date jump kinematics (ASM-0048) with no month attached: one step of 2 pi / 7 per revolution of its 24-hour drive arbor, never backward. SRC-0048 (US8842500B2, a granted patent) describes a 7-arm days star advanced 1/7 turn per day by a pin on a once-a-day wheel with an elastic indexing element; SRC-0049 (horopedia.org) lists the same 7 positions and the distinction between semi-instantaneous and instantaneous jumps. Position 0 is Monday (WEEKDAY_NAMES, src/kinematics/dateComplication.ts); the dial labels use the 3-letter upper-case form (MON..SUN) because full names do not fit round a star this small, while the inspector and window reading give the full name. Not modeled: the pin/pawl-and-star contact geometry, the elastic indexing element's energy storage, the manual correction pusher, and any link between the weekday and the calendar date (the two stars are independent; AppStore.setToBrowserTime sets the weekday from the browser clock via withCalendarDate, ASM-0070, as a declared one-off set-by-hand action). The star colour is a distinct blue (presentation only, ASM-0004). DATE-004 requires seven teeth. Seven is a structural fact about the week, not a per-movement parameter.",
+    scope: "DateComplication.display, weekday star labels, withCalendarDate weekday (L2 kinematic; presentation of labels)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { degrees, radians } from "@/units/angle";
 import { radiansPerSecond } from "@/units/angularVelocity";
-import { crossesRevolution, dateJumpStepAngle, starPosition } from "./dateComplication";
+import { DAYS_PER_WEEK, WEEKDAY_ABBREVIATIONS, WEEKDAY_NAMES, crossesRevolution, dateJumpStepAngle, starPosition, weekdayPosition } from "./dateComplication";
 
 describe("crossesRevolution (ASM-0048)", () => {
   it("fires when a forward step carries the angle past a full turn", () => {
@@ -79,5 +79,25 @@ describe("starPosition (ASM-0048)", () => {
   it("rounds small floating-point drift to the nearest step rather than reading one short", () => {
     const almostOneStep = dateJumpStepAngle(31) - 1e-9;
     expect(starPosition(radians(almostOneStep), 31)).toBe(1);
+  });
+});
+
+describe("weekdayPosition (ASM-0081)", () => {
+  it("maps Date.getDay() (0 = Sunday) to a Monday-first position", () => {
+    expect([1, 2, 3, 4, 5, 6, 0].map(weekdayPosition)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  it("is periodic and never negative", () => {
+    expect(weekdayPosition(7)).toBe(weekdayPosition(0));
+    expect(weekdayPosition(-1)).toBe(5);
+  });
+
+  it("names seven weekdays with 3-letter upper-case abbreviations", () => {
+    expect(WEEKDAY_NAMES).toHaveLength(DAYS_PER_WEEK);
+    expect(WEEKDAY_ABBREVIATIONS).toEqual(["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]);
+  });
+
+  it("a seven-tooth star steps by 2π/7 per day (ASM-0048 jump, SRC-0048)", () => {
+    expect(dateJumpStepAngle(DAYS_PER_WEEK)).toBeCloseTo((2 * Math.PI) / 7, 12);
   });
 });

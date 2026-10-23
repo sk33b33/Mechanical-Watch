@@ -5,7 +5,7 @@ import type { ShaftId } from "@/domain/shaft";
 import { LEAP_YEAR_SLOT_COUNT } from "@/domain/leapYearComplication";
 import { SEASON_SLOT_COUNT } from "@/domain/seasonComplication";
 import { YEAR_DIGIT_PLACES } from "@/domain/yearDigitComplication";
-import { dateJumpStepAngle } from "@/kinematics/dateComplication";
+import { DAYS_PER_WEEK, dateJumpStepAngle, weekdayPosition } from "@/kinematics/dateComplication";
 import { monthJumpStepAngle } from "@/kinematics/monthComplication";
 import { genevaWheelAdvanceAngle } from "@/kinematics/genevaDrive";
 import { seasonJumpStepAngle } from "@/kinematics/seasonComplication";
@@ -21,10 +21,12 @@ export interface CalendarDate {
   readonly year: number;
   readonly monthIndex: number;
   readonly day: number;
+  /** `Date.getDay()` convention: 0 = Sunday … 6 = Saturday. */
+  readonly weekday: number;
 }
 
 export function calendarDateOf(date: Date): CalendarDate {
-  return { year: date.getFullYear(), monthIndex: date.getMonth(), day: date.getDate() };
+  return { year: date.getFullYear(), monthIndex: date.getMonth(), day: date.getDate(), weekday: date.getDay() };
 }
 
 /**
@@ -74,6 +76,12 @@ export function withCalendarDate(state: SimulationState, movement: Movement, dat
 
   for (const d of Object.values(movement.dateComplications)) {
     if (!(Number.isInteger(d.starToothCount) && d.starToothCount > 0)) continue;
+    if (d.display === "DAY_OF_WEEK") {
+      // ASM-0081: position 0 = Monday; a star with fewer than 7 teeth cannot show the weekday.
+      if (d.starToothCount !== DAYS_PER_WEEK) continue;
+      shaftAngle[d.starShaftId] = at(weekdayPosition(date.weekday), dateJumpStepAngle(d.starToothCount));
+      continue;
+    }
     // A real day beyond a star with fewer teeth than days is not representable: leave it unset.
     if (date.day - 1 >= d.starToothCount) continue;
     shaftAngle[d.starShaftId] = at(date.day - 1, dateJumpStepAngle(d.starToothCount));

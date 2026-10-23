@@ -75,6 +75,7 @@ export const RULE_IDS = [
   "DATE-001",
   "DATE-002",
   "DATE-003",
+  "DATE-004",
   "MONTH-001",
   "MONTH-002",
   "YEAR-001",

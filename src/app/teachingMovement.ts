@@ -113,6 +113,9 @@ const mm = millimetres;
  */
 /** The fewest teeth for a wheel in the teaching movement to be drawn as an open five-spoke wheel (follow-up 22, ASM-0077). */
 const SPOKED_WHEEL_MIN_TEETH = 30;
+/** Illustrative plan position of the day-of-week star (ASM-0009, ASM-0081); tuned live against the hands' sweep and the seconds sub-dial. */
+const WEEKDAY_STAR_X_MM = 6;
+const WEEKDAY_STAR_Y_MM = 3.5;
 
 export function createTeachingMovement(): Movement {
   const trainModule = mm(0.12);
@@ -212,6 +215,11 @@ export function createTeachingMovement(): Movement {
   // line from the 24-hour arbor, comfortably inside the mainplate and clear of the dial back.
   const dateStarArbor = shaft("Date star", null, { kind: "STUD", frameId: mainplate.id });
 
+  // Day-of-week star (follow-up 28, ASM-0081): a second jump star off the same 24-hour arbor
+  // (SRC-0048: the days star is driven by a pin on a wheel turning once a day), seven teeth, one
+  // per weekday. Like the date star it is a separate, declared (FIXED-position) arbor, not meshed.
+  const weekdayStarArbor = shaft("Day star", null, { kind: "STUD", frameId: mainplate.id });
+
   // Month star (Phase 8.3, ASM-0049): driven entirely by the date complication's own jumps, so
   // unlike every other arbor above it has no gear, mesh or drive train of its own — just a
   // separate, declared (FIXED-position) arbor for the MonthComplication entity below to turn.
@@ -274,7 +282,7 @@ export function createTeachingMovement(): Movement {
   m = addScrew(m, createScrew({ name: "Balance cock screw", frameId: balanceCock.id, position: vec2(mm(7), mm(6.5)), diameter: mm(0.6) }));
   for (const s of [
     barrel, centre, third, fourth, escape, cannon, minuteWheel, hourWheel, barrelArbor, crownWheelArbor, settingWheelArbor,
-    moonReductionArbor, moonDiscArbor, twentyFourHourArbor, dateStarArbor, monthStarArbor, leapYearWheelArbor, seasonWheelArbor,
+    moonReductionArbor, moonDiscArbor, twentyFourHourArbor, dateStarArbor, weekdayStarArbor, monthStarArbor, leapYearWheelArbor, seasonWheelArbor,
   ]) {
     m = addShaft(m, s);
   }
@@ -340,6 +348,10 @@ export function createTeachingMovement(): Movement {
   // Declared, not mesh-derived (the star is not meshed with anything, ASM-0048) — a plausible
   // clearance further along the same 9 o'clock line, raised 0.8mm so its whole-wheel window clears the month window's own north pointer.
   m = updateShaft(m, dateStarArbor.id, { placement: fixedAt(mm(-6), mm(0.8)) });
+  // Declared, not mesh-derived (the day star is not meshed with anything either, ASM-0081) — on
+  // the opposite (3 o'clock) side of the dial from the date/month/season/leap-year cluster, clear
+  // of the hands' pivot and of the seconds sub-dial.
+  m = updateShaft(m, weekdayStarArbor.id, { placement: fixedAt(mm(WEEKDAY_STAR_X_MM), mm(WEEKDAY_STAR_Y_MM)) });
   // Declared, not mesh-derived (the month star is not meshed with anything either, ASM-0049) —
   // offset from the date star by more than both their tip radii combined (ASSY-002 clearance).
   m = updateShaft(m, monthStarArbor.id, { placement: fixedAt(mm(-6), mm(-5)) });
@@ -412,6 +424,19 @@ export function createTeachingMovement(): Movement {
     starZCentre: mm(-1.2),
   });
   m = addDateComplication(m, dateComplication);
+  const weekdayComplication = createDateComplication({
+    name: "Day of week",
+    driveShaftId: twentyFourHourArbor.id,
+    starShaftId: weekdayStarArbor.id,
+    // One tooth per weekday (SRC-0048: "a days star with 7 arms"); DATE-004 enforces it.
+    starToothCount: 7,
+    // Illustrative size (ASM-0009): large enough that 3-letter names fit round the edge.
+    starTipDiameter: mm(4.4),
+    starThickness: mm(0.15),
+    starZCentre: mm(-1.2),
+    display: "DAY_OF_WEEK",
+  });
+  m = addDateComplication(m, weekdayComplication);
   const monthComplication = createMonthComplication({
     name: "Month",
     dateComplicationId: dateComplication.id,
@@ -593,6 +618,21 @@ export function createTeachingMovement(): Movement {
     outline: { kind: "CIRCLE", radius: (dateComplication.starTipDiameter / 2) * 1.05 as Length },
     pointer: "NORTH",
     // A thin dark printed frame around every window (follow-up 21, ASM-0074/0076).
+    bezel: true,
+  }));
+  m = addDialWindow(m, createDialWindow({
+    name: "Day of week window",
+    dialId: dial.id,
+    complicationId: weekdayComplication.id,
+    // Whole-wheel window like the date window: centred on the day star's axis, radius 5% over its
+    // tip radius, north index pointer naming the weekday read there (ASM-0069, ASM-0081).
+    centre: (() => {
+      const at = solved.shaftPositions.get(weekdayStarArbor.id);
+      if (at === undefined) throw new Error("teaching movement: no solved position for the day star arbor");
+      return { x: metres(at.x), y: metres(at.y) };
+    })(),
+    outline: { kind: "CIRCLE", radius: (weekdayComplication.starTipDiameter / 2) * 1.05 as Length },
+    pointer: "NORTH",
     bezel: true,
   }));
   m = addDialWindow(m, createDialWindow({

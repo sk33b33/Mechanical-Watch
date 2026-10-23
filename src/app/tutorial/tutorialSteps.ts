@@ -187,6 +187,7 @@ function buildTeachingMovementSteps(): TutorialStep[] {
   const twentyFourHourArbor = byName(ref.shafts, "24-hour arbor");
   const twentyFourHourWheel = byName(ref.gears, "24-hour wheel");
   const dateStarArbor = byName(ref.shafts, "Date star");
+  const weekdayStarArbor = byName(ref.shafts, "Day star");
   const monthStarArbor = byName(ref.shafts, "Month star");
   const leapYearWheelArbor = byName(ref.shafts, "Leap-year wheel");
   const seasonWheelArbor = byName(ref.shafts, "Season wheel");
@@ -196,7 +197,8 @@ function buildTeachingMovementSteps(): TutorialStep[] {
   const dial = only(ref.dials);
   const escapement = only(ref.escapements);
   const moonPhase = only(ref.moonPhases);
-  const dateComplication = only(ref.dateComplications);
+  const dateComplication = byName(ref.dateComplications, "Date");
+  const weekdayComplication = byName(ref.dateComplications, "Day of week");
   const monthComplication = only(ref.monthComplications);
   const leapYearComplication = only(ref.leapYearComplications);
   const seasonComplication = only(ref.seasonComplications);
@@ -206,6 +208,7 @@ function buildTeachingMovementSteps(): TutorialStep[] {
   const yearOnesComplication = byName(ref.yearDigitComplications, "Year ones");
   const moonPhaseWindow = byName(ref.dialWindows, "Moon phase window");
   const dateWindow = byName(ref.dialWindows, "Date window");
+  const weekdayWindow = byName(ref.dialWindows, "Day of week window");
   const monthWindow = byName(ref.dialWindows, "Month window");
   const leapYearWindow = byName(ref.dialWindows, "Leap-year window");
   const seasonWindow = byName(ref.dialWindows, "Season window");
@@ -403,6 +406,26 @@ function buildTeachingMovementSteps(): TutorialStep[] {
       targetSelector: '[data-tutorial="add-window"]',
       isComplete: (m) => m.dialWindows[dateWindow.id] !== undefined,
       createOverride: (m) => ({ movement: addDialWindow(m, dateWindow), id: dateWindow.id }),
+    },
+
+    arborStep("add-weekday-star-arbor", "Add the day-of-week star's own arbor", "Click “+ Arbor” — declared, not derived, like the date star: it is not meshed with anything (ASM-0081).", weekdayStarArbor, solvedFixed(weekdayStarArbor)),
+    {
+      id: "add-weekday",
+      title: "Add the day-of-week complication",
+      instructions:
+        "Click “+ Date” again and set its display to day of the week — seven teeth, one per weekday, driven by the same 24-hour arbor and advancing one step a day (SRC-0048, ASM-0081). Here the real design supplies it.",
+      targetSelector: '[data-tutorial="add-date"]',
+      isComplete: (m) => m.dateComplications[weekdayComplication.id] !== undefined,
+      createOverride: (m) => ({ movement: addDateComplication(m, weekdayComplication), id: weekdayComplication.id }),
+    },
+    {
+      id: "add-weekday-window",
+      title: "Cut a window for the weekday",
+      instructions:
+        "Click “+ Window”: a whole-wheel window with a north pointer naming the weekday at the top of the star (ASM-0069, ASM-0081).",
+      targetSelector: '[data-tutorial="add-window"]',
+      isComplete: (m) => m.dialWindows[weekdayWindow.id] !== undefined,
+      createOverride: (m) => ({ movement: addDialWindow(m, weekdayWindow), id: weekdayWindow.id }),
     },
 
     arborStep("add-month-star-arbor", "Add the month star's own arbor", "Click “+ Arbor” — like the date star, its position is declared, not derived: it is not meshed with anything either (ASM-0049).", monthStarArbor, solvedFixed(monthStarArbor)),

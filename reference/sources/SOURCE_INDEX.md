@@ -475,6 +475,17 @@ where "the kinematic chain between the date disc and the month star wheel
 is broken," one where it engages, only at the moment of month change.
 Independent manual correction of date vs. month.
 
+### Schmidt (Glashütte) — "Calendar mechanism", US8842500B2, 2014 (SRC-0048, read in part)
+A seven-armed days-of-the-week star turned one seventh of a turn per day by
+a pin and pawl on the 24-hour wheel (one revolution a day, a 2:1 reduction
+from the hour wheel), held between steps by an elastic indexing element.
+Confirms the day-of-week display is the date's star-and-jump kinematics with
+seven positions (ASM-0048, ASM-0081).
+
+### Horopedia — "Days of the week" (SRC-0049, read; lower tier, corroboration only)
+Seven positions, a day wheel that turns once per 24 hours, semi-instantaneous
+or instantaneous change, three-letter day abbreviations.
+
 ### Baumgartner & Meylan (Omega SA) — "Perpetual Calendar Mechanism Comprising a Four Year Cycle Indicator", US4541725A, 1985 (SRC-0044, read)
 Leap-year handling built on a "Maltese cross" (Geneva-drive-family
 intermittent motion), making one quarter-turn per year, four years per

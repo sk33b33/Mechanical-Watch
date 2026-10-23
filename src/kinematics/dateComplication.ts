@@ -77,3 +77,21 @@ export function starPosition(starAngle: Angle, starToothCount: number): number {
   const turns = normalizeAngle(starAngle) / (2 * Math.PI);
   return Math.round(turns * starToothCount) % starToothCount;
 }
+
+/**
+ * The seven positions of a day-of-week display (ASM-0081, SRC-0048/0049): one step of the star per
+ * day, seven days to the week. Position 0 is Monday (the ISO 8601 week), so the display reads
+ * MON, TUE, ... SUN; the names are the usual three-letter abbreviations a dial prints (SRC-0049).
+ */
+export const DAYS_PER_WEEK = 7;
+export const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
+export const WEEKDAY_ABBREVIATIONS = WEEKDAY_NAMES.map((name) => name.slice(0, 3).toUpperCase());
+
+/**
+ * The day-of-week star position (0 = Monday) for a JavaScript `Date.getDay()` value (0 = Sunday,
+ * 1 = Monday ... 6 = Saturday). Pure arithmetic, no `Date`.
+ */
+export function weekdayPosition(jsDay: number): number {
+  return (((jsDay + DAYS_PER_WEEK - 1) % DAYS_PER_WEEK) + DAYS_PER_WEEK) % DAYS_PER_WEEK;
+}
+

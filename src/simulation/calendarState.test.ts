@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createTeachingMovement } from "@/app/teachingMovement";
+import type { DateComplication } from "@/domain/dateComplication";
 import { createSimulationState } from "./simulationState";
 import { starPosition } from "@/kinematics/dateComplication";
 import { radians } from "@/units/angle";
@@ -24,22 +25,28 @@ describe("seasonWheelPosition (ASM-0070)", () => {
 
 describe("calendarDateOf", () => {
   it("reads year, 0-based month and day of month from a local Date", () => {
-    expect(calendarDateOf(new Date(2026, 9, 20, 15, 30))).toEqual({ year: 2026, monthIndex: 9, day: 20 });
+    expect(calendarDateOf(new Date(2026, 9, 20, 15, 30))).toEqual({ year: 2026, monthIndex: 9, day: 20, weekday: 2 });
   });
 });
 
 describe("withCalendarDate (ASM-0070)", () => {
   const movement = createTeachingMovement();
   const initial = createSimulationState(movement);
-  const set = withCalendarDate(initial, movement, { year: 2026, monthIndex: 9, day: 20 });
+  const set = withCalendarDate(initial, movement, { year: 2026, monthIndex: 9, day: 20, weekday: 2 });
   const only = <T>(record: Record<string, T>): T => {
     const values = Object.values(record);
     if (values.length !== 1) throw new Error("expected exactly one in the teaching movement");
     return values[0] as T;
   };
 
+  const dateOf = (): DateComplication => {
+    const found = Object.values(movement.dateComplications).find((d) => d.display === "DAY_OF_MONTH");
+    if (found === undefined) throw new Error("teaching movement has no day-of-month date complication");
+    return found;
+  };
+
   it("sets the date star to the 20th (position 19) and the month star to October (position 9)", () => {
-    const date = only(movement.dateComplications);
+    const date = dateOf();
     const month = only(movement.monthComplications);
     expect(starPosition(set.shaftAngle[date.starShaftId] ?? radians(0), date.starToothCount)).toBe(19);
     expect(starPosition(set.shaftAngle[month.starShaftId] ?? radians(0), 12)).toBe(9);
@@ -62,19 +69,35 @@ describe("withCalendarDate (ASM-0070)", () => {
   it("leaves every other shaft and the clock untouched, and cancels an in-flight Geneva stroke", () => {
     const leap = only(movement.leapYearComplications);
     const mid = { ...initial, genevaStrokes: { [leap.wheelShaftId]: { startAngle: radians(0), elapsedSeconds: 0.1 } } };
-    const after = withCalendarDate(mid, movement, { year: 2026, monthIndex: 9, day: 20 });
+    const after = withCalendarDate(mid, movement, { year: 2026, monthIndex: 9, day: 20, weekday: 2 });
     expect(after.genevaStrokes[leap.wheelShaftId]).toBeUndefined();
     expect(after.time).toBe(initial.time);
-    const calendarShafts = new Set([only(movement.dateComplications).starShaftId, only(movement.monthComplications).starShaftId, leap.wheelShaftId, only(movement.seasonComplications).wheelShaftId]);
+    const calendarShafts = new Set([...Object.values(movement.dateComplications).map((d) => d.starShaftId), only(movement.monthComplications).starShaftId, leap.wheelShaftId, only(movement.seasonComplications).wheelShaftId]);
     for (const [id, angle] of Object.entries(initial.shaftAngle)) {
       if (!calendarShafts.has(id as never)) expect(after.shaftAngle[id as keyof typeof after.shaftAngle]).toBe(angle);
     }
   });
 
+  it("sets the day-of-week star to the weekday, Monday first (ASM-0081): 20 Oct 2026 is a Tuesday = position 1", () => {
+    const weekday = Object.values(movement.dateComplications).find((d) => d.display === "DAY_OF_WEEK");
+    if (weekday === undefined) throw new Error("teaching movement has no day-of-week star");
+    expect(starPosition(set.shaftAngle[weekday.starShaftId] ?? radians(0), weekday.starToothCount)).toBe(1);
+    const sunday = withCalendarDate(initial, movement, { year: 2026, monthIndex: 9, day: 25, weekday: 0 });
+    expect(starPosition(sunday.shaftAngle[weekday.starShaftId] ?? radians(0), weekday.starToothCount)).toBe(6);
+  });
+
+  it("skips a day-of-week star that does not have seven teeth", () => {
+    const weekday = Object.values(movement.dateComplications).find((d) => d.display === "DAY_OF_WEEK");
+    if (weekday === undefined) throw new Error("teaching movement has no day-of-week star");
+    const odd = { ...movement, dateComplications: { [weekday.id]: { ...weekday, starToothCount: 6 } } };
+    const after = withCalendarDate(initial, odd, { year: 2026, monthIndex: 9, day: 20, weekday: 2 });
+    expect(after.shaftAngle[weekday.starShaftId]).toBe(initial.shaftAngle[weekday.starShaftId]);
+  });
+
   it("skips a day the date star has no tooth for, rather than wrapping it onto another day", () => {
-    const date = only(movement.dateComplications);
+    const date = dateOf();
     const small = { ...movement, dateComplications: { [date.id]: { ...date, starToothCount: 28 } } };
-    const after = withCalendarDate(initial, small, { year: 2026, monthIndex: 0, day: 31 });
+    const after = withCalendarDate(initial, small, { year: 2026, monthIndex: 0, day: 31, weekday: 6 });
     expect(after.shaftAngle[date.starShaftId]).toBe(initial.shaftAngle[date.starShaftId]);
   });
 });

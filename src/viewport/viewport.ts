@@ -102,6 +102,8 @@ const COLORS = {
   dialMarker: 0x23282e,
   moonPhase: 0xaab4c2,
   dateStar: 0x5a8fd8,
+  // A day-of-week star is a distinct, lighter sky blue (dark labels stay legible) so it reads apart from the date star (ASM-0081).
+  weekdayStar: 0x74c4ee,
   monthStar: 0x8aa0c2,
   leapYearWheel: 0x8ac2a0,
   seasonWheel: 0xc28ac2,
@@ -627,14 +629,15 @@ export class Viewport {
       // The star's own group turns only when `stepSimulation` jumps it (ASM-0048) — the same
       // applyKinematicRotation() loop that spins every other shaft group spins this one too, since
       // the jump writes straight into simulation.shaftAngle; no special-case rotation code needed.
+      const starColor = date.display === "DAY_OF_WEEK" ? COLORS.weekdayStar : COLORS.dateStar;
       const meshZ = this.displayZ(date.starZCentre);
       const dateLabels = findDiscComplication(movement, date.id)?.positionLabels ?? null;
       const mesh = new THREE.Mesh(
         createSpokedWheelGeometry(date.starTipDiameter / 2, date.starThickness),
-        discMaterials(COLORS.dateStar, { metalness: 0.1, roughness: 0.7 }, dateLabels, DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS, DIAL_WINDOW_VISUALIZATION.edgeLabelRadiusFraction),
+        discMaterials(starColor, { metalness: 0.1, roughness: 0.7 }, dateLabels, DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS, DIAL_WINDOW_VISUALIZATION.edgeLabelRadiusFraction),
       );
       mesh.position.z = meshZ;
-      this.addPickable(group, mesh, { kind: "dateStar", entityId: date.id, baseColor: COLORS.dateStar });
+      this.addPickable(group, mesh, { kind: "dateStar", entityId: date.id, baseColor: starColor });
       this.cappableSolids.push({
         positionX: group.position.x,
         positionY: group.position.y,
@@ -642,7 +645,7 @@ export class Viewport {
         zLo: meshZ - date.starThickness / 2,
         zHi: meshZ + date.starThickness / 2,
         footprint: { kind: "circle", radius: date.starTipDiameter / 2, centre: { x: 0, y: 0 } },
-        color: COLORS.dateStar,
+        color: starColor,
       });
 
       // The date's own visual linkage (ASM-0053): a cam fixed to the continuously-driven drive
@@ -657,7 +660,7 @@ export class Viewport {
         const centreDistance = Math.hypot(starCentre.x - driveCentre.x, starCentre.y - driveCentre.y);
         const cam = new THREE.Mesh(
           createZCylinder(v.camRadiusFraction * centreDistance, meshZ - date.starThickness / 4, meshZ + date.starThickness / 4, 24),
-          material(COLORS.dateStar, { metalness: 0.3, roughness: 0.6 }),
+          material(starColor, { metalness: 0.3, roughness: 0.6 }),
         );
         driveGroup.add(cam);
 
@@ -671,12 +674,12 @@ export class Viewport {
         };
         const pivotKnob = new THREE.Mesh(
           createZCylinder(v.pivotKnobRadiusMetres, meshZ - date.starThickness / 2, meshZ + date.starThickness / 2, 16),
-          material(COLORS.dateStar, { metalness: 0.5, roughness: 0.4 }),
+          material(starColor, { metalness: 0.5, roughness: 0.4 }),
         );
         pivotKnob.position.set(pivot.x, pivot.y, 0);
         this.content.add(pivotKnob);
 
-        const rod = new THREE.Mesh(createRodGeometry(v.rodWidthMetres, v.rodThicknessMetres), material(COLORS.dateStar, { metalness: 0.4, roughness: 0.5 }));
+        const rod = new THREE.Mesh(createRodGeometry(v.rodWidthMetres, v.rodThicknessMetres), material(starColor, { metalness: 0.4, roughness: 0.5 }));
         this.content.add(rod);
         this.dateJumperLinkages.set(date.id, { rod, pivot, starCentre, starShaftId: date.starShaftId, noseRadius: starTipRadius * v.noseRadiusFraction, z: meshZ });
       }

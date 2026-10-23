@@ -2,6 +2,34 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 28: day-of-week window
+
+Researched the real day-of-week mechanism first (SRC-0048, Glashütte patent US8842500B2: a seven-arm
+"days star" advanced 1/7 of a turn per day by a pin on a once-a-day wheel, held by an elastic indexing
+element; SRC-0049, horopedia.org: 7 positions, semi-instantaneous versus instantaneous jumps) and added
+a **Day of week** window to the dial. It sits at the 3 o'clock side of the cluster (plan position
+declared at 6, 3.5 mm), with the same equilateral north pointer and printed frame as the other windows.
+Behind it is a five-spoke open wheel in its own sky-blue (distinct from the date wheel's blue and the
+month wheel's grey-blue) with the weekday names printed in a circle close to its edge, the current day
+at north.
+
+- **Model:** a `DateComplication` gains `display` (`DAY_OF_MONTH` default, or `DAY_OF_WEEK`). A weekday
+  star is an ordinary date star with seven teeth and no month attached, so it reuses the ASM-0048 jump
+  kinematics: one 2π/7 step per revolution of the 24-hour arbor, never backward. ASM-0081; persistence
+  schema v33 → v34 backfills `DAY_OF_MONTH`; Inspector row "Display"; new rule **DATE-004** (a weekday
+  star needs exactly seven teeth).
+- **Names:** the dial prints the 3-letter forms (MON–SUN) because full names do not fit round a star
+  this small; the window's "Currently shows" and the star's "Current position" give the full name.
+  Position 0 is Monday.
+- **Browser clock:** "Set to browser time" now also sets the weekday (`CalendarDate.weekday`).
+- **Not modelled:** the pin/pawl contact geometry, the elastic indexing element, the correction pusher,
+  and any link between weekday and date (they are independent stars). The jump is instantaneous (ASM-0048).
+  Plan position and size are illustrative (ASM-0009); nothing here is validated against a real calibre.
+- The tutorial gained an arbor, a complication and a window step for the weekday; the keyless-works and
+  calendar tests were updated for the second date complication.
+- **To revert:** drop the "Day star" arbor, "Day of week" complication and "Day of week window" from the
+  teaching movement (and the matching tutorial steps).
+
 ## Phase 8.15 follow-up 27: Components, Inspector and Validation as flyouts
 
 At the user's request the three side panels are now **flyouts**: each is tucked away until the tab that

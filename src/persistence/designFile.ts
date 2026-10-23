@@ -46,7 +46,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 33;
+export const DESIGN_SCHEMA_VERSION = 34;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -479,6 +479,18 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
     );
     return { ...doc, schemaVersion: 33, movement: { ...movement, gears } };
   },
+  /**
+   * v33 → v34: a date complication gains `display` (ASM-0081): the day of the month or the day of
+   * the week. Every existing one was a day-of-month date, so it gets "DAY_OF_MONTH" and looks as before.
+   */
+  33: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.dateComplications)) return doc;
+    const dateComplications = Object.fromEntries(
+      Object.entries(movement.dateComplications).map(([id, d]) => [id, isRecord(d) ? { ...d, display: "DAY_OF_MONTH" } : d]),
+    );
+    return { ...doc, schemaVersion: 34, movement: { ...movement, dateComplications } };
+  },
 };
 
 export class DesignFileError extends Error {}
@@ -769,6 +781,7 @@ const dateComplication: Decoder<DateComplication> = (value, path) => {
     starTipDiameter: field(o, "starTipDiameter", length, path),
     starThickness: field(o, "starThickness", length, path),
     starZCentre: field(o, "starZCentre", length, path),
+    display: field(o, "display", oneOf(["DAY_OF_MONTH", "DAY_OF_WEEK"]), path),
   };
 };
 
