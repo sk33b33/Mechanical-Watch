@@ -46,7 +46,14 @@ export interface ChainEdge {
   label: string;
 }
 
+/**
+ * LEFT_RIGHT: one column per step from the mainspring, read across (the on-screen diagram).
+ * TOP_DOWN: the same steps as rows, read down, so the whole chain fits the width of a portrait page.
+ */
+export type ChainOrientation = "LEFT_RIGHT" | "TOP_DOWN";
+
 export interface ChainDiagram {
+  orientation: ChainOrientation;
   nodes: ChainNode[];
   edges: ChainEdge[];
   width: number;
@@ -63,6 +70,9 @@ export const CHAIN_LAYOUT = {
   nodePaddingBottom: 10,
   columnGap: 112,
   rowGap: 18,
+  /** TOP_DOWN: room between one level and the next for the connection labels, and between neighbours on a level. */
+  levelGap: 56,
+  siblingGap: 28,
   margin: 20,
 } as const;
 
@@ -78,7 +88,7 @@ export function chainNodeHeight(node: ChainNode): number {
   return nodeHeight(node);
 }
 
-export function buildChainDiagram(movement: Movement, train: GearTrainSolution): ChainDiagram {
+export function buildChainDiagram(movement: Movement, train: GearTrainSolution, orientation: ChainOrientation = "LEFT_RIGHT"): ChainDiagram {
   const nodes = new Map<string, ChainNode>();
   const edges: ChainEdge[] = [];
   const blank = { column: -1, row: 0, x: 0, y: 0 } as const;
@@ -245,15 +255,30 @@ export function buildChainDiagram(movement: Movement, train: GearTrainSolution):
   const L = CHAIN_LAYOUT;
   let width = 0;
   let height = 0;
-  for (const c of columnIndexes) {
-    let y = L.margin;
-    for (const n of byColumn.get(c) ?? []) {
-      n.x = L.margin + c * (L.nodeWidth + L.columnGap);
-      n.y = y;
-      y += nodeHeight(n) + L.rowGap;
-      width = Math.max(width, n.x + L.nodeWidth + L.margin);
+  if (orientation === "LEFT_RIGHT") {
+    for (const c of columnIndexes) {
+      let y = L.margin;
+      for (const n of byColumn.get(c) ?? []) {
+        n.x = L.margin + c * (L.nodeWidth + L.columnGap);
+        n.y = y;
+        y += nodeHeight(n) + L.rowGap;
+        width = Math.max(width, n.x + L.nodeWidth + L.margin);
+      }
+      height = Math.max(height, y - L.rowGap + L.margin);
     }
-    height = Math.max(height, y - L.rowGap + L.margin);
+  } else {
+    let y = L.margin;
+    for (const c of columnIndexes) {
+      const members = byColumn.get(c) ?? [];
+      const levelHeight = Math.max(0, ...members.map(nodeHeight));
+      members.forEach((n, i) => {
+        n.x = L.margin + i * (L.nodeWidth + L.siblingGap);
+        n.y = y;
+        width = Math.max(width, n.x + L.nodeWidth + L.margin);
+      });
+      y += levelHeight + L.levelGap;
+    }
+    height = y - L.levelGap + L.margin;
   }
-  return { nodes: [...nodes.values()], edges, width, height, disconnected, columnCount: columnIndexes.length };
+  return { orientation, nodes: [...nodes.values()], edges, width, height, disconnected, columnCount: columnIndexes.length };
 }

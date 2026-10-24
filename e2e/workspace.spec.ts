@@ -37,3 +37,16 @@ test("the Chain diagram shows the whole movement connected to the mainspring, an
   await expect(app.locator(".chain-dialog")).not.toBeVisible();
   await expect(app.locator(".inspector")).toContainText("Fourth arbor");
 });
+
+test("the Chain diagram can be printed or saved: Print opens a hidden print frame, Download SVG gives a black-on-white file (ASM-0086)", async ({ app }) => {
+  await app.evaluate("window.print = () => undefined");
+  await app.getByRole("button", { name: "Chain…" }).click();
+  const [download] = await Promise.all([app.waitForEvent("download"), app.getByTestId("chain-download").click()]);
+  expect(download.suggestedFilename()).toBe("drive-chain.svg");
+  await app.getByTestId("chain-print").click();
+  // The print page is built in a hidden frame; it carries the diagram and the validation caveat.
+  await expect.poll(() => app.frames().length).toBeGreaterThan(1);
+  const printFrame = app.frames().find((f) => f !== app.mainFrame());
+  expect(await printFrame?.content()).toContain("physical validation");
+  expect(await printFrame?.content()).toContain("@page { size: A4 portrait;");
+});

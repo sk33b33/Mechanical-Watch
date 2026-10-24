@@ -1,9 +1,45 @@
 import type { AppStore } from "@/app/store";
 import type { EntityId } from "@/domain/ids";
+import { CHAIN_CAVEAT_TEXT, CHAIN_LEGEND_TEXT, chainPrintDocument, chainStandaloneSvg } from "@/analysis/chainDiagramPrint";
 import { buildChainDiagram, CHAIN_LAYOUT, chainNodeHeight, type ChainDiagram, type ChainNode } from "@/analysis/chainDiagram";
 
 export interface ChainDiagramDialog {
   open(): void;
+}
+
+function summaryText(diagram: ChainDiagram): string {
+  return diagram.nodes.length === 0
+    ? "There is nothing to connect yet: add arbors and gears."
+    : diagram.disconnected.length === 0
+      ? `All ${String(diagram.nodes.length)} parts are connected to the mainspring through one chain.`
+      : `Not connected to the mainspring: ${diagram.disconnected.join(", ")}.`;
+}
+
+/** Prints through a hidden frame, so no pop-up is needed (and none can be blocked). */
+function printHtml(html: string): void {
+  const frame = document.createElement("iframe");
+  frame.setAttribute("aria-hidden", "true");
+  frame.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0;";
+  frame.srcdoc = html;
+  frame.addEventListener("load", () => {
+    const win = frame.contentWindow;
+    if (win === null) { frame.remove(); return; }
+    win.addEventListener("afterprint", () => { frame.remove(); });
+    win.focus();
+    win.print();
+    // Browsers that never fire afterprint: clean the frame up later.
+    window.setTimeout(() => { frame.remove(); }, 120_000);
+  });
+  document.body.appendChild(frame);
+}
+
+function downloadText(filename: string, content: string, mimeType: string): void {
+  const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  window.setTimeout(() => { URL.revokeObjectURL(url); }, 10_000);
 }
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -20,29 +56,49 @@ function text(x: number, y: number, content: string, className: string): SVGText
   return el;
 }
 
-/** The line for one connection: from the side of the earlier column to the side of the later one. */
-function edgePath(from: ChainNode, to: ChainNode): { d: string; mid: { x: number; y: number } } {
+/** The line for one connection, from the side of `from` facing `to` to the side of `to` facing `from`. */
+function edgePath(diagram: ChainDiagram, from: ChainNode, to: ChainNode): { d: string; mid: { x: number; y: number } } {
   const W = CHAIN_LAYOUT.nodeWidth;
-  const fromMid = from.y + chainNodeHeight(from) / 2;
-  const toMid = to.y + chainNodeHeight(to) / 2;
+  const fromH = chainNodeHeight(from);
+  const toH = chainNodeHeight(to);
+  const n = (v: number): string => String(v);
+  if (diagram.orientation === "TOP_DOWN") {
+    if (from.column === to.column) {
+      // Neighbours on one level: a straight line between their facing sides.
+      const left = from.x <= to.x ? from : to;
+      const right = left === from ? to : from;
+      const y = left.y + chainNodeHeight(left) / 2;
+      const x1 = left.x + W;
+      const x2 = right.x;
+      return { d: `M ${n(from === left ? x1 : x2)} ${n(y)} L ${n(from === left ? x2 : x1)} ${n(y)}`, mid: { x: (x1 + x2) / 2, y } };
+    }
+    const down = from.column < to.column;
+    const x1 = from.x + W / 2;
+    const y1 = down ? from.y + fromH : from.y;
+    const x2 = to.x + W / 2;
+    const y2 = down ? to.y : to.y + toH;
+    const bend = (y2 - y1) / 2;
+    return { d: `M ${n(x1)} ${n(y1)} C ${n(x1)} ${n(y1 + bend)}, ${n(x2)} ${n(y2 - bend)}, ${n(x2)} ${n(y2)}`, mid: { x: (x1 + x2) / 2, y: (y1 + y2) / 2 } };
+  }
+  const fromMid = from.y + fromH / 2;
+  const toMid = to.y + toH / 2;
   if (from.column === to.column) {
-    // Same column: join the facing top/bottom edges with a short bow out to the left.
+    // Same column: join the facing top/bottom edges.
     const upper = from.y <= to.y ? from : to;
     const lower = upper === from ? to : from;
     const x = upper.x + W / 2;
     const y1 = upper.y + chainNodeHeight(upper);
     const y2 = lower.y;
-    return { d: `M ${String(x)} ${String(y1)} L ${String(x)} ${String(y2)}`, mid: { x, y: (y1 + y2) / 2 } };
+    return { d: `M ${n(x)} ${n(y1)} L ${n(x)} ${n(y2)}`, mid: { x, y: (y1 + y2) / 2 } };
   }
   const forward = from.column < to.column;
   const x1 = forward ? from.x + W : from.x;
   const x2 = forward ? to.x : to.x + W;
   const bend = (x2 - x1) / 2;
-  const d = `M ${String(x1)} ${String(fromMid)} C ${String(x1 + bend)} ${String(fromMid)}, ${String(x2 - bend)} ${String(toMid)}, ${String(x2)} ${String(toMid)}`;
-  return { d, mid: { x: (x1 + x2) / 2, y: (fromMid + toMid) / 2 } };
+  return { d: `M ${n(x1)} ${n(fromMid)} C ${n(x1 + bend)} ${n(fromMid)}, ${n(x2 - bend)} ${n(toMid)}, ${n(x2)} ${n(toMid)}`, mid: { x: (x1 + x2) / 2, y: (fromMid + toMid) / 2 } };
 }
 
-function drawDiagram(diagram: ChainDiagram, onPick: (entityId: string) => void): SVGSVGElement {
+export function drawChainDiagram(diagram: ChainDiagram, onPick: (entityId: string) => void): SVGSVGElement {
   const root = svg("svg", {
     class: "chain-svg", width: String(diagram.width), height: String(diagram.height),
     viewBox: `0 0 ${String(diagram.width)} ${String(diagram.height)}`, role: "img",
@@ -63,7 +119,7 @@ function drawDiagram(diagram: ChainDiagram, onPick: (entityId: string) => void):
     const from = byId.get(edge.from);
     const to = byId.get(edge.to);
     if (from === undefined || to === undefined) continue;
-    const { d, mid } = edgePath(from, to);
+    const { d, mid } = edgePath(diagram, from, to);
     const path = svg("path", { d, class: `chain-edge chain-edge-${edge.kind.toLowerCase()}`, fill: "none" });
     if (edge.kind === "JUMP") path.setAttribute("marker-end", "url(#chain-arrow-jump)");
     if (edge.kind === "ESCAPE" || edge.kind === "SPRING") path.setAttribute("marker-end", "url(#chain-arrow-power)");
@@ -121,29 +177,50 @@ export function mountChainDiagramDialog(root: HTMLElement, store: AppStore): Cha
     fit.title = "Scale the whole diagram to the window, or show it at full size and scroll";
     fit.addEventListener("click", () => { fitToWindow = !fitToWindow; render(); });
     fit.textContent = fitToWindow ? "Full size" : "Fit to window";
-    header.append(title, fit, close);
+    const printable = (): { svg: string; summary: string } => {
+      // A top-down drawing, so the whole chain fits the width of a portrait page.
+      const topDown = buildChainDiagram(store.movement, store.analysis.train, "TOP_DOWN");
+      const drawing = drawChainDiagram(topDown, () => undefined);
+      drawing.setAttribute("width", "100%");
+      drawing.removeAttribute("height");
+      return { svg: new XMLSerializer().serializeToString(drawing), summary: summaryText(topDown) };
+    };
+    const print = document.createElement("button");
+    print.type = "button";
+    print.textContent = "Print…";
+    print.title = "Print the diagram on one portrait A4 sheet (black on white)";
+    print.dataset.testid = "chain-print";
+    print.addEventListener("click", () => {
+      const { svg: markup, summary: text } = printable();
+      printHtml(chainPrintDocument({ svg: markup, movementName: store.movement.name, summary: text, generatedAt: new Date() }));
+    });
+    const save = document.createElement("button");
+    save.type = "button";
+    save.textContent = "Download SVG";
+    save.title = "Save the diagram as an SVG file (black on white)";
+    save.dataset.testid = "chain-download";
+    save.addEventListener("click", () => {
+      downloadText("drive-chain.svg", chainStandaloneSvg(printable().svg), "image/svg+xml");
+    });
+    header.append(title, print, save, fit, close);
     dialog.appendChild(header);
 
     const diagram = buildChainDiagram(store.movement, store.analysis.train);
     const summary = document.createElement("div");
     summary.className = `projects-note ${diagram.disconnected.length === 0 ? "muted" : "issue-error"}`;
     summary.dataset.testid = "chain-summary";
-    summary.textContent = diagram.nodes.length === 0
-      ? "There is nothing to connect yet: add arbors and gears."
-      : diagram.disconnected.length === 0
-        ? `All ${String(diagram.nodes.length)} parts are connected to the mainspring through one chain.`
-        : `Not connected to the mainspring: ${diagram.disconnected.join(", ")}.`;
+    summary.textContent = summaryText(diagram);
     dialog.appendChild(summary);
 
     const legend = document.createElement("div");
     legend.className = "chain-legend muted";
-    legend.textContent = "Solid line: gears meshing, labelled driving : driven teeth. Dotted: friction clutch. Dashed arrow: a jump link (one step at a time). Amber arrow: spring and escapement. Click a part to select it.";
+    legend.textContent = `${CHAIN_LEGEND_TEXT} Click a part to select it.`;
     dialog.appendChild(legend);
 
     const scroller = document.createElement("div");
     scroller.className = "chain-scroll";
     if (diagram.nodes.length > 0) {
-      const drawing = drawDiagram(diagram, (entityId) => {
+      const drawing = drawChainDiagram(diagram, (entityId) => {
         store.select(entityId as EntityId);
         dialog.close();
       });
@@ -158,7 +235,7 @@ export function mountChainDiagramDialog(root: HTMLElement, store: AppStore): Cha
 
     const caveat = document.createElement("div");
     caveat.className = "projects-note muted";
-    caveat.textContent = "A map of connections with the solved running speeds (L2 kinematic, an approximation). It says nothing about torque, friction or whether a real spring could drive it: that needs physical validation.";
+    caveat.textContent = CHAIN_CAVEAT_TEXT;
     dialog.appendChild(caveat);
   };
 

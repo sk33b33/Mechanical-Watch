@@ -82,3 +82,35 @@ describe("chain diagram (ASM-0086), generated from the model", () => {
     expect(d.nodes.find((n) => n.title === "Alone B")?.kind).toBe("ISOLATED");
   });
 });
+
+describe("top-down layout for printing", () => {
+  const down = buildChainDiagram(store.movement, store.analysis.train, "TOP_DOWN");
+
+  it("has the same parts and connections as the left-to-right layout, as rows read downward", () => {
+    expect(down.orientation).toBe("TOP_DOWN");
+    expect(down.nodes.map((n) => n.id).sort()).toEqual(diagram.nodes.map((n) => n.id).sort());
+    expect(down.edges).toEqual(diagram.edges);
+    const spring = down.nodes.find((n) => n.kind === "SPRING");
+    expect(spring?.y).toBe(CHAIN_LAYOUT.margin);
+    for (const n of down.nodes) {
+      const lr = diagram.nodes.find((m) => m.id === n.id);
+      expect(n.column).toBe(lr?.column);
+    }
+  });
+
+  it("is narrow enough for a portrait page: far taller than wide, unlike the on-screen layout", () => {
+    expect(down.width / down.height).toBeLessThan(1);
+    expect(diagram.width / diagram.height).toBeGreaterThan(down.width / down.height);
+  });
+
+  it("does not overlap parts on a level or between levels", () => {
+    for (const a of down.nodes) {
+      for (const b of down.nodes) {
+        if (a === b) continue;
+        const apartX = a.x + CHAIN_LAYOUT.nodeWidth <= b.x || b.x + CHAIN_LAYOUT.nodeWidth <= a.x;
+        const apartY = a.y + chainNodeHeight(a) <= b.y || b.y + chainNodeHeight(b) <= a.y;
+        expect(apartX || apartY, `${a.title} / ${b.title}`).toBe(true);
+      }
+    }
+  });
+});

@@ -2,6 +2,16 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 33: printable drive chain
+
+The Chain dialog gained **Print…** and **Download SVG**. Print builds a page from the same diagram, drawn
+**top-down** (the steps from the mainspring read as rows, so the whole chain fits one portrait A4 sheet at
+a readable size) in black on white, with the connection summary, the date it was generated, the legend and
+the validation caveat. It prints through a hidden frame, so no pop-up can be blocked. Download SVG saves the
+same drawing as a standalone file with a white background. Both come from the design model (ASM-0086). Seen
+as a PDF of the print page: one A4 page, all 22 parts, readable. The browser's own print dialog was not
+exercised here (it is stubbed in the automated test). **To revert:** remove the two buttons in `chainDiagramDialog.ts`.
+
 ## Phase 8.15 follow-up 32: drive-chain diagram
 
 A **Chain…** button in the toolbar opens a diagram of how every part is connected, generated from the
