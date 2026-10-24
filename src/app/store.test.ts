@@ -521,6 +521,10 @@ describe("AppStore guided tutorial", () => {
         store.edit((mv) => addGearMesh(mv, newGearMesh(settingGear.id, minuteGear.id)));
         return;
       }
+      case "see-chain":
+        // A step about looking, not building: it advances only when the user presses Next.
+        store.advanceTutorial();
+        return;
       case "mesh-hour-moon1":
         store.edit((mv) => addGearMesh(mv, newGearMesh(byName(m.gears, "Moon pinion").id, byName(m.gears, "Moon wheel 1").id)));
         return;
@@ -615,10 +619,11 @@ describe("AppStore guided tutorial", () => {
     expect(store.movement).toBe(before);
   });
 
-  it("every step's id is unique and only the last has no completion check", () => {
+  it("every step's id is unique and only the chain-diagram step and the last have no completion check", () => {
     const ids = TUTORIAL_STEPS.map((s) => s.id);
     expect(new Set(ids).size).toBe(ids.length);
-    expect(TUTORIAL_STEPS.slice(0, -1).every((s) => s.isComplete !== null)).toBe(true);
+    // Only a step about looking rather than building (the drive-chain diagram) and the last step wait for Next/Done.
+    expect(TUTORIAL_STEPS.filter((s) => s.isComplete === null).map((s) => s.id)).toEqual(["see-chain", "check-validation"]);
     expect(TUTORIAL_STEPS.at(-1)?.isComplete).toBeNull();
   });
 });

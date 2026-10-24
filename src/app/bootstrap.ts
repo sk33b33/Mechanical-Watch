@@ -63,7 +63,7 @@ export function bootstrapApp(root: HTMLElement, plainStart = false): Bootstrappe
   toolbar.addFileAction("Projects…", "Designs saved in this browser", () => { projects.open(); });
   const outputs = mountOutputsDialog(root, store, (message, kind) => { toolbar.notify(message, kind); });
   const chain = mountChainDiagramDialog(root, store);
-  toolbar.addFileAction("Chain…", "Diagram of how every part is connected, from the mainspring to the escapement and the calendar", () => { chain.open(); });
+  toolbar.addFileAction("Chain…", "Diagram of how every part is connected, from the mainspring to the escapement and the calendar", () => { chain.open(); }, "chain-diagram");
   toolbar.addFileAction("Outputs…", "Engineering report, BOM, drawings and exports", () => { outputs.open(); });
   mountTutorialBanner(store, storage);
   toolbar.addSimControl(mountTickSound(store, storage));

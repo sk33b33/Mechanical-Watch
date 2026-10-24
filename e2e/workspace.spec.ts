@@ -27,6 +27,8 @@ test("building from empty lists what is missing instead of guessing", async ({ a
 });
 
 test("the Chain diagram shows the whole movement connected to the mainspring, and a click on a part selects it (ASM-0086)", async ({ app }) => {
+  // The tutorial's "See how it all connects" step points at this button.
+  await expect(app.locator('[data-tutorial="chain-diagram"]')).toHaveText("Chain…");
   await app.getByRole("button", { name: "Chain…" }).click();
   await expect(app.getByTestId("chain-summary")).toContainText("connected to the mainspring through one chain");
   const svg = app.locator(".chain-svg");

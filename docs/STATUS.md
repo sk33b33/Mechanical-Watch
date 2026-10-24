@@ -2,6 +2,16 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 34: the drive chain as a tutorial step
+
+The guided tutorial has a new step, **See how it all connects**, after the balance drive is set and before the
+validation check. It points at the toolbar's **Chain…** button and explains the diagram (what drives what, the
+calendar's jump links, the "everything hangs off one mainspring" line, Print…), and repeats that it shows
+connections and solved speeds only. It is a step about *looking*, so it has no completion check: it advances on
+**Next** (the button now says Next instead of Skip this step for such a step, and Done on the last). The diagram
+is a modal dialog, so close it before pressing Next. A tutorial test now expects exactly two steps without a
+completion check (this one and the last). **To revert:** remove the `see-chain` step in `tutorialSteps.ts`.
+
 ## Phase 8.15 follow-up 33: printable drive chain
 
 The Chain dialog gained **Print…** and **Download SVG**. Print builds a page from the same diagram, drawn

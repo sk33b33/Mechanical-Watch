@@ -17,7 +17,8 @@ import { createTeachingMovement } from "@/app/teachingMovement";
  * every design change, per this app's "domain model is authoritative"
  * rule — a step is done when the design says so, not when a button was
  * merely clicked. `null` means the step only advances when the user
- * presses Next/Done.
+ * presses Next (Done on the last step): a step about looking at something,
+ * such as the drive-chain diagram, which changes no part of the design.
  *
  * `targetSelector` is a CSS selector for the control the step wants the
  * user to use; the tutorial banner (tutorialBanner.ts) highlights whatever
@@ -536,6 +537,15 @@ function buildTeachingMovementSteps(): TutorialStep[] {
       targetSelector: '[data-field="Drive"]',
       deselect: true,
       isComplete: (m) => m.drive?.kind === "BALANCE",
+    },
+
+    {
+      id: "see-chain",
+      title: "See how it all connects",
+      instructions:
+        "The movement is complete. Click “Chain…” in the toolbar for a diagram of how every part is connected: the mainspring drives the barrel, the going train carries the power through the centre, third and fourth arbors to the escape arbor and the escapement, the motion works turn the hands, and the calendar steps by jumps from the 24-hour arbor. The line under the title says whether everything hangs off the one mainspring, and Print… puts it on one sheet. Close the diagram, then press Next. It shows connections and solved speeds only, not torque or friction.",
+      targetSelector: '[data-tutorial="chain-diagram"]',
+      isComplete: null,
     },
 
     {

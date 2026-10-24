@@ -140,7 +140,7 @@ export function mountTutorialBanner(store: AppStore, storage: KeyValueStore | nu
         showButtons: ["next", "close"],
         showProgress: true,
         progressText,
-        nextBtnText: step.isComplete === null ? "Done" : "Skip this step",
+        nextBtnText: step.isComplete !== null ? "Skip this step" : stepIndex >= TUTORIAL_STEPS.length - 1 ? "Done" : "Next",
         closeBtnLabel: "Exit tutorial",
         onNextClick: () => { store.advanceTutorial(); },
       },

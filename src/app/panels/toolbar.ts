@@ -14,7 +14,7 @@ export interface Toolbar {
   notify(message: string, kind: "error" | "info"): void;
   setAutosaveStatus(text: string): void;
   /** Adds a button to the file group (after Save). */
-  addFileAction(label: string, title: string, onClick: () => void): void;
+  addFileAction(label: string, title: string, onClick: () => void, tutorialId?: string): void;
   /** Adds a control to the simulation group, after the playback rate. */
   addSimControl(control: HTMLElement): void;
 }
@@ -297,8 +297,11 @@ export function mountToolbar(container: HTMLElement, store: AppStore, readoutHos
     addSimControl(control) {
       simGroup.appendChild(control);
     },
-    addFileAction(label, title, onClick) {
-      fileGroup.insertBefore(button(label, title, onClick), picker);
+    addFileAction(label, title, onClick, tutorialId) {
+      const added = button(label, title, onClick);
+      // Lets a tutorial step point at the button (tutorialSteps.ts targetSelector).
+      if (tutorialId !== undefined) added.dataset.tutorial = tutorialId;
+      fileGroup.insertBefore(added, picker);
     },
     setAutosaveStatus(text) {
       autosave.textContent = text;
