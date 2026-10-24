@@ -273,6 +273,62 @@ export class AppStore {
   }
 
   /**
+   * Move-wheels mode (UI state, follow-up 35): in the dial view, dragging a calendar wheel through its window
+   * moves it and its windows (src/assembly/moveWheel.ts). `lastMovedWheelId` is the wheel the user moved last,
+   * which gives way first when Fix chain separates two overlapping wheels.
+   */
+  wheelMoveMode = false;
+  lastMovedWheelId: EntityId | null = null;
+
+  setWheelMoveMode(on: boolean): void {
+    this.wheelMoveMode = on;
+    this.notify();
+  }
+
+  private interactiveBase: Movement | null = null;
+
+  get isInteractiveEditing(): boolean {
+    return this.interactiveBase !== null;
+  }
+
+  /**
+   * A live edit, such as dragging a part: `previewEdit` shows each step without making it a history step or an
+   * autosave, and `endInteractiveEdit` makes the final result one undoable edit (or drops it).
+   */
+  beginInteractiveEdit(): void {
+    this.interactiveBase = this.movement;
+  }
+
+  /** Shows `update(the design as it was when the edit began)`; a null result changes nothing. */
+  previewEdit(update: (original: Movement) => Movement | null): void {
+    const base = this.interactiveBase;
+    if (base === null) return;
+    const next = update(base);
+    if (next === null || next === this.movement) return;
+    this.movement = next;
+    this.recompute();
+    this.notify();
+  }
+
+  endInteractiveEdit(commit: boolean): void {
+    const base = this.interactiveBase;
+    if (base === null) return;
+    this.interactiveBase = null;
+    const final = this.movement;
+    if (commit && !designsEqual(final, base)) {
+      this.movement = base;
+      this.record();
+      this.replaceDesign(final);
+      return;
+    }
+    if (this.movement !== base) {
+      this.movement = base;
+      this.recompute();
+    }
+    this.notify();
+  }
+
+  /**
    * Guided "build the teaching movement" walkthrough (UI state, not part
    * of the design; see tutorial/tutorialSteps.ts). A step with a
    * completion check advances on its own when the design satisfies it,

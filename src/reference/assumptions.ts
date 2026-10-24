@@ -525,6 +525,12 @@ export const ASSUMPTIONS = {
     scope: "src/analysis/chainDiagram.ts, src/analysis/chainDiagramPrint.ts, src/app/panels/chainDiagramDialog.ts (presentation of L2 kinematic results)",
     status: "Active",
   },
+  "ASM-0087": {
+    summary:
+      "Moving wheels on the dial and the Fix chain button (Phase 8.15 follow-up 35), editing tools on the declared design and not a physical model. (1) With Move wheels on and the dial view showing, dragging a calendar wheel through its window (date, day of week, month, leap year, season, or the year-digit display, which moves its four barrels and window together) moves the wheel and every window that shows it by the same step, drawn live and committed as one undoable edit on release; a release with no movement changes nothing. These wheels are jump-driven, not gear-meshed (ASM-0048 to ASM-0050, ASM-0057), so they have no centre distance to keep and their cam and jumper links, drawn from the positions, follow by themselves. A wheel placed by a gear mesh (MESH_POLAR) swings round its partner at the unchanged ideal centre distance, so its teeth stay in contact; a coaxial wheel cannot be moved. Moving a wheel never changes a tooth count, module or other dimension, and nothing else moves while dragging. A wheel dropped overlapping another or beyond the dial edge is not stopped: validation reports it. (2) Fix chain\u2026 plans, and shows before applying, the moves needed to tidy the dial after edits: a whole-wheel window whose centre has drifted from its wheel's axis is re-centred on the axis; two wheels whose discs overlap, or are closer than a declared clearance gap of 0.3 mm, are pushed apart along their line of centres (the most recently moved wheel moves, else the smaller); a wheel too near or beyond the dial's edge is pulled inward to the same gap; this repeats until stable or 20 passes. The gap and pass limit are declared tidy-up choices (CHAIN_FIX), not a manufacturing clearance or a sourced figure. The plan is applied only on confirmation, as one undoable edit, and lists every part it moves and by how much; anything it cannot fix (a coaxial wheel, a conflict that does not settle) is reported rather than hidden. Nothing here checks torque, friction or physical fit (physical validation pending).",
+    scope: "src/assembly/moveWheel.ts, src/assembly/fixChain.ts and the viewport/dialog UI (design editing, L1 geometric)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

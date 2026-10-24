@@ -27,7 +27,7 @@ function labelled(text: string, ...children: HTMLElement[]): HTMLLabelElement {
  * and section view. These change only what is drawn, never the design,
  * validation or measurements.
  */
-export function mountViewportControls(container: HTMLElement, viewport: Viewport, store: AppStore): void {
+export function mountViewportControls(container: HTMLElement, viewport: Viewport, store: AppStore, onFixChain: () => void = () => undefined): void {
   const bar = document.createElement("div");
   bar.className = "viewport-tools";
 
@@ -37,6 +37,26 @@ export function mountViewportControls(container: HTMLElement, viewport: Viewport
   measure.addEventListener("click", () => {
     store.setMeasuring(!store.measuring);
   });
+
+  const moveWheels = document.createElement("button");
+  moveWheels.type = "button";
+  moveWheels.dataset.testid = "move-wheels";
+  moveWheels.title = "Drag a calendar wheel (date, day of week, month, leap year, season, year) by its window on the dial: the wheel and its window move together, and it stays where you release it. One undoable step. Never changes a dimension or tooth count.";
+  moveWheels.addEventListener("click", () => {
+    const on = !store.wheelMoveMode;
+    store.setWheelMoveMode(on);
+    if (on) viewport.setView("DIAL");
+  });
+  const fixChain = document.createElement("button");
+  fixChain.type = "button";
+  fixChain.textContent = "Fix chain…";
+  fixChain.dataset.testid = "fix-chain";
+  fixChain.title = "Review, then apply, a tidy-up after edits: windows re-centred on their wheels, overlapping wheels pushed apart, wheels kept inside the dial. Nothing moves until you confirm.";
+  fixChain.addEventListener("click", onFixChain);
+  const moveHint = document.createElement("span");
+  moveHint.className = "viewport-note";
+  moveHint.textContent = "Drag a wheel by its window; release to place it";
+  moveHint.hidden = true;
 
   const explode = slider(0, 1, 0.01, 0, "Spread parts apart along the shaft axes. Display only.");
   explode.addEventListener("input", () => {
@@ -88,6 +108,9 @@ export function mountViewportControls(container: HTMLElement, viewport: Viewport
 
   bar.append(
     measure,
+    moveWheels,
+    fixChain,
+    moveHint,
     zoomToSelection,
     labelled("Explode", explode),
     labelled("Dial", dialOn),
@@ -102,6 +125,9 @@ export function mountViewportControls(container: HTMLElement, viewport: Viewport
   const refresh = (): void => {
     measure.textContent = store.measuring ? "Stop measuring" : "Measure";
     measure.classList.toggle("active", store.measuring);
+    moveWheels.textContent = store.wheelMoveMode ? "Stop moving wheels" : "Move wheels";
+    moveWheels.classList.toggle("active", store.wheelMoveMode);
+    moveHint.hidden = !store.wheelMoveMode;
     zoomToSelection.disabled = store.selectedId === null;
     through.disabled = store.selectedId === null;
   };

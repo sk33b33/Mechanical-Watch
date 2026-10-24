@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { moveWheelBy } from "@/assembly/moveWheel";
 import type { AppStore } from "@/app/store";
 import type { EntityId } from "@/domain/ids";
 import type { ShaftId } from "@/domain/shaft";
@@ -86,6 +87,9 @@ export interface SectionState {
 const EXPLODE_STRETCH = 3;
 
 /** When several objects are under the pointer, the most specific wins. */
+/** The picks that are calendar wheels (date, day of week, month, leap year, season, year digits): the ones Move wheels can drag. */
+const MOVABLE_WHEEL_KINDS: ReadonlySet<PickKind> = new Set<PickKind>(["dateStar", "monthStar", "leapYearWheel", "seasonWheel", "yearDigitWheel"]);
+
 const PICK_PRIORITY: Record<PickKind, number> = { gear: 0, jewel: 1, escapement: 2, keyless: 2, moonPhase: 2, dateStar: 2, monthStar: 2, leapYearWheel: 2, seasonWheel: 2, yearDigitWheel: 2, arbor: 3, frame: 4, dial: 5 };
 
 /** How much bigger than the dial the DIAL view frames (1 = the dial just touches the edge of the view). */
@@ -410,6 +414,11 @@ export class Viewport {
     container.appendChild(this.escapementLabel);
     this.renderer.domElement.addEventListener("pointerdown", this.handlePointerDown);
     this.renderer.domElement.addEventListener("pointerup", this.handlePointerUp);
+    this.renderer.domElement.addEventListener("pointerdown", this.handleWheelDragStart, { capture: true });
+    this.renderer.domElement.addEventListener("pointermove", this.handleWheelDragMove);
+    this.renderer.domElement.addEventListener("pointerup", this.handleWheelDragEnd);
+    this.renderer.domElement.addEventListener("pointercancel", this.handleWheelDragEnd);
+    window.addEventListener("keydown", this.handleWheelDragKey);
     this.resizeObserver = new ResizeObserver(() => {
       this.resize();
       // Re-fit so the movement stays framed as panels dock, float, close or resize (STATUS.md
@@ -425,6 +434,7 @@ export class Viewport {
     this.framedGeneration = store.designGeneration;
     this.contentWasEmpty = this.contentIsEmpty();
     this.unsubscribe = store.subscribe(() => {
+      this.renderer.domElement.style.cursor = store.wheelMoveMode && this.view === "DIAL" ? "move" : "";
       this.rebuild();
       const isEmpty = this.contentIsEmpty();
       // Re-fit on a freshly loaded design, or the first time content appears in an empty one
@@ -1615,6 +1625,90 @@ export class Viewport {
     this.pointerDown = { x: event.clientX, y: event.clientY };
   };
 
+  // ---- Move wheels (follow-up 35, ASM-0087) ------------------------------------------------
+  /** The wheel being dragged, where on its plane the drag began, and the step not yet shown. */
+  private wheelDrag: { id: EntityId; plane: THREE.Plane; start: THREE.Vector3; pending: { dx: number; dy: number } | null; pointerId: number } | null = null;
+
+  private planePoint(event: PointerEvent, plane: THREE.Plane): THREE.Vector3 | null {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    return this.raycaster.ray.intersectPlane(plane, new THREE.Vector3());
+  }
+
+  /** Starts a drag when, in move mode and the dial view, the pointer goes down on a calendar wheel seen through its window. */
+  private readonly handleWheelDragStart = (event: PointerEvent): void => {
+    if (!this.store.wheelMoveMode || this.view !== "DIAL" || event.button !== 0) return;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const hits = this.raycaster.intersectObjects(this.pickables, false);
+    const nearest = hits.reduce<(typeof hits)[number] | undefined>((best, h) => (best === undefined || h.distance < best.distance ? h : best), undefined);
+    if (nearest === undefined) return;
+    const pick = nearest.object.userData as Pickable;
+    if (!MOVABLE_WHEEL_KINDS.has(pick.kind)) return;
+    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -nearest.point.z);
+    const start = this.planePoint(event, plane);
+    if (start === null) return;
+    // Stop the orbit controls taking this press, and keep the pointer until it is released.
+    event.stopImmediatePropagation();
+    this.pointerDown = null;
+    this.renderer.domElement.setPointerCapture(event.pointerId);
+    this.controls.enabled = false;
+    this.wheelDrag = { id: pick.entityId, plane, start, pending: null, pointerId: event.pointerId };
+    this.store.select(pick.entityId);
+    this.store.beginInteractiveEdit();
+  };
+
+  private readonly handleWheelDragMove = (event: PointerEvent): void => {
+    const drag = this.wheelDrag;
+    if (drag?.pointerId !== event.pointerId) return;
+    const at = this.planePoint(event, drag.plane);
+    if (at === null) return;
+    drag.pending = { dx: at.x - drag.start.x, dy: at.y - drag.start.y };
+  };
+
+  /** The earliest time (ms) the next drag step may be shown: a step that is slow to show spaces out the next one. */
+  private nextWheelPreviewAt = 0;
+
+  /**
+   * Shows the latest drag step, at most once per frame and no more often than showing it can keep up with
+   * (showing a step rebuilds the scene, which is slow on a phone): a slow device sees fewer steps, a fast one
+   * sees every frame, and the wheel always ends exactly where it is released (`force`).
+   */
+  private applyPendingWheelDrag(force = false): void {
+    const drag = this.wheelDrag;
+    if (drag?.pending == null) return;
+    const started = performance.now();
+    if (!force && started < this.nextWheelPreviewAt) return;
+    const { dx, dy } = drag.pending;
+    drag.pending = null;
+    this.store.previewEdit((original) => moveWheelBy(original, drag.id, dx, dy));
+    this.nextWheelPreviewAt = performance.now() + (performance.now() - started);
+  }
+
+  private finishWheelDrag(commit: boolean): void {
+    const drag = this.wheelDrag;
+    if (drag === null) return;
+    if (commit) this.applyPendingWheelDrag(true);
+    this.wheelDrag = null;
+    this.controls.enabled = true;
+    if (this.renderer.domElement.hasPointerCapture(drag.pointerId)) this.renderer.domElement.releasePointerCapture(drag.pointerId);
+    this.store.endInteractiveEdit(commit);
+    if (commit) this.store.lastMovedWheelId = drag.id;
+  }
+
+  private readonly handleWheelDragEnd = (event: PointerEvent): void => {
+    if (this.wheelDrag?.pointerId !== event.pointerId) return;
+    this.finishWheelDrag(event.type === "pointerup");
+  };
+
+  private readonly handleWheelDragKey = (event: KeyboardEvent): void => {
+    if (event.key === "Escape" && this.wheelDrag !== null) this.finishWheelDrag(false);
+  };
+
   /** A click selects; a drag (orbit) does not. */
   /** Undoes the explode slider's display-only Z stretch, so a picked point reflects real geometry (never the view). */
   private pickedPoint(point: THREE.Vector3): Point3 {
@@ -1650,6 +1744,7 @@ export class Viewport {
     const elapsedSeconds = this.lastTimestampMs === null ? 0 : (timestampMs - this.lastTimestampMs) / 1000;
     this.lastTimestampMs = timestampMs;
 
+    this.applyPendingWheelDrag();
     this.store.tick(elapsedSeconds);
     this.applyKinematicRotation();
     // A spinning gear's cut face must track its rotation the same way the GPU clip already does.
@@ -1666,6 +1761,11 @@ export class Viewport {
     this.resizeObserver?.disconnect();
     this.renderer.domElement.removeEventListener("pointerdown", this.handlePointerDown);
     this.renderer.domElement.removeEventListener("pointerup", this.handlePointerUp);
+    this.renderer.domElement.removeEventListener("pointerdown", this.handleWheelDragStart, { capture: true });
+    this.renderer.domElement.removeEventListener("pointermove", this.handleWheelDragMove);
+    this.renderer.domElement.removeEventListener("pointerup", this.handleWheelDragEnd);
+    this.renderer.domElement.removeEventListener("pointercancel", this.handleWheelDragEnd);
+    window.removeEventListener("keydown", this.handleWheelDragKey);
     this.clear();
     this.renderer.dispose();
   }

@@ -15,6 +15,8 @@ import { createTeachingMovement } from "./teachingMovement";
 import { TUTORIAL_STEPS } from "./tutorial/tutorialSteps";
 import { readHand } from "@/kinematics/timeDisplay";
 import type { HandFunction } from "@/domain/shaft";
+import type { DateComplication } from "@/domain/dateComplication";
+import { moveWheelBy } from "@/assembly/moveWheel";
 
 const dt = NUMERICAL_PARAMETERS.simulationTimestepSeconds;
 
@@ -625,5 +627,72 @@ describe("AppStore guided tutorial", () => {
     // Only a step about looking rather than building (the drive-chain diagram) and the last step wait for Next/Done.
     expect(TUTORIAL_STEPS.filter((s) => s.isComplete === null).map((s) => s.id)).toEqual(["see-chain", "check-validation"]);
     expect(TUTORIAL_STEPS.at(-1)?.isComplete).toBeNull();
+  });
+});
+
+describe("interactive edits (dragging a part, ASM-0087)", () => {
+  const dateOf = (m: Movement): DateComplication => {
+    const found = Object.values(m.dateComplications).find((d) => d.name === "Date");
+    if (found === undefined) throw new Error("no date complication");
+    return found;
+  };
+  const xOf = (store: AppStore): number => {
+    const date = dateOf(store.movement);
+    const shaft = store.movement.shafts[date.starShaftId];
+    return shaft?.placement.kind === "FIXED" ? shaft.placement.position.x : Number.NaN;
+  };
+
+  it("shows each preview without a history step or an autosave, and commits the end as one undoable edit", () => {
+    const store = new AppStore(createTeachingMovement());
+    const saved: number[] = [];
+    store.onDesignChange(() => { saved.push(1); });
+    const start = xOf(store);
+    store.beginInteractiveEdit();
+    expect(store.isInteractiveEditing).toBe(true);
+    for (const step of [0.001, 0.002, 0.003]) store.previewEdit((original) => moveWheelBy(original, dateOf(original).id, step, 0));
+    expect(xOf(store)).toBeCloseTo(start + 0.003, 12);
+    expect(store.canUndo).toBe(false);
+    expect(saved).toEqual([]);
+    store.endInteractiveEdit(true);
+    expect(store.isInteractiveEditing).toBe(false);
+    expect(xOf(store)).toBeCloseTo(start + 0.003, 12);
+    expect(saved).toHaveLength(1);
+    store.undo();
+    expect(xOf(store)).toBeCloseTo(start, 12);
+    expect(store.canUndo).toBe(false);
+  });
+
+  it("each preview starts from the design as it was when the edit began, so steps do not add up", () => {
+    const store = new AppStore(createTeachingMovement());
+    const start = xOf(store);
+    store.beginInteractiveEdit();
+    store.previewEdit((o) => moveWheelBy(o, dateOf(o).id, 0.01, 0));
+    store.previewEdit((o) => moveWheelBy(o, dateOf(o).id, 0.004, 0));
+    expect(xOf(store)).toBeCloseTo(start + 0.004, 12);
+    store.endInteractiveEdit(true);
+  });
+
+  it("cancelling restores the design and leaves no history", () => {
+    const store = new AppStore(createTeachingMovement());
+    const before = store.movement;
+    store.beginInteractiveEdit();
+    store.previewEdit((o) => moveWheelBy(o, dateOf(o).id, 0.01, 0));
+    store.endInteractiveEdit(false);
+    expect(store.movement).toBe(before);
+    expect(store.canUndo).toBe(false);
+  });
+
+  it("a release with no movement is not an edit", () => {
+    const store = new AppStore(createTeachingMovement());
+    store.beginInteractiveEdit();
+    store.endInteractiveEdit(true);
+    expect(store.canUndo).toBe(false);
+  });
+
+  it("previews are ignored outside an interactive edit", () => {
+    const store = new AppStore(createTeachingMovement());
+    const before = store.movement;
+    store.previewEdit((o) => moveWheelBy(o, dateOf(o).id, 0.01, 0));
+    expect(store.movement).toBe(before);
   });
 });

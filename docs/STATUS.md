@@ -2,6 +2,30 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 35: move calendar wheels on the dial, and Fix chain
+
+Designed with you through questions (calendar wheels and windows only; meshed wheels swing round their
+partner; a Fix chain button with a preview; overlaps warn but are allowed). ASM-0087.
+
+- **Move wheels** (viewport bar): switches to the dial view; press and drag a calendar wheel (date, day of
+  week, month, leap year, season, or the year display) by its window. The wheel and every window that shows it
+  move together live, and stay where you release. One **undoable** step; Esc during a drag cancels. Nothing
+  else moves, and no dimension or tooth count changes. The cam and jumper drawings follow by themselves,
+  because they are drawn from the positions. The year display moves its four barrels and window as one. A
+  wheel that is mesh-placed would swing round its partner at the unchanged centre distance (not used by the
+  current teaching movement's calendar wheels); a coaxial wheel cannot be moved. On a slow device the drag
+  shows fewer steps (each step rebuilds the scene) but always ends exactly where you let go.
+- **Fix chain…** (viewport bar): shows, and only on **Apply** performs, a tidy-up: a whole-wheel window that
+  has drifted off its wheel is re-centred; wheels whose discs overlap or are closer than 0.3 mm are pushed
+  apart (the wheel you moved last gives way); wheels too near or beyond the dial's edge are pulled in. Each
+  change is listed with the distance. It cannot move a coaxial wheel and says so. 0.3 mm and 20 passes are
+  declared tidy-up choices (`CHAIN_FIX`), not a manufacturing clearance.
+- **Not included (your answers):** moon disc and gear-train wheels are not draggable; overlaps are not blocked
+  while dragging.
+- Pure code and tests: `src/assembly/moveWheel.ts`, `src/assembly/fixChain.ts`; store: `beginInteractiveEdit`
+  / `previewEdit` / `endInteractiveEdit`. e2e: `e2e/moveWheels.spec.ts`. **To revert:** remove the two buttons
+  in `viewportControls.ts` and the drag handlers in `viewport.ts`.
+
 ## Phase 8.15 follow-up 34: the drive chain as a tutorial step
 
 The guided tutorial has a new step, **See how it all connects**, after the balance drive is set and before the

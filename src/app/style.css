@@ -1433,3 +1433,17 @@ button.active {
 .chain-label { fill: var(--text-0); font-size: 10.5px; text-anchor: middle; }
 .chain-label-jump { fill: #8fb4ee; }
 .chain-label-spring, .chain-label-escape { fill: var(--warn); }
+
+/* ---- Fix chain (follow-up 35) ---------------------------------------------------------------- */
+.fix-chain-dialog {
+  max-width: min(92vw, 720px);
+}
+.fix-chain-list {
+  margin: 8px 0 12px;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.fix-chain-dialog .projects-header {
+  margin-top: 10px;
+}

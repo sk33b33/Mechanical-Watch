@@ -5,6 +5,7 @@ import { mountViewportControls } from "@/viewport/viewportControls";
 import { mountMeasurementPanel } from "./panels/measurementPanel";
 import { mountProjectsDialog } from "./panels/projectsDialog";
 import { mountOutputsDialog } from "./panels/outputsDialog";
+import { mountFixChainDialog } from "./panels/fixChainDialog";
 import { mountChainDiagramDialog } from "./panels/chainDiagramDialog";
 import { browserStore, loadAutosave, writeAutosave } from "@/persistence/autosave";
 import { mountHeader } from "./panels/header";
@@ -56,12 +57,16 @@ export function bootstrapApp(root: HTMLElement, plainStart = false): Bootstrappe
   mountValidationConsole(consoleWindow.body, store, consoleWindow.setTitle);
   mountLayoutControls(layoutControlsEl, layout);
   const viewport = new Viewport(viewportEl, store);
-  mountViewportControls(viewportEl, viewport, store);
+  // The Fix chain dialog is mounted below with the other dialogs; the button reaches it through this hook.
+  let openFixChain: () => void = () => undefined;
+  mountViewportControls(viewportEl, viewport, store, () => { openFixChain(); });
   mountMeasurementPanel(viewportEl, store);
 
   const projects = mountProjectsDialog(root, store, storage, (message, kind) => { toolbar.notify(message, kind); });
   toolbar.addFileAction("Projects…", "Designs saved in this browser", () => { projects.open(); });
   const outputs = mountOutputsDialog(root, store, (message, kind) => { toolbar.notify(message, kind); });
+  const fixChainDialog = mountFixChainDialog(root, store, (message, kind) => { toolbar.notify(message, kind); });
+  openFixChain = () => { fixChainDialog.open(); };
   const chain = mountChainDiagramDialog(root, store);
   toolbar.addFileAction("Chain…", "Diagram of how every part is connected, from the mainspring to the escapement and the calendar", () => { chain.open(); }, "chain-diagram");
   toolbar.addFileAction("Outputs…", "Engineering report, BOM, drawings and exports", () => { outputs.open(); });
