@@ -3,6 +3,7 @@ import type { EntityId } from "./ids";
 import { createId } from "./ids";
 import type { Gear, GearId } from "./gear";
 import type { Shaft, ShaftId } from "./shaft";
+import { appearanceKeyFor, defaultAppearance, isHexColour, type Appearance, type DialColourKey, type HexColour } from "./appearance";
 import type { GearMesh, GearMeshId } from "./gearMesh";
 import type { Frame, FrameId } from "./frame";
 import type { Jewel, JewelId } from "./jewel";
@@ -82,6 +83,8 @@ export interface Movement {
   /** Zero or more; holds one frame in place, a plain declared through-hole (ASM-0056). */
   screws: Record<ScrewId, Screw>;
   drive: Drive | null;
+  /** The colours chosen for the dial and the wheels seen through its windows (follow-up 39, ASM-0090); presentation only. */
+  appearance: Appearance;
   /**
    * The level this design's model targets (REFERENCE_ENGINEERING.md §15).
    * Set explicitly by the author; never raised automatically.
@@ -118,7 +121,31 @@ export function createMovement(
     dialWindows: {},
     screws: {},
     drive: null,
+    appearance: defaultAppearance(),
   };
+}
+
+/** Sets (or, with null, clears) one of the dial's own colours. */
+export function setDialColour(movement: Movement, key: DialColourKey, colour: HexColour | null): Movement {
+  if (colour !== null && !isHexColour(colour)) throw new Error(`Not a colour: ${String(colour)}`);
+  return { ...movement, appearance: { ...movement.appearance, [key]: colour } };
+}
+
+/** Sets (or, with null, clears) the body or text colour of a wheel seen through a dial window. */
+export function setWheelColour(movement: Movement, complicationId: string, part: "body" | "text", colour: HexColour | null): Movement {
+  if (colour !== null && !isHexColour(colour)) throw new Error(`Not a colour: ${String(colour)}`);
+  const key = appearanceKeyFor(movement, complicationId);
+  const current = movement.appearance.wheels[key] ?? { body: null, text: null };
+  const next = { ...current, [part]: colour };
+  const wheels = { ...movement.appearance.wheels };
+  if (next.body === null && next.text === null) Reflect.deleteProperty(wheels, key);
+  else wheels[key] = next;
+  return { ...movement, appearance: { ...movement.appearance, wheels } };
+}
+
+/** Puts every colour back to the built-in one. */
+export function resetAppearance(movement: Movement): Movement {
+  return { ...movement, appearance: defaultAppearance() };
 }
 
 export function addShaft(movement: Movement, shaft: Shaft): Movement {

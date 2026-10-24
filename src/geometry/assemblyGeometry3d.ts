@@ -923,7 +923,16 @@ export function discLabelFittedFontSizePx(maxLabelWidthAtBaseFontPx: number, lab
   return Math.max(v.minFontSizePx, v.fontSizePx * scale);
 }
 
-export function createDiscLabelTexture(labels: readonly string[], canvasAngleOffset = 0, labelRadiusFraction: number = DIAL_WINDOW_VISUALIZATION.labelRadiusFraction): THREE.CanvasTexture | null {
+/**
+ * Colours the user has chosen for what is painted on a wheel's face (follow-up 39, ASM-0090): `background` is the
+ * disc face itself and `text` the labels, digits or icons printed on it. Either left out is the built-in colour.
+ */
+export interface DiscInk {
+  background?: string;
+  text?: string;
+}
+
+export function createDiscLabelTexture(labels: readonly string[], canvasAngleOffset = 0, labelRadiusFraction: number = DIAL_WINDOW_VISUALIZATION.labelRadiusFraction, ink: DiscInk = {}): THREE.CanvasTexture | null {
   if (labels.length === 0) return null;
   const v = DIAL_WINDOW_VISUALIZATION;
   const canvas = document.createElement("canvas");
@@ -931,9 +940,9 @@ export function createDiscLabelTexture(labels: readonly string[], canvasAngleOff
   canvas.height = v.textureSizePx;
   const ctx = canvas.getContext("2d");
   if (ctx === null) return null;
-  ctx.fillStyle = v.backgroundColor;
+  ctx.fillStyle = ink.background ?? v.backgroundColor;
   ctx.fillRect(0, 0, v.textureSizePx, v.textureSizePx);
-  ctx.fillStyle = v.textColor;
+  ctx.fillStyle = ink.text ?? v.textColor;
   ctx.font = `bold ${String(v.fontSizePx)}px sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -1087,7 +1096,7 @@ const SEASON_ICON_DRAWERS: readonly ((ctx: CanvasRenderingContext2D, size: numbe
   drawFlowerIcon,
 ];
 
-export function createSeasonTexture(labels: readonly string[], canvasAngleOffset = 0): THREE.CanvasTexture | null {
+export function createSeasonTexture(labels: readonly string[], canvasAngleOffset = 0, ink: DiscInk = {}): THREE.CanvasTexture | null {
   if (labels.length === 0) return null;
   const v = SEASON_VISUALIZATION;
   const size = DIAL_WINDOW_VISUALIZATION.textureSizePx;
@@ -1114,7 +1123,7 @@ export function createSeasonTexture(labels: readonly string[], canvasAngleOffset
     const centreAngle = DISC_LABEL_RING_DIRECTION * (i / labels.length) * Math.PI * 2 + canvasAngleOffset;
     const start = centreAngle - halfSlot;
     const end = centreAngle + halfSlot;
-    ctx.fillStyle = v.wedgeColors[i % v.wedgeColors.length] ?? DIAL_WINDOW_VISUALIZATION.backgroundColor;
+    ctx.fillStyle = ink.background ?? v.wedgeColors[i % v.wedgeColors.length] ?? DIAL_WINDOW_VISUALIZATION.backgroundColor;
     ctx.beginPath();
     ctx.moveTo(centre, centre);
     ctx.arc(centre, centre, outerRadius, start, end);
@@ -1143,13 +1152,13 @@ export function createSeasonTexture(labels: readonly string[], canvasAngleOffset
     ctx.save();
     ctx.translate(centre + v.iconRadiusFraction * centre * Math.cos(angle), centre + v.iconRadiusFraction * centre * Math.sin(angle));
     ctx.rotate(rotation);
-    draw?.(ctx, size * 0.11, v.iconColor);
+    draw?.(ctx, size * 0.11, ink.text ?? v.iconColor);
     ctx.restore();
 
     ctx.save();
     ctx.translate(centre + v.labelRadiusFraction * centre * Math.cos(angle), centre + v.labelRadiusFraction * centre * Math.sin(angle));
     ctx.rotate(rotation);
-    ctx.fillStyle = v.iconColor;
+    ctx.fillStyle = ink.text ?? v.iconColor;
     ctx.fillText(labels[i] ?? "", 0, 0);
     ctx.restore();
   }
@@ -1366,7 +1375,7 @@ export function moonPhaseLitPolygon(phase: number, radius: number, samples = 48)
   return points;
 }
 
-export function createMoonPhaseTexture(windowCount: MoonPhaseWindowCount): THREE.CanvasTexture | null {
+export function createMoonPhaseTexture(windowCount: MoonPhaseWindowCount, ink: DiscInk = {}): THREE.CanvasTexture | null {
   const v = MOON_PHASE_VISUALIZATION;
   const size = DIAL_WINDOW_VISUALIZATION.textureSizePx;
   const canvas = document.createElement("canvas");
@@ -1376,7 +1385,7 @@ export function createMoonPhaseTexture(windowCount: MoonPhaseWindowCount): THREE
   if (ctx === null) return null;
   const centre = size / 2;
 
-  ctx.fillStyle = v.skyColor;
+  ctx.fillStyle = ink.background ?? v.skyColor;
   ctx.fillRect(0, 0, size, size);
 
   ctx.fillStyle = v.starColor;
@@ -1403,7 +1412,7 @@ export function createMoonPhaseTexture(windowCount: MoonPhaseWindowCount): THREE
     ctx.fill();
     const lit = moonPhaseLitPolygon(placement.phase, iconRadiusPx);
     if (lit.length > 0) {
-      ctx.fillStyle = v.moonColor;
+      ctx.fillStyle = ink.text ?? v.moonColor;
       ctx.beginPath();
       lit.forEach(({ x, y }, i) => { if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
       ctx.closePath();
@@ -1910,7 +1919,7 @@ export function cylinderXAxisCanvasUForLocalAngle(localAngleAroundX: number): nu
  * function of its own inputs" convention `createGenevaWheelGeometry`'s
  * own `slotCount` parameter already follows.
  */
-export function createYearDigitBarrelTexture(digitCount: number): THREE.CanvasTexture | null {
+export function createYearDigitBarrelTexture(digitCount: number, ink: DiscInk = {}): THREE.CanvasTexture | null {
   const v = YEAR_DIGIT_BARREL_VISUALIZATION;
   const width = 1024;
   const height = 256;
@@ -1919,9 +1928,9 @@ export function createYearDigitBarrelTexture(digitCount: number): THREE.CanvasTe
   canvas.height = height;
   const ctx = canvas.getContext("2d");
   if (ctx === null) return null;
-  ctx.fillStyle = v.backgroundColor;
+  ctx.fillStyle = ink.background ?? v.backgroundColor;
   ctx.fillRect(0, 0, width, height);
-  ctx.fillStyle = v.textColor;
+  ctx.fillStyle = ink.text ?? v.textColor;
   ctx.font = `bold ${String(v.fontSizePx)}px sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";

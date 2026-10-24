@@ -2,6 +2,25 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 39: Colours flyout
+
+A fourth flyout, **Colours**, slides out from a tab on the right edge (below the Inspector tab; it has no docked
+place). It lists every wheel seen through a dial window (Moon phase, Date, Day of week, Month, Leap year, Season,
+Year digits), each with a colour button and a **Text** button (the digits, names or icons printed on that wheel).
+Below are buttons for the **Dial**, **Hour markers**, **Hour marker digits**, **Dial text, triangles and digits**,
+**Minute hand** and **Hour hand**. Pressing a button opens a colour chart under it (saturation/brightness square,
+hue slider, typed `#rrggbb`, and a "Built-in colour" button); clicking or dragging on it recolours live and is one
+Undo step. "Reset all colours" returns everything to the built-in look.
+
+How it is stored and applied (ASM-0090): choices live in `Movement.appearance` (schema v35; v34 designs load with
+no choices), so they are saved with the design and Projects. They are presentation only: validation, kinematics
+and exports never read them. A wheel's colour is painted into its face texture, so the exact picked colour shows
+(not a tinted one). Season: one body colour for all wedges; Year digits: one colour set for the whole barrel; Moon
+phase text colours the lit phase icons. The dial print colour also covers the captions, pointers, bezels, seconds
+numerals and the RSA MOVT mark. Limits: no contrast or legibility check (a dark-on-dark choice is allowed), and
+lighting makes the hands look somewhat darker than the chosen colour. Tests: appearance domain/persistence,
+colour maths, layout, and `e2e/colours.spec.ts`.
+
 ## Phase 8.15 follow-up 38: seconds hand moved right and down
 
 The seconds hand and its 60 / 15 / 30 / 45 numerals are now about **1.1 mm further right and 2.2 mm lower** on the

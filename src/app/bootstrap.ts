@@ -11,6 +11,7 @@ import { browserStore, loadAutosave, writeAutosave } from "@/persistence/autosav
 import { mountHeader } from "./panels/header";
 import { mountToolbar } from "./panels/toolbar";
 import { mountComponentTree } from "./panels/componentTree";
+import { mountColourPanel } from "./panels/colourPanel";
 import { mountInspector } from "./panels/inspector/index";
 import { mountValidationConsole } from "./panels/validationConsole";
 import { mountTutorialBanner } from "./panels/tutorialBanner";
@@ -55,6 +56,7 @@ export function bootstrapApp(root: HTMLElement, plainStart = false): Bootstrappe
   mountInspector(layout.add("inspector", "panel inspector").body, store, storage, (message, kind) => { toolbar.notify(message, kind); });
   const consoleWindow = layout.add("console", "panel console");
   mountValidationConsole(consoleWindow.body, store, consoleWindow.setTitle);
+  mountColourPanel(layout.add("colours", "panel colours").body, store);
   mountLayoutControls(layoutControlsEl, layout);
   const viewport = new Viewport(viewportEl, store);
   // The Fix chain dialog is mounted below with the other dialogs; the button reaches it through this hook.

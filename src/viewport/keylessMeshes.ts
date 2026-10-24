@@ -140,7 +140,13 @@ export function buildDialMeshes(
   dial: Dial,
   placement: PlacementSolution,
   displayZ: (z: number) => number,
-  materials: { disc: THREE.Material; marker: THREE.Material },
+  /**
+   * `marker` is the twelve hour circles; `print` the triangles, moon-phase marks and window frames printed on the dial;
+   * `printText` the colour of the dial's printed text and numerals (the captions, the seconds numerals, the brand line)
+   * and `markerDigits` that of the numerals inside the four big hour circles. A text colour left out is the built-in
+   * one (follow-up 39, ASM-0090).
+   */
+  materials: { disc: THREE.Material; marker: THREE.Material; print: THREE.Material; printText?: string; markerDigits?: string },
   windows: readonly DialWindow[] = [],
   /** Moon-image count (1 or 2) of each window's own moon-phase disc, for windows with `phaseMarks` (ASM-0072). */
   moonImageCounts: ReadonlyMap<string, number> = new Map(),
@@ -182,7 +188,7 @@ export function buildDialMeshes(
     // The hour numeral inside each big circle (follow-up 21), in the year digits' own text colour.
     const hourNumeral = marker.big ? d.hourNumerals.find((n) => n.hour === marker.hour) : undefined;
     if (hourNumeral === undefined) continue;
-    const builtHour = createDialWindowCaptionTexture(hourNumeral.text, YEAR_DIGIT_BARREL_VISUALIZATION.textColor);
+    const builtHour = createDialWindowCaptionTexture(hourNumeral.text, materials.markerDigits ?? YEAR_DIGIT_BARREL_VISUALIZATION.textColor);
     if (builtHour === null) continue;
     const hourHeight = r * d.hourNumeralHeightFraction;
     const hourPlane = new THREE.Mesh(
@@ -196,7 +202,7 @@ export function buildDialMeshes(
   }
   // The small black brand line under the big 6 circle, just inside the dial's edge (follow-up 30, ASM-0083).
   const brand = dialBrandPlacement(r);
-  const builtBrand = createDialWindowCaptionTexture(brand.text, d.brand.color);
+  const builtBrand = createDialWindowCaptionTexture(brand.text, materials.printText ?? d.brand.color);
   if (builtBrand !== null) {
     const brandPlane = new THREE.Mesh(
       new THREE.PlaneGeometry(brand.height * builtBrand.aspect, brand.height),
@@ -212,7 +218,7 @@ export function buildDialMeshes(
   if (secondsScale !== null) {
     const numeralHeight = r * d.numeralHeightFraction;
     for (const numeral of secondsNumeralPlacements(secondsScale.pivot, secondsScale.ringRadius)) {
-      const built = createDialWindowCaptionTexture(numeral.text, d.numeralColor);
+      const built = createDialWindowCaptionTexture(numeral.text, materials.printText ?? d.numeralColor);
       if (built === null) continue;
       const plane = new THREE.Mesh(
         new THREE.PlaneGeometry(numeralHeight * built.aspect, numeralHeight),
@@ -233,7 +239,7 @@ export function buildDialMeshes(
     // The window's own extent toward the dial's north (+Y) at its own edge: a CIRCLE's radius,
     // or a RECTANGLE's half-height — the point the pointer's own apex sits just beyond (ASM-0069).
     const halfExtentAtNorth = w.outline.kind === "CIRCLE" ? w.outline.radius : w.outline.height / 2;
-    const pointer = new THREE.Mesh(createDialWindowPointerGeometry(pointerBaseWidth, pointerHeight, d.markerThicknessMetres), materials.marker);
+    const pointer = new THREE.Mesh(createDialWindowPointerGeometry(pointerBaseWidth, pointerHeight, d.markerThicknessMetres), materials.print);
     // With a printed bezel the apex clears the frame, not just the window's own edge.
     const bezelClearance = w.bezel ? r * DIAL_WINDOW_PRINT_VISUALIZATION.bezelWidthFraction : 0;
     pointer.position.set(w.centre.x - centre.x, w.centre.y - centre.y + halfExtentAtNorth + bezelClearance + pointerGap, face - d.markerThicknessMetres / 2);
@@ -252,7 +258,7 @@ export function buildDialMeshes(
       const atNorth = Math.abs(Math.cos(mark.worldAngle)) < 1e-9 && Math.sin(mark.worldAngle) > 0;
       if (atNorth && w.pointer === "NORTH") continue;
       const litSide: 1 | -1 = mark.kind === "FIRST_QUARTER" ? mv.firstQuarterLitSide : mv.firstQuarterLitSide === 1 ? -1 : 1;
-      const icon = new THREE.Mesh(createMoonPhaseMarkGeometry(mark.kind, iconRadius, d.markerThicknessMetres, litSide), materials.marker);
+      const icon = new THREE.Mesh(createMoonPhaseMarkGeometry(mark.kind, iconRadius, d.markerThicknessMetres, litSide), materials.print);
       icon.position.set(
         w.centre.x - centre.x + ringRadius * Math.cos(mark.worldAngle),
         w.centre.y - centre.y + ringRadius * Math.sin(mark.worldAngle),
@@ -270,12 +276,12 @@ export function buildDialMeshes(
     const wx = w.centre.x - centre.x;
     const wy = w.centre.y - centre.y;
     if (w.bezel) {
-      const bezel = new THREE.Mesh(createDialWindowBezelGeometry(w.outline, bezelWidth, d.markerThicknessMetres), materials.marker);
+      const bezel = new THREE.Mesh(createDialWindowBezelGeometry(w.outline, bezelWidth, d.markerThicknessMetres), materials.print);
       bezel.position.set(wx, wy, face - d.markerThicknessMetres / 2);
       root.add(bezel);
     }
     if (w.caption !== null && w.caption !== "") {
-      const built = createDialWindowCaptionTexture(w.caption);
+      const built = createDialWindowCaptionTexture(w.caption, materials.printText);
       if (built === null) continue;
       const southExtent = w.outline.kind === "CIRCLE" ? w.outline.radius : w.outline.height / 2;
       const offset = dialWindowCaptionOffset(southExtent, w.bezel ? bezelWidth : 0, r * printV.captionGapFraction, captionHeight);

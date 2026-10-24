@@ -16,7 +16,7 @@
  * floating and separate windows stay open.
  */
 
-export const PANEL_IDS = ["tree", "inspector", "console"] as const;
+export const PANEL_IDS = ["tree", "inspector", "console", "colours"] as const;
 export type PanelId = (typeof PANEL_IDS)[number];
 
 export type PanelMode = "DOCKED" | "FLOATING" | "FLYOUT" | "WINDOW" | "HIDDEN";
@@ -47,9 +47,9 @@ export interface LayoutState {
 }
 
 /** Docked track sizes (CSS px). UI choices, not engineering values. */
-export const DEFAULT_DOCKED_SIZE: Record<PanelId, number> = { tree: 260, inspector: 320, console: 200 };
+export const DEFAULT_DOCKED_SIZE: Record<PanelId, number> = { tree: 260, inspector: 320, console: 200, colours: 300 };
 /** Smallest a docked panel can be dragged to while staying usable. */
-export const MIN_DOCKED_SIZE: Record<PanelId, number> = { tree: 160, inspector: 220, console: 80 };
+export const MIN_DOCKED_SIZE: Record<PanelId, number> = { tree: 160, inspector: 220, console: 80, colours: 240 };
 /** Resizing a docked panel never shrinks the movement view below this. */
 export const MIN_VIEWPORT = { w: 320, h: 200 };
 /** Header and toolbar rows above the viewport (must match the grid rows in style.css). */
@@ -62,22 +62,26 @@ export const MIN_VISIBLE_TITLE = 80;
 export const TITLE_BAR_HEIGHT = 28;
 export const MIN_FLOATING_SIZE = { w: 200, h: 120 };
 
-export const PANEL_TITLES: Record<PanelId, string> = { tree: "Components", inspector: "Inspector", console: "Validation" };
+export const PANEL_TITLES: Record<PanelId, string> = { tree: "Components", inspector: "Inspector", console: "Validation", colours: "Colours" };
+
+/** The Colours panel has no docked place in the workspace grid: it is a flyout, or floats, or is hidden (follow-up 39). */
+export const NEVER_DOCKED: ReadonlySet<PanelId> = new Set<PanelId>(["colours"]);
 
 /** Every panel docked in the grid — the layout before flyouts, still available from each panel's own controls. */
 export function dockedLayout(): LayoutState {
   const docked = (id: PanelId): PanelState => ({ mode: "DOCKED", lastVisible: "DOCKED", rect: null, dockedSize: DEFAULT_DOCKED_SIZE[id] });
-  return { panels: { tree: docked("tree"), inspector: docked("inspector"), console: docked("console") }, focus: false };
+  const flyout = (id: PanelId): PanelState => ({ mode: "FLYOUT", lastVisible: "FLYOUT", rect: null, dockedSize: DEFAULT_DOCKED_SIZE[id] });
+  return { panels: { tree: docked("tree"), inspector: docked("inspector"), console: docked("console"), colours: flyout("colours") }, focus: false };
 }
 
 /** Every panel a flyout, sliding out from its screen-edge tab (the default). */
 export function defaultLayout(): LayoutState {
   const flyout = (id: PanelId): PanelState => ({ mode: "FLYOUT", lastVisible: "FLYOUT", rect: null, dockedSize: DEFAULT_DOCKED_SIZE[id] });
-  return { panels: { tree: flyout("tree"), inspector: flyout("inspector"), console: flyout("console") }, focus: false };
+  return { panels: { tree: flyout("tree"), inspector: flyout("inspector"), console: flyout("console"), colours: flyout("colours") }, focus: false };
 }
 
 /** Which screen edge each flyout slides out from. */
-export const FLYOUT_EDGE: Record<PanelId, "left" | "right" | "bottom"> = { tree: "left", inspector: "right", console: "bottom" };
+export const FLYOUT_EDGE: Record<PanelId, "left" | "right" | "bottom"> = { tree: "left", inspector: "right", console: "bottom", colours: "right" };
 
 /** Room always left on the far side of a flyout, so the movement and the tab to close it stay in view (CSS px). */
 export const FLYOUT_MARGIN = 48;
@@ -102,7 +106,9 @@ export function isShown(state: LayoutState, id: PanelId): boolean {
   return effectiveMode(state, id) !== "HIDDEN";
 }
 
-export function withMode(state: LayoutState, id: PanelId, mode: PanelMode): LayoutState {
+export function withMode(state: LayoutState, id: PanelId, requested: PanelMode): LayoutState {
+  // A panel with no docked place floats instead when asked to dock.
+  const mode: PanelMode = requested === "DOCKED" && NEVER_DOCKED.has(id) ? "FLOATING" : requested;
   const panel = state.panels[id];
   const lastVisible: VisibleMode = mode === "DOCKED" || mode === "FLOATING" || mode === "FLYOUT" ? mode : panel.lastVisible;
   // Docking a panel while in focus view would leave it hidden, so docking ends focus view.
@@ -161,7 +167,7 @@ export function dockedTracks(state: LayoutState, bounds?: Bounds): Record<PanelI
     const rows = bounds.h - WORKSPACE_CHROME_HEIGHT - MIN_VIEWPORT.h;
     if (console > rows) console = Math.max(MIN_DOCKED_SIZE.console, Math.floor(rows));
   }
-  return { tree, inspector, console };
+  return { tree, inspector, console, colours: 0 };
 }
 
 /** The largest a docked panel may be dragged to, leaving the movement view MIN_VIEWPORT beside the other docked panels. */
@@ -191,6 +197,8 @@ export function defaultRect(id: PanelId, bounds: { w: number; h: number }): Rect
       return clampRect({ x: bounds.w - 352, y: top, w: 340, h: Math.min(600, bounds.h - top - 24) }, bounds);
     case "console":
       return clampRect({ x: 290, y: bounds.h - 250, w: Math.min(680, bounds.w - 320), h: 230 }, bounds);
+    case "colours":
+      return clampRect({ x: bounds.w - 332, y: top, w: 320, h: Math.min(640, bounds.h - top - 24) }, bounds);
   }
 }
 
@@ -242,7 +250,8 @@ export function parseLayout(text: string | null): LayoutState {
     if (typeof p !== "object" || p === null) continue;
     const { mode, lastVisible, rect, dockedSize } = p as Record<string, unknown>;
     const visible: VisibleMode = lastVisible === "FLOATING" ? "FLOATING" : lastVisible === "DOCKED" ? "DOCKED" : "FLYOUT";
-    const restored: PanelMode = mode === "FLOATING" || mode === "HIDDEN" || mode === "DOCKED" || mode === "FLYOUT" ? mode : visible;
+    const savedMode: PanelMode = mode === "FLOATING" || mode === "HIDDEN" || mode === "DOCKED" || mode === "FLYOUT" ? mode : visible;
+    const restored: PanelMode = savedMode === "DOCKED" && NEVER_DOCKED.has(id) ? "FLOATING" : savedMode;
     // Clamped to the window when applied; here only nonsense is rejected.
     const size = finite(dockedSize) && dockedSize >= MIN_DOCKED_SIZE[id] ? dockedSize : DEFAULT_DOCKED_SIZE[id];
     layout.panels[id] = { mode: restored, lastVisible: visible, rect: parseRect(rect), dockedSize: size };

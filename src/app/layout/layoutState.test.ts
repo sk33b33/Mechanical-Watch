@@ -13,6 +13,7 @@ import {
   LAYOUT_STORAGE_KEY,
   maxDockedSize,
   MIN_DOCKED_SIZE,
+  NEVER_DOCKED,
   MIN_VIEWPORT,
   MIN_VISIBLE_TITLE,
   WORKSPACE_CHROME_HEIGHT,
@@ -29,13 +30,13 @@ import {
 
 describe("workspace layout state", () => {
   it("starts with every panel docked at its usual size when docked", () => {
-    expect(dockedTracks(dockedLayout())).toEqual({ tree: 260, inspector: 320, console: 200 });
+    expect(dockedTracks(dockedLayout())).toEqual({ tree: 260, inspector: 320, console: 200, colours: 0 });
   });
 
   it("by default every panel is a flyout, so the movement has the whole window (no docked tracks)", () => {
     const s = defaultLayout();
     for (const id of PANEL_IDS) expect(effectiveMode(s, id)).toBe("FLYOUT");
-    expect(dockedTracks(s)).toEqual({ tree: 0, inspector: 0, console: 0 });
+    expect(dockedTracks(s)).toEqual({ tree: 0, inspector: 0, console: 0, colours: 0 });
   });
 
   it("focus view leaves flyouts alone (only docked panels are hidden)", () => {
@@ -43,8 +44,8 @@ describe("workspace layout state", () => {
     for (const id of PANEL_IDS) expect(effectiveMode(focused, id)).toBe("FLYOUT");
   });
 
-  it("each flyout slides from its own edge: Components left, Inspector right, Validation bottom", () => {
-    expect(FLYOUT_EDGE).toEqual({ tree: "left", inspector: "right", console: "bottom" });
+  it("each flyout slides from its own edge: Components left, Inspector right, Validation bottom, Colours right (lower tab)", () => {
+    expect(FLYOUT_EDGE).toEqual({ tree: "left", inspector: "right", console: "bottom", colours: "right" });
   });
 
   it("a flyout reaches in by the panel's own size, but never so far that the movement and the closing tab disappear", () => {
@@ -80,7 +81,7 @@ describe("workspace layout state", () => {
     let s = withMode(dockedLayout(), "tree", "FLOATING");
     s = withMode(s, "inspector", "WINDOW");
     s = withMode(s, "console", "HIDDEN");
-    expect(dockedTracks(s)).toEqual({ tree: 0, inspector: 0, console: 0 });
+    expect(dockedTracks(s)).toEqual({ tree: 0, inspector: 0, console: 0, colours: 0 });
   });
 
   it("focus view hides only docked panels, and leaving it brings them back", () => {
@@ -88,7 +89,7 @@ describe("workspace layout state", () => {
     const focused = toggleFocus(floating);
     expect(effectiveMode(focused, "tree")).toBe("HIDDEN");
     expect(effectiveMode(focused, "inspector")).toBe("FLOATING");
-    expect(dockedTracks(focused)).toEqual({ tree: 0, inspector: 0, console: 0 });
+    expect(dockedTracks(focused)).toEqual({ tree: 0, inspector: 0, console: 0, colours: 0 });
     expect(effectiveMode(toggleFocus(focused), "tree")).toBe("DOCKED");
   });
 
@@ -161,6 +162,27 @@ describe("workspace layout state", () => {
 
 });
 
+describe("the Colours panel has no docked place (follow-up 39)", () => {
+  it("is a flyout by default, in the docked layout too", () => {
+    expect(effectiveMode(defaultLayout(), "colours")).toBe("FLYOUT");
+    expect(effectiveMode(dockedLayout(), "colours")).toBe("FLYOUT");
+    expect(dockedTracks(dockedLayout()).colours).toBe(0);
+  });
+
+  it("floats instead when asked to dock, and a saved docked mode is read as floating", () => {
+    expect(effectiveMode(withMode(defaultLayout(), "colours", "DOCKED"), "colours")).toBe("FLOATING");
+    const saved = JSON.stringify({ panels: { colours: { mode: "DOCKED", lastVisible: "DOCKED", dockedSize: 300 } } });
+    expect(effectiveMode(parseLayout(saved), "colours")).toBe("FLOATING");
+  });
+
+  it("an older saved layout without it still opens, with Colours as a flyout", () => {
+    const old = JSON.stringify({ panels: { tree: { mode: "DOCKED", dockedSize: 260 } }, focus: false });
+    const layout = parseLayout(old);
+    expect(effectiveMode(layout, "tree")).toBe("DOCKED");
+    expect(effectiveMode(layout, "colours")).toBe("FLYOUT");
+  });
+});
+
 describe("resizing docked panels", () => {
   const bounds = { w: 1400, h: 900 };
 
@@ -171,7 +193,7 @@ describe("resizing docked panels", () => {
   });
 
   it("stops at each panel's minimum", () => {
-    for (const id of PANEL_IDS) {
+    for (const id of PANEL_IDS.filter((p) => !NEVER_DOCKED.has(p))) {
       expect(dockedTracks(withDockedSize(dockedLayout(), id, 5, bounds), bounds)[id]).toBe(MIN_DOCKED_SIZE[id]);
     }
   });
@@ -204,7 +226,7 @@ describe("resizing docked panels", () => {
       expect(t.inspector).toBeGreaterThanOrEqual(MIN_DOCKED_SIZE.inspector);
       expect(small.w - t.tree - t.inspector).toBeGreaterThanOrEqual(MIN_VIEWPORT.w - 1e-9);
       // Back at full size, the chosen sizes return.
-      expect(dockedTracks(s, bounds)).toEqual({ tree: s.panels.tree.dockedSize, inspector: s.panels.inspector.dockedSize, console: DEFAULT_DOCKED_SIZE.console });
+      expect(dockedTracks(s, bounds)).toEqual({ tree: s.panels.tree.dockedSize, inspector: s.panels.inspector.dockedSize, console: DEFAULT_DOCKED_SIZE.console, colours: 0 });
     }
   });
 

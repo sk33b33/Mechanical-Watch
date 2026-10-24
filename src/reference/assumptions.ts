@@ -543,6 +543,12 @@ export const ASSUMPTIONS = {
     scope: "src/app/teachingMovement.ts SECONDS_PIVOT_MM (teaching movement layout, L1 geometric)",
     status: "Active",
   },
+  "ASM-0090": {
+    summary:
+      "Colours menu (Phase 8.15 follow-up 39), presentation only (L0 visual, ASM-0004): a Colours flyout lets the user choose, with an in-app colour chart (a saturation and brightness square plus a hue bar, or a typed #rrggbb), the colour of each wheel that a dial window shows (its body, and the text or digits printed on it; the four year-digit barrels are one wheel), the dial face, the hour marker circles, the numerals inside the four big hour markers, the printed text, triangles, frames and digits on the dial (window captions and pointers and frames, the seconds numerals and the brand line), the minute hand and the hour hand. A colour not chosen is the built-in one; Reset puts a colour or everything back. For a wheel the chosen body colour fills the disc face seen through the window (the label discs' light fill, the moon's sky, the season wedges as one colour, the year barrels' background) and the text colour is the printed labels, the moon's lit phase icons, the season icons and labels, or the year digits. The choices are saved with the design (schema v35 gives older files nothing chosen), are undoable edits, and are never read by validation, kinematics, the chain diagram or any export (reports and drawings keep their own colours). A colour is only a picture: it implies nothing about materials, finish or what a real part would be made of (ASM-0004), and no contrast or legibility check is made, so an unreadable pairing is the user's choice.",
+    scope: "src/domain/appearance.ts, the Colours panel, viewport and dial rendering (visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

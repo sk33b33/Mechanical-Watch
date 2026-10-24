@@ -42,7 +42,7 @@ export interface PanelWindow {
 type Notify = (message: string, kind: "info" | "error") => void;
 
 /** Which edge of a docked panel faces the movement view, and so carries its resize handle. */
-const RESIZE_EDGE: Record<PanelId, "right" | "left" | "top"> = { tree: "right", inspector: "left", console: "top" };
+const RESIZE_EDGE: Record<PanelId, "right" | "left" | "top"> = { tree: "right", inspector: "left", console: "top", colours: "left" };
 
 const CONTROL_LABELS: Record<"flyout" | "dock" | "float" | "window" | "hide", { glyph: string; title: string; name: (panel: string) => string }> = {
   flyout: { glyph: "⇥", title: "Tuck away as a flyout: a tab on the screen edge slides it out", name: (p) => `Make the ${p} panel a flyout` },

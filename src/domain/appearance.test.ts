@@ -1,0 +1,95 @@
+import { describe, expect, it } from "vitest";
+import { createTeachingMovement } from "@/app/teachingMovement";
+import { createMovement, setDialColour, setWheelColour, resetAppearance } from "./movement";
+import { appearanceKeyFor, colourableWheels, hexToNumber, isHexColour, numberToHex, wheelAppearance } from "./appearance";
+import { decodeDesign, encodeDesign, DESIGN_SCHEMA_VERSION } from "@/persistence/designFile";
+
+const teaching = createTeachingMovement();
+
+describe("appearance (ASM-0090)", () => {
+  it("accepts only #rrggbb colours and converts them to and from numbers", () => {
+    expect(isHexColour("#1a2B3c")).toBe(true);
+    for (const bad of ["1a2b3c", "#12345", "#1234567", "red", "#gg0000", "", null, 5]) expect(isHexColour(bad)).toBe(false);
+    expect(hexToNumber("#ff8000")).toBe(0xff8000);
+    expect(numberToHex(0x0080ff)).toBe("#0080ff");
+    expect(numberToHex(hexToNumber("#abcdef"))).toBe("#abcdef");
+  });
+
+  it("a new movement has nothing chosen", () => {
+    const m = createMovement("x", false);
+    expect(m.appearance.dial).toBeNull();
+    expect(m.appearance.wheels).toEqual({});
+  });
+
+  it("sets and clears a dial colour, rejects a bad one, and leaves the input design untouched", () => {
+    const set = setDialColour(teaching, "dial", "#102030");
+    expect(set.appearance.dial).toBe("#102030");
+    expect(teaching.appearance.dial).toBeNull();
+    expect(setDialColour(set, "dial", null).appearance.dial).toBeNull();
+    expect(() => setDialColour(teaching, "dial", "blue")).toThrow();
+    for (const key of ["hourMarkers", "hourMarkerDigits", "dialPrint", "minuteHand", "hourHand"] as const) {
+      expect(setDialColour(teaching, key, "#aabbcc").appearance[key]).toBe("#aabbcc");
+    }
+  });
+
+  it("offers each wheel a dial window shows, once, with the four year digits as one", () => {
+    const wheels = colourableWheels(teaching);
+    expect(wheels.map((w) => w.name)).toEqual(expect.arrayContaining(["Moon phase", "Date", "Day of week", "Month", "Leap year", "Season", "Year digits"]));
+    expect(wheels).toHaveLength(7);
+    expect(new Set(wheels.map((w) => w.key)).size).toBe(7);
+  });
+
+  it("stores a wheel's body and text separately, and drops its entry when both are cleared", () => {
+    const date = Object.values(teaching.dateComplications).find((d) => d.name === "Date");
+    if (date === undefined) throw new Error("no date");
+    const a = setWheelColour(teaching, date.id, "body", "#112233");
+    const b = setWheelColour(a, date.id, "text", "#445566");
+    expect(wheelAppearance(b, date.id)).toEqual({ body: "#112233", text: "#445566" });
+    const c = setWheelColour(setWheelColour(b, date.id, "body", null), date.id, "text", null);
+    expect(c.appearance.wheels).toEqual({});
+    expect(() => setWheelColour(teaching, date.id, "body", "nope")).toThrow();
+  });
+
+  it("the four year-digit barrels share one set of colours", () => {
+    const digits = Object.values(teaching.yearDigitComplications);
+    expect(digits).toHaveLength(4);
+    const key = appearanceKeyFor(teaching, digits[0]?.id ?? "");
+    for (const d of digits) expect(appearanceKeyFor(teaching, d.id)).toBe(key);
+    const painted = setWheelColour(teaching, digits[2]?.id ?? "", "body", "#0a0b0c");
+    for (const d of digits) expect(wheelAppearance(painted, d.id).body).toBe("#0a0b0c");
+  });
+
+  it("reset puts everything back", () => {
+    const painted = setDialColour(setWheelColour(teaching, Object.keys(teaching.moonPhases)[0] ?? "", "text", "#010203"), "minuteHand", "#040506");
+    const reset = resetAppearance(painted);
+    expect(reset.appearance.minuteHand).toBeNull();
+    expect(reset.appearance.wheels).toEqual({});
+  });
+});
+
+describe("appearance in a saved design (schema v35, ASM-0090)", () => {
+  it("round-trips every chosen colour", () => {
+    const date = Object.values(teaching.dateComplications)[0];
+    let m = setDialColour(teaching, "dial", "#101010");
+    m = setDialColour(m, "hourHand", "#202020");
+    m = setWheelColour(m, date?.id ?? "", "body", "#303030");
+    m = setWheelColour(m, date?.id ?? "", "text", "#404040");
+    const loaded = decodeDesign(encodeDesign(m));
+    expect(loaded.appearance).toEqual(m.appearance);
+  });
+
+  it("an older (v34) file opens with nothing chosen", () => {
+    expect(DESIGN_SCHEMA_VERSION).toBe(35);
+    const doc = JSON.parse(encodeDesign(teaching)) as { schemaVersion: number; movement: Record<string, unknown> };
+    Reflect.deleteProperty(doc.movement, "appearance");
+    const loaded = decodeDesign(JSON.stringify({ ...doc, schemaVersion: 34 }));
+    expect(loaded.appearance.dial).toBeNull();
+    expect(loaded.appearance.wheels).toEqual({});
+  });
+
+  it("rejects a file with a malformed colour", () => {
+    const doc = JSON.parse(encodeDesign(setDialColour(teaching, "dial", "#101010"))) as { movement: { appearance: { dial: string } } };
+    doc.movement.appearance.dial = "not-a-colour";
+    expect(() => decodeDesign(JSON.stringify(doc))).toThrow(/colour/);
+  });
+});

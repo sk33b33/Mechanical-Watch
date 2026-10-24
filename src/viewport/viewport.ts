@@ -3,7 +3,8 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { moveWheelBy } from "@/assembly/moveWheel";
 import type { AppStore } from "@/app/store";
 import type { EntityId } from "@/domain/ids";
-import type { ShaftId } from "@/domain/shaft";
+import type { HandFunction, ShaftId } from "@/domain/shaft";
+import { hexToNumber, wheelAppearance, type WheelAppearance } from "@/domain/appearance";
 import { createGearGeometry } from "@/geometry/gearGeometry";
 import { generateGearOutline, visualBoreRadius, type Point2D } from "@/geometry/gearOutline";
 import { barFootprint, lineCircleInterval, linePolygonIntervals, subtractIntervals, type Interval } from "@/geometry/sectionCap";
@@ -43,6 +44,7 @@ import {
   yearDigitAxleProjection,
   yearDigitBarrelAlongBounds,
   yearDigitBarrelDividerPositions,
+  type DiscInk,
   type EscapeToothFace,
 } from "@/geometry/assemblyGeometry3d";
 import { arborZRange, frameBearingHoles, frameScrewHoles, frameZRange, isCompleteFrame } from "@/assembly/assemblyGeometry";
@@ -98,7 +100,7 @@ const DIAL_FRAME_MARGIN = 1.12;
 /** The escapement's gold, shared by the escape wheel, the crown and any gear set to the ESCAPEMENT colour (ASM-0080). */
 const ESCAPEMENT_GOLD = 0xd9c27a;
 
-const COLORS = {
+export const COLORS = {
   selected: 0x4fa3ff,
   gear: 0xb8c4d0,
   arbor: 0x6f7c88,
@@ -242,6 +244,23 @@ function jewelCoreMesh(outerRadius: number, height: number, holeRadiusFraction?:
 }
 
 /**
+ * What the user chose for a wheel (follow-up 39, ASM-0090): `body` is its disc colour (null: the built-in one) and
+ * `ink` what its face texture is painted with, so a chosen body colour and text colour reach the picture itself.
+ */
+interface WheelInk {
+  body: number | null;
+  ink: DiscInk;
+}
+const NO_INK: WheelInk = { body: null, ink: {} };
+
+function wheelInkOf(appearance: WheelAppearance): WheelInk {
+  const ink: DiscInk = {};
+  if (appearance.body !== null) ink.background = appearance.body;
+  if (appearance.text !== null) ink.text = appearance.text;
+  return { body: appearance.body === null ? null : hexToNumber(appearance.body), ink };
+}
+
+/**
  * Materials for a disc complication built on `createZCylinder` — three
  * CylinderGeometry face groups (side, then its two caps). With position
  * labels (ASM-0051, date/month/leap-year, not moonphase), the cap facing
@@ -249,19 +268,20 @@ function jewelCoreMesh(outerRadius: number, height: number, holeRadiusFraction?:
  * plain colour otherwise. Three entries always, matching the geometry's
  * own three material groups regardless.
  */
-function discMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, labels: readonly string[] | null, labelCanvasAngleOffset = 0, labelRadiusFraction?: number): THREE.MeshStandardMaterial[] {
-  const plain = material(color, extra);
-  const texture = labels === null ? null : createDiscLabelTexture(labels, labelCanvasAngleOffset, labelRadiusFraction);
-  const labeled = texture === null ? plain : material(color, { ...extra, map: texture });
+function discMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, labels: readonly string[] | null, labelCanvasAngleOffset = 0, labelRadiusFraction?: number, wheel: WheelInk = NO_INK): THREE.MeshStandardMaterial[] {
+  const plain = material(wheel.body ?? color, extra);
+  const texture = labels === null ? null : createDiscLabelTexture(labels, labelCanvasAngleOffset, labelRadiusFraction, wheel.ink);
+  // A chosen body colour is painted into the face itself (the white material multiplies as a no-op), so it reads as picked.
+  const labeled = texture === null ? plain : material(wheel.body === null ? color : 0xffffff, { ...extra, map: texture });
   // CylinderGeometry's own group order after createZCylinder's rotateX(π/2): [side, +Z cap, −Z cap].
   return [plain, plain, labeled];
 }
 
 /** Same 3-group convention as `discMaterials`, with the moon-phase disc's own sky/moon illustration (ASM-0055) on the −Z (dial-facing) cap instead of a position-label ring. */
-function moonPhaseMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, windowCount: MoonPhaseWindowCount): THREE.MeshStandardMaterial[] {
-  const plain = material(color, extra);
-  const texture = createMoonPhaseTexture(windowCount);
-  const illustrated = texture === null ? plain : material(color, { ...extra, map: texture });
+function moonPhaseMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, windowCount: MoonPhaseWindowCount, wheel: WheelInk = NO_INK): THREE.MeshStandardMaterial[] {
+  const plain = material(wheel.body ?? color, extra);
+  const texture = createMoonPhaseTexture(windowCount, wheel.ink);
+  const illustrated = texture === null ? plain : material(wheel.body === null ? color : 0xffffff, { ...extra, map: texture });
   return [plain, plain, illustrated];
 }
 
@@ -274,9 +294,9 @@ function moonPhaseMaterials(color: number, extra: THREE.MeshStandardMaterialPara
  * near-white background already uses to keep a plain label ring from being
  * darkened by the disc's own base colour, just extended to coloured art).
  */
-function seasonMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, labels: readonly string[] | null): THREE.MeshStandardMaterial[] {
-  const plain = material(color, extra);
-  const texture = labels === null ? null : createSeasonTexture(labels, DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS);
+function seasonMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, labels: readonly string[] | null, wheel: WheelInk = NO_INK): THREE.MeshStandardMaterial[] {
+  const plain = material(wheel.body ?? color, extra);
+  const texture = labels === null ? null : createSeasonTexture(labels, DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS, wheel.ink);
   const illustrated = texture === null ? plain : material(0xffffff, { ...extra, map: texture });
   return [plain, plain, illustrated];
 }
@@ -306,8 +326,8 @@ function seasonMaterials(color: number, extra: THREE.MeshStandardMaterialParamet
  * the side, facing the dial directly, with no need for a top-cap label
  * ring any more.
  */
-function yearDigitBarrelMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, sharedSideTexture: THREE.CanvasTexture | null): THREE.MeshStandardMaterial[] {
-  const plain = material(color, extra);
+function yearDigitBarrelMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, sharedSideTexture: THREE.CanvasTexture | null, wheel: WheelInk = NO_INK): THREE.MeshStandardMaterial[] {
+  const plain = material(wheel.body ?? color, extra);
   // The digit strip also drives a modest emissive term (ASM-0074): lit only by the scene's own
   // lights the pale numerals read dim through the dial window, so they carry some light of their
   // own. The dark body barely changes (emissive follows the texture), so it still reads as a dark
@@ -553,6 +573,12 @@ export class Viewport {
     this.animationHandle = requestAnimationFrame(this.animate);
   }
 
+  /** A hand's colour: the one chosen for the hour or minute hand, else the built-in one (follow-up 39, ASM-0090). */
+  private handColour(hand: HandFunction): number {
+    const chosen = hand === "HOURS" ? this.store.movement.appearance.hourHand : hand === "MINUTES" ? this.store.movement.appearance.minuteHand : null;
+    return chosen === null ? COLORS.hand[hand] : hexToNumber(chosen);
+  }
+
   private addPickable(parent: THREE.Object3D, mesh: THREE.Mesh, pick: Omit<Pickable, "baseRenderOrder" | "baseDepthWrite">): void {
     const firstMaterial = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
     mesh.userData = {
@@ -681,16 +707,18 @@ export class Viewport {
       if (group === undefined || !valid) continue;
       // Turns continuously with its own arbor's group (ASM-0047) — no special-case rotation code, the
       // same applyKinematicRotation() loop that spins every other shaft group spins this one too.
+      const wheelInk = wheelInkOf(wheelAppearance(movement, moon.id));
+      const moonColour = wheelInk.body ?? COLORS.moonPhase;
       const zLo = this.displayZ(moon.faceHeight);
       const zHi = zLo + moon.thickness;
       // An open five-spoke wheel like the date and month wheels (follow-up 20, ASM-0075), its gaps
       // stopping below the ring of printed phase icons.
       const mesh = new THREE.Mesh(
         createSpokedWheelGeometry(moon.diameter / 2, moon.thickness, 0, SPOKED_WHEEL_VISUALIZATION.moonOpeningOuterRadiusFraction),
-        moonPhaseMaterials(COLORS.moonPhase, { metalness: 0.1, roughness: 0.7 }, moon.windowCount),
+        moonPhaseMaterials(COLORS.moonPhase, { metalness: 0.1, roughness: 0.7 }, moon.windowCount, wheelInk),
       );
       mesh.position.z = (zLo + zHi) / 2;
-      this.addPickable(group, mesh, { kind: "moonPhase", entityId: moon.id, baseColor: COLORS.moonPhase });
+      this.addPickable(group, mesh, { kind: "moonPhase", entityId: moon.id, baseColor: moonColour });
       this.cappableSolids.push({
         positionX: group.position.x,
         positionY: group.position.y,
@@ -698,7 +726,7 @@ export class Viewport {
         zLo,
         zHi,
         footprint: { kind: "circle", radius: moon.diameter / 2, centre: { x: 0, y: 0 } },
-        color: COLORS.moonPhase,
+        color: moonColour,
       });
     }
 
@@ -709,12 +737,13 @@ export class Viewport {
       // The star's own group turns only when `stepSimulation` jumps it (ASM-0048) — the same
       // applyKinematicRotation() loop that spins every other shaft group spins this one too, since
       // the jump writes straight into simulation.shaftAngle; no special-case rotation code needed.
-      const starColor = date.display === "DAY_OF_WEEK" ? COLORS.weekdayStar : COLORS.dateStar;
+      const wheelInk = wheelInkOf(wheelAppearance(movement, date.id));
+      const starColor = wheelInk.body ?? (date.display === "DAY_OF_WEEK" ? COLORS.weekdayStar : COLORS.dateStar);
       const meshZ = this.displayZ(date.starZCentre);
       const dateLabels = findDiscComplication(movement, date.id)?.positionLabels ?? null;
       const mesh = new THREE.Mesh(
         createSpokedWheelGeometry(date.starTipDiameter / 2, date.starThickness),
-        discMaterials(starColor, { metalness: 0.1, roughness: 0.7 }, dateLabels, DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS, DIAL_WINDOW_VISUALIZATION.edgeLabelRadiusFraction),
+        discMaterials(starColor, { metalness: 0.1, roughness: 0.7 }, dateLabels, DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS, DIAL_WINDOW_VISUALIZATION.edgeLabelRadiusFraction, wheelInk),
       );
       mesh.position.z = meshZ;
       this.addPickable(group, mesh, { kind: "dateStar", entityId: date.id, baseColor: starColor });
@@ -767,6 +796,8 @@ export class Viewport {
 
     for (const month of Object.values(movement.monthComplications)) {
       const group = this.shaftGroups.get(month.starShaftId);
+      const wheelInk = wheelInkOf(wheelAppearance(movement, month.id));
+      const monthColour = wheelInk.body ?? COLORS.monthStar;
       const valid = Number.isFinite(month.starTipDiameter) && month.starTipDiameter > 0 && Number.isFinite(month.starThickness) && month.starThickness > 0 && Number.isFinite(month.starZCentre);
       if (group === undefined || !valid) continue;
       // Driven entirely by the date complication's own jumps (ASM-0049) — same applyKinematicRotation()
@@ -775,10 +806,10 @@ export class Viewport {
       const monthLabels = findDiscComplication(movement, month.id)?.positionLabels ?? null;
       const mesh = new THREE.Mesh(
         createSpokedWheelGeometry(month.starTipDiameter / 2, month.starThickness),
-        discMaterials(COLORS.monthStar, { metalness: 0.1, roughness: 0.7 }, monthLabels, DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS, DIAL_WINDOW_VISUALIZATION.edgeLabelRadiusFraction),
+        discMaterials(monthColour, { metalness: 0.1, roughness: 0.7 }, monthLabels, DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS, DIAL_WINDOW_VISUALIZATION.edgeLabelRadiusFraction, wheelInk),
       );
       mesh.position.z = meshZ;
-      this.addPickable(group, mesh, { kind: "monthStar", entityId: month.id, baseColor: COLORS.monthStar });
+      this.addPickable(group, mesh, { kind: "monthStar", entityId: month.id, baseColor: monthColour });
       this.cappableSolids.push({
         positionX: group.position.x,
         positionY: group.position.y,
@@ -786,7 +817,7 @@ export class Viewport {
         zLo: meshZ - month.starThickness / 2,
         zHi: meshZ + month.starThickness / 2,
         footprint: { kind: "circle", radius: month.starTipDiameter / 2, centre: { x: 0, y: 0 } },
-        color: COLORS.monthStar,
+        color: monthColour,
       });
 
       // The month's own visual linkage (ASM-0054): a small declutch wheel, idle/disengaged,
@@ -811,7 +842,7 @@ export class Viewport {
         };
         const wheel = new THREE.Mesh(
           createZCylinder(wheelRadius, meshZ - month.starThickness / 2, meshZ + month.starThickness / 2, 24),
-          material(COLORS.monthStar, { metalness: 0.3, roughness: 0.6 }),
+          material(monthColour, { metalness: 0.3, roughness: 0.6 }),
         );
         wheel.position.set(wheelCentre.x, wheelCentre.y, 0);
         this.content.add(wheel);
@@ -820,6 +851,8 @@ export class Viewport {
 
     for (const year of Object.values(movement.leapYearComplications)) {
       const group = this.shaftGroups.get(year.wheelShaftId);
+      const wheelInk = wheelInkOf(wheelAppearance(movement, year.id));
+      const leapColour = wheelInk.body ?? COLORS.leapYearWheel;
       const valid = Number.isFinite(year.wheelTipDiameter) && year.wheelTipDiameter > 0 && Number.isFinite(year.wheelThickness) && year.wheelThickness > 0 && Number.isFinite(year.wheelZCentre);
       if (group === undefined || !valid) continue;
       // Driven entirely by the month complication's own December-to-January wrap (ASM-0050) —
@@ -844,10 +877,10 @@ export class Viewport {
       const labelCanvasAngleOffset = DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS;
       const mesh = new THREE.Mesh(
         createGenevaWheelGeometry(year.wheelTipDiameter / 2, year.wheelThickness, LEAP_YEAR_SLOT_COUNT, baseAngle),
-        discMaterials(COLORS.leapYearWheel, { metalness: 0.1, roughness: 0.7 }, yearLabels, labelCanvasAngleOffset),
+        discMaterials(COLORS.leapYearWheel, { metalness: 0.1, roughness: 0.7 }, yearLabels, labelCanvasAngleOffset, undefined, wheelInk),
       );
       mesh.position.z = meshZ;
-      this.addPickable(group, mesh, { kind: "leapYearWheel", entityId: year.id, baseColor: COLORS.leapYearWheel });
+      this.addPickable(group, mesh, { kind: "leapYearWheel", entityId: year.id, baseColor: leapColour });
       this.cappableSolids.push({
         positionX: group.position.x,
         positionY: group.position.y,
@@ -857,7 +890,7 @@ export class Viewport {
         // The slots cut into the rim (createGenevaWheelGeometry) are not reflected here — a
         // plain-circle footprint is a close enough approximation for the section-view cutaway cap.
         footprint: { kind: "circle", radius: year.wheelTipDiameter / 2, centre: { x: 0, y: 0 } },
-        color: COLORS.leapYearWheel,
+        color: leapColour,
       });
 
       // The driver pin assembly (ASM-0050): not backed by its own arbor, so built here directly
@@ -872,12 +905,12 @@ export class Viewport {
         this.content.add(driverGroup);
         const carrier = new THREE.Mesh(
           createZCylinder(pinOrbitRadius * v.driverCarrierRadiusFactor, meshZ - year.wheelThickness / 4, meshZ + year.wheelThickness / 4, 32),
-          material(COLORS.leapYearWheel, { metalness: 0.3, roughness: 0.6 }),
+          material(leapColour, { metalness: 0.3, roughness: 0.6 }),
         );
         driverGroup.add(carrier);
         const pin = new THREE.Mesh(
           createZCylinder(v.pinRadiusMetres, meshZ - year.wheelThickness / 2, meshZ + year.wheelThickness / 2, 16),
-          material(COLORS.leapYearWheel, { metalness: 0.6, roughness: 0.35 }),
+          material(leapColour, { metalness: 0.6, roughness: 0.35 }),
         );
         pin.position.set(pinOrbitRadius, 0, 0);
         driverGroup.add(pin);
@@ -887,6 +920,8 @@ export class Viewport {
 
     for (const season of Object.values(movement.seasonComplications)) {
       const group = this.shaftGroups.get(season.wheelShaftId);
+      const wheelInk = wheelInkOf(wheelAppearance(movement, season.id));
+      const seasonColour = wheelInk.body ?? COLORS.seasonWheel;
       const valid = Number.isFinite(season.wheelTipDiameter) && season.wheelTipDiameter > 0 && Number.isFinite(season.wheelThickness) && season.wheelThickness > 0 && Number.isFinite(season.wheelZCentre);
       if (group === undefined || !valid) continue;
       // Driven entirely by the month complication's own quarter-boundary jumps (ASM-0057) — same
@@ -895,8 +930,8 @@ export class Viewport {
       // mechanism exists for a quarter-indicator built this way to draw instead.
       const meshZ = this.displayZ(season.wheelZCentre);
       const seasonLabels = findDiscComplication(movement, season.id)?.positionLabels ?? null;
-      const mesh = new THREE.Mesh(createZCylinder(season.wheelTipDiameter / 2, meshZ - season.wheelThickness / 2, meshZ + season.wheelThickness / 2, 64), seasonMaterials(COLORS.seasonWheel, { metalness: 0.1, roughness: 0.7 }, seasonLabels));
-      this.addPickable(group, mesh, { kind: "seasonWheel", entityId: season.id, baseColor: COLORS.seasonWheel });
+      const mesh = new THREE.Mesh(createZCylinder(season.wheelTipDiameter / 2, meshZ - season.wheelThickness / 2, meshZ + season.wheelThickness / 2, 64), seasonMaterials(COLORS.seasonWheel, { metalness: 0.1, roughness: 0.7 }, seasonLabels, wheelInk));
+      this.addPickable(group, mesh, { kind: "seasonWheel", entityId: season.id, baseColor: seasonColour });
       this.cappableSolids.push({
         positionX: group.position.x,
         positionY: group.position.y,
@@ -904,7 +939,7 @@ export class Viewport {
         zLo: meshZ - season.wheelThickness / 2,
         zHi: meshZ + season.wheelThickness / 2,
         footprint: { kind: "circle", radius: season.wheelTipDiameter / 2, centre: { x: 0, y: 0 } },
-        color: COLORS.seasonWheel,
+        color: seasonColour,
       });
     }
 
@@ -953,13 +988,16 @@ export class Viewport {
       bucket.segments.push({ along: yearDigitAxleProjection(digit.axleOrigin, bucket.direction), length: digit.segmentLength, diameter: digit.barrelDiameter });
       yearDigitGroups.set(digit.monthComplicationId, bucket);
 
-      if (yearDigitSideTexture === undefined) yearDigitSideTexture = createYearDigitBarrelTexture(YEAR_DIGIT_SLOT_COUNT);
+      const wheelInk = wheelInkOf(wheelAppearance(movement, digit.id));
+      const digitColour = wheelInk.body ?? COLORS.yearDigitWheel;
+      // One texture for all four barrels: they share their colours, so the same picture serves each.
+      if (yearDigitSideTexture === undefined) yearDigitSideTexture = createYearDigitBarrelTexture(YEAR_DIGIT_SLOT_COUNT, wheelInk.ink);
       const mesh = new THREE.Mesh(
         createXAxisCylinder(digit.barrelDiameter / 2, digit.segmentLength, 64),
-        yearDigitBarrelMaterials(COLORS.yearDigitWheel, { metalness: 0.1, roughness: 0.7 }, yearDigitSideTexture),
+        yearDigitBarrelMaterials(COLORS.yearDigitWheel, { metalness: 0.1, roughness: 0.7 }, yearDigitSideTexture, wheelInk),
       );
       spin.add(mesh);
-      this.addPickable(spin, mesh, { kind: "yearDigitWheel", entityId: digit.id, baseColor: COLORS.yearDigitWheel });
+      this.addPickable(spin, mesh, { kind: "yearDigitWheel", entityId: digit.id, baseColor: digitColour });
       // Not added to cappableSolids: the section-view cutaway cap is Z-extrusion-based and does
       // not cover a horizontal-axis part, the same already-accepted gap the keyless works' own
       // stem/crown/pinions have (STATUS.md) — it still shows the pre-existing uncapped clip.
@@ -987,7 +1025,7 @@ export class Viewport {
           };
           const wheel = new THREE.Mesh(
             createZCylinder(wheelRadius, meshZ - digit.segmentLength / 8, meshZ + digit.segmentLength / 8, 24),
-            material(COLORS.yearDigitWheel, { metalness: 0.3, roughness: 0.6 }),
+            material(digitColour, { metalness: 0.3, roughness: 0.6 }),
           );
           wheel.position.set(wheelCentre.x, wheelCentre.y, 0);
           this.content.add(wheel);
@@ -1072,10 +1110,11 @@ export class Viewport {
     for (const shaft of Object.values(movement.shafts)) {
       const group = this.shaftGroups.get(shaft.id);
       if (shaft.hand === null || group === undefined) continue;
-      const mesh = new THREE.Mesh(createHandGeometry(shaft.hand), material(COLORS.hand[shaft.hand], { metalness: 0.6, roughness: 0.3 }));
+      const handColour = this.handColour(shaft.hand);
+      const mesh = new THREE.Mesh(createHandGeometry(shaft.hand), material(handColour, { metalness: 0.6, roughness: 0.3 }));
       const meshZ = this.displayZ(lowest) - HAND_VISUALIZATION[shaft.hand].gapBelowMovementMetres - HAND_VISUALIZATION.thicknessMetres;
       mesh.position.z = meshZ;
-      this.addPickable(group, mesh, { kind: "arbor", entityId: shaft.id, baseColor: COLORS.hand[shaft.hand] });
+      this.addPickable(group, mesh, { kind: "arbor", entityId: shaft.id, baseColor: handColour });
       this.cappableSolids.push({
         positionX: group.position.x,
         positionY: group.position.y,
@@ -1088,7 +1127,7 @@ export class Viewport {
           holeRadius: handHubRadius(shaft.hand),
           holeCentre: { x: 0, y: 0 },
         },
-        color: COLORS.hand[shaft.hand],
+        color: handColour,
       });
     }
 
@@ -1143,16 +1182,22 @@ export class Viewport {
         ? null
         : { pivot: { x: secondsPivot.x, y: secondsPivot.y }, ringRadius: HAND_VISUALIZATION.SECONDS.lengthMetres * DIAL_VISUALIZATION.secondsNumeralRingFraction };
       for (const dial of Object.values(movement.dials)) {
+        const look = movement.appearance;
+        const dialColour = look.dial === null ? COLORS.dial : hexToNumber(look.dial);
         const built = buildDialMeshes(dial, analysis.placement, (z) => this.displayZ(z), {
-          disc: material(COLORS.dial, { metalness: 0.05, roughness: 0.8 }),
-          marker: material(COLORS.dialMarker, { metalness: 0.2, roughness: 0.5 }),
+          disc: material(dialColour, { metalness: 0.05, roughness: 0.8 }),
+          marker: material(look.hourMarkers === null ? COLORS.dialMarker : hexToNumber(look.hourMarkers), { metalness: 0.2, roughness: 0.5 }),
+          // The printed triangles, marks and frames, and the printed text, follow the dial print colour when one is chosen.
+          print: material(look.dialPrint === null ? COLORS.dialMarker : hexToNumber(look.dialPrint), { metalness: 0.2, roughness: 0.5 }),
+          ...(look.dialPrint === null ? {} : { printText: look.dialPrint }),
+          ...(look.hourMarkerDigits === null ? {} : { markerDigits: look.hourMarkerDigits }),
         }, Object.values(movement.dialWindows), moonImageCounts, secondsScale);
         if (built === null) continue;
         this.content.add(built.root);
         built.disc.userData = {
           kind: "dial",
           entityId: dial.id,
-          baseColor: COLORS.dial,
+          baseColor: dialColour,
           baseRenderOrder: built.disc.renderOrder,
           baseDepthWrite: (built.disc.material as THREE.MeshStandardMaterial).depthWrite,
         } satisfies Pickable;
@@ -1168,7 +1213,7 @@ export class Viewport {
             zLo: face,
             zHi: face + dial.thickness,
             footprint: { kind: "circle", radius: dial.diameter / 2, centre: { x: 0, y: 0 } },
-            color: COLORS.dial,
+            color: dialColour,
           });
         }
       }

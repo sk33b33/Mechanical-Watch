@@ -17,6 +17,7 @@ import type { SeasonComplication } from "@/domain/seasonComplication";
 import type { YearDigitComplication } from "@/domain/yearDigitComplication";
 import type { DialWindow, DialWindowOutline } from "@/domain/dialWindow";
 import type { Screw } from "@/domain/screw";
+import { isHexColour, type Appearance, type WheelAppearance } from "@/domain/appearance";
 import type { MainspringSpec } from "@/domain/coupling";
 import type { Torque } from "@/units/torque";
 import type { MomentOfInertia, TorsionalStiffness } from "@/units/rotational";
@@ -46,7 +47,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 34;
+export const DESIGN_SCHEMA_VERSION = 35;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -490,6 +491,16 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
       Object.entries(movement.dateComplications).map(([id, d]) => [id, isRecord(d) ? { ...d, display: "DAY_OF_MONTH" } : d]),
     );
     return { ...doc, schemaVersion: 34, movement: { ...movement, dateComplications } };
+  },
+  /**
+   * v34 → v35: a movement gains `appearance` (ASM-0090), the colours chosen for the dial and the wheels seen
+   * through its windows. Nothing is chosen in an older file, so it looks exactly as before.
+   */
+  34: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement)) return doc;
+    const appearance = { dial: null, hourMarkers: null, hourMarkerDigits: null, dialPrint: null, minuteHand: null, hourHand: null, wheels: {} };
+    return { ...doc, schemaVersion: 35, movement: { ...movement, appearance } };
   },
 };
 
@@ -943,6 +954,32 @@ const escapement: Decoder<Escapement> = (value, path) => {
   };
 };
 
+const hexColour: Decoder<string> = (value, path) => {
+  if (!isHexColour(value)) throw new DecodeError(path, "expected a colour like #1a2b3c");
+  return value;
+};
+
+const wheelAppearance: Decoder<WheelAppearance> = (value, path) => {
+  const o = object(value, path);
+  return { body: field(o, "body", nullable(hexColour), path), text: field(o, "text", nullable(hexColour), path) };
+};
+
+const appearance: Decoder<Appearance> = (value, path) => {
+  const o = object(value, path);
+  const wheelsObject = object(field(o, "wheels", (v) => v, path), `${path}.wheels`);
+  const wheels: Record<string, WheelAppearance> = {};
+  for (const [key, item] of Object.entries(wheelsObject)) wheels[key] = wheelAppearance(item, `${path}.wheels.${key}`);
+  return {
+    dial: field(o, "dial", nullable(hexColour), path),
+    hourMarkers: field(o, "hourMarkers", nullable(hexColour), path),
+    hourMarkerDigits: field(o, "hourMarkerDigits", nullable(hexColour), path),
+    dialPrint: field(o, "dialPrint", nullable(hexColour), path),
+    minuteHand: field(o, "minuteHand", nullable(hexColour), path),
+    hourHand: field(o, "hourHand", nullable(hexColour), path),
+    wheels,
+  };
+};
+
 const movement: Decoder<Movement> = (value, path) => {
   const o = object(value, path);
   return {
@@ -969,6 +1006,7 @@ const movement: Decoder<Movement> = (value, path) => {
     dialWindows: field(o, "dialWindows", entityRecord(dialWindow), path),
     screws: field(o, "screws", entityRecord(screw), path),
     drive: field(o, "drive", nullable(drive), path),
+    appearance: field(o, "appearance", appearance, path),
   };
 };
 
