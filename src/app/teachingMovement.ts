@@ -116,10 +116,46 @@ const SPOKED_WHEEL_MIN_TEETH = 30;
 /** Illustrative plan position of the day-of-week star (ASM-0009, ASM-0081); tuned live against the hands' sweep and the seconds sub-dial. */
 const WEEKDAY_STAR_X_MM = 6;
 const WEEKDAY_STAR_Y_MM = 3.5;
+/**
+ * Where the seconds hand's pivot (the fourth arbor) sits on the dial, at the user's request (follow-up 38): about
+ * 1.1 mm further right on the dial and 2.2 mm lower than the original (9.78, -2.70) mm. The arbor stays a
+ * mesh-placed one, so its position cannot be chosen freely: the third arbor swings round the centre and the fourth
+ * round the third, both at their exact centre distances, until it lands here (see `twoLinkAngles`). The escape
+ * arbor, pallet, balance and the balance cock are carried with it.
+ */
+const SECONDS_PIVOT_MM = { x: 8.7, y: -4.9 };
+
+/**
+ * Directions, in degrees from +X counter-clockwise, of a two-link chain from the origin whose first link has length
+ * `first` and second `second`, so that its end lands on `target`: the one where the first link points to the lower
+ * of the two possible places (the branch nearer the original layout). Pure; null when the target is out of reach.
+ */
+function twoLinkAngles(first: number, second: number, target: { x: number; y: number }): { firstDeg: number; secondDeg: number } | null {
+  const d = Math.hypot(target.x, target.y);
+  if (d === 0 || d > first + second || d < Math.abs(first - second)) return null;
+  const a = (first * first - second * second + d * d) / (2 * d);
+  const h = Math.sqrt(Math.max(0, first * first - a * a));
+  const ux = target.x / d;
+  const uy = target.y / d;
+  // The elbow below the line from the centre to the target.
+  const elbow = { x: a * ux + h * uy, y: a * uy - h * ux };
+  const toDeg = (rad: number): number => (rad * 180) / Math.PI;
+  return { firstDeg: toDeg(Math.atan2(elbow.y, elbow.x)), secondDeg: toDeg(Math.atan2(target.y - elbow.y, target.x - elbow.x)) };
+}
 
 export function createTeachingMovement(): Movement {
   const trainModule = mm(0.12);
   const motionModule = mm(0.1);
+  // The third and fourth arbors' directions that put the seconds pivot where the layout wants it.
+  const thirdLink = meshCentreDistance(trainModule, 80, 10) * 1000;
+  const fourthLink = meshCentreDistance(trainModule, 75, 10) * 1000;
+  const secondsAngles = twoLinkAngles(thirdLink, fourthLink, SECONDS_PIVOT_MM);
+  if (secondsAngles === null) throw new Error("teaching movement: the seconds pivot is out of reach of the third and fourth arbors");
+  const { firstDeg: thirdAngleDeg, secondDeg: fourthAngleDeg } = secondsAngles;
+  // How far the whole seconds end of the train (fourth arbor, escape, pallet, balance, balance cock) moved from the
+  // original layout, where the third arbor was at 330 degrees and the fourth straight out from it (9.78, -2.70) mm.
+  const originalSecondsPivot = { x: thirdLink * Math.cos((330 * Math.PI) / 180) + fourthLink, y: thirdLink * Math.sin((330 * Math.PI) / 180) };
+  const tailShift = { x: SECONDS_PIVOT_MM.x - originalSecondsPivot.x, y: SECONDS_PIVOT_MM.y - originalSecondsPivot.y };
 
   const mainplate = createFrame({
     kind: "MAINPLATE",
@@ -133,7 +169,8 @@ export function createTeachingMovement(): Movement {
     name: "Train bridge",
     outline: {
       kind: "POLYGON",
-      points: [vec2(mm(-8), mm(-5)), vec2(mm(13), mm(-6)), vec2(mm(13), mm(5)), vec2(mm(-8), mm(4))],
+      // The lower right corner is lower than it was (-6 mm) so the bridge still holds the seconds pivot after it moved down (follow-up 38).
+      points: [vec2(mm(-8), mm(-5)), vec2(mm(13), mm(-9)), vec2(mm(13), mm(5)), vec2(mm(-8), mm(4))],
     },
     zBottom: mm(4),
     thickness: mm(0.8),
@@ -268,7 +305,11 @@ export function createTeachingMovement(): Movement {
   const balanceCock = createFrame({
     kind: "BRIDGE",
     name: "Balance cock",
-    outline: { kind: "POLYGON", points: [vec2(mm(3), mm(5)), vec2(mm(12), mm(5)), vec2(mm(12), mm(11)), vec2(mm(3), mm(11))] },
+    outline: {
+      kind: "POLYGON",
+      // Carried with the seconds end of the train (follow-up 38): it holds the pallet and balance.
+      points: [[3, 5], [12, 5], [12, 11], [3, 11]].map(([x, y]) => vec2(mm((x ?? 0) + tailShift.x), mm((y ?? 0) + tailShift.y))),
+    },
     zBottom: mm(4),
     thickness: mm(0.8),
   });
@@ -279,7 +320,7 @@ export function createTeachingMovement(): Movement {
   m = addScrew(m, createScrew({ name: "Mainplate screw 2", frameId: mainplate.id, position: vec2(mm(-7.5), mm(8)), diameter: mm(0.8) }));
   m = addScrew(m, createScrew({ name: "Mainplate screw 3", frameId: mainplate.id, position: vec2(mm(-7.5), mm(-8)), diameter: mm(0.8) }));
   m = addScrew(m, createScrew({ name: "Train bridge screw", frameId: bridge.id, position: vec2(mm(5), mm(-1)), diameter: mm(0.7) }));
-  m = addScrew(m, createScrew({ name: "Balance cock screw", frameId: balanceCock.id, position: vec2(mm(7), mm(6.5)), diameter: mm(0.6) }));
+  m = addScrew(m, createScrew({ name: "Balance cock screw", frameId: balanceCock.id, position: vec2(mm(7 + tailShift.x), mm(6.5 + tailShift.y)), diameter: mm(0.6) }));
   for (const s of [
     barrel, centre, third, fourth, escape, cannon, minuteWheel, hourWheel, barrelArbor, crownWheelArbor, settingWheelArbor,
     moonReductionArbor, moonDiscArbor, twentyFourHourArbor, dateStarArbor, weekdayStarArbor, monthStarArbor, leapYearWheelArbor, seasonWheelArbor,
@@ -322,8 +363,8 @@ export function createTeachingMovement(): Movement {
     });
   };
   polar(barrel, centre, barrelToCentre, 200);
-  polar(third, centre, centreToThird, 330);
-  polar(fourth, third, thirdToFourth, 0);
+  polar(third, centre, centreToThird, thirdAngleDeg);
+  polar(fourth, third, thirdToFourth, fourthAngleDeg);
   polar(escape, fourth, fourthToEscape, 90);
   m = updateShaft(m, cannon.id, { placement: { kind: "COAXIAL", referenceShaftId: centre.id } });
   m = updateShaft(m, hourWheel.id, { placement: { kind: "COAXIAL", referenceShaftId: centre.id } });
@@ -761,12 +802,12 @@ export function createTeachingMovement(): Movement {
 
   // Pallet arbor and balance staff: fixed positions along a line from the escape arbor
   // (illustrative layout distances). The escape arbor's position follows the mesh chain
-  // centre → third (330°) → fourth (0°) → escape (90°).
+  // centre → third → fourth (their directions are solved from the seconds pivot position above) → escape (90°).
   const rad = (deg: number): number => (deg * Math.PI) / 180;
   const cd = (z1: number, z2: number): number => meshCentreDistance(trainModule, z1, z2);
   const escapeAt = {
-    x: cd(80, 10) * Math.cos(rad(330)) + cd(75, 10),
-    y: cd(80, 10) * Math.sin(rad(330)) + cd(80, 8),
+    x: cd(80, 10) * Math.cos(rad(thirdAngleDeg)) + cd(75, 10) * Math.cos(rad(fourthAngleDeg)),
+    y: cd(80, 10) * Math.sin(rad(thirdAngleDeg)) + cd(75, 10) * Math.sin(rad(fourthAngleDeg)) + cd(80, 8),
   };
   const layoutDirection = rad(120);
   // Pallets span 3½ escape teeth with tangential locking (ASM-0025), which fixes the

@@ -2,6 +2,17 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 38: seconds hand moved right and down
+
+The seconds hand and its 60 / 15 / 30 / 45 numerals are now about **1.1 mm further right and 2.2 mm lower** on the
+dial (pivot at 8.70, -4.90 mm, was 9.78, -2.70). Because the hand sits on a gear-meshed arbor, it can only move
+along the exact centre distances: the third and fourth arbors swing round (tooth counts, ratios and every mesh
+distance unchanged), and the escape arbor, pallet, balance, the balance cock outline and its screw are carried
+with it; the train bridge's lower corner was extended to still hold it. Validation is the same: 23 info items,
+no warnings. Seen on the dial and from the bridge side. The shift is limited by that geometry; a bigger move to
+the right would swing the third arbor further. ASM-0089. **To revert:** set `SECONDS_PIVOT_MM` back to
+`{ x: 9.7777, y: -2.7 }` in `teachingMovement.ts` and the bridge corner to (13, -6).
+
 ## Phase 8.15 follow-up 37: one tick, not tick-tock
 
 At your request the escapement tick is now the same sound on every beat (it alternated a higher tick and a

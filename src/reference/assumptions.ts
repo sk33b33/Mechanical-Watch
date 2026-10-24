@@ -537,6 +537,12 @@ export const ASSUMPTIONS = {
     scope: "src/persistence/library.ts (startup project, keepPreviousSession), src/app/startup.ts, Projects dialog (design-file handling, no engineering model)",
     status: "Active",
   },
+  "ASM-0089": {
+    summary:
+      "Seconds-hand position (Phase 8.15 follow-up 38), a layout choice and not a model: at the user's request the seconds hand and its numerals sit about 1.1 mm further right on the dial and 2.2 mm lower than before, at (8.70, -4.90) mm (from (9.78, -2.70) mm; the dial's right is -X). The seconds hand rides on the fourth arbor, which is placed by gear meshes (ideal centre distances, REF-ENG 5.2), so it cannot simply be slid: the third arbor now swings about the centre arbor and the fourth about the third, each at its exact centre distance and with every tooth count and ratio unchanged, until the fourth lands at the chosen point (two-link solution, TWO_LINK in teachingMovement.ts, taking the elbow below the line to the target, the branch nearer the old layout). The escape arbor keeps its 90 degree direction from the fourth, so the escape arbor, pallet arbor, balance staff, the balance cock outline and its screw move by the same step, and the train bridge outline's lower right corner is extended downward so it still holds the fourth arbor. The pallet/balance spacing and the escapement geometry are unchanged. All figures are illustrative layout choices (ASM-0009), not a sourced calibre layout.",
+    scope: "src/app/teachingMovement.ts SECONDS_PIVOT_MM (teaching movement layout, L1 geometric)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;
