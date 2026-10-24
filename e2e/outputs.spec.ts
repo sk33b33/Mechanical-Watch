@@ -36,6 +36,6 @@ test("the project library saves and reopens a design", async ({ app }) => {
   await app.getByRole("button", { name: "Close" }).click();
   await app.getByTestId("new-design").selectOption("demo");
   await app.getByRole("button", { name: "Projects…" }).click();
-  await app.locator(".projects-table tr", { hasText: "Teaching movement" }).getByRole("button", { name: "Open" }).click();
+  await app.locator(".projects-table tr", { hasText: "Teaching movement" }).getByRole("button", { name: "Open", exact: true }).click();
   await expect(app.locator(".tree-item", { hasText: /^Keyless works/ })).toBeVisible();
 });
