@@ -5,6 +5,7 @@ import { mountViewportControls } from "@/viewport/viewportControls";
 import { mountMeasurementPanel } from "./panels/measurementPanel";
 import { mountProjectsDialog } from "./panels/projectsDialog";
 import { mountOutputsDialog } from "./panels/outputsDialog";
+import { mountChainDiagramDialog } from "./panels/chainDiagramDialog";
 import { browserStore, loadAutosave, writeAutosave } from "@/persistence/autosave";
 import { mountHeader } from "./panels/header";
 import { mountToolbar } from "./panels/toolbar";
@@ -61,6 +62,8 @@ export function bootstrapApp(root: HTMLElement, plainStart = false): Bootstrappe
   const projects = mountProjectsDialog(root, store, storage, (message, kind) => { toolbar.notify(message, kind); });
   toolbar.addFileAction("Projects…", "Designs saved in this browser", () => { projects.open(); });
   const outputs = mountOutputsDialog(root, store, (message, kind) => { toolbar.notify(message, kind); });
+  const chain = mountChainDiagramDialog(root, store);
+  toolbar.addFileAction("Chain…", "Diagram of how every part is connected, from the mainspring to the escapement and the calendar", () => { chain.open(); });
   toolbar.addFileAction("Outputs…", "Engineering report, BOM, drawings and exports", () => { outputs.open(); });
   mountTutorialBanner(store, storage);
   toolbar.addSimControl(mountTickSound(store, storage));

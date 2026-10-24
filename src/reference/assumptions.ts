@@ -519,6 +519,12 @@ export const ASSUMPTIONS = {
     scope: "Hand shape, jewel facets, startup state and view, splash rendering performance (visual/L0 display; startup clock per ASM-0070)",
     status: "Active",
   },
+  "ASM-0086": {
+    summary:
+      "Drive-chain diagram (Phase 8.15 follow-up 32), a presentation of the model and not a model of its own: every part, connection and speed shown is read from the design and the solved gear train (src/analysis/chainDiagram.ts), so the diagram cannot disagree with the design. Parts are arbors (with the gears on them), the mainspring, the escapement (its pallet arbor and balance staff are drawn inside it) and the calendar stars; connections are gear meshes (labelled driving : driven teeth), friction clutches, the mainspring's drive of the drum and winding through the barrel arbor, the escape arbor's lock and release of the escapement, and the calendar's jump links (ASM-0048 to ASM-0050, ASM-0057, year-digit carry). Columns count connections from the mainspring (breadth-first over all connections, so a part set by the crown such as the setting wheel sits after the part it meshes with, and the arrows on spring and jump links, not column order, show direction of power); a part that no chain of connections reaches is drawn dashed red in a last column and named in the summary. The speeds are the solved running speeds (L2 kinematic); the diagram implies nothing about torque, friction or whether a real spring could drive the chain, which needs physical validation.",
+    scope: "src/analysis/chainDiagram.ts, src/app/panels/chainDiagramDialog.ts (presentation of L2 kinematic results)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

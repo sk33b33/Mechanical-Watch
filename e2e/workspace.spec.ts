@@ -25,3 +25,15 @@ test("building from empty lists what is missing instead of guessing", async ({ a
   await expect(app.locator(".console")).toContainText("KEY-001");
   await expect(app.locator(".console")).toContainText("DIAL-001");
 });
+
+test("the Chain diagram shows the whole movement connected to the mainspring, and a click on a part selects it (ASM-0086)", async ({ app }) => {
+  await app.getByRole("button", { name: "Chain…" }).click();
+  await expect(app.getByTestId("chain-summary")).toContainText("connected to the mainspring through one chain");
+  const svg = app.locator(".chain-svg");
+  await expect(svg).toContainText("Mainspring");
+  await expect(svg).toContainText("72 : 12");
+  await expect(svg).toContainText("5.00 beats per second");
+  await svg.locator(".chain-node", { hasText: "Fourth arbor" }).click();
+  await expect(app.locator(".chain-dialog")).not.toBeVisible();
+  await expect(app.locator(".inspector")).toContainText("Fourth arbor");
+});

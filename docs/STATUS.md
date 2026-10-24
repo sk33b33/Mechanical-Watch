@@ -2,6 +2,18 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 32: drive-chain diagram
+
+A **Chain…** button in the toolbar opens a diagram of how every part is connected, generated from the
+design and the solved gear train (so it always matches the model; ASM-0086). Parts are boxes (arbors with
+their gears and tooth counts, the solved speed, hand and moon-disc tags, the mainspring, the escapement
+with its beat rate, the calendar stars); lines are gear meshes (labelled driving : driven teeth), the
+friction clutch, the spring's drive and winding, the escape lock, and the calendar's dashed **jump links**.
+Click a part to select it in the model. A summary line states whether everything hangs off the mainspring
+("All 22 parts are connected…") or names the parts that nothing connects to (drawn dashed red). **Fit to
+window** scales it; the default is full size with scrolling. It maps connections and speeds only (L2
+kinematic): nothing about torque or friction. **To revert:** remove `mountChainDiagramDialog` in `bootstrap.ts`.
+
 ## Phase 8.15 follow-up 31: beat-rate tick, straight hands, startup state, smooth splash on phones, more gem facets
 
 Five requests (ASM-0084 updated, ASM-0085):

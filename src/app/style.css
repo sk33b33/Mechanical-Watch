@@ -1374,3 +1374,62 @@ button.active {
     transition: none;
   }
 }
+
+/* ---- Drive-chain diagram (follow-up 32) ---------------------------------------------------- */
+.chain-dialog {
+  max-width: min(96vw, 1500px);
+  max-height: 92vh;
+  overflow: auto;
+}
+.chain-legend,
+.chain-dialog .projects-note {
+  font-size: 11px;
+  line-height: 1.5;
+}
+.chain-scroll {
+  overflow: auto;
+  max-height: 68vh;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-0);
+  margin: 6px 0;
+}
+.chain-svg {
+  display: block;
+}
+.chain-svg text {
+  font-family: inherit;
+}
+.chain-node {
+  cursor: pointer;
+  outline: none;
+}
+.chain-node-box {
+  fill: var(--bg-2);
+  stroke: var(--border);
+  stroke-width: 1.2;
+}
+.chain-node:hover .chain-node-box,
+.chain-node:focus-visible .chain-node-box {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+.chain-node-spring .chain-node-box { fill: #3a2f1a; stroke: var(--warn); }
+.chain-node-escapement .chain-node-box { fill: #3a331c; stroke: #d9c27a; }
+.chain-node-calendar .chain-node-box { fill: #1c2c44; stroke: #5a8fd8; }
+.chain-node-isolated .chain-node-box { fill: #3a1c1c; stroke: var(--error); stroke-dasharray: 4 3; }
+.chain-node-title { fill: var(--text-0); font-size: 12px; font-weight: 600; }
+.chain-node-line { fill: var(--text-1); font-size: 11px; }
+.chain-node-speed { fill: var(--ok); font-size: 11px; }
+.chain-node-badge { fill: var(--warn); font-size: 10.5px; font-weight: 600; }
+.chain-edge { stroke: #7f8d9a; stroke-width: 1.6; }
+.chain-edge-clutch { stroke-dasharray: 2 4; stroke: #aab4c2; }
+.chain-edge-jump { stroke: #5a8fd8; stroke-dasharray: 6 4; }
+.chain-edge-spring,
+.chain-edge-escape { stroke: var(--warn); }
+.chain-arrowhead-jump { fill: #5a8fd8; }
+.chain-arrowhead-power { fill: var(--warn); }
+.chain-label-bg { fill: var(--bg-0); stroke: var(--border); stroke-width: 0.8; }
+.chain-label { fill: var(--text-0); font-size: 10.5px; text-anchor: middle; }
+.chain-label-jump { fill: #8fb4ee; }
+.chain-label-spring, .chain-label-escape { fill: var(--warn); }
