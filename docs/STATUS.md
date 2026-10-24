@@ -2,6 +2,12 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 37: one tick, not tick-tock
+
+At your request the escapement tick is now the same sound on every beat (it alternated a higher tick and a
+lower tock). Rate and rules are unchanged: the model's 5 beats a second, muted above 1× and on clock jumps
+(ASM-0084). **To revert:** restore the two pitches in `TICK_SOUND` and alternate them by beat number.
+
 ## Phase 8.15 follow-up 36: open my saved layout at startup
 
 In **Projects…** each saved design now has **Open at startup** (and **Stop opening at startup** on the marked one,

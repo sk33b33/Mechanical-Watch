@@ -6,7 +6,7 @@ import { audioContext } from "./audioContext";
 
 /**
  * The watch's tick (follow-up 30 and 31, ASM-0084): a short mechanical tick on every beat of the
- * escapement, alternating a higher "tick" and a lower "tock". The beat rate is the model's own: the
+ * escapement, the same "tick" every time (follow-up 37: it used to alternate tick and tock). The beat rate is the model's own: the
  * escape arbor's solved speed times the escape wheel's teeth times two beats per tooth
  * (`beatFrequency`, ASM-0021), 5 beats a second (18,000 beats an hour) for the teaching movement. The
  * sound itself is a decorative synthesis, not a recording of a real watch, and the balance's real
@@ -20,8 +20,8 @@ export const TICK_SOUND = {
   maxBeatsPerFrame: 3,
   peakGain: 0.07,
   burstSeconds: 0.012,
-  bandHz: { tick: 3200, tock: 2300 },
-  pingHz: { tick: 1900, tock: 1350 },
+  bandHz: 3200,
+  pingHz: 1900,
   pingSeconds: 0.03,
   storageKey: "mw3d.tick",
 } as const;
@@ -50,14 +50,13 @@ export function isForwardBeat(previous: number, next: number, playbackRate: numb
   return playbackRate <= TICK_SOUND.maxPlaybackRate && next > previous && next - previous <= TICK_SOUND.maxBeatsPerFrame;
 }
 
-/** Play one tick (`alternate` false) or tock (true). */
-export function playTick(alternate: boolean): void {
+/** Play one tick. */
+export function playTick(): void {
   const context = audioContext();
   if (context?.state !== "running") return;
   try {
     const v = TICK_SOUND;
     const now = context.currentTime;
-    const which = alternate ? "tock" : "tick";
     const samples = Math.max(1, Math.floor(context.sampleRate * v.burstSeconds));
     const buffer = context.createBuffer(1, samples, context.sampleRate);
     const data = buffer.getChannelData(0);
@@ -66,7 +65,7 @@ export function playTick(alternate: boolean): void {
     burst.buffer = buffer;
     const band = context.createBiquadFilter();
     band.type = "bandpass";
-    band.frequency.value = v.bandHz[which];
+    band.frequency.value = v.bandHz;
     band.Q.value = 1.4;
     const burstGain = context.createGain();
     burstGain.gain.value = v.peakGain * 2.2;
@@ -75,7 +74,7 @@ export function playTick(alternate: boolean): void {
 
     const ping = context.createOscillator();
     ping.type = "triangle";
-    ping.frequency.value = v.pingHz[which];
+    ping.frequency.value = v.pingHz;
     const pingGain = context.createGain();
     pingGain.gain.setValueAtTime(v.peakGain * 0.5, now);
     pingGain.gain.exponentialRampToValueAtTime(0.0001, now + v.pingSeconds);
@@ -118,7 +117,7 @@ export function mountTickSound(store: AppStore, storage: KeyValueStore | null): 
     } else {
       const index = beatIndex(store.simulation.time, beatHertz);
       if (previous !== null && index !== previous && enabled && isForwardBeat(previous, index, store.playbackRate)) {
-        playTick(index % 2 !== 0);
+        playTick();
       }
       previous = index;
     }
