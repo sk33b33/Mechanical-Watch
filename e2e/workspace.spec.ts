@@ -29,7 +29,7 @@ test("building from empty lists what is missing instead of guessing", async ({ a
 test("the Chain diagram shows the whole movement connected to the mainspring, and a click on a part selects it (ASM-0086)", async ({ app }) => {
   // The tutorial's "See how it all connects" step points at this button.
   await expect(app.locator('[data-tutorial="chain-diagram"]')).toHaveText("Chain…");
-  await app.getByRole("button", { name: "Chain…" }).click();
+  await app.getByRole("button", { name: "Chain…", exact: true }).click();
   await expect(app.getByTestId("chain-summary")).toContainText("connected to the mainspring through one chain");
   const svg = app.locator(".chain-svg");
   await expect(svg).toContainText("Mainspring");
@@ -42,7 +42,7 @@ test("the Chain diagram shows the whole movement connected to the mainspring, an
 
 test("the Chain diagram can be printed or saved: Print opens a hidden print frame, Download SVG gives a black-on-white file (ASM-0086)", async ({ app }) => {
   await app.evaluate("window.print = () => undefined");
-  await app.getByRole("button", { name: "Chain…" }).click();
+  await app.getByRole("button", { name: "Chain…", exact: true }).click();
   const [download] = await Promise.all([app.waitForEvent("download"), app.getByTestId("chain-download").click()]);
   expect(download.suggestedFilename()).toBe("drive-chain.svg");
   await app.getByTestId("chain-print").click();
