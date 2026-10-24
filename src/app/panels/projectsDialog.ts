@@ -1,6 +1,6 @@
 import type { AppStore } from "@/app/store";
 import type { KeyValueStore } from "@/persistence/autosave";
-import { deleteProject, listProjects, openProject, saveProject } from "@/persistence/library";
+import { deleteProject, getStartupProjectId, listProjects, openProject, saveProject, setStartupProjectId } from "@/persistence/library";
 
 export interface ProjectsDialog {
   open(): void;
@@ -47,7 +47,7 @@ export function mountProjectsDialog(
 
     const note = document.createElement("div");
     note.className = "muted projects-note";
-    note.textContent = "Browser storage can be cleared by the browser. Use Save in the toolbar to keep a file.";
+    note.textContent = "Browser storage can be cleared by the browser. Use Save in the toolbar to keep a file. ★ marks the design that opens when the app starts; with none marked, the app opens the teaching movement.";
     dialog.appendChild(note);
 
     const list = listProjects(storage);
@@ -68,11 +68,13 @@ export function mountProjectsDialog(
 
     const table = document.createElement("table");
     table.className = "projects-table";
+    const startupId = getStartupProjectId(storage);
     for (const project of list.value) {
       const tr = document.createElement("tr");
       const name = document.createElement("td");
       name.textContent = project.name;
       if (project.id === store.movement.id) name.textContent += " (open now)";
+      if (project.id === startupId) name.textContent = `★ ${name.textContent}`;
       const saved = document.createElement("td");
       saved.className = "muted";
       saved.textContent = new Date(project.savedAt).toLocaleString();
@@ -91,8 +93,24 @@ export function mountProjectsDialog(
         dialog.close();
       });
       openButton.disabled = project.problem !== null;
+      const isStartup = project.id === startupId;
+      const startupButton = button(
+        isStartup ? "Stop opening at startup" : "Open at startup",
+        isStartup
+          ? "The app will open the teaching movement again when it starts."
+          : "Open this design, exactly as saved, every time the app starts (at the browser's date and time, in the dial view).",
+        () => {
+          const result = setStartupProjectId(storage, isStartup ? null : project.id);
+          if (!result.ok) notify(result.reason, "error");
+          else notify(isStartup ? "The app will open the teaching movement at startup." : `“${project.name}” will open every time the app starts.`, "info");
+          render();
+        },
+      );
+      startupButton.dataset.testid = isStartup ? "startup-off" : "startup-on";
+      startupButton.disabled = project.problem !== null && !isStartup;
       actions.append(
         openButton,
+        startupButton,
         button("Delete", "Remove this entry from the browser library. Files you downloaded are not affected.", () => {
           const result = deleteProject(storage, project.id);
           if (!result.ok) notify(result.reason, "error");

@@ -531,6 +531,12 @@ export const ASSUMPTIONS = {
     scope: "src/assembly/moveWheel.ts, src/assembly/fixChain.ts and the viewport/dialog UI (design editing, L1 geometric)",
     status: "Active",
   },
+  "ASM-0088": {
+    summary:
+      "Startup layout (Phase 8.15 follow-up 36), a convenience for opening a design and not a model: a saved project in Projects can be set to open every time the app starts (its id is kept in browser storage under mw3d.startup.project; an entry marked with a star). It opens exactly as saved, then the usual startup applies (browser date and time, dial view, ASM-0085). With none set, the current teaching movement opens. If the chosen project is gone or unreadable the teaching movement opens and the user is told why. The design left by the last session (the autosave) is never discarded and never overwrites a deliberate save: with no entry of its own it is saved in Projects under its own name; identical to its entry it is not written again; edited since it was saved it goes to a separate entry named '... (unsaved edits)' (replaced by the next such session), leaving the saved design itself unchanged. Deleting the startup project clears the setting. '?start=plain' ignores all of this. Browser storage can be cleared by the browser, so the Save button's file remains the durable backup.",
+    scope: "src/persistence/library.ts (startup project, keepPreviousSession), src/app/startup.ts, Projects dialog (design-file handling, no engineering model)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

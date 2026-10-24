@@ -2,6 +2,21 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 36: open my saved layout at startup
+
+In **Projects…** each saved design now has **Open at startup** (and **Stop opening at startup** on the marked one,
+shown with a ★). The marked design opens exactly as saved every time the app starts, then the usual startup
+applies: the browser's date and time and the dial view. With none marked, the teaching movement opens as before.
+If the marked design is gone or unreadable, the teaching movement opens and a notice says why. ASM-0088.
+
+- **Your last session's design** is still never lost and now never overwrites something you saved on purpose:
+  with no saved entry it is kept under its own name; identical to its saved entry, nothing is written; edited
+  since you saved it, it goes to a separate "(unsaved edits)" entry (replaced by the next one), and your saved
+  design stays as it was. A notice says which happened.
+- Deleting the marked project clears the setting. `?start=plain` ignores it (the automated tests).
+- Browser storage can be cleared by the browser; the toolbar's **Save** file is the durable backup.
+- **To revert:** remove `getStartupProjectId` use in `startup.ts` and the button in `projectsDialog.ts`.
+
 ## Phase 8.15 follow-up 35: move calendar wheels on the dial, and Fix chain
 
 Designed with you through questions (calendar wheels and windows only; meshed wheels swing round their

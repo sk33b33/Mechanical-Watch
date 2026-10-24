@@ -1,5 +1,5 @@
 import type { Movement } from "@/domain/movement";
-import { decodeDesign, DesignFileError, encodeDesign } from "./designFile";
+import { decodeDesign, DesignFileError, designsEqual, encodeDesign } from "./designFile";
 import type { KeyValueStore } from "./autosave";
 
 export const LIBRARY_KEY = "mw3d.library";
@@ -125,10 +125,62 @@ export function openProject(store: KeyValueStore | null, id: string): LibraryRes
   }
 }
 
+/** Which saved project opens when the app starts (follow-up 36), or null for the teaching movement. */
+export const STARTUP_PROJECT_KEY = "mw3d.startup.project";
+
+export function getStartupProjectId(store: KeyValueStore | null): string | null {
+  if (store === null) return null;
+  try {
+    const value = store.getItem(STARTUP_PROJECT_KEY);
+    return value === null || value === "" ? null : value;
+  } catch {
+    return null;
+  }
+}
+
+export function setStartupProjectId(store: KeyValueStore | null, id: string | null): LibraryResult<null> {
+  if (store === null) return { ok: false, reason: "Browser storage is not available." };
+  try {
+    if (id === null) store.removeItem(STARTUP_PROJECT_KEY);
+    else store.setItem(STARTUP_PROJECT_KEY, id);
+    return { ok: true, value: null };
+  } catch {
+    return { ok: false, reason: "Browser storage refused the write (it may be full or blocked)." };
+  }
+}
+
+export type PreviousSessionKept = "OWN_ENTRY" | "UNSAVED_COPY" | "ALREADY_SAVED";
+
+/**
+ * Keeps the design the last session left behind (the autosave) without ever overwriting a deliberate save:
+ * with no entry of its own it is saved under its own name; when it is identical to its entry nothing is
+ * written; when it differs from its entry (edits that were never saved) it goes into a separate
+ * "(unsaved edits)" entry, which the next such session replaces, so the saved design itself is untouched.
+ */
+export function keepPreviousSession(store: KeyValueStore | null, movement: Movement, now: Date = new Date()): LibraryResult<PreviousSessionKept> {
+  if (store === null) return { ok: false, reason: "Browser storage is not available." };
+  const library = readLibrary(store);
+  if (!library.ok) return library;
+  const existing = library.value.entries[movement.id];
+  if (existing === undefined) {
+    const saved = saveProject(store, movement, now);
+    return saved.ok ? { ok: true, value: "OWN_ENTRY" } : saved;
+  }
+  try {
+    if (designsEqual(decodeDesign(existing.design), movement)) return { ok: true, value: "ALREADY_SAVED" };
+  } catch {
+    // An unreadable earlier entry is not worth protecting over the newer design: keep both, as a copy.
+  }
+  const copy = { ...movement, id: `${movement.id}:unsaved` as Movement["id"], name: `${movement.name} (unsaved edits)` };
+  const saved = saveProject(store, copy, now);
+  return saved.ok ? { ok: true, value: "UNSAVED_COPY" } : saved;
+}
+
 export function deleteProject(store: KeyValueStore | null, id: string): LibraryResult<null> {
   if (store === null) return { ok: false, reason: "Browser storage is not available." };
   const library = readLibrary(store);
   if (!library.ok) return library;
+  if (getStartupProjectId(store) === id) setStartupProjectId(store, null);
   const entries = Object.fromEntries(Object.entries(library.value.entries).filter(([key]) => key !== id));
   return writeLibrary(store, { ...library.value, entries });
 }

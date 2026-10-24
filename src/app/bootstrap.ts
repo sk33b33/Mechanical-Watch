@@ -81,14 +81,17 @@ export function bootstrapApp(root: HTMLElement, plainStart = false): Bootstrappe
   });
   toolbar.addFileAction("Tutorial…", "Guided walkthrough: build a movement from scratch", () => { store.startTutorial(); });
 
+  const notes: string[] = [];
+  if (choice.startupProjectName !== null) notes.push(`Opened “${choice.startupProjectName}”, your startup layout.`);
+  if (choice.startupProblem !== null) notes.push(`Your startup layout could not be opened (${choice.startupProblem}), so the teaching movement opened instead.`);
   if (choice.preserved !== null) {
-    toolbar.notify(
-      choice.preserveProblem === null
-        ? `Opened the teaching movement. Your last session's design “${choice.preserved.name}” is kept in Projects…`
-        : `Opened the teaching movement. Your last session's design “${choice.preserved.name}” could not be kept in Projects: ${choice.preserveProblem}`,
-      choice.preserveProblem === null ? "info" : "error",
-    );
+    const name = choice.preserved.movement.name;
+    if (choice.preserveProblem !== null) notes.push(`Your last session's design “${name}” could not be kept in Projects: ${choice.preserveProblem}`);
+    else if (choice.preserved.kept === "UNSAVED_COPY") notes.push(`Your last session's unsaved edits are kept in Projects… as “${name} (unsaved edits)”; the saved design itself is untouched.`);
+    else if (choice.startupProjectName === null) notes.push(`Opened the teaching movement. Your last session's design “${name}” is kept in Projects…`);
+    else notes.push(`Your last session's design “${name}” is kept in Projects…`);
   }
+  if (notes.length > 0) toolbar.notify(notes.join(" "), choice.preserveProblem !== null || choice.startupProblem !== null ? "error" : "info");
   if (saved.status === "UNREADABLE") {
     toolbar.notify(
       `Your autosaved design could not be read and was set aside, not deleted. Showing the teaching movement instead. (${saved.reason})`,

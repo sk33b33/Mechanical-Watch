@@ -58,3 +58,28 @@ test("Fix chain: a tidy design has nothing to fix; two overlapping wheels are li
   await app.getByTestId("fix-chain").click();
   await expect(app.getByTestId("fix-chain-empty")).toBeVisible();
 });
+
+test("a saved layout set to open at startup is what opens next time, and unsetting returns to the teaching movement (follow-up 36)", async ({ app }) => {
+  test.setTimeout(180_000);
+  // Name the design so it can be told apart, save it, and mark it to open at startup.
+  await app.locator('.field:has(label:text-is("Name")) input').first().fill("My dial layout");
+  await app.locator('.field:has(label:text-is("Name")) input').first().press("Enter");
+  await app.getByRole("button", { name: "Projects…" }).click();
+  await app.getByRole("button", { name: "Save current design" }).click();
+  await app.getByTestId("startup-on").click();
+  await expect(app.locator("dialog[open]")).toContainText("★ My dial layout");
+  await app.locator("dialog[open]").getByRole("button", { name: "Close", exact: true }).click();
+
+  // A fresh start (no start=plain) opens it, and says so.
+  await app.goto("/?splash=off");
+  await expect(app.locator(".header-title")).toContainText("My dial layout");
+  await expect(app.getByTestId("toolbar-notice")).toContainText("your startup layout");
+
+  // Stop opening it at startup: the teaching movement is back.
+  await app.getByRole("button", { name: "Projects…" }).click();
+  await app.getByTestId("startup-off").click();
+  await app.locator("dialog[open]").getByRole("button", { name: "Close", exact: true }).click();
+  await app.goto("/?splash=off");
+  await expect(app.locator(".header-title")).toContainText("Teaching movement");
+  await expect(app.locator(".header-title")).not.toContainText("My dial layout");
+});
