@@ -235,7 +235,7 @@ export function createTeachingMovement(): Movement {
   const moonPinion2 = gear("Moon pinion 2", moonReductionArbor, 8, motionModule, -1.26, 0.06);
   const moonDiscArbor = shaft("Moon disc arbor", null, { kind: "STUD", frameId: mainplate.id });
   // Kept a solid disc at the user's request (follow-up 23) although it is big enough to be spoked.
-  const moonWheel2 = { ...gear("Moon wheel 2", moonDiscArbor, 87, motionModule, -1.26, 0.06), spoked: false };
+  const moonWheel2 = { ...gear("Moon wheel 2", moonDiscArbor, 87, motionModule, -1.26, 0.06), spoked: false, colour: "BLACK" as const };
 
   // Simple instantaneous date (Phase 8.2, ASM-0048): the "24-hour wheel" is an ordinary
   // continuous reduction, same engine as the moonphase train above — 2:1 off the hour wheel's
@@ -382,10 +382,18 @@ export function createTeachingMovement(): Movement {
   // dial icons; follow-up 15 removed the ring, so the V is back at 4.3mm.) Mesh centre distances
   // are unchanged, so every gear ratio and mesh is exactly as before; only the declared polar
   // angles differ.
-  polar(moonReductionArbor, hourWheel, hourToMoon1, 244.86);
-  polar(moonDiscArbor, moonReductionArbor, moon1ToMoon2, 295.14);
-  // 9 o'clock from the hour wheel, clear of the moonphase train (6 o'clock) and the stem line.
-  polar(twentyFourHourArbor, hourWheel, hourToTwentyFourHour, 180);
+  //
+  // Follow-up 43: the V now bends the other way (towards the dial's left). With the reduction arbor on the
+  // right, the big Moon wheel 1 (8.9 mm across) sat on the same height as the date and month wheels and cut
+  // through them (a 3D overlap audit showed the month wheel's centre under its teeth). Mirrored, it clears every
+  // other wheel at its height. The two mesh legs and the disc position are unchanged, so every ratio, mesh
+  // and the moon window are exactly as before; only the two declared polar angles are mirrored.
+  polar(moonReductionArbor, hourWheel, hourToMoon1, 295.14);
+  polar(moonDiscArbor, moonReductionArbor, moon1ToMoon2, 244.86);
+  // About 9 o'clock from the hour wheel, clear of the moonphase train (6 o'clock) and the stem line. Follow-up 43:
+  // 20° below the 9 o'clock line (it was exactly on it) because the 24-hour wheel then came within 0.03 mm of
+  // the minute pinion at the same height; now 0.45 mm clear. The mesh distance is unchanged.
+  polar(twentyFourHourArbor, hourWheel, hourToTwentyFourHour, 200);
   // Declared, not mesh-derived (the star is not meshed with anything, ASM-0048) — a plausible
   // clearance further along the same 9 o'clock line, raised 0.8mm so its whole-wheel window clears the month window's own north pointer.
   m = updateShaft(m, dateStarArbor.id, { placement: fixedAt(mm(-6), mm(0.8)) });
@@ -795,9 +803,9 @@ export function createTeachingMovement(): Movement {
     complicationId: yearOnesComplication.id,
     centre: { x: metres(mm(-3)), y: metres(mm(8)) },
     outline: { kind: "RECTANGLE", width: mm(3.6), height: mm(0.34) },
-    // Printed furniture (follow-up 16, ASM-0074): a thin frame for a crisp edge and a "YEAR" caption below.
+    // Printed furniture (follow-up 16, ASM-0074): a thin frame for a crisp edge. The "YEAR" caption below it
+    // was removed at the user's request (follow-up 43); a window can still carry a caption (inspector).
     bezel: true,
-    caption: "YEAR",
   }));
 
   // Pallet arbor and balance staff: fixed positions along a line from the escape arbor

@@ -2,6 +2,36 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 43: seven requests (moon wheel colours, crown strip, clearances, linked chain, YEAR)
+
+- **"Moon phase" button is now "Moon wheel"** in the Colours flyout (its second button stays "Moon phases").
+- **Black moon wheel hid the phases (bug, fixed).** Selecting or refreshing a part reset every material's colour to
+  the part's base colour, which overrode the white multiplier that a chosen body colour relies on, so a black body
+  multiplied everything printed on it by black (other body colours tinted their printing the same way). Printed
+  faces with a chosen body colour are now marked and keep a white multiplier (`src/viewport/printedFace.ts`, tested).
+  Built-in (unchosen) colours look exactly as before.
+- **Silver strip on the gold crown:** it was a small bar laid along the crown as a rotation marker. The crown is now
+  knurled, so the ridges already show it turning; the bar was removed.
+- **Moon wheel 2 is black** in the teaching movement. A gear's display colour gains a third value, BLACK (near-black
+  so the teeth still read), also offered in the Inspector (ASM-0080). No schema bump: an older file only holds the
+  first two values.
+- **Touching-wheels audit (3D, every gear and calendar wheel, meshed pairs and shared arbors excluded)** found two
+  real problems that the gear-only ASSY-002 rule never looked at: Moon wheel 1 cut through the date wheel (0.48 mm)
+  and the month wheel (2.4 mm) at the same height, and the minute pinion came within 0.03 mm of the 24-hour wheel.
+  Fixes: the moon train's "V" now bends the other way (towards the dial's left), and the 24-hour arbor sits 20 degrees
+  below the 9 o'clock line. Mesh distances, ratios and the moon window are unchanged. The audit is now a test
+  (`src/assembly/wheelClearance.test.ts`, 0.3 mm minimum gap, the Fix chain gap). The year-digit barrels touch each
+  other by design (one housing) and the barrel arbor passing through the ratchet is the barrel's own arbor, so neither is a fault.
+  Validation still has no 3D rule for the calendar wheels; the audit is a test, not a validation rule.
+- **Chain looks connected (ASM-0091):** the date, day, month, leap-year, season wheels and the year-digit housing are
+  advanced by jumps, not meshes, so some looked like they floated (the season wheel and the day wheel most). Each now
+  has a plain link bar from its driver (24-hour arbor, date star, month star) to it; the year-digit bar turns one
+  corner to stay beside the date wheel. They are fixed pictures of which part drives which, not modelled levers, and
+  sit in a thin layer clear of every other wheel (tested). The gear train, going train and moon train were already
+  connected through their meshes.
+- **The word YEAR is gone** from the dial (the year window keeps its frame). A caption can still be typed in the
+  Inspector, and an older saved design that still has it keeps it.
+
 ## Phase 8.15 follow-up 42: "Moon phases" colour button
 
 In the Colours flyout the Moon phase row's second button is now labelled **Moon phases** (the other wheels keep

@@ -140,11 +140,12 @@ export function mountColourPanel(container: HTMLElement, store: AppStore): void 
       const rowEl = document.createElement("div");
       rowEl.className = "colour-row";
       rowEl.dataset.testid = `colour-row-${wheel.name}`;
+      const wheelPhrase = wheel.name.endsWith("wheel") ? wheel.name : `${wheel.name} wheel`;
       const bodyTarget: Target = { kind: "WHEEL", key: wheel.key, part: "body", name: wheel.name };
       const textTarget: Target = { kind: "WHEEL", key: wheel.key, part: "text", name: wheel.name };
       rowEl.append(
-        button(bodyTarget, rowEl, wheel.name, `${wheel.name} colour`, `The colour of the ${wheel.name} wheel`, `colour-wheel-${wheel.name}`),
-        button(textTarget, rowEl, wheel.textLabel, `${wheel.name} text colour`, wheel.textLabel === "Text" ? `The text or digits printed on the ${wheel.name} wheel` : `The white moon phases printed on the ${wheel.name} wheel`, `colour-wheel-text-${wheel.name}`),
+        button(bodyTarget, rowEl, wheel.name, `${wheel.name} colour`, `The colour of the ${wheelPhrase}`, `colour-wheel-${wheel.name}`),
+        button(textTarget, rowEl, wheel.textLabel, `${wheel.name} text colour`, wheel.textLabel === "Text" ? `The text or digits printed on the ${wheelPhrase}` : `The white moon phases printed on the ${wheelPhrase}`, `colour-wheel-text-${wheel.name}`),
       );
       root.appendChild(rowEl);
     }

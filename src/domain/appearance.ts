@@ -98,7 +98,7 @@ export function colourableWheels(movement: Movement): { key: string; name: strin
     seen.add(key);
     // The moon wheel prints only its lit phases (follow-up 41), so its text colour is the colour of the moon phases.
     const isMoon = movement.moonPhases[id as keyof typeof movement.moonPhases] !== undefined;
-    wheels.push({ key, name: isDigit ? "Year digits" : named ?? id, textLabel: isMoon ? "Moon phases" : "Text" });
+    wheels.push({ key, name: isMoon ? "Moon wheel" : isDigit ? "Year digits" : named ?? id, textLabel: isMoon ? "Moon phases" : "Text" });
   }
   return wheels;
 }

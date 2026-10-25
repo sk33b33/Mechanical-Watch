@@ -58,6 +58,8 @@ import { LEAP_YEAR_INDEX_STROKE_SECONDS, LEAP_YEAR_SLOT_COUNT } from "@/domain/l
 import { YEAR_DIGIT_SLOT_COUNT, type YearDigitComplicationId } from "@/domain/yearDigitComplication";
 import { genevaLambda, genevaStrokeDriverAngle, genevaDriverMotionAngle } from "@/kinematics/genevaDrive";
 import { buildDialMeshes, buildStemMeshes } from "./keylessMeshes";
+import { markKeepColour, restingColour } from "./printedFace";
+import { calendarLinks, CALENDAR_LINK_VISUALIZATION } from "@/geometry/calendarLinks";
 import { escapementDisplay, primaryEscapement } from "@/simulation/escapementDisplay";
 import {
   createBalanceGeometry,
@@ -126,6 +128,10 @@ export const COLORS = {
   crown: ESCAPEMENT_GOLD,
   pinion: 0xb8c4d0,
   escapeWheel: ESCAPEMENT_GOLD,
+  /** A gear set to the BLACK colour (ASM-0080): near-black, not 0x000000, so the lit teeth and spokes still read. */
+  gearBlack: 0x141414,
+  /** The link bars drawn between the calendar wheels (ASM-0091). */
+  linkArm: 0xc3ccd8,
   fork: 0x8fa3b8,
   balance: 0xc9b37a,
 } as const;
@@ -253,6 +259,18 @@ interface WheelInk {
 }
 const NO_INK: WheelInk = { body: null, ink: {} };
 
+/**
+ * The material of a wheel's printed face. A chosen body colour is painted into the texture itself, so the
+ * material's own colour must stay white: it multiplies the texture, and `applySelection` would otherwise reset
+ * it to the body colour, which tints the printing (and turns a black body, and everything printed on it, black).
+ * Such a material is marked (`markKeepColour`) so `applySelection` leaves its colour alone when not selected.
+ */
+function printedFaceMaterial(wheel: WheelInk, defaultMultiplier: number, extra: THREE.MeshStandardMaterialParameters): THREE.MeshStandardMaterial {
+  const face = material(wheel.body === null ? defaultMultiplier : 0xffffff, extra);
+  if (wheel.body !== null) markKeepColour(face, 0xffffff);
+  return face;
+}
+
 function wheelInkOf(appearance: WheelAppearance): WheelInk {
   const ink: DiscInk = {};
   if (appearance.body !== null) ink.background = appearance.body;
@@ -272,7 +290,7 @@ function discMaterials(color: number, extra: THREE.MeshStandardMaterialParameter
   const plain = material(wheel.body ?? color, extra);
   const texture = labels === null ? null : createDiscLabelTexture(labels, labelCanvasAngleOffset, labelRadiusFraction, wheel.ink);
   // A chosen body colour is painted into the face itself (the white material multiplies as a no-op), so it reads as picked.
-  const labeled = texture === null ? plain : material(wheel.body === null ? color : 0xffffff, { ...extra, map: texture });
+  const labeled = texture === null ? plain : printedFaceMaterial(wheel, color, { ...extra, map: texture });
   // CylinderGeometry's own group order after createZCylinder's rotateX(π/2): [side, +Z cap, −Z cap].
   return [plain, plain, labeled];
 }
@@ -281,7 +299,7 @@ function discMaterials(color: number, extra: THREE.MeshStandardMaterialParameter
 function moonPhaseMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, windowCount: MoonPhaseWindowCount, wheel: WheelInk = NO_INK): THREE.MeshStandardMaterial[] {
   const plain = material(wheel.body ?? color, extra);
   const texture = createMoonPhaseTexture(windowCount, wheel.ink);
-  const illustrated = texture === null ? plain : material(wheel.body === null ? color : 0xffffff, { ...extra, map: texture });
+  const illustrated = texture === null ? plain : printedFaceMaterial(wheel, color, { ...extra, map: texture });
   return [plain, plain, illustrated];
 }
 
@@ -297,7 +315,7 @@ function moonPhaseMaterials(color: number, extra: THREE.MeshStandardMaterialPara
 function seasonMaterials(color: number, extra: THREE.MeshStandardMaterialParameters, labels: readonly string[] | null, wheel: WheelInk = NO_INK): THREE.MeshStandardMaterial[] {
   const plain = material(wheel.body ?? color, extra);
   const texture = labels === null ? null : createSeasonTexture(labels, DISC_LABEL_CURRENT_AT_NORTH_OFFSET_RADIANS, wheel.ink);
-  const illustrated = texture === null ? plain : material(0xffffff, { ...extra, map: texture });
+  const illustrated = texture === null ? plain : printedFaceMaterial(wheel, 0xffffff, { ...extra, map: texture });
   return [plain, plain, illustrated];
 }
 
@@ -334,7 +352,7 @@ function yearDigitBarrelMaterials(color: number, extra: THREE.MeshStandardMateri
   // roller with pale numerals.
   const side = sharedSideTexture === null
     ? plain
-    : material(color, { ...extra, map: sharedSideTexture, emissive: 0xffffff, emissiveMap: sharedSideTexture, emissiveIntensity: YEAR_DIGIT_BARREL_VISUALIZATION.emissiveIntensity });
+    : printedFaceMaterial(wheel, color, { ...extra, map: sharedSideTexture, emissive: 0xffffff, emissiveMap: sharedSideTexture, emissiveIntensity: YEAR_DIGIT_BARREL_VISUALIZATION.emissiveIntensity });
   // createXAxisCylinder's own group order after rotateZ(π/2): [side, cap (was +Y), cap (was −Y)].
   return [side, plain, plain];
 }
@@ -684,8 +702,8 @@ export class Viewport {
       } catch {
         continue;
       }
-      // The gear's display colour (ASM-0080): steel grey, or the escapement's own gold.
-      const gearColour = gear.colour === "ESCAPEMENT" ? COLORS.escapeWheel : COLORS.gear;
+      // The gear's display colour (ASM-0080): steel grey, the escapement's own gold, or black.
+      const gearColour = gear.colour === "ESCAPEMENT" ? COLORS.escapeWheel : gear.colour === "BLACK" ? COLORS.gearBlack : COLORS.gear;
       const mesh = new THREE.Mesh(geometry, material(gearColour, { metalness: 0.55, roughness: 0.4 }));
       const meshZ = this.displayZ(gear.zCentre);
       mesh.position.z = meshZ;
@@ -1130,6 +1148,30 @@ export class Viewport {
         },
         color: handColour,
       });
+    }
+
+    // Link bars from each calendar wheel's driver to it (follow-up 43, ASM-0091): visual only, so the whole chain
+    // reads as connected. Fixed in place: they show which part drives which, not a modelled mechanism.
+    const link = CALENDAR_LINK_VISUALIZATION;
+    for (const arm of calendarLinks(movement, positions)) {
+      const z = this.displayZ(arm.zCentre);
+      const armMaterial = material(COLORS.linkArm, { metalness: 0.5, roughness: 0.45 });
+      for (let i = 1; i < arm.path.length; i += 1) {
+        const a = arm.path[i - 1];
+        const b = arm.path[i];
+        if (a === undefined || b === undefined) continue;
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(dx, dy), link.widthMetres, link.thicknessMetres), armMaterial);
+        bar.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, z);
+        bar.rotation.z = Math.atan2(dy, dx);
+        this.content.add(bar);
+      }
+      for (const end of arm.path) {
+        const hub = new THREE.Mesh(createZCylinder(link.hubRadiusMetres, z - link.thicknessMetres / 2, z + link.thicknessMetres / 2, 20), armMaterial);
+        hub.position.set(end.x, end.y, 0);
+        this.content.add(hub);
+      }
     }
 
     for (const jewel of Object.values(movement.jewels)) {
@@ -1596,7 +1638,7 @@ export class Viewport {
       // part highlights consistently, texture and all.
       for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
         const mat = m as THREE.MeshStandardMaterial;
-        mat.color.set(selected ? COLORS.selected : pick.baseColor);
+        mat.color.set(selected ? COLORS.selected : restingColour(mat, pick.baseColor));
         if (pick.kind === "frame") mat.opacity = selected ? FRAME_OPACITY.selected : FRAME_OPACITY.normal;
         // Draw through occluding geometry when selected (e.g. an arbor hidden inside a large wheel);
         // depthWrite off too while selected, so this doesn't corrupt the depth buffer for what's

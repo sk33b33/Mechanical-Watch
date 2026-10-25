@@ -150,9 +150,10 @@ export function gearSection(store: AppStore, gear: Gear, storage: KeyValueStore 
       [
         { value: "DEFAULT", label: "Steel grey" },
         { value: "ESCAPEMENT", label: "Escapement gold" },
+        { value: "BLACK", label: "Black" },
       ],
       (value) => { edit({ colour: value as GearColour }); },
-      "The gear's display colour (ASM-0080): the usual steel grey, or the escape wheel's own gold to pick a wheel out. Presentation only — nothing in the simulation or validation reads it.",
+      "The gear's display colour (ASM-0080): the usual steel grey, the escape wheel's own gold, or black, to pick a wheel out. Presentation only — nothing in the simulation or validation reads it.",
     ),
     selectRow(
       "Wheel style",

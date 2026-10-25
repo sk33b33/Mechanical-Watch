@@ -34,10 +34,10 @@ describe("appearance (ASM-0090)", () => {
 
   it("offers each wheel a dial window shows, once, with the four year digits as one", () => {
     const wheels = colourableWheels(teaching);
-    expect(wheels.map((w) => w.name)).toEqual(expect.arrayContaining(["Moon phase", "Date", "Day of week", "Month", "Leap year", "Season", "Year digits"]));
+    expect(wheels.map((w) => w.name)).toEqual(expect.arrayContaining(["Moon wheel", "Date", "Day of week", "Month", "Leap year", "Season", "Year digits"]));
     expect(wheels).toHaveLength(7);
     // The moon wheel's text colour is the colour of its printed moon phases; every other wheel's is its text.
-    expect(wheels.filter((w) => w.textLabel === "Moon phases").map((w) => w.name)).toEqual(["Moon phase"]);
+    expect(wheels.filter((w) => w.textLabel === "Moon phases").map((w) => w.name)).toEqual(["Moon wheel"]);
     expect(wheels.filter((w) => w.textLabel === "Text")).toHaveLength(6);
     expect(new Set(wheels.map((w) => w.key)).size).toBe(7);
   });

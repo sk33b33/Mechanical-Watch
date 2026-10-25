@@ -102,13 +102,11 @@ export function buildStemMeshes(
   stemSpin.add(rod);
   pickMeshes.push(rod);
 
-  // Crown, with a flat so its rotation is visible.
-  // Knurled: a ridge pattern around the crown's own rim (follow-up 21, ASM-0076), cut as a fluted cross-section along the stem.
+  // The crown is knurled (follow-up 21, ASM-0076): its ridges already show that it turns. A silver bar
+  // that used to lie along it as a rotation marker added nothing and was removed (follow-up 43).
   const crown = new THREE.Mesh(createFlutedCylinderGeometry(v.crownRadiusMetres, v.crownLengthMetres, v.crownRidgeCount, v.crownRidgeDepthFraction), materials.crown);
   crown.position.x = crownStart + v.crownLengthMetres / 2;
-  const flat = new THREE.Mesh(new THREE.BoxGeometry(v.crownLengthMetres * 1.02, v.crownRadiusMetres * 0.25, v.crownRadiusMetres * 0.25), materials.pinion);
-  flat.position.set(crown.position.x, v.crownRadiusMetres, 0);
-  stemSpin.add(crown, flat);
+  stemSpin.add(crown);
   pickMeshes.push(crown);
 
   if (setting !== null) {

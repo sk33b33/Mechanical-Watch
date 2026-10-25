@@ -265,11 +265,12 @@ describe("assembly rules", () => {
     expect(gear105(updateGear(m, small.id, { spoked: true }))).toEqual(["GEAR-105:warning:too-few-teeth"]);
   });
 
-  it("only Moon wheel 1 is drawn in the escapement colour in the teaching movement; every other gear is the default (ASM-0080)", () => {
+  it("only Moon wheel 1 is drawn in the escapement colour and only Moon wheel 2 in black in the teaching movement; every other gear is the default (ASM-0080)", () => {
     const m = createTeachingMovement();
     const coloured = Object.values(m.gears).filter((g) => g.colour === "ESCAPEMENT").map((g) => g.name);
     expect(coloured).toEqual(["Moon wheel 1"]);
-    for (const g of Object.values(m.gears)) if (g.name !== "Moon wheel 1") expect(g.colour).toBe("DEFAULT");
+    expect(Object.values(m.gears).filter((g) => g.colour === "BLACK").map((g) => g.name)).toEqual(["Moon wheel 2"]);
+    for (const g of Object.values(m.gears)) if (g.name !== "Moon wheel 1" && g.name !== "Moon wheel 2") expect(g.colour).toBe("DEFAULT");
   });
 
   it("GEAR-103: an involute gear needs a pressure angle", () => {

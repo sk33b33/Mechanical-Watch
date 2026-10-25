@@ -10,9 +10,9 @@ export type GearId = EntityId<"gear">;
 
 /**
  * How a gear is coloured in the viewport (ASM-0080, presentation only): the usual steel grey, or the
- * escapement's own colour — the escape wheel's gold — so a wheel can be picked out visually.
+ * escapement's own colour — the escape wheel's gold — or black (follow-up 43), so a wheel can be picked out visually.
  */
-export type GearColour = "DEFAULT" | "ESCAPEMENT";
+export type GearColour = "DEFAULT" | "ESCAPEMENT" | "BLACK";
 
 /** The fewest teeth a spoked gear needs for its gaps to fit between hub and rim (ASM-0077, GEAR-105): a pitch radius of about 1.4mm at the teaching module. */
 export const GEAR_SPOKE_MIN_TOOTH_COUNT = 24;

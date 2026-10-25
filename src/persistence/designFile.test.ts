@@ -240,12 +240,13 @@ describe("schema migration v29 → v30 (ASM-0074, DialWindow.bezel and caption)"
     }
   });
 
-  it("round-trips the year window's own bezel and caption", () => {
+  it("round-trips the year window's own bezel, and a caption set on it (the teaching movement prints none)", () => {
     const teaching = createTeachingMovement();
     const year = Object.values(teaching.dialWindows).find((w) => w.name === "Year window");
     expect(year?.bezel).toBe(true);
-    expect(year?.caption).toBe("YEAR");
-    const loaded = decodeDesign(encodeDesign(teaching));
+    expect(year?.caption).toBeNull();
+    const captioned = year === undefined ? teaching : { ...teaching, dialWindows: { ...teaching.dialWindows, [year.id]: { ...year, caption: "YEAR" } } };
+    const loaded = decodeDesign(encodeDesign(captioned));
     const loadedYear = Object.values(loaded.dialWindows).find((w) => w.name === "Year window");
     expect(loadedYear?.bezel).toBe(true);
     expect(loadedYear?.caption).toBe("YEAR");
@@ -308,6 +309,7 @@ describe("schema migration v32 → v33 (ASM-0080, Gear.colour)", () => {
     const colours = (m: Movement): Record<string, string> => Object.fromEntries(Object.values(m.gears).map((g) => [g.name, g.colour]));
     expect(colours(loaded)).toEqual(colours(teaching));
     expect(colours(loaded)["Moon wheel 1"]).toBe("ESCAPEMENT");
+    expect(colours(loaded)["Moon wheel 2"]).toBe("BLACK");
   });
 });
 

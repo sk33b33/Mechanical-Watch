@@ -680,7 +680,7 @@ const gear: Decoder<Gear> = (value, path) => {
     zCentre: field(o, "zCentre", length, path),
     shaftId: field(o, "shaftId", id<Shaft["id"]>(), path),
     spoked: field(o, "spoked", boolean, path),
-    colour: field(o, "colour", oneOf(["DEFAULT", "ESCAPEMENT"]), path),
+    colour: field(o, "colour", oneOf(["DEFAULT", "ESCAPEMENT", "BLACK"]), path),
   };
 };
 
