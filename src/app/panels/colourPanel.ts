@@ -144,7 +144,7 @@ export function mountColourPanel(container: HTMLElement, store: AppStore): void 
       const textTarget: Target = { kind: "WHEEL", key: wheel.key, part: "text", name: wheel.name };
       rowEl.append(
         button(bodyTarget, rowEl, wheel.name, `${wheel.name} colour`, `The colour of the ${wheel.name} wheel`, `colour-wheel-${wheel.name}`),
-        button(textTarget, rowEl, "Text", `${wheel.name} text colour`, `The text or digits printed on the ${wheel.name} wheel`, `colour-wheel-text-${wheel.name}`),
+        button(textTarget, rowEl, wheel.textLabel, `${wheel.name} text colour`, wheel.textLabel === "Text" ? `The text or digits printed on the ${wheel.name} wheel` : `The white moon phases printed on the ${wheel.name} wheel`, `colour-wheel-text-${wheel.name}`),
       );
       root.appendChild(rowEl);
     }

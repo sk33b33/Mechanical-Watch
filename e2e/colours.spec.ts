@@ -25,6 +25,9 @@ test.describe("Colours flyout (ASM-0090)", () => {
     }
     await expect(app.locator('[data-testid^="colour-wheel-text-"]').first()).toBeVisible();
     await expect(app.getByTestId("colour-picker")).toBeHidden();
+    // The moon wheel's second button is the colour of its moon phases.
+    await expect(app.getByTestId("colour-wheel-text-Moon phase")).toContainText("Moon phases");
+    await expect(app.getByTestId("colour-wheel-text-Date")).toContainText("Text");
     // The Seconds hand button sits directly above the Minute hand button.
     const seconds = await app.getByTestId("colour-dial-secondsHand").boundingBox();
     const minute = await app.getByTestId("colour-dial-minuteHand").boundingBox();

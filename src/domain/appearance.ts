@@ -80,9 +80,9 @@ export function wheelAppearance(movement: Movement, complicationId: string): Whe
  * The wheels the colour menu offers: every complication a dial window shows, once each (the four year digits
  * are one). Names are the complication's own, with "Year digits" for the display of four.
  */
-export function colourableWheels(movement: Movement): { key: string; name: string }[] {
+export function colourableWheels(movement: Movement): { key: string; name: string; textLabel: string }[] {
   const seen = new Set<string>();
-  const wheels: { key: string; name: string }[] = [];
+  const wheels: { key: string; name: string; textLabel: string }[] = [];
   for (const window of Object.values(movement.dialWindows)) {
     const id = window.complicationId as string;
     const key = appearanceKeyFor(movement, id);
@@ -96,7 +96,9 @@ export function colourableWheels(movement: Movement): { key: string; name: strin
     const isDigit = movement.yearDigitComplications[id as YearDigitComplicationId] !== undefined;
     if (named === undefined && !isDigit) continue;
     seen.add(key);
-    wheels.push({ key, name: isDigit ? "Year digits" : named ?? id });
+    // The moon wheel prints only its lit phases (follow-up 41), so its text colour is the colour of the moon phases.
+    const isMoon = movement.moonPhases[id as keyof typeof movement.moonPhases] !== undefined;
+    wheels.push({ key, name: isDigit ? "Year digits" : named ?? id, textLabel: isMoon ? "Moon phases" : "Text" });
   }
   return wheels;
 }

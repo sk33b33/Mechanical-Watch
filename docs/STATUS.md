@@ -2,6 +2,13 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 42: "Moon phases" colour button
+
+In the Colours flyout the Moon phase row's second button is now labelled **Moon phases** (the other wheels keep
+**Text**). It sets the colour of the printed white moon phases, which is what that wheel's text colour already
+controlled once only the lit phases were printed (follow-up 41); the first button still sets the wheel's sky colour.
+No new stored field, so no schema change.
+
 ## Phase 8.15 follow-up 41: Moon wheel prints only the lit phases
 
 The moon-phase wheel's printed phase icons are now only the **lit (white) part** of each phase. The dark disc and
