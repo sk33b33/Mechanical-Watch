@@ -20,11 +20,25 @@ test.describe("Colours flyout (ASM-0090)", () => {
     await expect(app.locator(".panel-frame-colours")).toBeVisible();
     const rows = app.locator(".colour-row");
     expect(await rows.count()).toBeGreaterThan(6);
-    for (const key of ["dial", "hourMarkers", "hourMarkerDigits", "dialPrint", "minuteHand", "hourHand"]) {
+    for (const key of ["dial", "hourMarkers", "hourMarkerDigits", "dialPrint", "secondsHand", "minuteHand", "hourHand"]) {
       await expect(app.getByTestId(`colour-dial-${key}`)).toBeVisible();
     }
     await expect(app.locator('[data-testid^="colour-wheel-text-"]').first()).toBeVisible();
     await expect(app.getByTestId("colour-picker")).toBeHidden();
+    // The Seconds hand button sits directly above the Minute hand button.
+    const seconds = await app.getByTestId("colour-dial-secondsHand").boundingBox();
+    const minute = await app.getByTestId("colour-dial-minuteHand").boundingBox();
+    if (seconds === null || minute === null) throw new Error("no hand buttons");
+    expect(seconds.y).toBeLessThan(minute.y);
+  });
+
+  test("the Seconds hand colour changes only the seconds hand's button", async ({ app }) => {
+    await app.getByTestId("flyout-tab-colours").click();
+    await app.getByTestId("colour-dial-secondsHand").click();
+    await app.getByTestId("colour-hex").fill("#00ff00");
+    await app.getByTestId("colour-hex").press("Enter");
+    await expect.poll(() => swatchColour(app, "colour-dial-secondsHand")).toContain("rgb(0, 255, 0)");
+    expect(await swatchColour(app, "colour-dial-minuteHand")).not.toContain("rgb(0, 255, 0)");
   });
 
   test("pressing a colour opens the chart; typing a colour changes it, saves it with the design, and the built-in button restores it", async ({ app }) => {

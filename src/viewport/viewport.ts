@@ -573,9 +573,10 @@ export class Viewport {
     this.animationHandle = requestAnimationFrame(this.animate);
   }
 
-  /** A hand's colour: the one chosen for the hour or minute hand, else the built-in one (follow-up 39, ASM-0090). */
+  /** A hand's colour: the one chosen for that hand, else the built-in one (follow-ups 39 and 40, ASM-0090). */
   private handColour(hand: HandFunction): number {
-    const chosen = hand === "HOURS" ? this.store.movement.appearance.hourHand : hand === "MINUTES" ? this.store.movement.appearance.minuteHand : null;
+    const look = this.store.movement.appearance;
+    const chosen = hand === "HOURS" ? look.hourHand : hand === "MINUTES" ? look.minuteHand : look.secondsHand;
     return chosen === null ? COLORS.hand[hand] : hexToNumber(chosen);
   }
 

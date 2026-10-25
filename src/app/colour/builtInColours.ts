@@ -21,6 +21,7 @@ export function builtInDialColour(key: DialColourKey): HexColour {
     case "hourMarkers": return numberToHex(COLORS.dialMarker);
     case "hourMarkerDigits": return YEAR_DIGIT_BARREL_VISUALIZATION.textColor;
     case "dialPrint": return DIAL_VISUALIZATION.numeralColor;
+    case "secondsHand": return numberToHex(COLORS.hand.SECONDS);
     case "minuteHand": return numberToHex(COLORS.hand.MINUTES);
     case "hourHand": return numberToHex(COLORS.hand.HOURS);
   }

@@ -13,6 +13,7 @@ const DIAL_BUTTONS: readonly { key: DialColourKey; label: string; title: string 
   { key: "hourMarkers", label: "Hour markers", title: "The twelve hour marker circles" },
   { key: "hourMarkerDigits", label: "Hour marker digits", title: "The numbers 12, 3, 6 and 9 inside the four big hour markers" },
   { key: "dialPrint", label: "Dial text, triangles and digits", title: "The printed text, the triangles, the window frames and the seconds numbers on the dial" },
+  { key: "secondsHand", label: "Seconds hand", title: "The seconds hand" },
   { key: "minuteHand", label: "Minute hand", title: "The minute hand" },
   { key: "hourHand", label: "Hour hand", title: "The hour hand" },
 ];

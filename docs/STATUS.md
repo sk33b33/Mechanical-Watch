@@ -2,6 +2,13 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 40: Seconds hand colour
+
+The Colours flyout has a **Seconds hand** button, directly above **Minute hand**. It recolours the seconds hand only
+(the minute and hour hands keep their own choices; the seconds numerals follow the "Dial text, triangles and digits"
+colour as before). It is stored with the other colours (`Appearance.secondsHand`); design schema v36, and v35 files
+open with the seconds hand unchosen (built-in colour). Still presentation only (ASM-0090).
+
 ## Phase 8.15 follow-up 39: Colours flyout
 
 A fourth flyout, **Colours**, slides out from a tab on the right edge (below the Inspector tab; it has no docked
