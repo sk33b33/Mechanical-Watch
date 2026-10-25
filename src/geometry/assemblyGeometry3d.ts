@@ -1224,10 +1224,6 @@ export const MOON_PHASE_VISUALIZATION = {
   iconRingRadiusFraction: 0.84,
   /** Each phase icon's own radius, as a fraction of the disc's own radius. */
   iconRadiusFraction: 0.115,
-  /** The unlit part of an icon (the moon's own dark limb), a little lighter than the sky so a new moon still reads. */
-  iconDarkColor: "#1f3252",
-  iconOutlineColor: "#6b7f9c",
-  iconOutlineWidthPx: 2,
   /**
    * Fixed, declared star positions (fraction of the disc's own radius,
    * angle in radians, dot radius in px at `DIAL_WINDOW_VISUALIZATION`'s
@@ -1406,10 +1402,8 @@ export function createMoonPhaseTexture(windowCount: MoonPhaseWindowCount, ink: D
     ctx.save();
     ctx.translate(centre + ringRadiusPx * Math.cos(placement.canvasAngle), centre + ringRadiusPx * Math.sin(placement.canvasAngle));
     ctx.rotate(placement.canvasAngle + Math.PI / 2);
-    ctx.fillStyle = v.iconDarkColor;
-    ctx.beginPath();
-    ctx.arc(0, 0, iconRadiusPx, 0, Math.PI * 2);
-    ctx.fill();
+    // Only the lit part is printed: no dark disc or outline completes the moon (follow-up 41), so the
+    // unlit part is simply the disc's own sky colour and a new moon prints nothing.
     const lit = moonPhaseLitPolygon(placement.phase, iconRadiusPx);
     if (lit.length > 0) {
       ctx.fillStyle = ink.text ?? v.moonColor;
@@ -1418,11 +1412,6 @@ export function createMoonPhaseTexture(windowCount: MoonPhaseWindowCount, ink: D
       ctx.closePath();
       ctx.fill();
     }
-    ctx.strokeStyle = v.iconOutlineColor;
-    ctx.lineWidth = v.iconOutlineWidthPx;
-    ctx.beginPath();
-    ctx.arc(0, 0, iconRadiusPx, 0, Math.PI * 2);
-    ctx.stroke();
     ctx.restore();
   }
 

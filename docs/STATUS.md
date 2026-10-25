@@ -2,6 +2,13 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 41: Moon wheel prints only the lit phases
+
+The moon-phase wheel's printed phase icons are now only the **lit (white) part** of each phase. The dark disc and
+the thin outline that used to complete each moon are gone, so the unlit part is just the wheel's sky colour and the
+new moon prints nothing (the north pointer still marks the current phase). Phase geometry, placement and the
+lit-area formula are unchanged (ASM-0073), and the Colours "Text" button still recolours the lit parts.
+
 ## Phase 8.15 follow-up 40: Seconds hand colour
 
 The Colours flyout has a **Seconds hand** button, directly above **Minute hand**. It recolours the seconds hand only
