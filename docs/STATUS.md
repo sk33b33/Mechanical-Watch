@@ -2,6 +2,23 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 44: no zoom on entry, floating tick switch, tilt to look around
+
+- **No zoom after "Tap to enter":** the start screen now just fades away; the zoom-out of the splash and the zoom-in
+  of the app behind it are gone.
+- **Floating tick switch:** the second-hand tick on/off button moved out of the toolbar to a floating pill in the
+  bottom right corner (the time readout moved left to make room). When a flyout would cover it the flyout pushes it
+  along its own direction (left for Inspector and Colours, up for Validation; right for Components, which only reaches
+  it on a narrow window, and it always keeps a sliver on screen) and it springs back when the flyout slides away.
+  Choice still remembered; same `tick-toggle` test id.
+- **Tilt to look around on the start screen:** on a phone, tilting pans the view so complication parts waiting
+  beyond the edges come into sight (moon wheel, date star, month star, balance with hairspring, year counter, season
+  wheel; decorative outlines only). The first reading counts as level however the phone is held; rotating the screen
+  re-levels it. iOS asks permission, so there is an "Enable tilt" button there; other phones start straight away.
+  Desktop mice only nudge the view. ASM-0092. Not tested on a physical phone here: the browser tests send synthetic
+  orientation events, so the real sensor's direction and feel on your phone needs a look. If a tilt direction feels
+  backwards, it is one sign in `splashScreen.ts`.
+
 ## Phase 8.15 follow-up 43: seven requests (moon wheel colours, crown strip, clearances, linked chain, YEAR)
 
 - **"Moon phase" button is now "Moon wheel"** in the Colours flyout (its second button stays "Moon phases").

@@ -94,3 +94,94 @@ describe("splashDisabled", () => {
     expect(splashDisabled("?splash=on")).toBe(false);
   });
 });
+
+import { partOnScreen, SPLASH_PARTS, tiltInput, TILT } from "./splashGears";
+
+describe("tilt to look around (follow-up 44)", () => {
+  const level = { gamma: 2, beta: 55 };
+
+  it("a phone held level, or within the hand's tremor, does not pan", () => {
+    expect(tiltInput(level, level, 0)).toEqual({ x: 0, y: 0 });
+    expect(tiltInput({ gamma: 2 + TILT.deadZoneDegrees, beta: 55 - TILT.deadZoneDegrees }, level, 0)).toEqual({ x: 0, y: 0 });
+  });
+
+  it("tilting right and towards the bottom gives positive input, saturating at full tilt", () => {
+    const some = tiltInput({ gamma: 12, beta: 65 }, level, 0);
+    expect(some.x).toBeGreaterThan(0);
+    expect(some.y).toBeGreaterThan(0);
+    expect(some.x).toBeLessThan(1);
+    expect(tiltInput({ gamma: 80, beta: 150 }, level, 0)).toEqual({ x: 1, y: 1 });
+    expect(tiltInput({ gamma: -80, beta: -50 }, level, 0)).toEqual({ x: -1, y: -1 });
+  });
+
+  it("whatever way the phone is held counts as level, because the first reading is the reference", () => {
+    const held = { gamma: -20, beta: 120 };
+    expect(tiltInput(held, held, 0)).toEqual({ x: 0, y: 0 });
+  });
+
+  it("rotating the screen swaps the axes, and a full turn is the identity", () => {
+    const reading = { gamma: 22, beta: 55 };
+    expect(tiltInput(reading, { gamma: 0, beta: 55 }, 0)).toEqual({ x: 1, y: 0 });
+    expect(tiltInput(reading, { gamma: 0, beta: 55 }, 90)).toEqual({ x: 0, y: -1 });
+    expect(tiltInput(reading, { gamma: 0, beta: 55 }, 180)).toEqual({ x: -1, y: 0 });
+    expect(tiltInput(reading, { gamma: 0, beta: 55 }, 270)).toEqual({ x: 0, y: 1 });
+    expect(tiltInput(reading, { gamma: 0, beta: 55 }, 360)).toEqual(tiltInput(reading, { gamma: 0, beta: 55 }, 0));
+    expect(tiltInput(reading, { gamma: 0, beta: 55 }, -90)).toEqual(tiltInput(reading, { gamma: 0, beta: 55 }, 270));
+  });
+});
+
+describe("complication parts waiting beyond the screen edges (follow-up 44)", () => {
+  const screens = [{ w: 390, h: 844 }, { w: 844, h: 390 }, { w: 1400, h: 900 }];
+
+  it("none is on screen at rest, on a phone held upright or sideways or on a desktop window", () => {
+    for (const { w, h } of screens) {
+      for (const part of SPLASH_PARTS) expect(partOnScreen(part, w, h, { x: 0, y: 0 }), `${part.kind} at ${String(w)}x${String(h)}`).toBe(false);
+    }
+  });
+
+  it("a full tilt in any direction brings at least one into view, and every part is reachable by some tilt", () => {
+    for (const { w, h } of screens) {
+      const reach = TILT.panFraction;
+      const views = [{ x: reach * w, y: 0 }, { x: -reach * w, y: 0 }, { x: 0, y: reach * h }, { x: 0, y: -reach * h },
+        { x: reach * w, y: reach * h }, { x: -reach * w, y: reach * h }, { x: reach * w, y: -reach * h }, { x: -reach * w, y: -reach * h }];
+      for (const view of views) expect(SPLASH_PARTS.some((p) => partOnScreen(p, w, h, view)), `${String(view.x)},${String(view.y)} at ${String(w)}x${String(h)}`).toBe(true);
+      for (const part of SPLASH_PARTS) expect(views.some((view) => partOnScreen(part, w, h, view)), `${part.kind} at ${String(w)}x${String(h)}`).toBe(true);
+    }
+  });
+
+  it("a mouse pointer's small nudge never brings one into view", () => {
+    for (const { w, h } of screens) {
+      for (const part of SPLASH_PARTS) {
+        for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
+          expect(partOnScreen(part, w, h, { x: sx * TILT.pointerPanFraction * w, y: sy * TILT.pointerPanFraction * h })).toBe(false);
+        }
+      }
+    }
+  });
+});
+
+import { moonLitPoints } from "./splashGears";
+
+describe("the off-screen moon wheel's lit phases", () => {
+  const area = (points: { x: number; y: number }[]): number => {
+    let sum = 0;
+    for (let i = 0; i < points.length; i += 1) {
+      const a = points[i];
+      const b = points[(i + 1) % points.length];
+      if (a === undefined || b === undefined) continue;
+      sum += a.x * b.y - b.x * a.y;
+    }
+    return Math.abs(sum) / 2;
+  };
+
+  it("a new moon is dark and a full moon is the whole disc", () => {
+    expect(moonLitPoints(0, 10)).toEqual([]);
+    expect(area(moonLitPoints(0.5, 10, 200))).toBeCloseTo(Math.PI * 100, 0);
+  });
+
+  it("the lit area follows (1 - cos 2 pi p) / 2 of the disc", () => {
+    for (const p of [0.125, 0.25, 0.375, 0.625, 0.75, 0.875]) {
+      expect(area(moonLitPoints(p, 10, 400)) / (Math.PI * 100)).toBeCloseTo((1 - Math.cos(2 * Math.PI * p)) / 2, 2);
+    }
+  });
+});

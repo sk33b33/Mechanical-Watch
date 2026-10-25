@@ -410,10 +410,33 @@ button.panel-control:hover:not(:disabled) {
   border: none;
 }
 
-/* Simulation readouts sit on the viewport, so they stay visible whatever the panels do. */
+/*
+ * The floating tick switch (follow-up 44) sits in the bottom right corner. A flyout pushes it along its own
+ * direction of travel (the transform is set from script) and it springs back, the overshoot easing, when the
+ * flyout slides away. It stays under the flyouts (z-index 45 and up) so a panel is never covered by it.
+ */
+.floating-control {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 40;
+  min-width: 78px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  transition: transform 560ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.floating-control[aria-pressed="false"] {
+  opacity: 0.75;
+}
+@media (prefers-reduced-motion: reduce) {
+  .floating-control { transition: none; }
+}
+
+/* Simulation readouts sit on the viewport, so they stay visible whatever the panels do (left of the floating tick switch). */
 .sim-readouts {
   position: absolute;
-  right: 8px;
+  right: 104px;
   bottom: 8px;
   display: flex;
   flex-direction: column;
@@ -1124,24 +1147,11 @@ button.active {
   background: #05080c;
   transition: opacity 0.7s ease, transform 0.7s ease, filter 0.7s ease;
 }
-/* Zoom in on entry: the splash and its gears rush past the viewer while the app behind zooms in to rest. */
+/* On entry the splash simply fades away (follow-up 44: the zoom-in that used to follow was removed). */
 .splash-leaving {
   opacity: 0;
-  transform: scale(2.8);
-  filter: blur(10px);
   pointer-events: none;
-  transition: transform 1.1s cubic-bezier(0.3, 0, 0.5, 1), opacity 0.6s ease 0.4s, filter 1.1s ease;
-}
-.splash-leaving .splash-gears {
-  transform: scale(1.7) !important;
-  transition: transform 1.1s cubic-bezier(0.3, 0, 0.5, 1);
-}
-#app.app-zoom-in {
-  animation: app-zoom-in 1.1s cubic-bezier(0.2, 0.7, 0.2, 1) backwards;
-}
-@keyframes app-zoom-in {
-  from { transform: scale(0.84); opacity: 0.25; }
-  to { transform: scale(1); opacity: 1; }
+  transition: opacity 0.5s ease;
 }
 .splash-metal {
   position: absolute;
@@ -1328,6 +1338,34 @@ button.active {
 }
 .splash-sound[aria-pressed="false"] {
   opacity: 0.6;
+}
+/* Tilt to look around (follow-up 44): a hint on phones, and the permission button where the phone asks first (iOS). */
+.splash-tilt,
+.splash-tilt-note {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(214, 238, 252, 0.85);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(170, 225, 255, 0.28);
+  border-radius: 999px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.splash-tilt {
+  cursor: pointer;
+}
+.splash-tilt-note {
+  pointer-events: none;
+}
+.splash-tilt[hidden],
+.splash-tilt-note[hidden] {
+  display: none;
 }
 
 @keyframes splash-pulse {

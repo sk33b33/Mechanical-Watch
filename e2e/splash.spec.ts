@@ -57,3 +57,45 @@ test("entering opens the teaching movement at the browser's time, in the dial vi
   const reading = (await page.getByTestId("dial-reading").innerText()).replace("Dial ", "");
   expect([clockText(before), clockText(now), clockText(soon)].some((t) => reading.startsWith(t))).toBe(true);
 });
+
+test("entering fades the start screen away with no zoom (follow-up 44)", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => { localStorage.clear(); });
+  await page.reload();
+  await page.getByRole("button", { name: "Tap to enter" }).click();
+  // The app behind it is simply there: no zoom-in animation class.
+  await expect(page.locator("#app")).not.toHaveClass(/app-zoom-in/);
+  await expect(page.locator(".splash")).toHaveCount(0);
+});
+
+test("tilting the phone pans the start screen to reveal complication parts beyond its edges (follow-up 44)", async ({ browser }) => {
+  // A touch phone: coarse pointer, portrait.
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const page = await context.newPage();
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(String(error)));
+  await page.goto("/");
+  await page.evaluate(() => { localStorage.clear(); });
+  await page.reload();
+  const splash = page.locator(".splash");
+  await expect(splash).toBeVisible();
+  await expect(page.locator(".splash-tilt-note")).toBeVisible();
+  // At rest none of the parts is on screen.
+  await expect(splash).toHaveAttribute("data-parts-visible", "0");
+  const tilt = (gamma: number, beta: number) =>
+    page.evaluate(`window.dispatchEvent(new DeviceOrientationEvent("deviceorientation", { gamma: ${String(gamma)}, beta: ${String(beta)}, alpha: 0 }))`);
+  await tilt(0, 55); // the first reading is "level", however the phone is held
+  await tilt(-25, 55); // tilted to the left: the view pans to reveal what is on the left
+  await expect.poll(async () => Number(await splash.getAttribute("data-pan-x"))).toBeGreaterThan(100);
+  await expect(splash).not.toHaveAttribute("data-parts-visible", "0");
+  await tilt(25, 55); // tilted to the right: the view pans the other way
+  await expect.poll(async () => Number(await splash.getAttribute("data-pan-x"))).toBeLessThan(-100);
+  await expect(splash).not.toHaveAttribute("data-parts-visible", "0");
+  await tilt(0, 55); // level again: back to rest
+  await expect.poll(async () => Number(await splash.getAttribute("data-pan-x"))).toBeLessThan(10);
+  await expect(splash).toHaveAttribute("data-parts-visible", "0");
+  await page.getByRole("button", { name: "Tap to enter" }).click();
+  await expect(splash).toHaveCount(0);
+  expect(errors, "uncaught page errors").toEqual([]);
+  await context.close();
+});

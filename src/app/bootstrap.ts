@@ -16,6 +16,7 @@ import { mountInspector } from "./panels/inspector/index";
 import { mountValidationConsole } from "./panels/validationConsole";
 import { mountTutorialBanner } from "./panels/tutorialBanner";
 import { mountTickSound } from "./audio/tickSound";
+import { mountFloatingControl } from "./layout/floatingControl";
 import { unlockAudioOnFirstGesture } from "./audio/audioContext";
 import { chooseStartupMovement } from "./startup";
 import { PanelLayout } from "./layout/panelWindows";
@@ -73,7 +74,8 @@ export function bootstrapApp(root: HTMLElement, plainStart = false): Bootstrappe
   toolbar.addFileAction("Chain…", "Diagram of how every part is connected, from the mainspring to the escapement and the calendar", () => { chain.open(); }, "chain-diagram");
   toolbar.addFileAction("Outputs…", "Engineering report, BOM, drawings and exports", () => { outputs.open(); });
   mountTutorialBanner(store, storage);
-  toolbar.addSimControl(mountTickSound(store, storage));
+  // The tick sound switch floats in the bottom right corner; flyouts push it aside and it springs back (follow-up 44).
+  mountFloatingControl(mountTickSound(store, storage), root, layout);
   unlockAudioOnFirstGesture();
   // The tutorial points at buttons in the Components and Inspector panels, so starting it slides those flyouts out.
   let tutorialWasActive = false;

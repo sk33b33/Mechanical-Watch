@@ -137,3 +137,99 @@ export function splashTrainBounds(train: readonly SplashGear[]): { minX: number;
 export function splashDisabled(search: string): boolean {
   return new URLSearchParams(search).get("splash") === "off";
 }
+
+/**
+ * Tilt-to-look-around (follow-up 44). A phone's orientation sensor reports the tilt `gamma` (about its long
+ * axis, left to right) and `beta` (front to back) in degrees. The first reading is taken as "level" whatever the
+ * way the phone is held, and tilting from it pans the view over the scene, which is larger than the screen: the
+ * decorative complication parts (`SPLASH_PARTS`) wait just beyond its edges. Screen rotation swaps the axes.
+ */
+export const TILT = {
+  /** A tilt this far from level (degrees) pans the view as far as it goes. */
+  fullTiltDegrees: 22,
+  /** Hand tremor below this (degrees) is ignored. */
+  deadZoneDegrees: 1.5,
+  /** The farthest the view pans, as a fraction of the screen's width and height. */
+  panFraction: 0.46,
+  /** The same for a mouse pointer, which only nudges the view (no tilt to reach the parts with). */
+  pointerPanFraction: 0.06,
+} as const;
+
+export interface TiltReading { readonly gamma: number; readonly beta: number }
+
+function shaped(delta: number): number {
+  const magnitude = Math.abs(delta);
+  if (magnitude <= TILT.deadZoneDegrees) return 0;
+  const scaled = Math.min(1, (magnitude - TILT.deadZoneDegrees) / (TILT.fullTiltDegrees - TILT.deadZoneDegrees));
+  return Math.sign(delta) * scaled;
+}
+
+/**
+ * The view input, each axis in [-1, 1] (+x: tilted to the user's right, +y: tilted towards the user's bottom edge
+ * down), from a reading, the "level" reading and the screen's rotation angle (0, 90, 180 or 270 degrees).
+ */
+export function tiltInput(reading: TiltReading, level: TiltReading, screenAngleDegrees: number): { x: number; y: number } {
+  const dg = reading.gamma - level.gamma;
+  const db = reading.beta - level.beta;
+  const turns = ((Math.round(screenAngleDegrees / 90) % 4) + 4) % 4;
+  const [x, y] =
+    turns === 0 ? [dg, db] :
+    turns === 1 ? [db, -dg] :
+    turns === 2 ? [-dg, -db] :
+    [-db, dg];
+  return { x: shaped(x), y: shaped(y) };
+}
+
+/**
+ * Complication parts drawn beyond the screen edges, in the same glowing outline as the gears (decorative only,
+ * L0 visual, ASM-0004: shapes of real complication parts, not the movement's own). `ax`, `ay` place the centre as a
+ * fraction of the screen's width and height from its centre; `radius` is a fraction of the shorter side.
+ */
+export interface SplashPart {
+  readonly kind: "MOON" | "DATE_STAR" | "MONTH_STAR" | "BALANCE" | "YEAR_COUNTER" | "SEASON";
+  readonly ax: number;
+  readonly ay: number;
+  readonly radius: number;
+  /** Slow turn of the part (radians per second); the balance swings instead and the counter stays still. */
+  readonly spin: number;
+}
+
+export const SPLASH_PARTS: readonly SplashPart[] = [
+  { kind: "MOON", ax: -0.78, ay: -0.3, radius: 0.2, spin: 0.05 },
+  { kind: "DATE_STAR", ax: 0.78, ay: -0.3, radius: 0.17, spin: -0.04 },
+  { kind: "MONTH_STAR", ax: -0.8, ay: 0.36, radius: 0.15, spin: 0.045 },
+  { kind: "BALANCE", ax: 0.78, ay: 0.4, radius: 0.17, spin: 0 },
+  { kind: "YEAR_COUNTER", ax: 0.04, ay: -0.78, radius: 0.12, spin: 0 },
+  { kind: "SEASON", ax: 0.0, ay: 0.8, radius: 0.12, spin: 0.03 },
+];
+
+/** Whether a part (a circle of `radiusPx` about its centre) overlaps the screen once the view is panned by `pan`. */
+export function partOnScreen(part: SplashPart, width: number, height: number, pan: { x: number; y: number }): boolean {
+  const radiusPx = part.radius * Math.min(width, height);
+  const cx = width / 2 + part.ax * width + pan.x;
+  const cy = height / 2 + part.ay * height + pan.y;
+  return cx + radiusPx > 0 && cx - radiusPx < width && cy + radiusPx > 0 && cy - radiusPx < height;
+}
+
+/**
+ * The lit part of a moon of `phase` (0 new, 0.5 full, 1 new again) as a polygon about the icon's centre, for the
+ * decorative moon wheel waiting off screen (waxing lit on the left, waning on the right, the Southern Hemisphere
+ * look the dial itself uses, ASM-0072). Bounded by the lit limb and a half-ellipse terminator, so its area is
+ * the usual (1 - cos 2 pi p) / 2 of the disc. Empty for a new moon.
+ */
+export function moonLitPoints(phase: number, radius: number, samples = 24): Point[] {
+  const wrapped = ((phase % 1) + 1) % 1;
+  if (wrapped === 0) return [];
+  const side = wrapped <= 0.5 ? -1 : 1;
+  const terminator = side * radius * Math.cos(2 * Math.PI * wrapped);
+  const points: Point[] = [];
+  for (let i = 0; i <= samples; i += 1) {
+    const t = -Math.PI / 2 + (Math.PI * i) / samples;
+    points.push({ x: side * radius * Math.cos(t), y: radius * Math.sin(t) });
+  }
+  for (let i = 0; i <= samples; i += 1) {
+    const t = Math.PI / 2 - (Math.PI * i) / samples;
+    points.push({ x: terminator * Math.cos(t), y: radius * Math.sin(t) });
+  }
+  return points;
+}

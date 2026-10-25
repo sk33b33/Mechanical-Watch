@@ -555,6 +555,12 @@ export const ASSUMPTIONS = {
     scope: "src/geometry/calendarLinks.ts, the viewport (visual/L0 display only); src/app/teachingMovement.ts (layout)",
     status: "Active",
   },
+  "ASM-0092": {
+    summary:
+      "Splash tilt, floating tick switch (Phase 8.15 follow-up 44), presentation only (L0 visual, ASM-0004): (1) the start screen no longer zooms in on entry (a plain fade). (2) On a phone the start screen looks around with the device orientation: the first reading is taken as level whatever the way the phone is held, tilting from it pans the view (full pan at 22 degrees, 1.5 degrees ignored, up to 46 percent of the screen), and the screen's rotation swaps the axes; on iOS a button asks the system for permission first. Decorative outlines of complication parts (a moon wheel with eight phase icons, a 31-position date star, a 12-position month star, a balance with hairspring, a year counter showing the browser's year, a season wheel) wait beyond the screen edges so tilting reveals them; none is the movement's own geometry. A mouse only nudges the view by 6 percent, never enough to show a part. (3) The second-hand tick on/off switch floats in the bottom right corner of the app; a flyout that would cover it pushes it along its own direction of travel (left for the Inspector and Colours, up for Validation, right for Components on a narrow window, always leaving a sliver on screen) and it springs back when the flyout slides away. None of it is read by validation, kinematics or any export.",
+    scope: "src/app/splash/*, src/app/layout/floatingControl.ts, floatingPush.ts (visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;
