@@ -1414,10 +1414,13 @@ describe("dialMarkerPlacements (ASM-0020, ASM-0093: equal circles and a triangle
     for (const p of circles) expect(p.radiusMetres).toBeCloseTo(R * DIAL_VISUALIZATION.markerRadiusFraction, 12);
   });
 
-  it("the 12 triangle keeps the footprint of the old big circle: it is inscribed in a circle of that radius", () => {
+  it("the 12 triangle is inscribed in a circle of the declared radius, bigger than the circles (half as big again as the old big circle)", () => {
     const twelve = placements.find((p) => p.hour === 0);
     expect(twelve?.radiusMetres).toBeCloseTo(R * DIAL_VISUALIZATION.bigMarkerRadiusFraction, 12);
     expect(DIAL_VISUALIZATION.bigMarkerRadiusFraction).toBeGreaterThan(DIAL_VISUALIZATION.markerRadiusFraction);
+    expect(DIAL_VISUALIZATION.bigMarkerRadiusFraction).toBeCloseTo(1.5 * 0.05, 12);
+    // It stays on the dial, clear of the edge: its base corners are the farthest points from the dial's centre.
+    expect(Math.hypot(twelve?.x ?? 0, (twelve?.y ?? 0) + (twelve?.radiusMetres ?? 0) / 2)).toBeLessThan(R);
   });
 
   it("puts every marker on one ring inside the dial's edge, 12 at +Y and 3 at −X (the dial is read from its −Z side)", () => {

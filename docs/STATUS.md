@@ -2,6 +2,11 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 48: bigger 12 triangle
+
+The upside-down triangle at 12 is half as big again (inscribed in a circle of 0.075 of the dial radius, was 0.05). The
+12 numeral inside it keeps the same size as the other numerals, so it now sits with room to spare. Visual only (ASM-0093).
+
 ## Phase 8.15 follow-up 47: numerals inside the hour markers
 
 The hour numbers (12, then 1 to 11) are printed **inside** the hour markers: each in the middle of its circle, and the

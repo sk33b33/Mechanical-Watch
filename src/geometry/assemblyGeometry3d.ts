@@ -57,18 +57,19 @@ export const KEYLESS_VISUALIZATION = {
  * Hour markers drawn on the dial face; visual only (ASM-0020, ASM-0093).
  * Round dots (Phase 8.15 follow-up 18, replacing the earlier rectangular
  * bars); since follow-up 46 every hour but 12 is the same round dot and 12 is
- * an upside-down (apex-down) triangle that fills the old big circle's
- * footprint, with every hour's numeral printed inside its marker. Radii and the inset from the dial's
+ * an upside-down (apex-down) triangle (made half as big again in follow-up 48),
+ * with every hour's numeral printed inside its marker. Radii and the inset from the dial's
  * edge are fractions of the dial's own radius, as before. The seconds-scale
  * numerals (60 north, 15 east, 30 south, 45 west) are printed around the
  * seconds hand's own pivot, not on the hour circles.
  */
 export const DIAL_VISUALIZATION = {
   /**
-   * The footprint of the 12 o'clock marker as a fraction of the dial radius: the radius of the circle its
-   * upside-down triangle is inscribed in, which is the old big circle (follow-up 46).
+   * The size of the 12 o'clock marker as a fraction of the dial radius: the radius of the circle its
+   * upside-down triangle is inscribed in. It was 0.05, the old big circle (follow-up 46), and is half as big
+   * again at the user's request (follow-up 48).
    */
-  bigMarkerRadiusFraction: 0.05,
+  bigMarkerRadiusFraction: 0.075,
   /** The eleven round markers' radius as a fraction of the dial radius: all the same, big enough to hold a numeral (follow-up 46). */
   markerRadiusFraction: 0.036,
   /** How far each marker's own centre sits in from the dial's edge, as a fraction of the dial radius. */
@@ -184,7 +185,7 @@ export function dialBrandPlacement(dialRadius: number): { text: string; x: numbe
 /**
  * Where each of the twelve hour markers goes on a dial of the given
  * radius (ASM-0020, ASM-0093): equal circles at every hour but 12, an
- * upside-down triangle at 12 filling the footprint of the old big circle, all
+ * upside-down triangle at 12, bigger than the circles, all
  * on one ring `markerInsetFraction` of the radius in from the edge. Hands
  * point +Y at 12 and turn counter-clockwise seen from +Z — clockwise from
  * the dial (ASM-0014) — so hour `h` sits at angle h·π/6 with x = −ρ sin θ.

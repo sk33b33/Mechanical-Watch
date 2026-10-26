@@ -175,8 +175,7 @@ export function buildDialMeshes(
   root.add(disc);
   const d = DIAL_VISUALIZATION;
   const r = dial.diameter / 2;
-  // Hour markers (ASM-0020, ASM-0093): equal circles, and at 12 an upside-down triangle that fills the old big
-  // circle's footprint.
+  // Hour markers (ASM-0020, ASM-0093): equal circles, and at 12 a larger upside-down triangle.
   for (const marker of dialMarkerPlacements(r)) {
     if (marker.shape === "TRIANGLE_DOWN") {
       // An equilateral triangle inscribed in the circle of the marker's radius, apex down towards the dial's centre.
