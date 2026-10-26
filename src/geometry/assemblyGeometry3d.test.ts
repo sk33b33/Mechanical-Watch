@@ -1402,23 +1402,22 @@ describe("dialBrandPlacement (ASM-0083, RSA MOVT)", () => {
   });
 });
 
-describe("dialMarkerPlacements (ASM-0020, ASM-0093: small circles and a triangle at 12)", () => {
+describe("dialMarkerPlacements (ASM-0020, ASM-0093: equal circles and a triangle at 12)", () => {
   const R = 14.2e-3;
   const placements = dialMarkerPlacements(R);
 
-  it("gives twelve markers: an upside-down triangle at 12 and eleven small circles, 3, 6 and 9 no bigger than the rest", () => {
+  it("gives twelve markers: an upside-down triangle at 12 and eleven equal circles, 3, 6 and 9 no bigger than the rest", () => {
     expect(placements).toHaveLength(12);
     expect(placements.filter((p) => p.shape === "TRIANGLE_DOWN").map((p) => p.hour)).toEqual([0]);
     const circles = placements.filter((p) => p.shape === "CIRCLE");
     expect(circles.map((p) => p.hour)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-    const small = (R * DIAL_VISUALIZATION.bigMarkerRadiusFraction) / 2;
-    for (const p of circles) expect(p.radiusMetres).toBeCloseTo(small, 12);
+    for (const p of circles) expect(p.radiusMetres).toBeCloseTo(R * DIAL_VISUALIZATION.markerRadiusFraction, 12);
   });
 
   it("the 12 triangle keeps the footprint of the old big circle: it is inscribed in a circle of that radius", () => {
     const twelve = placements.find((p) => p.hour === 0);
     expect(twelve?.radiusMetres).toBeCloseTo(R * DIAL_VISUALIZATION.bigMarkerRadiusFraction, 12);
-    expect(twelve?.radiusMetres).toBeCloseTo(2 * (placements.find((p) => p.hour === 1)?.radiusMetres ?? 0), 12);
+    expect(DIAL_VISUALIZATION.bigMarkerRadiusFraction).toBeGreaterThan(DIAL_VISUALIZATION.markerRadiusFraction);
   });
 
   it("puts every marker on one ring inside the dial's edge, 12 at +Y and 3 at −X (the dial is read from its −Z side)", () => {
@@ -1512,28 +1511,35 @@ describe("hour numerals (follow-up 21, follow-up 46)", () => {
     expect(numerals.map((n) => n.hour)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   });
 
-  it("each is just inside its own marker, on the line from the dial's centre through it", () => {
+  /** The numeral's box: half its width (a two-digit numeral is wider) and half its height about its centre. */
+  const corners = (n: { text: string; x: number; y: number; height: number }): { x: number; y: number }[] => {
+    const hw = (n.text.length * DIAL_VISUALIZATION.hourNumeralWidthPerHeight * n.height) / 2;
+    const hh = n.height / 2;
+    return [{ x: n.x - hw, y: n.y - hh }, { x: n.x + hw, y: n.y - hh }, { x: n.x - hw, y: n.y + hh }, { x: n.x + hw, y: n.y + hh }];
+  };
+
+  it("each numeral is inside its own circle: all four corners of its box are within the circle's radius", () => {
     for (const n of numerals) {
       const marker = markers.find((m) => m.hour === n.hour);
-      if (marker === undefined) throw new Error("missing marker");
-      // Same direction from the centre (cross product zero, same side)...
-      expect(n.x * marker.y - n.y * marker.x).toBeCloseTo(0, 12);
-      expect(n.x * marker.x + n.y * marker.y).toBeGreaterThan(0);
-      // ...and nearer the centre than the marker's inner edge, by at least the gap.
-      const inner = Math.hypot(marker.x, marker.y) - marker.radiusMetres;
-      expect(Math.hypot(n.x, n.y)).toBeLessThan(inner - R * DIAL_VISUALIZATION.hourNumeralGapFraction);
+      if (marker?.shape !== "CIRCLE") continue;
+      for (const c of corners(n)) expect(Math.hypot(c.x - marker.x, c.y - marker.y), `numeral ${n.text}`).toBeLessThan(marker.radiusMetres);
     }
   });
 
-  it("none overlaps its marker: its box, a two-digit numeral being wider, stays clear of the marker's inner edge", () => {
-    for (const n of numerals) {
-      const marker = markers.find((m) => m.hour === n.hour);
-      if (marker === undefined) throw new Error("missing marker");
-      const halfWidth = (n.text.length * DIAL_VISUALIZATION.hourNumeralWidthPerHeight * n.height) / 2;
-      // The nearest corner of the numeral's box to the marker's centre is farther than the marker's radius.
-      const dx = Math.max(Math.abs(marker.x - n.x) - halfWidth, 0);
-      const dy = Math.max(Math.abs(marker.y - n.y) - n.height / 2, 0);
-      expect(Math.hypot(dx, dy), `numeral ${n.text}`).toBeGreaterThan(marker.radiusMetres);
+  it("the 12 numeral is inside the upside-down triangle: all four corners of its box are inside it", () => {
+    const marker = markers.find((m) => m.hour === 0);
+    const numeral = numerals.find((n) => n.hour === 0);
+    if (marker === undefined || numeral === undefined) throw new Error("missing 12");
+    const Rt = marker.radiusMetres;
+    // Apex straight down at (0, -Rt), base corners at (±Rt sqrt(3) / 2, +Rt / 2), all about the marker's centre.
+    const apex = { x: 0, y: -Rt };
+    const left = { x: -Rt * Math.sqrt(3) / 2, y: Rt / 2 };
+    const right = { x: Rt * Math.sqrt(3) / 2, y: Rt / 2 };
+    const side = (a: { x: number; y: number }, b: { x: number; y: number }, p: { x: number; y: number }): number => (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+    for (const c of corners(numeral)) {
+      const p = { x: c.x - marker.x, y: c.y - marker.y };
+      const signs = [side(apex, left, p), side(left, right, p), side(right, apex, p)];
+      expect(signs.every((v) => v > 0) || signs.every((v) => v < 0), `12 corner ${String(p.x)},${String(p.y)}`).toBe(true);
     }
   });
 

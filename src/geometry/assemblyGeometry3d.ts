@@ -56,10 +56,9 @@ export const KEYLESS_VISUALIZATION = {
 /**
  * Hour markers drawn on the dial face; visual only (ASM-0020, ASM-0093).
  * Round dots (Phase 8.15 follow-up 18, replacing the earlier rectangular
- * bars); since follow-up 46 every hour but 12 is a small circle (half the
- * old big circle) and 12 is an upside-down (apex-down) triangle that fills
- * the old big circle's footprint, and every hour has its numeral printed just
- * inside its marker. Radii and the inset from the dial's
+ * bars); since follow-up 46 every hour but 12 is the same round dot and 12 is
+ * an upside-down (apex-down) triangle that fills the old big circle's
+ * footprint, with every hour's numeral printed inside its marker. Radii and the inset from the dial's
  * edge are fractions of the dial's own radius, as before. The seconds-scale
  * numerals (60 north, 15 east, 30 south, 45 west) are printed around the
  * seconds hand's own pivot, not on the hour circles.
@@ -70,8 +69,8 @@ export const DIAL_VISUALIZATION = {
    * upside-down triangle is inscribed in, which is the old big circle (follow-up 46).
    */
   bigMarkerRadiusFraction: 0.05,
-  /** The eleven round markers' radius as a multiple of that footprint: half. */
-  smallMarkerRadiusFactor: 0.5,
+  /** The eleven round markers' radius as a fraction of the dial radius: all the same, big enough to hold a numeral (follow-up 46). */
+  markerRadiusFraction: 0.036,
   /** How far each marker's own centre sits in from the dial's edge, as a fraction of the dial radius. */
   markerInsetFraction: 0.09,
   markerThicknessMetres: 0.03e-3,
@@ -99,14 +98,14 @@ export const DIAL_VISUALIZATION = {
     { hour: 4, text: "4" }, { hour: 5, text: "5" }, { hour: 6, text: "6" }, { hour: 7, text: "7" },
     { hour: 8, text: "8" }, { hour: 9, text: "9" }, { hour: 10, text: "10" }, { hour: 11, text: "11" },
   ] as readonly { hour: number; text: string }[],
-  /** Hour numeral text height as a fraction of the dial radius. */
-  hourNumeralHeightFraction: 0.04,
-  /** The clear space between a marker's inner edge and its numeral, as a fraction of the dial radius. */
-  hourNumeralGapFraction: 0.008,
-  /** How wide a character is as a multiple of the text height, to keep a two-digit numeral clear of its marker. */
+  /** Hour numeral text height as a fraction of the dial radius: small enough for a circle and the 12 triangle to hold. */
+  hourNumeralHeightFraction: 0.032,
+  /** How wide a character is as a multiple of the text height (a two-digit numeral is two of these). */
   hourNumeralWidthPerHeight: 0.62,
-  /** The numerals' default colour, dark on the light dial (the hour numerals' own colour can be changed in the Colours menu). */
-  hourNumeralColor: "#1a1e22",
+  /** In the 12 triangle the numeral hangs this far below its base, as a fraction of the dial radius, where the triangle is widest. */
+  triangleNumeralTopMarginFraction: 0.004,
+  /** The numerals' default colour: pale on the dark markers (the year digits' own text colour, as in follow-up 21). The Colours menu can change it. */
+  hourNumeralColor: "#e8e2d0",
   /**
    * The small printed brand line under the big 6 circle (follow-up 30, ASM-0083): black, tiny, on the
    * dial's south axis, with its text centred this fraction of the dial radius from the centre and the
@@ -123,7 +122,7 @@ export const DIAL_VISUALIZATION = {
 export interface DialMarkerPlacement {
   /** 0 = 12 o'clock, going clockwise as read from the dial (ASM-0014). */
   readonly hour: number;
-  /** A small round dot, or (at 12) an upside-down triangle inscribed in a circle of `radiusMetres`. */
+  /** A round dot, or (at 12) an upside-down triangle inscribed in a circle of `radiusMetres`. */
   readonly shape: "CIRCLE" | "TRIANGLE_DOWN";
   /** The dot's radius, or the triangle's circumradius (its apex points at the dial's centre, its base is the far side). */
   readonly radiusMetres: number;
@@ -158,27 +157,21 @@ export interface DialHourNumeralPlacement {
 }
 
 /**
- * Where each hour numeral is printed (ASM-0093): upright, on the line from the dial's centre through its marker,
- * just inside the marker. The numeral's centre sits so that its own extent along that line (half its height
- * across the top and bottom, half its width across the sides, a two-digit numeral being wider) clears the marker's
- * inner edge by `hourNumeralGapFraction` of the dial radius. A triangle's apex, like a circle's near edge, is
- * `radiusMetres` from the marker's centre towards the dial's centre. Pure geometry, no THREE dependency.
+ * Where each hour numeral is printed (ASM-0093): upright, inside its marker. In a circle it is centred on the
+ * circle. In the 12 triangle (apex down, so widest at the top) it hangs just below the base, where the triangle is
+ * widest, which is where a two-digit numeral fits. Pure geometry, no THREE dependency.
  */
 export function dialHourNumeralPlacements(dialRadius: number): DialHourNumeralPlacement[] {
   const v = DIAL_VISUALIZATION;
   const height = dialRadius * v.hourNumeralHeightFraction;
-  const gap = dialRadius * v.hourNumeralGapFraction;
   const markers = dialMarkerPlacements(dialRadius);
   return v.hourNumerals.map((numeral) => {
     const marker = markers.find((m) => m.hour === numeral.hour);
     if (marker === undefined) throw new Error(`no hour marker for the numeral ${numeral.text}`);
-    const ring = Math.hypot(marker.x, marker.y);
-    const ux = marker.x / ring;
-    const uy = marker.y / ring;
-    const halfWidth = (numeral.text.length * v.hourNumeralWidthPerHeight * height) / 2;
-    const extentAlong = Math.abs(ux) * halfWidth + Math.abs(uy) * (height / 2);
-    const centreRadius = ring - marker.radiusMetres - gap - extentAlong;
-    return { hour: numeral.hour, text: numeral.text, x: ux * centreRadius, y: uy * centreRadius, height };
+    if (marker.shape === "CIRCLE") return { hour: numeral.hour, text: numeral.text, x: marker.x, y: marker.y, height };
+    // The inscribed triangle's base is half a circumradius above the marker's centre; the numeral hangs below it.
+    const baseY = marker.y + marker.radiusMetres / 2;
+    return { hour: numeral.hour, text: numeral.text, x: marker.x, y: baseY - dialRadius * v.triangleNumeralTopMarginFraction - height / 2, height };
   });
 }
 
@@ -190,7 +183,7 @@ export function dialBrandPlacement(dialRadius: number): { text: string; x: numbe
 
 /**
  * Where each of the twelve hour markers goes on a dial of the given
- * radius (ASM-0020, ASM-0093): small circles at every hour but 12, an
+ * radius (ASM-0020, ASM-0093): equal circles at every hour but 12, an
  * upside-down triangle at 12 filling the footprint of the old big circle, all
  * on one ring `markerInsetFraction` of the radius in from the edge. Hands
  * point +Y at 12 and turn counter-clockwise seen from +Z — clockwise from
@@ -207,7 +200,7 @@ export function dialMarkerPlacements(dialRadius: number): DialMarkerPlacement[] 
     placements.push({
       hour,
       shape: twelve ? "TRIANGLE_DOWN" : "CIRCLE",
-      radiusMetres: dialRadius * v.bigMarkerRadiusFraction * (twelve ? 1 : v.smallMarkerRadiusFactor),
+      radiusMetres: dialRadius * (twelve ? v.bigMarkerRadiusFraction : v.markerRadiusFraction),
       x: -ring * Math.sin(angle),
       y: ring * Math.cos(angle),
     });

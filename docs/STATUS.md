@@ -2,6 +2,16 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 47: numerals inside the hour markers
+
+The hour numbers (12, then 1 to 11) are printed **inside** the hour markers: each in the middle of its circle, and the
+12 just below the top edge of its upside-down triangle where it is widest. To make room, the eleven circles are all the
+same size, a little bigger than follow-up 46's small ones (radius 0.036 of the dial radius, was 0.025; the old big
+circles were 0.05); 3, 6 and 9 are no bigger than the rest. The 12 triangle still fills the old big circle's footprint.
+The numerals are pale on the dark markers; "Hour marker digits" in the Colours menu recolours them. The moon disc
+is back at its original 8.6 mm (follow-up 46's 0.2 mm lift is undone). A test checks each numeral's box lies inside
+its circle or the triangle (ASM-0093).
+
 ## Phase 8.15 follow-up 46: hour markers and numerals
 
 - **3, 6 and 9 are now small circles**, the same size as the other hour markers.

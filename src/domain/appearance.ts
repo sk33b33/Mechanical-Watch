@@ -36,9 +36,9 @@ export type DialColourKey = (typeof DIAL_COLOUR_KEYS)[number];
 export interface Appearance {
   /** The dial's face. */
   dial: HexColour | null;
-  /** The hour markers: the eleven small circles and the triangle at 12. */
+  /** The hour markers: the eleven circles and the triangle at 12. */
   hourMarkers: HexColour | null;
-  /** The twelve hour numerals printed just inside the hour markers. */
+  /** The twelve hour numerals printed inside the hour markers. */
   hourMarkerDigits: HexColour | null;
   /** The printed text, triangles, frames and digits on the dial itself (captions, seconds numerals, window pointers and frames, the brand line). */
   dialPrint: HexColour | null;

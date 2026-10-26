@@ -389,10 +389,9 @@ export function createTeachingMovement(): Movement {
   // other wheel at its height. The two mesh legs and the disc position are unchanged, so every ratio, mesh
   // and the moon window are exactly as before; only the two declared polar angles are mirrored.
   //
-  // Follow-up 46: each leg now drops 4.2 mm (was 4.3), so the disc sits at 8.4 mm below the hour wheel (was 8.6).
-  // The hour numerals now print just inside their markers, and the 6 would otherwise touch the moon window's frame.
-  // The legs stay 4.75 mm, so every ratio and mesh is unchanged; the month wheel stays 0.45 mm clear of Moon wheel 2.
-  const veeDrop = mm(4.2);
+  // (Follow-up 46 briefly dropped each leg 4.2 mm instead of 4.3 to make room for numerals outside the markers; with the
+  // numerals back inside the markers it is 4.3 again.)
+  const veeDrop = mm(4.3);
   const veeLeg = meshCentreDistance(motionModule, 8, 87);
   const veeSide = Math.sqrt(veeLeg * veeLeg - veeDrop * veeDrop);
   const toDegrees = (rad: number): number => ((rad * 180) / Math.PI + 360) % 360;

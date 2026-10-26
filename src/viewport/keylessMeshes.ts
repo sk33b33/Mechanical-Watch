@@ -175,7 +175,7 @@ export function buildDialMeshes(
   root.add(disc);
   const d = DIAL_VISUALIZATION;
   const r = dial.diameter / 2;
-  // Hour markers (ASM-0020, ASM-0093): small circles, and at 12 an upside-down triangle that fills the old big
+  // Hour markers (ASM-0020, ASM-0093): equal circles, and at 12 an upside-down triangle that fills the old big
   // circle's footprint.
   for (const marker of dialMarkerPlacements(r)) {
     if (marker.shape === "TRIANGLE_DOWN") {
@@ -192,7 +192,7 @@ export function buildDialMeshes(
     dot.position.set(marker.x, marker.y, face - d.markerThicknessMetres / 2);
     root.add(dot);
   }
-  // The twelve hour numerals, printed just inside their markers (follow-up 46), in the numerals' own colour.
+  // The twelve hour numerals, printed inside their markers (follow-up 46), in the numerals' own colour.
   for (const numeral of dialHourNumeralPlacements(r)) {
     const builtHour = createDialWindowCaptionTexture(numeral.text, materials.markerDigits ?? d.hourNumeralColor);
     if (builtHour === null) continue;
