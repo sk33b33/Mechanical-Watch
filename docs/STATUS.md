@@ -2,6 +2,13 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 45: link bars removed
+
+The bars that follow-up 43 drew between the calendar wheels (24-hour arbor to the date and day wheels, date to month,
+month to leap year, season and the year counter) are gone, at the user's request, along with their code and tests.
+The calendar wheels are linked as before by jumps in the model (the Chain diagram still lists them), just not drawn.
+The wheel moves and the clearance test from follow-up 43 stay.
+
 ## Phase 8.15 follow-up 44: no zoom on entry, floating tick switch, tilt to look around
 
 - **No zoom after "Tap to enter":** the start screen now just fades away; the zoom-out of the splash and the zoom-in
@@ -40,12 +47,7 @@ Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
   (`src/assembly/wheelClearance.test.ts`, 0.3 mm minimum gap, the Fix chain gap). The year-digit barrels touch each
   other by design (one housing) and the barrel arbor passing through the ratchet is the barrel's own arbor, so neither is a fault.
   Validation still has no 3D rule for the calendar wheels; the audit is a test, not a validation rule.
-- **Chain looks connected (ASM-0091):** the date, day, month, leap-year, season wheels and the year-digit housing are
-  advanced by jumps, not meshes, so some looked like they floated (the season wheel and the day wheel most). Each now
-  has a plain link bar from its driver (24-hour arbor, date star, month star) to it; the year-digit bar turns one
-  corner to stay beside the date wheel. They are fixed pictures of which part drives which, not modelled levers, and
-  sit in a thin layer clear of every other wheel (tested). The gear train, going train and moon train were already
-  connected through their meshes.
+- **Chain looks connected:** link bars drawn between the calendar wheels were added here and then removed again in follow-up 45.
 - **The word YEAR is gone** from the dial (the year window keeps its frame). A caption can still be typed in the
   Inspector, and an older saved design that still has it keeps it.
 

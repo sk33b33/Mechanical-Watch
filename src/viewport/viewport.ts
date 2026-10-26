@@ -59,7 +59,6 @@ import { YEAR_DIGIT_SLOT_COUNT, type YearDigitComplicationId } from "@/domain/ye
 import { genevaLambda, genevaStrokeDriverAngle, genevaDriverMotionAngle } from "@/kinematics/genevaDrive";
 import { buildDialMeshes, buildStemMeshes } from "./keylessMeshes";
 import { markKeepColour, restingColour } from "./printedFace";
-import { calendarLinks, CALENDAR_LINK_VISUALIZATION } from "@/geometry/calendarLinks";
 import { escapementDisplay, primaryEscapement } from "@/simulation/escapementDisplay";
 import {
   createBalanceGeometry,
@@ -130,8 +129,6 @@ export const COLORS = {
   escapeWheel: ESCAPEMENT_GOLD,
   /** A gear set to the BLACK colour (ASM-0080): near-black, not 0x000000, so the lit teeth and spokes still read. */
   gearBlack: 0x141414,
-  /** The link bars drawn between the calendar wheels (ASM-0091). */
-  linkArm: 0xc3ccd8,
   fork: 0x8fa3b8,
   balance: 0xc9b37a,
 } as const;
@@ -1148,30 +1145,6 @@ export class Viewport {
         },
         color: handColour,
       });
-    }
-
-    // Link bars from each calendar wheel's driver to it (follow-up 43, ASM-0091): visual only, so the whole chain
-    // reads as connected. Fixed in place: they show which part drives which, not a modelled mechanism.
-    const link = CALENDAR_LINK_VISUALIZATION;
-    for (const arm of calendarLinks(movement, positions)) {
-      const z = this.displayZ(arm.zCentre);
-      const armMaterial = material(COLORS.linkArm, { metalness: 0.5, roughness: 0.45 });
-      for (let i = 1; i < arm.path.length; i += 1) {
-        const a = arm.path[i - 1];
-        const b = arm.path[i];
-        if (a === undefined || b === undefined) continue;
-        const dx = b.x - a.x;
-        const dy = b.y - a.y;
-        const bar = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(dx, dy), link.widthMetres, link.thicknessMetres), armMaterial);
-        bar.position.set((a.x + b.x) / 2, (a.y + b.y) / 2, z);
-        bar.rotation.z = Math.atan2(dy, dx);
-        this.content.add(bar);
-      }
-      for (const end of arm.path) {
-        const hub = new THREE.Mesh(createZCylinder(link.hubRadiusMetres, z - link.thicknessMetres / 2, z + link.thicknessMetres / 2, 20), armMaterial);
-        hub.position.set(end.x, end.y, 0);
-        this.content.add(hub);
-      }
     }
 
     for (const jewel of Object.values(movement.jewels)) {
