@@ -2,6 +2,12 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 49: 12 centred in its triangle
+
+The "12" is now centred in the upside-down triangle (on the triangle's centre, the same point a circle's number uses).
+It had been placed up near the top edge. Since the triangle is now half as big again, a two-digit number fits there
+with room all round; a test checks every corner of the number's box is inside the triangle (ASM-0093).
+
 ## Phase 8.15 follow-up 48: bigger 12 triangle
 
 The upside-down triangle at 12 is half as big again (inscribed in a circle of 0.075 of the dial radius, was 0.05). The
@@ -10,7 +16,7 @@ The upside-down triangle at 12 is half as big again (inscribed in a circle of 0.
 ## Phase 8.15 follow-up 47: numerals inside the hour markers
 
 The hour numbers (12, then 1 to 11) are printed **inside** the hour markers: each in the middle of its circle, and the
-12 just below the top edge of its upside-down triangle where it is widest. To make room, the eleven circles are all the
+12 near the top edge of its upside-down triangle (centred since follow-up 49). To make room, the eleven circles are all the
 same size, a little bigger than follow-up 46's small ones (radius 0.036 of the dial radius, was 0.025; the old big
 circles were 0.05); 3, 6 and 9 are no bigger than the rest. The 12 triangle still fills the old big circle's footprint.
 The numerals are pale on the dark markers; "Hour marker digits" in the Colours menu recolours them. The moon disc

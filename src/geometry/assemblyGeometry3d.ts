@@ -103,8 +103,6 @@ export const DIAL_VISUALIZATION = {
   hourNumeralHeightFraction: 0.032,
   /** How wide a character is as a multiple of the text height (a two-digit numeral is two of these). */
   hourNumeralWidthPerHeight: 0.62,
-  /** In the 12 triangle the numeral hangs this far below its base, as a fraction of the dial radius, where the triangle is widest. */
-  triangleNumeralTopMarginFraction: 0.004,
   /** The numerals' default colour: pale on the dark markers (the year digits' own text colour, as in follow-up 21). The Colours menu can change it. */
   hourNumeralColor: "#e8e2d0",
   /**
@@ -158,9 +156,10 @@ export interface DialHourNumeralPlacement {
 }
 
 /**
- * Where each hour numeral is printed (ASM-0093): upright, inside its marker. In a circle it is centred on the
- * circle. In the 12 triangle (apex down, so widest at the top) it hangs just below the base, where the triangle is
- * widest, which is where a two-digit numeral fits. Pure geometry, no THREE dependency.
+ * Where each hour numeral is printed (ASM-0093): upright, centred in its marker. The 12 triangle's centre is its
+ * centroid, which is the centre of the circle it is inscribed in, the same point a circle's numeral uses; the
+ * triangle is big enough that a two-digit numeral there stays inside it (a test checks every corner of the box).
+ * Pure geometry, no THREE dependency.
  */
 export function dialHourNumeralPlacements(dialRadius: number): DialHourNumeralPlacement[] {
   const v = DIAL_VISUALIZATION;
@@ -169,10 +168,7 @@ export function dialHourNumeralPlacements(dialRadius: number): DialHourNumeralPl
   return v.hourNumerals.map((numeral) => {
     const marker = markers.find((m) => m.hour === numeral.hour);
     if (marker === undefined) throw new Error(`no hour marker for the numeral ${numeral.text}`);
-    if (marker.shape === "CIRCLE") return { hour: numeral.hour, text: numeral.text, x: marker.x, y: marker.y, height };
-    // The inscribed triangle's base is half a circumradius above the marker's centre; the numeral hangs below it.
-    const baseY = marker.y + marker.radiusMetres / 2;
-    return { hour: numeral.hour, text: numeral.text, x: marker.x, y: baseY - dialRadius * v.triangleNumeralTopMarginFraction - height / 2, height };
+    return { hour: numeral.hour, text: numeral.text, x: marker.x, y: marker.y, height };
   });
 }
 

@@ -1533,6 +1533,9 @@ describe("hour numerals (follow-up 21, follow-up 46)", () => {
     const marker = markers.find((m) => m.hour === 0);
     const numeral = numerals.find((n) => n.hour === 0);
     if (marker === undefined || numeral === undefined) throw new Error("missing 12");
+    // Centred: on the triangle's centre, the centre of the circle it is inscribed in.
+    expect(numeral.x).toBeCloseTo(marker.x, 12);
+    expect(numeral.y).toBeCloseTo(marker.y, 12);
     const Rt = marker.radiusMetres;
     // Apex straight down at (0, -Rt), base corners at (±Rt sqrt(3) / 2, +Rt / 2), all about the marker's centre.
     const apex = { x: 0, y: -Rt };
