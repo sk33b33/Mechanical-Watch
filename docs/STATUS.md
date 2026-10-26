@@ -2,6 +2,16 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 46: hour markers and numerals
+
+- **3, 6 and 9 are now small circles**, the same size as the other hour markers.
+- **12 is an upside-down triangle** (point towards the centre) that fills the footprint of the old big circle.
+- **All twelve hours have a numeral** (12, 1 to 11), printed upright just inside their markers. The old numerals
+  sat inside the big circles; the small circles cannot hold a numeral, so they moved just inside the markers. They are
+  dark on the light dial by default; the Colours menu's "Hour marker digits" button now recolours all twelve.
+- **The moon disc moved 0.2 mm up** (8.4 mm below the hour wheel, was 8.6), because the 6 numeral otherwise touched the
+  moon window's frame. Mesh distances and ratios are unchanged; the wheel-clearance test still passes (ASM-0093).
+
 ## Phase 8.15 follow-up 45: link bars removed
 
 The bars that follow-up 43 drew between the calendar wheels (24-hour arbor to the date and day wheels, date to month,

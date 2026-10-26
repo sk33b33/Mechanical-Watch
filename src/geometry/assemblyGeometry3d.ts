@@ -54,18 +54,23 @@ export const KEYLESS_VISUALIZATION = {
 } as const;
 
 /**
- * Hour markers drawn on the dial face; visual only (ASM-0020). Round dots
- * (Phase 8.15 follow-up 18, at the user's request, replacing the earlier
- * rectangular bars): the 12, 3, 6 and 9 o'clock markers are big circles and
- * the other eight are half their size. Radii and the inset from the dial's
+ * Hour markers drawn on the dial face; visual only (ASM-0020, ASM-0093).
+ * Round dots (Phase 8.15 follow-up 18, replacing the earlier rectangular
+ * bars); since follow-up 46 every hour but 12 is a small circle (half the
+ * old big circle) and 12 is an upside-down (apex-down) triangle that fills
+ * the old big circle's footprint, and every hour has its numeral printed just
+ * inside its marker. Radii and the inset from the dial's
  * edge are fractions of the dial's own radius, as before. The seconds-scale
  * numerals (60 north, 15 east, 30 south, 45 west) are printed around the
  * seconds hand's own pivot, not on the hour circles.
  */
 export const DIAL_VISUALIZATION = {
-  /** Radius of a 12/3/6/9 o'clock circle as a fraction of the dial radius. */
+  /**
+   * The footprint of the 12 o'clock marker as a fraction of the dial radius: the radius of the circle its
+   * upside-down triangle is inscribed in, which is the old big circle (follow-up 46).
+   */
   bigMarkerRadiusFraction: 0.05,
-  /** The other eight markers' radius as a multiple of the big circles' — half the size. */
+  /** The eleven round markers' radius as a multiple of that footprint: half. */
   smallMarkerRadiusFactor: 0.5,
   /** How far each marker's own centre sits in from the dial's edge, as a fraction of the dial radius. */
   markerInsetFraction: 0.09,
@@ -85,18 +90,23 @@ export const DIAL_VISUALIZATION = {
   /** How far from the seconds hand's pivot the numerals sit, as a fraction of that hand's own length: just inside its tip. */
   secondsNumeralRingFraction: 0.95,
   /**
-   * The hour numerals printed inside the four big circles (follow-up 21): 12 north, 3 east, 6 south,
-   * 9 west (the same hour positions as the circles; east is the dial's right as read from its −Z
-   * side). Drawn in the year digits' own text colour (`YEAR_DIGIT_BARREL_VISUALIZATION.textColor`).
+   * The hour numerals, one per marker (follow-up 21 printed four inside the big circles; follow-up 46 prints all
+   * twelve just inside their markers, because the markers are now too small to hold a numeral). `hour` is the
+   * marker's position, 0 at 12 o'clock going clockwise as read from the dial.
    */
   hourNumerals: [
-    { hour: 0, text: "12" },
-    { hour: 3, text: "3" },
-    { hour: 6, text: "6" },
-    { hour: 9, text: "9" },
+    { hour: 0, text: "12" }, { hour: 1, text: "1" }, { hour: 2, text: "2" }, { hour: 3, text: "3" },
+    { hour: 4, text: "4" }, { hour: 5, text: "5" }, { hour: 6, text: "6" }, { hour: 7, text: "7" },
+    { hour: 8, text: "8" }, { hour: 9, text: "9" }, { hour: 10, text: "10" }, { hour: 11, text: "11" },
   ] as readonly { hour: number; text: string }[],
-  /** Hour numeral text height as a fraction of the dial radius (a big circle is 0.1 across). */
-  hourNumeralHeightFraction: 0.046,
+  /** Hour numeral text height as a fraction of the dial radius. */
+  hourNumeralHeightFraction: 0.04,
+  /** The clear space between a marker's inner edge and its numeral, as a fraction of the dial radius. */
+  hourNumeralGapFraction: 0.008,
+  /** How wide a character is as a multiple of the text height, to keep a two-digit numeral clear of its marker. */
+  hourNumeralWidthPerHeight: 0.62,
+  /** The numerals' default colour, dark on the light dial (the hour numerals' own colour can be changed in the Colours menu). */
+  hourNumeralColor: "#1a1e22",
   /**
    * The small printed brand line under the big 6 circle (follow-up 30, ASM-0083): black, tiny, on the
    * dial's south axis, with its text centred this fraction of the dial radius from the centre and the
@@ -113,7 +123,9 @@ export const DIAL_VISUALIZATION = {
 export interface DialMarkerPlacement {
   /** 0 = 12 o'clock, going clockwise as read from the dial (ASM-0014). */
   readonly hour: number;
-  readonly big: boolean;
+  /** A small round dot, or (at 12) an upside-down triangle inscribed in a circle of `radiusMetres`. */
+  readonly shape: "CIRCLE" | "TRIANGLE_DOWN";
+  /** The dot's radius, or the triangle's circumradius (its apex points at the dial's centre, its base is the far side). */
   readonly radiusMetres: number;
   /** Centre in the dial plane relative to the dial's own centre; world +Y is 12 o'clock and world −X is 3 o'clock (the dial is read from its −Z side). */
   readonly x: number;
@@ -135,6 +147,41 @@ export function secondsNumeralPlacements(pivot: { x: number; y: number }, ringRa
   return DIAL_VISUALIZATION.secondsNumerals.map((n) => ({ text: n.text, x: pivot.x + n.dx * ringRadius, y: pivot.y + n.dy * ringRadius }));
 }
 
+export interface DialHourNumeralPlacement {
+  readonly hour: number;
+  readonly text: string;
+  /** Centre in the dial plane relative to the dial's own centre (same frame as the markers). */
+  readonly x: number;
+  readonly y: number;
+  /** Text height, metres. */
+  readonly height: number;
+}
+
+/**
+ * Where each hour numeral is printed (ASM-0093): upright, on the line from the dial's centre through its marker,
+ * just inside the marker. The numeral's centre sits so that its own extent along that line (half its height
+ * across the top and bottom, half its width across the sides, a two-digit numeral being wider) clears the marker's
+ * inner edge by `hourNumeralGapFraction` of the dial radius. A triangle's apex, like a circle's near edge, is
+ * `radiusMetres` from the marker's centre towards the dial's centre. Pure geometry, no THREE dependency.
+ */
+export function dialHourNumeralPlacements(dialRadius: number): DialHourNumeralPlacement[] {
+  const v = DIAL_VISUALIZATION;
+  const height = dialRadius * v.hourNumeralHeightFraction;
+  const gap = dialRadius * v.hourNumeralGapFraction;
+  const markers = dialMarkerPlacements(dialRadius);
+  return v.hourNumerals.map((numeral) => {
+    const marker = markers.find((m) => m.hour === numeral.hour);
+    if (marker === undefined) throw new Error(`no hour marker for the numeral ${numeral.text}`);
+    const ring = Math.hypot(marker.x, marker.y);
+    const ux = marker.x / ring;
+    const uy = marker.y / ring;
+    const halfWidth = (numeral.text.length * v.hourNumeralWidthPerHeight * height) / 2;
+    const extentAlong = Math.abs(ux) * halfWidth + Math.abs(uy) * (height / 2);
+    const centreRadius = ring - marker.radiusMetres - gap - extentAlong;
+    return { hour: numeral.hour, text: numeral.text, x: ux * centreRadius, y: uy * centreRadius, height };
+  });
+}
+
 /** Where the brand line is printed: centre and text height in metres, relative to the dial's centre. */
 export function dialBrandPlacement(dialRadius: number): { text: string; x: number; y: number; height: number } {
   const b = DIAL_VISUALIZATION.brand;
@@ -142,8 +189,9 @@ export function dialBrandPlacement(dialRadius: number): { text: string; x: numbe
 }
 
 /**
- * Where each of the twelve round hour markers goes on a dial of the given
- * radius (ASM-0020): big circles at 12, 3, 6, 9, half-size at the rest, all
+ * Where each of the twelve hour markers goes on a dial of the given
+ * radius (ASM-0020, ASM-0093): small circles at every hour but 12, an
+ * upside-down triangle at 12 filling the footprint of the old big circle, all
  * on one ring `markerInsetFraction` of the radius in from the edge. Hands
  * point +Y at 12 and turn counter-clockwise seen from +Z — clockwise from
  * the dial (ASM-0014) — so hour `h` sits at angle h·π/6 with x = −ρ sin θ.
@@ -155,11 +203,11 @@ export function dialMarkerPlacements(dialRadius: number): DialMarkerPlacement[] 
   const placements: DialMarkerPlacement[] = [];
   for (let hour = 0; hour < 12; hour += 1) {
     const angle = (hour * Math.PI) / 6;
-    const big = hour % 3 === 0;
+    const twelve = hour === 0;
     placements.push({
       hour,
-      big,
-      radiusMetres: dialRadius * v.bigMarkerRadiusFraction * (big ? 1 : v.smallMarkerRadiusFactor),
+      shape: twelve ? "TRIANGLE_DOWN" : "CIRCLE",
+      radiusMetres: dialRadius * v.bigMarkerRadiusFraction * (twelve ? 1 : v.smallMarkerRadiusFactor),
       x: -ring * Math.sin(angle),
       y: ring * Math.cos(angle),
     });

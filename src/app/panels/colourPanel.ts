@@ -10,8 +10,8 @@ type Target = { kind: "DIAL"; key: DialColourKey } | { kind: "WHEEL"; key: strin
 
 const DIAL_BUTTONS: readonly { key: DialColourKey; label: string; title: string }[] = [
   { key: "dial", label: "Dial", title: "The dial's face" },
-  { key: "hourMarkers", label: "Hour markers", title: "The twelve hour marker circles" },
-  { key: "hourMarkerDigits", label: "Hour marker digits", title: "The numbers 12, 3, 6 and 9 inside the four big hour markers" },
+  { key: "hourMarkers", label: "Hour markers", title: "The hour markers: the eleven small circles and the triangle at 12" },
+  { key: "hourMarkerDigits", label: "Hour marker digits", title: "The twelve hour numbers printed just inside the hour markers" },
   { key: "dialPrint", label: "Dial text, triangles and digits", title: "The printed text, the triangles, the window frames and the seconds numbers on the dial" },
   { key: "secondsHand", label: "Seconds hand", title: "The seconds hand" },
   { key: "minuteHand", label: "Minute hand", title: "The minute hand" },

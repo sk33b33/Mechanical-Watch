@@ -20,11 +20,11 @@ import {
   createDialWindowCaptionTexture,
   createDialWindowPointerGeometry,
   dialBrandPlacement,
+  dialHourNumeralPlacements,
   dialMarkerPlacements,
   dialWindowCaptionOffset,
   dialWindowPointerSize,
   createFlutedCylinderGeometry,
-  YEAR_DIGIT_BARREL_VISUALIZATION,
   secondsNumeralPlacements,
   createMoonPhaseMarkGeometry,
   moonPhaseMarks,
@@ -175,27 +175,34 @@ export function buildDialMeshes(
   root.add(disc);
   const d = DIAL_VISUALIZATION;
   const r = dial.diameter / 2;
-  // Round hour markers (ASM-0020): big circles at 12/3/6/9, half-size elsewhere.
+  // Hour markers (ASM-0020, ASM-0093): small circles, and at 12 an upside-down triangle that fills the old big
+  // circle's footprint.
   for (const marker of dialMarkerPlacements(r)) {
+    if (marker.shape === "TRIANGLE_DOWN") {
+      // An equilateral triangle inscribed in the circle of the marker's radius, apex down towards the dial's centre.
+      const triangle = new THREE.Mesh(createDialWindowPointerGeometry(Math.sqrt(3) * marker.radiusMetres, 1.5 * marker.radiusMetres, d.markerThicknessMetres), materials.marker);
+      triangle.position.set(marker.x, marker.y - marker.radiusMetres, face - d.markerThicknessMetres);
+      root.add(triangle);
+      continue;
+    }
     const dot = new THREE.Mesh(
       new THREE.CylinderGeometry(marker.radiusMetres, marker.radiusMetres, d.markerThicknessMetres, 48).rotateX(Math.PI / 2),
       materials.marker,
     );
     dot.position.set(marker.x, marker.y, face - d.markerThicknessMetres / 2);
     root.add(dot);
-    // The hour numeral inside each big circle (follow-up 21), in the year digits' own text colour.
-    const hourNumeral = marker.big ? d.hourNumerals.find((n) => n.hour === marker.hour) : undefined;
-    if (hourNumeral === undefined) continue;
-    const builtHour = createDialWindowCaptionTexture(hourNumeral.text, materials.markerDigits ?? YEAR_DIGIT_BARREL_VISUALIZATION.textColor);
+  }
+  // The twelve hour numerals, printed just inside their markers (follow-up 46), in the numerals' own colour.
+  for (const numeral of dialHourNumeralPlacements(r)) {
+    const builtHour = createDialWindowCaptionTexture(numeral.text, materials.markerDigits ?? d.hourNumeralColor);
     if (builtHour === null) continue;
-    const hourHeight = r * d.hourNumeralHeightFraction;
     const hourPlane = new THREE.Mesh(
-      new THREE.PlaneGeometry(hourHeight * builtHour.aspect, hourHeight),
+      new THREE.PlaneGeometry(numeral.height * builtHour.aspect, numeral.height),
       new THREE.MeshBasicMaterial({ map: builtHour.texture, transparent: true, depthWrite: false, side: THREE.DoubleSide }),
     );
     // Read from the dial's −Z side: half a turn about Y so the text reads left to right.
     hourPlane.rotation.y = Math.PI;
-    hourPlane.position.set(marker.x, marker.y, face - 1.3 * d.markerThicknessMetres);
+    hourPlane.position.set(numeral.x, numeral.y, face - 1.3 * d.markerThicknessMetres);
     root.add(hourPlane);
   }
   // The small black brand line under the big 6 circle, just inside the dial's edge (follow-up 30, ASM-0083).

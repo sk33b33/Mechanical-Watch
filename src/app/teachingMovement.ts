@@ -388,8 +388,16 @@ export function createTeachingMovement(): Movement {
   // through them (a 3D overlap audit showed the month wheel's centre under its teeth). Mirrored, it clears every
   // other wheel at its height. The two mesh legs and the disc position are unchanged, so every ratio, mesh
   // and the moon window are exactly as before; only the two declared polar angles are mirrored.
-  polar(moonReductionArbor, hourWheel, hourToMoon1, 295.14);
-  polar(moonDiscArbor, moonReductionArbor, moon1ToMoon2, 244.86);
+  //
+  // Follow-up 46: each leg now drops 4.2 mm (was 4.3), so the disc sits at 8.4 mm below the hour wheel (was 8.6).
+  // The hour numerals now print just inside their markers, and the 6 would otherwise touch the moon window's frame.
+  // The legs stay 4.75 mm, so every ratio and mesh is unchanged; the month wheel stays 0.45 mm clear of Moon wheel 2.
+  const veeDrop = mm(4.2);
+  const veeLeg = meshCentreDistance(motionModule, 8, 87);
+  const veeSide = Math.sqrt(veeLeg * veeLeg - veeDrop * veeDrop);
+  const toDegrees = (rad: number): number => ((rad * 180) / Math.PI + 360) % 360;
+  polar(moonReductionArbor, hourWheel, hourToMoon1, toDegrees(Math.atan2(0 - veeDrop, veeSide)));
+  polar(moonDiscArbor, moonReductionArbor, moon1ToMoon2, toDegrees(Math.atan2(0 - veeDrop, 0 - veeSide)));
   // About 9 o'clock from the hour wheel, clear of the moonphase train (6 o'clock) and the stem line. Follow-up 43:
   // 20° below the 9 o'clock line (it was exactly on it) because the 24-hour wheel then came within 0.03 mm of
   // the minute pinion at the same height; now 0.45 mm clear. The mesh distance is unchanged.
