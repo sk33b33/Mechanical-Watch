@@ -697,6 +697,22 @@ export function createXAxisCylinder(radius: number, length: number, segments = 2
   return geometry;
 }
 
+/**
+ * Gives a dial's geometry UVs that cover its face the way a dial is read (follow-up 50, ASM-0094): `u` runs 0 to 1
+ * across the diameter towards the right as seen from the dial side (world −X, the dial being read from its −Z side),
+ * `v` 0 to 1 towards its top (world +Y), from the geometry's own x and y about the dial's centre. A dial texture
+ * is laid over the face with these, so a picture reads the right way up and a pattern is the same at any dial size.
+ */
+export function setDialPlanarUv(geometry: THREE.BufferGeometry, radius: number): void {
+  const position = geometry.getAttribute("position");
+  const uv = new Float32Array(position.count * 2);
+  for (let i = 0; i < position.count; i += 1) {
+    uv[i * 2] = 0.5 - position.getX(i) / (2 * radius);
+    uv[i * 2 + 1] = 0.5 + position.getY(i) / (2 * radius);
+  }
+  geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+}
+
 /** A `DialWindow`'s own cutout, already in the disc's local frame (see `createDiscWithHolesGeometry`). */
 export type DiscHole =
   | { kind: "CIRCLE"; x: number; y: number; radius: number }

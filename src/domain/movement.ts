@@ -3,6 +3,7 @@ import type { EntityId } from "./ids";
 import { createId } from "./ids";
 import type { Gear, GearId } from "./gear";
 import type { Shaft, ShaftId } from "./shaft";
+import { DIAL_TEXTURE, decodeHeights, isDialTextureId, type DialTexture } from "@/geometry/dialTexture";
 import { appearanceKeyFor, defaultAppearance, isHexColour, type Appearance, type DialColourKey, type HexColour } from "./appearance";
 import type { GearMesh, GearMeshId } from "./gearMesh";
 import type { Frame, FrameId } from "./frame";
@@ -143,9 +144,22 @@ export function setWheelColour(movement: Movement, complicationId: string, part:
   return { ...movement, appearance: { ...movement.appearance, wheels } };
 }
 
-/** Puts every colour back to the built-in one. */
+/**
+ * Sets the dial's surface texture (follow-up 50, ASM-0094): none, a built-in texture, or an imported picture's
+ * height map. An imported one must be a valid square of height bytes of a sane size and name.
+ */
+export function setDialTexture(movement: Movement, texture: DialTexture): Movement {
+  if (texture.kind === "BUILT_IN" && !isDialTextureId(texture.id)) throw new Error(`Not a dial texture: ${String(texture.id)}`);
+  if (texture.kind === "IMPORTED") {
+    if (decodeHeights(texture.data, texture.size) === null) throw new Error("The imported picture is not a valid height map.");
+    if (texture.name.trim() === "" || texture.name.length > DIAL_TEXTURE.maxNameLength) throw new Error("The imported picture needs a name of 1 to 60 characters.");
+  }
+  return { ...movement, appearance: { ...movement.appearance, dialTexture: texture } };
+}
+
+/** Puts every colour back to the built-in one. The dial's texture is a choice of surface, not a colour, so it is kept. */
 export function resetAppearance(movement: Movement): Movement {
-  return { ...movement, appearance: defaultAppearance() };
+  return { ...movement, appearance: { ...defaultAppearance(), dialTexture: movement.appearance.dialTexture } };
 }
 
 export function addShaft(movement: Movement, shaft: Shaft): Movement {

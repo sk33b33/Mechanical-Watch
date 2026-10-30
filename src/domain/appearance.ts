@@ -1,5 +1,6 @@
 import type { Movement } from "./movement";
 import type { YearDigitComplicationId } from "./yearDigitComplication";
+import { NO_DIAL_TEXTURE, type DialTexture } from "@/geometry/dialTexture";
 
 /**
  * The colours the user has chosen for the dial and the wheels seen through its windows (follow-up 39,
@@ -45,12 +46,14 @@ export interface Appearance {
   secondsHand: HexColour | null;
   minuteHand: HexColour | null;
   hourHand: HexColour | null;
+  /** The dial's surface relief (follow-up 50, ASM-0094): none, a built-in texture, or an imported picture. It carries no colour: it takes the dial's. */
+  dialTexture: DialTexture;
   /** Per wheel, keyed by `appearanceKeyFor`. */
   wheels: Record<string, WheelAppearance>;
 }
 
 export const DEFAULT_APPEARANCE: Appearance = {
-  dial: null, hourMarkers: null, hourMarkerDigits: null, dialPrint: null, secondsHand: null, minuteHand: null, hourHand: null, wheels: {},
+  dial: null, hourMarkers: null, hourMarkerDigits: null, dialPrint: null, secondsHand: null, minuteHand: null, hourHand: null, dialTexture: NO_DIAL_TEXTURE, wheels: {},
 };
 
 export function defaultAppearance(): Appearance {

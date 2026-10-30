@@ -2,6 +2,25 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 50: 3D dial textures
+
+The Colours flyout has a **dial texture button** under the Dial colour button. Pressed, it drops a list: **Smooth
+(none)** and eleven built-in textures (Brushed, Sunburst, Concentric rings, Clous de Paris, Hobnail domes, Fine grain,
+Linen weave, Carbon twill, Honeycomb, Waves, Barleycorn), each with a small swatch, and at the bottom **Import image…**.
+
+- **It follows the dial's colour.** A texture is a relief (lit as a normal map) with no colour of its own, so the dial's
+  colour (chosen, or the built-in one) shows through it; the swatches in the list are re-lit in the current dial colour.
+- **Import image…** reads a picture file as a grey-level relief (white high, black low, transparent low): cropped to the
+  square about its middle and reduced to 192 by 192, stored in the design as text (about 49 KB), so it is saved with the
+  design, Projects and autosave. Its colours are ignored (the dial keeps its colour). A non-picture, or a file over
+  12 MB, is refused with a message.
+- **Saved and undoable.** The choice is one Undo step, saved with the design (schema v37; older files open smooth), and
+  kept by "Reset all colours" (a texture is a surface, not a colour).
+- **Honest limits (ASM-0094).** The strengths are declared look choices, not physical depths, and the patterns are drawn
+  from formulas, not measured from real dials; nothing here says a real dial could be made this way. An imported
+  picture loses fine detail at 192 by 192. Nothing reads the texture in validation, kinematics or exports. It also adds
+  a 4 MB texture on the GPU while one is chosen.
+
 ## Phase 8.15 follow-up 49: 12 centred in its triangle
 
 The "12" is now centred in the upside-down triangle (on the triangle's centre, the same point a circle's number uses).

@@ -18,6 +18,7 @@ import type { YearDigitComplication } from "@/domain/yearDigitComplication";
 import type { DialWindow, DialWindowOutline } from "@/domain/dialWindow";
 import type { Screw } from "@/domain/screw";
 import { isHexColour, type Appearance, type WheelAppearance } from "@/domain/appearance";
+import { DIAL_TEXTURE, DIAL_TEXTURE_IDS, decodeHeights, isDialTextureId, type DialTexture } from "@/geometry/dialTexture";
 import type { MainspringSpec } from "@/domain/coupling";
 import type { Torque } from "@/units/torque";
 import type { MomentOfInertia, TorsionalStiffness } from "@/units/rotational";
@@ -47,7 +48,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 36;
+export const DESIGN_SCHEMA_VERSION = 37;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -507,6 +508,12 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
     const movement = doc.movement;
     if (!isRecord(movement) || !isRecord(movement.appearance)) return doc;
     return { ...doc, schemaVersion: 36, movement: { ...movement, appearance: { ...movement.appearance, secondsHand: null } } };
+  },
+  /** v36 → v37: the appearance gains the dial's texture (ASM-0094); older files have a smooth dial. */
+  36: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.appearance)) return doc;
+    return { ...doc, schemaVersion: 37, movement: { ...movement, appearance: { ...movement.appearance, dialTexture: { kind: "NONE" } } } };
   },
 };
 
@@ -970,6 +977,23 @@ const wheelAppearance: Decoder<WheelAppearance> = (value, path) => {
   return { body: field(o, "body", nullable(hexColour), path), text: field(o, "text", nullable(hexColour), path) };
 };
 
+const dialTexture: Decoder<DialTexture> = (value, path) => {
+  const o = object(value, path);
+  const kind = field(o, "kind", oneOf(["NONE", "BUILT_IN", "IMPORTED"]), path);
+  if (kind === "NONE") return { kind };
+  if (kind === "BUILT_IN") {
+    const textureId = field(o, "id", string, path);
+    if (!isDialTextureId(textureId)) throw new DecodeError(`${path}.id`, `expected one of ${DIAL_TEXTURE_IDS.join(", ")}`);
+    return { kind, id: textureId };
+  }
+  const name = field(o, "name", string, path);
+  const size = field(o, "size", number, path);
+  const data = field(o, "data", string, path);
+  if (name.trim() === "" || name.length > DIAL_TEXTURE.maxNameLength) throw new DecodeError(`${path}.name`, "expected a name of 1 to 60 characters");
+  if (decodeHeights(data, size) === null) throw new DecodeError(`${path}.data`, "expected a square of height bytes, as base64, matching its size");
+  return { kind, name, size, data };
+};
+
 const appearance: Decoder<Appearance> = (value, path) => {
   const o = object(value, path);
   const wheelsObject = object(field(o, "wheels", (v) => v, path), `${path}.wheels`);
@@ -983,6 +1007,7 @@ const appearance: Decoder<Appearance> = (value, path) => {
     secondsHand: field(o, "secondsHand", nullable(hexColour), path),
     minuteHand: field(o, "minuteHand", nullable(hexColour), path),
     hourHand: field(o, "hourHand", nullable(hexColour), path),
+    dialTexture: field(o, "dialTexture", dialTexture, path),
     wheels,
   };
 };

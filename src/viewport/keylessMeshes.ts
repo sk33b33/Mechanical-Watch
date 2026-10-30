@@ -21,6 +21,7 @@ import {
   createDialWindowPointerGeometry,
   dialBrandPlacement,
   dialHourNumeralPlacements,
+  setDialPlanarUv,
   dialMarkerPlacements,
   dialWindowCaptionOffset,
   dialWindowPointerSize,
@@ -172,6 +173,8 @@ export function buildDialMeshes(
     disc = new THREE.Mesh(createDiscWithHolesGeometry(dial.diameter / 2, dial.thickness, holes), materials.disc);
     disc.position.z = face;
   }
+  // UVs across the face, for the dial's surface texture (follow-up 50, ASM-0094).
+  setDialPlanarUv(disc.geometry, dial.diameter / 2);
   root.add(disc);
   const d = DIAL_VISUALIZATION;
   const r = dial.diameter / 2;

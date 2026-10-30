@@ -567,6 +567,12 @@ export const ASSUMPTIONS = {
     scope: "src/geometry/assemblyGeometry3d.ts (DIAL_VISUALIZATION, dialMarkerPlacements, dialHourNumeralPlacements), src/viewport/keylessMeshes.ts (visual/L0 display only)",
     status: "Active",
   },
+  "ASM-0094": {
+    summary:
+      "Dial textures (Phase 8.15 follow-up 50), presentation only (L0 visual, ASM-0004): the dial can be given a surface relief chosen from a menu in the Colours flyout, or from a picture the user imports. Built-in textures (brushed, sunburst, concentric rings, clous de Paris, hobnail domes, fine grain, linen weave, carbon twill, honeycomb, waves, barleycorn) are height fields drawn in dial units (0 to 1 across the dial's diameter) from declared formulas and a deterministic hash, never a measurement of a real dial; the relief is lit as a normal map built from the heights by central differences, so it carries no colour and always takes the dial's own colour (a chosen dial colour, or the built-in one). An imported picture is read as a grey-level height map (white high, black low, transparent low), cropped to the square about its middle, reduced to 192 by 192 bytes and stored in the design as base64 (about 49 KB of text), so it travels with the design and its Projects entry, at the cost of detail; its colours are ignored. The choice is an undoable edit, kept by 'Reset all colours', saved with the design (schema v37; older files open smooth), and never read by validation, kinematics, the chain diagram or any export. Strengths per texture are declared look choices, not physical depths: nothing here says a real dial could be stamped, engine-turned or etched this way, and no manufacturing claim is made.",
+    scope: "src/geometry/dialTexture.ts, the Colours panel's dial texture menu, viewport dial material (visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

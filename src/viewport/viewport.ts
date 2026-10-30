@@ -59,6 +59,7 @@ import { YEAR_DIGIT_SLOT_COUNT, type YearDigitComplicationId } from "@/domain/ye
 import { genevaLambda, genevaStrokeDriverAngle, genevaDriverMotionAngle } from "@/kinematics/genevaDrive";
 import { buildDialMeshes, buildStemMeshes } from "./keylessMeshes";
 import { markKeepColour, restingColour } from "./printedFace";
+import { DIAL_TEXTURE, heightField, normalMapRgba, sameDialTexture, textureStrength, type DialTexture } from "@/geometry/dialTexture";
 import { escapementDisplay, primaryEscapement } from "@/simulation/escapementDisplay";
 import {
   createBalanceGeometry,
@@ -593,6 +594,33 @@ export class Viewport {
     const look = this.store.movement.appearance;
     const chosen = hand === "HOURS" ? look.hourHand : hand === "MINUTES" ? look.minuteHand : look.secondsHand;
     return chosen === null ? COLORS.hand[hand] : hexToNumber(chosen);
+  }
+
+  /** The dial texture last built: the maps cost a moment to make, so they are kept until the choice changes. */
+  private dialSurfaceCache: { choice: DialTexture; map: THREE.DataTexture } | null = null;
+
+  /** The material parameters that give the dial its relief: none for a smooth dial. */
+  private dialSurface(choice: DialTexture): THREE.MeshStandardMaterialParameters {
+    if (choice.kind === "NONE") {
+      this.dialSurfaceCache?.map.dispose();
+      this.dialSurfaceCache = null;
+      return {};
+    }
+    if (this.dialSurfaceCache === null || !sameDialTexture(this.dialSurfaceCache.choice, choice)) {
+      this.dialSurfaceCache?.map.dispose();
+      const size = DIAL_TEXTURE.sizePx;
+      const rgba = normalMapRgba(heightField(choice, size), size, textureStrength(choice));
+      const map = new THREE.DataTexture(Uint8Array.from(rgba), size, size, THREE.RGBAFormat);
+      // A normal map holds directions, not colours: it is read as it is, and filtered so the fine relief does not shimmer.
+      map.colorSpace = THREE.NoColorSpace;
+      map.generateMipmaps = true;
+      map.minFilter = THREE.LinearMipmapLinearFilter;
+      map.magFilter = THREE.LinearFilter;
+      map.anisotropy = 4;
+      map.needsUpdate = true;
+      this.dialSurfaceCache = { choice, map };
+    }
+    return { normalMap: this.dialSurfaceCache.map, normalScale: new THREE.Vector2(1, 1) };
   }
 
   private addPickable(parent: THREE.Object3D, mesh: THREE.Mesh, pick: Omit<Pickable, "baseRenderOrder" | "baseDepthWrite">): void {
@@ -1201,7 +1229,8 @@ export class Viewport {
         const look = movement.appearance;
         const dialColour = look.dial === null ? COLORS.dial : hexToNumber(look.dial);
         const built = buildDialMeshes(dial, analysis.placement, (z) => this.displayZ(z), {
-          disc: material(dialColour, { metalness: 0.05, roughness: 0.8 }),
+          // The texture is a normal map: relief only, no colour, so it takes the dial's colour (ASM-0094).
+          disc: material(dialColour, { metalness: 0.05, roughness: 0.8, ...this.dialSurface(look.dialTexture) }),
           marker: material(look.hourMarkers === null ? COLORS.dialMarker : hexToNumber(look.hourMarkers), { metalness: 0.2, roughness: 0.5 }),
           // The printed triangles, marks and frames, and the printed text, follow the dial print colour when one is chosen.
           print: material(look.dialPrint === null ? COLORS.dialMarker : hexToNumber(look.dialPrint), { metalness: 0.2, roughness: 0.5 }),

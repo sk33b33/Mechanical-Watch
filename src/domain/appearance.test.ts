@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createTeachingMovement } from "@/app/teachingMovement";
-import { createMovement, setDialColour, setWheelColour, resetAppearance } from "./movement";
+import { createMovement, setDialColour, setDialTexture, setWheelColour, resetAppearance } from "./movement";
+import { DIAL_TEXTURE, encodeHeights, type DialTexture } from "@/geometry/dialTexture";
 import { appearanceKeyFor, colourableWheels, hexToNumber, isHexColour, numberToHex, wheelAppearance } from "./appearance";
 import { decodeDesign, encodeDesign, DESIGN_SCHEMA_VERSION } from "@/persistence/designFile";
 
@@ -70,7 +71,7 @@ describe("appearance (ASM-0090)", () => {
   });
 });
 
-describe("appearance in a saved design (schema v36, ASM-0090)", () => {
+describe("appearance in a saved design (schema v37, ASM-0090, ASM-0094)", () => {
   it("round-trips every chosen colour", () => {
     const date = Object.values(teaching.dateComplications)[0];
     let m = setDialColour(teaching, "dial", "#101010");
@@ -82,7 +83,7 @@ describe("appearance in a saved design (schema v36, ASM-0090)", () => {
   });
 
   it("an older (v34) file opens with nothing chosen", () => {
-    expect(DESIGN_SCHEMA_VERSION).toBe(36);
+    expect(DESIGN_SCHEMA_VERSION).toBe(37);
     const doc = JSON.parse(encodeDesign(teaching)) as { schemaVersion: number; movement: Record<string, unknown> };
     Reflect.deleteProperty(doc.movement, "appearance");
     const loaded = decodeDesign(JSON.stringify({ ...doc, schemaVersion: 34 }));
@@ -102,5 +103,61 @@ describe("appearance in a saved design (schema v36, ASM-0090)", () => {
     const doc = JSON.parse(encodeDesign(setDialColour(teaching, "dial", "#101010"))) as { movement: { appearance: { dial: string } } };
     doc.movement.appearance.dial = "not-a-colour";
     expect(() => decodeDesign(JSON.stringify(doc))).toThrow(/colour/);
+  });
+});
+
+describe("dial texture (follow-up 50, ASM-0094)", () => {
+  const size = DIAL_TEXTURE.importedSizePx;
+  const imported: DialTexture = { kind: "IMPORTED", name: "leather.png", size, data: encodeHeights(new Uint8Array(size * size).map((_, i) => (i * 13) % 256)) };
+
+  it("starts smooth, and is set and cleared as an undoable change that leaves the input design alone", () => {
+    expect(createMovement("m", false).appearance.dialTexture).toEqual({ kind: "NONE" });
+    const textured = setDialTexture(teaching, { kind: "BUILT_IN", id: "CLOUS_DE_PARIS" });
+    expect(textured.appearance.dialTexture).toEqual({ kind: "BUILT_IN", id: "CLOUS_DE_PARIS" });
+    expect(teaching.appearance.dialTexture).toEqual({ kind: "NONE" });
+    expect(setDialTexture(textured, { kind: "NONE" }).appearance.dialTexture).toEqual({ kind: "NONE" });
+  });
+
+  it("the dial's colour and its texture are independent: changing the colour leaves the texture, and the texture carries no colour", () => {
+    const m = setDialColour(setDialTexture(teaching, { kind: "BUILT_IN", id: "SUNBURST" }), "dial", "#204060");
+    expect(m.appearance.dialTexture).toEqual({ kind: "BUILT_IN", id: "SUNBURST" });
+    expect(m.appearance.dial).toBe("#204060");
+    expect(JSON.stringify(m.appearance.dialTexture)).not.toMatch(/#[0-9a-f]{6}/i);
+  });
+
+  it("'reset all colours' puts the colours back and keeps the chosen texture", () => {
+    const painted = setDialColour(setDialTexture(teaching, { kind: "BUILT_IN", id: "LINEN" }), "dial", "#101010");
+    const reset = resetAppearance(painted);
+    expect(reset.appearance.dial).toBeNull();
+    expect(reset.appearance.dialTexture).toEqual({ kind: "BUILT_IN", id: "LINEN" });
+  });
+
+  it("rejects an unknown built-in texture, bad height data, and an empty or over-long name", () => {
+    expect(() => setDialTexture(teaching, { kind: "BUILT_IN", id: "NOPE" as never })).toThrow();
+    expect(() => setDialTexture(teaching, { ...imported, data: "AAAA" })).toThrow(/height map/);
+    expect(() => setDialTexture(teaching, { ...imported, name: "  " })).toThrow(/name/);
+    expect(() => setDialTexture(teaching, { ...imported, name: "x".repeat(61) })).toThrow(/name/);
+    expect(setDialTexture(teaching, imported).appearance.dialTexture).toEqual(imported);
+  });
+
+  it("round-trips a built-in and an imported texture through the saved design", () => {
+    for (const texture of [{ kind: "BUILT_IN", id: "HONEYCOMB" } as DialTexture, imported]) {
+      const m = setDialTexture(teaching, texture);
+      expect(decodeDesign(encodeDesign(m)).appearance.dialTexture).toEqual(texture);
+    }
+  });
+
+  it("a v36 file (no texture yet) opens smooth with its colours kept; a malformed texture is refused", () => {
+    const doc = JSON.parse(encodeDesign(setDialColour(teaching, "dial", "#336699"))) as { schemaVersion: number; movement: { appearance: Record<string, unknown> } };
+    Reflect.deleteProperty(doc.movement.appearance, "dialTexture");
+    const loaded = decodeDesign(JSON.stringify({ ...doc, schemaVersion: 36 }));
+    expect(loaded.appearance.dialTexture).toEqual({ kind: "NONE" });
+    expect(loaded.appearance.dial).toBe("#336699");
+    const bad = JSON.parse(encodeDesign(setDialTexture(teaching, imported))) as { movement: { appearance: { dialTexture: { data: string } } } };
+    bad.movement.appearance.dialTexture.data = "AAAA";
+    expect(() => decodeDesign(JSON.stringify(bad))).toThrow(/height bytes/);
+    const unknown = JSON.parse(encodeDesign(setDialTexture(teaching, { kind: "BUILT_IN", id: "LINEN" }))) as { movement: { appearance: { dialTexture: { id: string } } } };
+    unknown.movement.appearance.dialTexture.id = "MARBLE";
+    expect(() => decodeDesign(JSON.stringify(unknown))).toThrow(/one of/);
   });
 });

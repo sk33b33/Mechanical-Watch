@@ -24,6 +24,7 @@ import {
   dialBrandPlacement,
   dialHourNumeralPlacements,
   dialMarkerPlacements,
+  setDialPlanarUv,
   secondsNumeralPlacements,
   createFlutedCylinderGeometry,
   createEscapeWheelGeometry,
@@ -1795,3 +1796,24 @@ describe("spoked escape wheel (ASM-0079)", () => {
   });
 });
 
+
+describe("setDialPlanarUv (dial texture, ASM-0094)", () => {
+  it("maps the dial's face so u grows to the right as read from the dial side (world -X) and v grows upward (+Y)", () => {
+    const r = 14e-3;
+    const geometry = createDiscWithHolesGeometry(r, 0.2e-3, []);
+    setDialPlanarUv(geometry, r);
+    const position = geometry.getAttribute("position");
+    const uv = geometry.getAttribute("uv");
+    let checked = 0;
+    for (let i = 0; i < position.count; i += 1) {
+      const x = position.getX(i);
+      const y = position.getY(i);
+      expect(uv.getX(i)).toBeCloseTo(0.5 - x / (2 * r), 6);
+      expect(uv.getY(i)).toBeCloseTo(0.5 + y / (2 * r), 6);
+      if (Math.abs(x + r) < 1e-9) { expect(uv.getX(i)).toBeCloseTo(1, 6); checked += 1; }
+      expect(uv.getX(i)).toBeGreaterThanOrEqual(-1e-6);
+      expect(uv.getX(i)).toBeLessThanOrEqual(1 + 1e-6);
+    }
+    expect(checked).toBeGreaterThan(0);
+  });
+});

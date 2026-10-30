@@ -4,6 +4,7 @@ import { colourableWheels, wheelAppearance, type DialColourKey, type HexColour }
 import { resetAppearance, setDialColour, setWheelColour } from "@/domain/movement";
 import type { Movement } from "@/domain/movement";
 import { createColourPicker, type ColourPicker } from "./colourPicker";
+import { createDialTextureMenu } from "./dialTextureMenu";
 
 /** What a colour button changes. */
 type Target = { kind: "DIAL"; key: DialColourKey } | { kind: "WHEEL"; key: string; part: "body" | "text"; name: string };
@@ -33,6 +34,8 @@ export function mountColourPanel(container: HTMLElement, store: AppStore): void 
   container.appendChild(root);
 
   let active: Target | null = null;
+  // The dial's texture menu is made once and put back after each rebuild of the rows (follow-up 50).
+  const textureMenu = createDialTextureMenu(store);
   const swatches = new Map<HTMLElement, () => HexColour>();
 
   const effective = (m: Movement, target: Target): { colour: HexColour; builtIn: HexColour; chosen: boolean } => {
@@ -156,6 +159,8 @@ export function mountColourPanel(container: HTMLElement, store: AppStore): void 
       rowEl.className = "colour-row";
       rowEl.appendChild(button({ kind: "DIAL", key: item.key }, rowEl, item.label, `${item.label} colour`, item.title, `colour-dial-${item.key}`));
       root.appendChild(rowEl);
+      // The 3D texture of the dial goes right under the dial's own colour, because it takes that colour.
+      if (item.key === "dial") root.appendChild(textureMenu.element);
     }
 
     const resetAll = document.createElement("button");
