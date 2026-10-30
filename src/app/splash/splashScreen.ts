@@ -1,5 +1,5 @@
 import type { KeyValueStore } from "@/persistence/autosave";
-import { gearOutline, moonLitPoints, partOnScreen, SPLASH_PARTS, SPLASH_TOOTH, splashGearAngles, splashGearTrain, splashTrainBounds, TILT, tiltInput, type SplashGear, type SplashPart, type TiltReading } from "./splashGears";
+import { gearOutline, moonLitPoints, panRange, partOnScreen, SPLASH_CORE_COUNT, SPLASH_PARTS, SPLASH_TOOTH, splashGearAngles, splashGearScale, splashGearTrain, splashTrainBounds, springStep, TILT, tiltInput, type SplashGear, type SplashPart, type TiltReading } from "./splashGears";
 import { playEntryClick } from "./splashSound";
 import { unlockAudio } from "@/app/audio/audioContext";
 
@@ -24,12 +24,6 @@ const LEAVE_MILLISECONDS = 600;
 const DRIVER_SPEED = 0.16;
 /** The plate drifts against the pan: this fraction of it (the plate moves a little the other way, for depth). */
 const PLATE_DRIFT = 0.04;
-/** The gear layer pans this fraction of the view (the parts beyond the edges pan the whole of it, so they come in faster). */
-const GEARS_PAN_SHARE = 0.8;
-/** The pan eases toward its target at this rate (per second) so it glides rather than snaps. */
-const PAN_EASE = 6;
-/** Fraction of the shorter canvas side the first (largest) gear's radius covers. */
-const GEAR_SCALE_FRACTION = 0.3;
 /** The gear outlines' glow: a bright core line, a tight halo and a wide soft bloom (follow-up 30, brighter). */
 const GLOW = {
   colour: "rgba(120, 220, 255, 1)",
@@ -64,6 +58,9 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
   const { host, appRoot, storage } = options;
   const reduced = prefersReducedMotion();
   appRoot.inert = true;
+  // The app behind is still laid out; left to overflow, it widens a phone's layout viewport past the screen, so the
+  // splash is then drawn wider than what is seen and shifts as the page settles (follow-up 51). Locking the page keeps it fixed.
+  document.documentElement.classList.add("splash-open");
 
   const root = el("div", "splash");
   root.setAttribute("role", "dialog");
@@ -111,8 +108,9 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
   host.appendChild(root);
 
   // --- gear canvas -------------------------------------------------------------------------
-  const train = splashGearTrain();
-  const bounds = splashTrainBounds(train);
+  // A phone that tilts gets a larger field of larger gears, laid out along the screen's long side (follow-up 51).
+  const tiltSupported = typeof window.DeviceOrientationEvent !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+  let train = splashGearTrain();
   const context = canvas.getContext("2d");
   let width = 0;
   let height = 0;
@@ -307,15 +305,17 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
     const ratio = Math.min(window.devicePixelRatio, 2);
     width = root.clientWidth;
     height = root.clientHeight;
+    train = splashGearTrain(height > width);
     canvas.width = Math.round(width * ratio);
     canvas.height = Math.round(height * ratio);
     context?.setTransform(ratio, 0, 0, ratio, 0, 0);
-    // The first gear's radius covers GEAR_SCALE_FRACTION of the shorter side; the train spills off-screen on purpose.
+    // The train spills off-screen on purpose: what is panned into view is the rest of it.
     const first = train[0];
-    scale = first === undefined ? 1 : (Math.min(width, height) * GEAR_SCALE_FRACTION) / (first.teeth / 2);
-    // Centre the train's bounding box in the canvas.
-    originX = width * 0.5 - ((bounds.minX + bounds.maxX) / 2) * scale;
-    originY = height * 0.5 - ((bounds.minY + bounds.maxY) / 2) * scale;
+    scale = first === undefined ? 1 : splashGearScale(width, height, first.teeth, tiltSupported);
+    // Centre the hand-composed centrepiece (the first gears) in the canvas.
+    const core = splashTrainBounds(train, SPLASH_CORE_COUNT);
+    originX = width * 0.5 - ((core.minX + core.maxX) / 2) * scale;
+    originY = height * 0.5 - ((core.minY + core.maxY) / 2) * scale;
     sprites = train.map((gear) => renderSprite(gear, ratio));
     partSprites = SPLASH_PARTS.map((part) => renderPartSprite(part, ratio));
     draw();
@@ -325,6 +325,8 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
   let partTime = 0;
   let panX = 0;
   let panY = 0;
+  let panVelocityX = 0;
+  let panVelocityY = 0;
 
   const draw = (): void => {
     if (context === null) return;
@@ -334,8 +336,11 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
     train.forEach((gear, index) => {
       const sprite = sprites[index];
       if (sprite === undefined) return;
-      const cx = originX + gear.x * scale + panX * GEARS_PAN_SHARE;
-      const cy = originY + gear.y * scale + panY * GEARS_PAN_SHARE;
+      const cx = originX + gear.x * scale + panX * TILT.gearsPanShare;
+      const cy = originY + gear.y * scale + panY * TILT.gearsPanShare;
+      // Gears wholly off the canvas are not drawn (the train is much larger than the screen).
+      const reach = (gear.teeth / 2 + SPLASH_TOOTH.addendum) * scale;
+      if (cx + reach < 0 || cx - reach > width || cy + reach < 0 || cy - reach > height) return;
       context.save();
       context.translate(cx, cy);
       context.rotate(angles[index] ?? 0);
@@ -376,11 +381,16 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
     partTime += dt;
     // A tilted phone looks towards where it points (the scene moves the other way) and can pan the whole way to the
     // parts beyond the edges; a mouse pointer only nudges the view.
-    const targetX = tiltActive ? -tiltX * TILT.panFraction * width : pointerX * TILT.pointerPanFraction * width;
-    const targetY = tiltActive ? -tiltY * TILT.panFraction * height : pointerY * TILT.pointerPanFraction * height;
-    const ease = Math.min(1, dt * PAN_EASE);
-    panX += (targetX - panX) * ease;
-    panY += (targetY - panY) * ease;
+    const range = panRange(width, height, tiltActive);
+    const targetX = tiltActive ? -tiltX * range.x : pointerX * range.x;
+    const targetY = tiltActive ? -tiltY * range.y : pointerY * range.y;
+    // A critically damped spring: the pan starts and stops without a kick and smooths the sensor's noise.
+    const stepX = springStep(panX, panVelocityX, targetX, TILT.springOmega, dt);
+    const stepY = springStep(panY, panVelocityY, targetY, TILT.springOmega, dt);
+    panX = stepX.position;
+    panY = stepY.position;
+    panVelocityX = stepX.velocity;
+    panVelocityY = stepY.velocity;
     plate.style.transform = `translate(${String(-panX * PLATE_DRIFT)}px, ${String(-panY * PLATE_DRIFT)}px)`;
     root.dataset.panX = String(Math.round(panX));
     root.dataset.panY = String(Math.round(panY));
@@ -402,7 +412,7 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
       tiltButton.hidden = true;
       if (!tiltActive) tiltNote.hidden = false;
     }
-    const reading: TiltReading = { gamma: event.gamma, beta: event.beta };
+    const reading: TiltReading = { gamma: event.gamma, beta: event.beta, alpha: event.alpha ?? 0 };
     if (level === null) { level = reading; return; }
     const input = tiltInput(reading, level, screenAngle());
     tiltX = input.x;
@@ -423,7 +433,6 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
 
   // The listener is always attached on a touch device. iOS (and recent Chrome, which also has `requestPermission`) may
   // deliver nothing until the user allows it from a tap on a control, so a button asks; the first reading hides it.
-  const tiltSupported = typeof window.DeviceOrientationEvent !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
   const askPermission = (window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> } | undefined)?.requestPermission;
   const tiltNote = el("div", "splash-tilt-note", "Tilt your phone to look around");
   const tiltButton = el("button", "splash-tilt", "Enable tilt");
@@ -453,6 +462,7 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
     window.removeEventListener("resize", resize);
     window.removeEventListener("pointermove", onPointer);
     window.removeEventListener("deviceorientation", onTilt);
+    document.documentElement.classList.remove("splash-open");
     document.removeEventListener("keydown", onKey, true);
     // A plain fade: the splash goes and the app is simply there (no zoom, follow-up 44).
     root.classList.add("splash-leaving");

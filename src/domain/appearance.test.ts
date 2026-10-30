@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createTeachingMovement } from "@/app/teachingMovement";
-import { createMovement, setDialColour, setDialTexture, setWheelColour, resetAppearance } from "./movement";
+import { createMovement, setDialColour, setDialTexture, setHourMarkerLume, setWheelColour, resetAppearance } from "./movement";
 import { DIAL_TEXTURE, encodeHeights, type DialTexture } from "@/geometry/dialTexture";
 import { appearanceKeyFor, colourableWheels, hexToNumber, isHexColour, numberToHex, wheelAppearance } from "./appearance";
 import { decodeDesign, encodeDesign, DESIGN_SCHEMA_VERSION } from "@/persistence/designFile";
@@ -71,7 +71,7 @@ describe("appearance (ASM-0090)", () => {
   });
 });
 
-describe("appearance in a saved design (schema v37, ASM-0090, ASM-0094)", () => {
+describe("appearance in a saved design (schema v38, ASM-0090, ASM-0094, ASM-0095)", () => {
   it("round-trips every chosen colour", () => {
     const date = Object.values(teaching.dateComplications)[0];
     let m = setDialColour(teaching, "dial", "#101010");
@@ -83,7 +83,7 @@ describe("appearance in a saved design (schema v37, ASM-0090, ASM-0094)", () => 
   });
 
   it("an older (v34) file opens with nothing chosen", () => {
-    expect(DESIGN_SCHEMA_VERSION).toBe(37);
+    expect(DESIGN_SCHEMA_VERSION).toBe(38);
     const doc = JSON.parse(encodeDesign(teaching)) as { schemaVersion: number; movement: Record<string, unknown> };
     Reflect.deleteProperty(doc.movement, "appearance");
     const loaded = decodeDesign(JSON.stringify({ ...doc, schemaVersion: 34 }));
@@ -159,5 +159,36 @@ describe("dial texture (follow-up 50, ASM-0094)", () => {
     const unknown = JSON.parse(encodeDesign(setDialTexture(teaching, { kind: "BUILT_IN", id: "LINEN" }))) as { movement: { appearance: { dialTexture: { id: string } } } };
     unknown.movement.appearance.dialTexture.id = "MARBLE";
     expect(() => decodeDesign(JSON.stringify(unknown))).toThrow(/one of/);
+  });
+});
+
+describe("hour marker lume (follow-up 51, ASM-0095)", () => {
+  it("starts off, is switched on and off as a change that leaves the input alone, and 'reset all colours' keeps it", () => {
+    expect(createMovement("m", false).appearance.hourMarkerLume).toBe(false);
+    const lit = setHourMarkerLume(teaching, true);
+    expect(lit.appearance.hourMarkerLume).toBe(true);
+    expect(teaching.appearance.hourMarkerLume).toBe(false);
+    expect(setHourMarkerLume(lit, false).appearance.hourMarkerLume).toBe(false);
+    const painted = setDialColour(lit, "hourMarkers", "#336699");
+    expect(resetAppearance(painted).appearance.hourMarkerLume).toBe(true);
+    expect(resetAppearance(painted).appearance.hourMarkers).toBeNull();
+  });
+
+  it("the hour marker colour and the lume switch are independent: the colour is kept while the lume is on, ready for when it is off", () => {
+    const m = setHourMarkerLume(setDialColour(teaching, "hourMarkers", "#aa2200"), true);
+    expect(m.appearance.hourMarkers).toBe("#aa2200");
+    expect(setHourMarkerLume(m, false).appearance.hourMarkers).toBe("#aa2200");
+  });
+
+  it("round-trips, and a v37 file (no lume yet) opens with it off, the rest kept", () => {
+    expect(decodeDesign(encodeDesign(setHourMarkerLume(teaching, true))).appearance.hourMarkerLume).toBe(true);
+    const doc = JSON.parse(encodeDesign(setDialColour(teaching, "dial", "#336699"))) as { schemaVersion: number; movement: { appearance: Record<string, unknown> } };
+    Reflect.deleteProperty(doc.movement.appearance, "hourMarkerLume");
+    const loaded = decodeDesign(JSON.stringify({ ...doc, schemaVersion: 37 }));
+    expect(loaded.appearance.hourMarkerLume).toBe(false);
+    expect(loaded.appearance.dial).toBe("#336699");
+    const bad = JSON.parse(encodeDesign(teaching)) as { movement: { appearance: { hourMarkerLume: unknown } } };
+    bad.movement.appearance.hourMarkerLume = "yes";
+    expect(() => decodeDesign(JSON.stringify(bad))).toThrow();
   });
 });

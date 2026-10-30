@@ -25,6 +25,7 @@ import {
   dialHourNumeralPlacements,
   dialMarkerPlacements,
   setDialPlanarUv,
+  withDialFaceGroups,
   secondsNumeralPlacements,
   createFlutedCylinderGeometry,
   createEscapeWheelGeometry,
@@ -1815,5 +1816,49 @@ describe("setDialPlanarUv (dial texture, ASM-0094)", () => {
       expect(uv.getX(i)).toBeLessThanOrEqual(1 + 1e-6);
     }
     expect(checked).toBeGreaterThan(0);
+  });
+});
+
+describe("withDialFaceGroups (the dial texture goes on the face only, follow-up 51)", () => {
+  const faceNormalZ = (geometry: THREE.BufferGeometry, triangle: number): number => {
+    const p = geometry.getAttribute("position");
+    const a = new THREE.Vector3().fromBufferAttribute(p, triangle * 3);
+    const b = new THREE.Vector3().fromBufferAttribute(p, triangle * 3 + 1);
+    const c = new THREE.Vector3().fromBufferAttribute(p, triangle * 3 + 2);
+    return b.sub(a).cross(c.sub(a)).normalize().z;
+  };
+
+  for (const [name, build] of [
+    ["a dial with window cutouts", (): THREE.BufferGeometry => createDiscWithHolesGeometry(14e-3, 0.2e-3, [{ kind: "CIRCLE", x: 4e-3, y: 2e-3, radius: 2e-3 }, { kind: "RECTANGLE", x: -5e-3, y: 6e-3, width: 3e-3, height: 0.4e-3 }])],
+    ["a plain dial", (): THREE.BufferGeometry => createZCylinder(14e-3, 0, 0.2e-3, 48)],
+  ] as const) {
+    it(`${name}: group 0 is exactly the face looking at the viewer (-Z), group 1 the back, rim and window walls`, () => {
+      const source = build();
+      const total = source.index === null ? source.getAttribute("position").count / 3 : source.index.count / 3;
+      const grouped = withDialFaceGroups(source);
+      expect(grouped.groups).toHaveLength(2);
+      const [front, rest] = grouped.groups;
+      if (front === undefined || rest === undefined) throw new Error("missing groups");
+      expect(front.materialIndex).toBe(0);
+      expect(rest.materialIndex).toBe(1);
+      expect(front.count + rest.count).toBe(total * 3);
+      expect(front.count).toBeGreaterThan(0);
+      for (let t = front.start / 3; t < (front.start + front.count) / 3; t += 1) expect(faceNormalZ(grouped, t)).toBeLessThan(-0.5);
+      for (let t = rest.start / 3; t < (rest.start + rest.count) / 3; t += 1) expect(faceNormalZ(grouped, t)).toBeGreaterThanOrEqual(-0.5);
+      // The back face and the side walls are both in the smooth group: it has triangles facing +Z and sideways.
+      const rests = Array.from({ length: rest.count / 3 }, (_, k) => faceNormalZ(grouped, rest.start / 3 + k));
+      expect(rests.some((z) => z > 0.5)).toBe(true);
+      expect(rests.some((z) => Math.abs(z) < 0.5)).toBe(true);
+    });
+  }
+
+  it("keeps the positions, normals and UVs of every triangle it moves", () => {
+    const source = createDiscWithHolesGeometry(10e-3, 0.2e-3, []);
+    setDialPlanarUv(source, 10e-3);
+    const grouped = withDialFaceGroups(source);
+    expect(Object.keys(grouped.attributes).sort()).toEqual(Object.keys(source.attributes).sort());
+    const uv = grouped.getAttribute("uv");
+    const p = grouped.getAttribute("position");
+    for (let i = 0; i < p.count; i += 11) expect(uv.getX(i)).toBeCloseTo(0.5 - p.getX(i) / (2 * 10e-3), 5);
   });
 });

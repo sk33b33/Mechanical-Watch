@@ -1,7 +1,7 @@
 import type { AppStore } from "@/app/store";
 import { builtInDialColour, builtInWheelColours } from "@/app/colour/builtInColours";
 import { colourableWheels, wheelAppearance, type DialColourKey, type HexColour } from "@/domain/appearance";
-import { resetAppearance, setDialColour, setWheelColour } from "@/domain/movement";
+import { resetAppearance, setDialColour, setHourMarkerLume, setWheelColour } from "@/domain/movement";
 import type { Movement } from "@/domain/movement";
 import { createColourPicker, type ColourPicker } from "./colourPicker";
 import { createDialTextureMenu } from "./dialTextureMenu";
@@ -11,7 +11,7 @@ type Target = { kind: "DIAL"; key: DialColourKey } | { kind: "WHEEL"; key: strin
 
 const DIAL_BUTTONS: readonly { key: DialColourKey; label: string; title: string }[] = [
   { key: "dial", label: "Dial", title: "The dial's face" },
-  { key: "hourMarkers", label: "Hour markers", title: "The hour markers: the eleven circles and the triangle at 12" },
+  { key: "hourMarkers", label: "Hour markers", title: "The top layer of the hour markers (the eleven circles and the triangle at 12). Their metal body keeps its finish. Not shown while Glow in the dark is on." },
   { key: "hourMarkerDigits", label: "Hour marker digits", title: "The twelve hour numbers printed inside the hour markers" },
   { key: "dialPrint", label: "Dial text, triangles and digits", title: "The printed text, the triangles, the window frames and the seconds numbers on the dial" },
   { key: "secondsHand", label: "Seconds hand", title: "The seconds hand" },
@@ -37,6 +37,20 @@ export function mountColourPanel(container: HTMLElement, store: AppStore): void 
   // The dial's texture menu is made once and put back after each rebuild of the rows (follow-up 50).
   const textureMenu = createDialTextureMenu(store);
   const swatches = new Map<HTMLElement, () => HexColour>();
+
+  // Switches the top layer of the hour markers between their colour and glow-in-the-dark lume (follow-up 51, ASM-0095).
+  const glowButton = document.createElement("button");
+  glowButton.type = "button";
+  glowButton.className = "colour-button colour-glow";
+  glowButton.dataset.testid = "colour-hour-markers-glow";
+  glowButton.title = "Make the top layer of the hour markers glow in the dark (lume) instead of the hour marker colour. It lights up in Night mode. The metal body is unchanged.";
+  glowButton.textContent = "Glow in the dark";
+  glowButton.addEventListener("click", () => { store.edit((m) => setHourMarkerLume(m, !m.appearance.hourMarkerLume)); });
+  const refreshGlow = (): void => {
+    const on = store.movement.appearance.hourMarkerLume;
+    glowButton.setAttribute("aria-pressed", String(on));
+    glowButton.classList.toggle("active", on);
+  };
 
   const effective = (m: Movement, target: Target): { colour: HexColour; builtIn: HexColour; chosen: boolean } => {
     if (target.kind === "DIAL") {
@@ -158,6 +172,8 @@ export function mountColourPanel(container: HTMLElement, store: AppStore): void 
       const rowEl = document.createElement("div");
       rowEl.className = "colour-row";
       rowEl.appendChild(button({ kind: "DIAL", key: item.key }, rowEl, item.label, `${item.label} colour`, item.title, `colour-dial-${item.key}`));
+      // Beside the hour marker colour: a switch that makes the markers' top layer glow in the dark instead (ASM-0095).
+      if (item.key === "hourMarkers") rowEl.appendChild(glowButton);
       root.appendChild(rowEl);
       // The 3D texture of the dial goes right under the dial's own colour, because it takes that colour.
       if (item.key === "dial") root.appendChild(textureMenu.element);
@@ -178,7 +194,9 @@ export function mountColourPanel(container: HTMLElement, store: AppStore): void 
   };
 
   build();
+  refreshGlow();
   store.subscribe(() => {
+    refreshGlow();
     const wheels = colourableWheels(store.movement).map((w) => w.key).join("|");
     if (wheels !== builtFor && !store.isInteractiveEditing) build();
     refreshSwatches();

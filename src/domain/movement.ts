@@ -144,6 +144,11 @@ export function setWheelColour(movement: Movement, complicationId: string, part:
   return { ...movement, appearance: { ...movement.appearance, wheels } };
 }
 
+/** Switches the top layer of the applied hour markers between the hour marker colour and glow-in-the-dark lume (ASM-0095). */
+export function setHourMarkerLume(movement: Movement, on: boolean): Movement {
+  return { ...movement, appearance: { ...movement.appearance, hourMarkerLume: on } };
+}
+
 /**
  * Sets the dial's surface texture (follow-up 50, ASM-0094): none, a built-in texture, or an imported picture's
  * height map. An imported one must be a valid square of height bytes of a sane size and name.
@@ -157,9 +162,9 @@ export function setDialTexture(movement: Movement, texture: DialTexture): Moveme
   return { ...movement, appearance: { ...movement.appearance, dialTexture: texture } };
 }
 
-/** Puts every colour back to the built-in one. The dial's texture is a choice of surface, not a colour, so it is kept. */
+/** Puts every colour back to the built-in one. The dial's texture and the lume switch are choices of surface, not colours, so they are kept. */
 export function resetAppearance(movement: Movement): Movement {
-  return { ...movement, appearance: { ...defaultAppearance(), dialTexture: movement.appearance.dialTexture } };
+  return { ...movement, appearance: { ...defaultAppearance(), dialTexture: movement.appearance.dialTexture, hourMarkerLume: movement.appearance.hourMarkerLume } };
 }
 
 export function addShaft(movement: Movement, shaft: Shaft): Movement {

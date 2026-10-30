@@ -48,7 +48,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 37;
+export const DESIGN_SCHEMA_VERSION = 38;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -514,6 +514,12 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
     const movement = doc.movement;
     if (!isRecord(movement) || !isRecord(movement.appearance)) return doc;
     return { ...doc, schemaVersion: 37, movement: { ...movement, appearance: { ...movement.appearance, dialTexture: { kind: "NONE" } } } };
+  },
+  /** v37 → v38: the appearance gains the hour markers' glow-in-the-dark switch (ASM-0095); older files have it off. */
+  37: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.appearance)) return doc;
+    return { ...doc, schemaVersion: 38, movement: { ...movement, appearance: { ...movement.appearance, hourMarkerLume: false } } };
   },
 };
 
@@ -1007,6 +1013,7 @@ const appearance: Decoder<Appearance> = (value, path) => {
     secondsHand: field(o, "secondsHand", nullable(hexColour), path),
     minuteHand: field(o, "minuteHand", nullable(hexColour), path),
     hourHand: field(o, "hourHand", nullable(hexColour), path),
+    hourMarkerLume: field(o, "hourMarkerLume", boolean, path),
     dialTexture: field(o, "dialTexture", dialTexture, path),
     wheels,
   };

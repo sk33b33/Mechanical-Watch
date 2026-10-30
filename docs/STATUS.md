@@ -2,6 +2,45 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 51: smooth tilt, face-only texture, applied indices, glow in the dark, night mode
+
+**Start screen (tilt).** Three causes of the jumps and the empty screen were found and fixed (ASM-0096):
+- *Jumps at sharp angles.* The phone's Euler angles (gamma, beta) flip by large amounts near the upright pose, and the
+  view followed them. The three angles are now turned into a rotation matrix, the rotation from the first ("level")
+  reading to the current one is taken, and the view follows its turns about the phone's own axes, which are continuous.
+  A unit test sweeps a nearly upright phone about four axes and shows the raw angles jump by over 20 degrees where the
+  pan input moves by under 5 percent of its range per quarter degree.
+- *Not smooth.* The pan now follows its target with a critically damped spring (no kick at the start, no overshoot, the
+  same however the frames are timed), which also smooths the sensor's noise.
+- *Layout jumps and a stretched canvas.* The app behind the splash was still laid out and could widen a phone's layout
+  viewport (415 px on a 390 px screen); the page is now locked while the splash is up, the gear canvas is exactly the
+  screen (it was 60 px larger than its drawing buffer), and a finger on the splash no longer scrolls or zooms the page.
+- *Area too small.* The gear train grew from 6 to 30 gears, laid along the screen's long side (turned a quarter turn in
+  portrait), with larger gears on a phone that tilts; the six-gear centrepiece is unchanged and still centred on arrival.
+  A test checks that at any pan, on six phone and tablet sizes and three desktop ones, no point is more than a quarter of
+  the shorter side from a gear. A browser test pans to the extreme in all eight directions on a portrait and a landscape
+  phone and checks that gears are drawn in at least 8 of 9 cells of the view.
+- *Limit.* Not tested on a physical phone: the browser tests send synthetic orientation readings, so the real sensor's
+  noise, rate and drift, and how the hand actually holds the phone, are unknown.
+
+**Dial.** The texture is now only on the dial's face: the dial's side and back are smooth (the disc has two material
+groups, picked by face normal).
+
+**Applied indices.** The hour markers are 3D applied indices: a raised metal body (0.3 mm tall) with a thinner inset top
+layer (0.72 of its size) on it, round for most hours and triangular at 12. The Hour markers colour changes only the top
+layer; the body stays metal. Numerals sit on the top layer.
+
+**Glow in the dark.** A **Glow in the dark** button next to the Hour markers colour button switches the top layer from
+its colour to lume (pale cream-green by day). The switch is saved with the design (schema v38; older files have it off),
+is one Undo step and is kept by "Reset all colours".
+
+**Night mode.** A **Night mode** button in the view controls dims the lights (to 0.4) and the background (to 0.45) over
+about 0.6 s, and the lume then glows. It is a view setting like Explode: not saved with the design.
+
+**Honest limits (ASM-0095).** The glow is a picture of phosphorescence: it does not fade like real lume and no
+luminance, charge or decay is modelled. The indices are appearance only; nothing here is read by validation, kinematics
+or any export, and no manufacturing claim is made.
+
 ## Phase 8.15 follow-up 50: 3D dial textures
 
 (Also fixed here: the start screen's tilt listener is now always attached on a touch device. Current Chrome has a

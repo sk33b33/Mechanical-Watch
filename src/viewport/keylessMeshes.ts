@@ -22,6 +22,7 @@ import {
   dialBrandPlacement,
   dialHourNumeralPlacements,
   setDialPlanarUv,
+  withDialFaceGroups,
   dialMarkerPlacements,
   dialWindowCaptionOffset,
   dialWindowPointerSize,
@@ -140,12 +141,12 @@ export function buildDialMeshes(
   placement: PlacementSolution,
   displayZ: (z: number) => number,
   /**
-   * `marker` is the twelve hour circles; `print` the triangles, moon-phase marks and window frames printed on the dial;
+   * `marker` is the top layer of the twelve applied indices and `indexMetal` their metal body; `print` the triangles, moon-phase marks and window frames printed on the dial;
    * `printText` the colour of the dial's printed text and numerals (the captions, the seconds numerals, the brand line)
    * and `markerDigits` that of the numerals inside the four big hour circles. A text colour left out is the built-in
    * one (follow-up 39, ASM-0090).
    */
-  materials: { disc: THREE.Material; marker: THREE.Material; print: THREE.Material; printText?: string; markerDigits?: string },
+  materials: { disc: THREE.Material; discFace?: THREE.Material; marker: THREE.Material; indexMetal: THREE.Material; print: THREE.Material; printText?: string; markerDigits?: string },
   windows: readonly DialWindow[] = [],
   /** Moon-image count (1 or 2) of each window's own moon-phase disc, for windows with `phaseMarks` (ASM-0072). */
   moonImageCounts: ReadonlyMap<string, number> = new Map(),
@@ -173,28 +174,44 @@ export function buildDialMeshes(
     disc = new THREE.Mesh(createDiscWithHolesGeometry(dial.diameter / 2, dial.thickness, holes), materials.disc);
     disc.position.z = face;
   }
-  // UVs across the face, for the dial's surface texture (follow-up 50, ASM-0094).
+  // UVs across the face, for the dial's surface texture (follow-up 50, ASM-0094); the texture is on the face the
+  // dial is read from only, the rim, back and window walls stay smooth (follow-up 51).
+  const oldGeometry = disc.geometry;
+  disc.geometry = withDialFaceGroups(oldGeometry);
+  oldGeometry.dispose();
   setDialPlanarUv(disc.geometry, dial.diameter / 2);
+  if (materials.discFace !== undefined) disc.material = [materials.discFace, materials.disc];
   root.add(disc);
   const d = DIAL_VISUALIZATION;
   const r = dial.diameter / 2;
-  // Hour markers (ASM-0020, ASM-0093): equal circles, and at 12 a larger upside-down triangle.
+  // Hour markers (ASM-0020, ASM-0093, ASM-0095): applied indices. Each is a raised metal body (equal circles, and at 12
+  // a larger upside-down triangle) with a thinner top layer inset on it; the hour marker colour or the lume is the top
+  // layer only, the body stays metal.
+  const indexHeight = d.indexHeightMetres;
+  const layer = d.indexTopLayerThicknessMetres;
+  const inset = d.indexTopLayerFraction;
   for (const marker of dialMarkerPlacements(r)) {
     if (marker.shape === "TRIANGLE_DOWN") {
       // An equilateral triangle inscribed in the circle of the marker's radius, apex down towards the dial's centre.
-      const triangle = new THREE.Mesh(createDialWindowPointerGeometry(Math.sqrt(3) * marker.radiusMetres, 1.5 * marker.radiusMetres, d.markerThicknessMetres), materials.marker);
-      triangle.position.set(marker.x, marker.y - marker.radiusMetres, face - d.markerThicknessMetres);
-      root.add(triangle);
+      const triangle = (radius: number, depth: number): THREE.ExtrudeGeometry => createDialWindowPointerGeometry(Math.sqrt(3) * radius, 1.5 * radius, depth);
+      const body = new THREE.Mesh(triangle(marker.radiusMetres, indexHeight), materials.indexMetal);
+      body.position.set(marker.x, marker.y - marker.radiusMetres, face - indexHeight);
+      root.add(body);
+      const topRadius = marker.radiusMetres * inset;
+      const top = new THREE.Mesh(triangle(topRadius, layer), materials.marker);
+      top.position.set(marker.x, marker.y - topRadius, face - indexHeight - layer);
+      root.add(top);
       continue;
     }
-    const dot = new THREE.Mesh(
-      new THREE.CylinderGeometry(marker.radiusMetres, marker.radiusMetres, d.markerThicknessMetres, 48).rotateX(Math.PI / 2),
-      materials.marker,
-    );
-    dot.position.set(marker.x, marker.y, face - d.markerThicknessMetres / 2);
-    root.add(dot);
+    const cylinder = (radius: number, depth: number): THREE.BufferGeometry => new THREE.CylinderGeometry(radius, radius, depth, 48).rotateX(Math.PI / 2);
+    const body = new THREE.Mesh(cylinder(marker.radiusMetres, indexHeight), materials.indexMetal);
+    body.position.set(marker.x, marker.y, face - indexHeight / 2);
+    root.add(body);
+    const top = new THREE.Mesh(cylinder(marker.radiusMetres * inset, layer), materials.marker);
+    top.position.set(marker.x, marker.y, face - indexHeight - layer / 2);
+    root.add(top);
   }
-  // The twelve hour numerals, printed inside their markers (follow-up 46), in the numerals' own colour.
+  // The twelve hour numerals, printed on the indices' top layers (follow-up 46, 47, 51), in the numerals' own colour.
   for (const numeral of dialHourNumeralPlacements(r)) {
     const builtHour = createDialWindowCaptionTexture(numeral.text, materials.markerDigits ?? d.hourNumeralColor);
     if (builtHour === null) continue;
@@ -204,7 +221,7 @@ export function buildDialMeshes(
     );
     // Read from the dial's −Z side: half a turn about Y so the text reads left to right.
     hourPlane.rotation.y = Math.PI;
-    hourPlane.position.set(numeral.x, numeral.y, face - 1.3 * d.markerThicknessMetres);
+    hourPlane.position.set(numeral.x, numeral.y, face - indexHeight - layer - d.indexNumeralLiftMetres);
     root.add(hourPlane);
   }
   // The small black brand line under the big 6 circle, just inside the dial's edge (follow-up 30, ASM-0083).

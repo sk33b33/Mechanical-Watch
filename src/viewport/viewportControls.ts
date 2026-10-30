@@ -101,6 +101,21 @@ export function mountViewportControls(container: HTMLElement, viewport: Viewport
     viewport.setDialVisible(dialOn.checked);
   });
 
+  const night = document.createElement("button");
+  night.type = "button";
+  night.dataset.testid = "night-mode";
+  night.title = "Night mode: the view darkens slightly and any glow-in-the-dark parts on the dial light up. Display only, not saved with the design.";
+  const renderNight = (): void => {
+    night.textContent = "Night mode";
+    night.setAttribute("aria-pressed", String(viewport.nightMode));
+    night.classList.toggle("active", viewport.nightMode);
+  };
+  night.addEventListener("click", () => {
+    viewport.setNightMode(!viewport.nightMode);
+    renderNight();
+  });
+  renderNight();
+
   const note = document.createElement("span");
   note.className = "viewport-note";
   note.textContent = "View only";
@@ -114,6 +129,7 @@ export function mountViewportControls(container: HTMLElement, viewport: Viewport
     zoomToSelection,
     labelled("Explode", explode),
     labelled("Dial", dialOn),
+    night,
     labelled("Section", sectionOn),
     labelled("Angle", angle),
     labelled("Offset", offset),

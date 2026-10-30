@@ -76,6 +76,17 @@ export const DIAL_VISUALIZATION = {
   markerInsetFraction: 0.09,
   markerThicknessMetres: 0.03e-3,
   /**
+   * The hour markers are applied indices (follow-up 51, ASM-0095): a raised metal body this high above the dial face,
+   * with a thinner top layer on it, inset to this fraction of the body's size, so the metal shows as a rim. The hour
+   * marker colour (or the lume) is the top layer only; the body keeps the metal finish below.
+   */
+  indexHeightMetres: 0.3e-3,
+  indexTopLayerFraction: 0.72,
+  indexTopLayerThicknessMetres: 0.05e-3,
+  indexMetalColor: 0xc9ccd2,
+  /** How far in front of an index's top layer its numeral is drawn. */
+  indexNumeralLiftMetres: 0.01e-3,
+  /**
    * Seconds-scale numerals printed on the dial around the seconds hand's own pivot (Phase 8.15
    * follow-up 19: first placed on the big hour circles, then moved to the small seconds hand at
    * the user's correction). `dx`/`dy` are unit steps in the dial plane from the pivot: north is
@@ -711,6 +722,46 @@ export function setDialPlanarUv(geometry: THREE.BufferGeometry, radius: number):
     uv[i * 2 + 1] = 0.5 + position.getY(i) / (2 * radius);
   }
   geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+}
+
+/**
+ * Splits a dial's triangles into two material groups (follow-up 51, ASM-0094): group 0 is the face the dial is read
+ * from (triangles facing −Z, the dial being read from its −Z side), group 1 everything else (the back, the rim and
+ * the walls of its window cutouts). The surface texture goes on group 0 only, so a dial's sides and back stay
+ * smooth. Returns a new non-indexed geometry with the triangles reordered, front first; positions, normals and UVs
+ * are carried over unchanged.
+ */
+export function withDialFaceGroups(source: THREE.BufferGeometry): THREE.BufferGeometry {
+  const flat = source.index === null ? source : source.toNonIndexed();
+  const names = Object.keys(flat.attributes);
+  const position = flat.getAttribute("position");
+  const triangles = position.count / 3;
+  const front: number[] = [];
+  const rest: number[] = [];
+  const a = new THREE.Vector3();
+  const b = new THREE.Vector3();
+  const c = new THREE.Vector3();
+  for (let t = 0; t < triangles; t += 1) {
+    a.fromBufferAttribute(position, t * 3);
+    b.fromBufferAttribute(position, t * 3 + 1);
+    c.fromBufferAttribute(position, t * 3 + 2);
+    const normal = b.sub(a).cross(c.sub(a)).normalize();
+    (normal.z < -0.5 ? front : rest).push(t);
+  }
+  const order = [...front, ...rest];
+  const result = new THREE.BufferGeometry();
+  for (const name of names) {
+    const attribute = flat.getAttribute(name);
+    const size = attribute.itemSize;
+    const data = new Float32Array(order.length * 3 * size);
+    order.forEach((t, k) => {
+      for (let v = 0; v < 3; v += 1) for (let s = 0; s < size; s += 1) data[(k * 3 + v) * size + s] = attribute.array[(t * 3 + v) * size + s] ?? 0;
+    });
+    result.setAttribute(name, new THREE.BufferAttribute(data, size));
+  }
+  result.addGroup(0, front.length * 3, 0);
+  result.addGroup(front.length * 3, rest.length * 3, 1);
+  return result;
 }
 
 /** A `DialWindow`'s own cutout, already in the disc's local frame (see `createDiscWithHolesGeometry`). */

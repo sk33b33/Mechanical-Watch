@@ -37,7 +37,7 @@ export type DialColourKey = (typeof DIAL_COLOUR_KEYS)[number];
 export interface Appearance {
   /** The dial's face. */
   dial: HexColour | null;
-  /** The hour markers: the eleven circles and the triangle at 12. */
+  /** The top layer of the hour markers (the eleven circles and the triangle at 12); their metal body keeps its own finish (follow-up 51). */
   hourMarkers: HexColour | null;
   /** The twelve hour numerals printed inside the hour markers. */
   hourMarkerDigits: HexColour | null;
@@ -46,6 +46,8 @@ export interface Appearance {
   secondsHand: HexColour | null;
   minuteHand: HexColour | null;
   hourHand: HexColour | null;
+  /** The top layer of the applied hour markers glows in the dark (lume) instead of taking the hour marker colour (follow-up 51, ASM-0095). */
+  hourMarkerLume: boolean;
   /** The dial's surface relief (follow-up 50, ASM-0094): none, a built-in texture, or an imported picture. It carries no colour: it takes the dial's. */
   dialTexture: DialTexture;
   /** Per wheel, keyed by `appearanceKeyFor`. */
@@ -53,7 +55,7 @@ export interface Appearance {
 }
 
 export const DEFAULT_APPEARANCE: Appearance = {
-  dial: null, hourMarkers: null, hourMarkerDigits: null, dialPrint: null, secondsHand: null, minuteHand: null, hourHand: null, dialTexture: NO_DIAL_TEXTURE, wheels: {},
+  dial: null, hourMarkers: null, hourMarkerDigits: null, dialPrint: null, secondsHand: null, minuteHand: null, hourHand: null, hourMarkerLume: false, dialTexture: NO_DIAL_TEXTURE, wheels: {},
 };
 
 export function defaultAppearance(): Appearance {

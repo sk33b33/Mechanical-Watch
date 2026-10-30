@@ -59,6 +59,7 @@ import { YEAR_DIGIT_SLOT_COUNT, type YearDigitComplicationId } from "@/domain/ye
 import { genevaLambda, genevaStrokeDriverAngle, genevaDriverMotionAngle } from "@/kinematics/genevaDrive";
 import { buildDialMeshes, buildStemMeshes } from "./keylessMeshes";
 import { markKeepColour, restingColour } from "./printedFace";
+import { lumeGlow, NIGHT_MODE, nightBackground, nightLightIntensity, nightStep } from "./nightMode";
 import { DIAL_TEXTURE, heightField, normalMapRgba, sameDialTexture, textureStrength, type DialTexture } from "@/geometry/dialTexture";
 import { escapementDisplay, primaryEscapement } from "@/simulation/escapementDisplay";
 import {
@@ -86,6 +87,10 @@ export interface SectionState {
   angleDeg: number;
   offsetMetres: number;
 }
+
+/** The scene's daytime lighting and background (night mode scales these, follow-up 51). */
+const DAY_LIGHT = { ambient: 0.55, key: 1.3, rim: 0.4 } as const;
+const DAY_BACKGROUND = 0x0b0d10;
 
 /** At full explode, axial positions are stretched by this factor (display only). */
 const EXPLODE_STRETCH = 3;
@@ -365,6 +370,14 @@ function yearDigitBarrelMaterials(color: number, extra: THREE.MeshStandardMateri
 export class Viewport {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
+  /** The scene's lights at their daytime strengths (`DAY_LIGHT`); night mode scales them (follow-up 51, ASM-0095). */
+  private readonly ambientLight = new THREE.AmbientLight(0xffffff, DAY_LIGHT.ambient);
+  private readonly keyLight = new THREE.DirectionalLight(0xffffff, DAY_LIGHT.key);
+  private readonly rimLight = new THREE.DirectionalLight(0xffffff, DAY_LIGHT.rim);
+  /** 0 day, 1 night, moving towards `nightTarget`; the lume (glow-in-the-dark) materials glow with it. */
+  private nightAmount = 0;
+  private nightTarget = 0;
+  private lumeMaterials: THREE.MeshStandardMaterial[] = [];
   private readonly camera: THREE.PerspectiveCamera;
   private controls: OrbitControls;
   private view: ViewSide = "BRIDGE";
@@ -431,12 +444,12 @@ export class Viewport {
     this.camera = new THREE.PerspectiveCamera(35, 1, 1e-4, 1);
     this.controls = this.createControls();
 
-    this.scene.background = new THREE.Color(0x0b0d10);
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-    const keyLight = new THREE.DirectionalLight(0xffffff, 1.3);
+    this.scene.background = new THREE.Color(DAY_BACKGROUND);
+    this.scene.add(this.ambientLight);
+    const keyLight = this.keyLight;
     keyLight.position.set(0.02, -0.03, 0.05);
     this.scene.add(keyLight);
-    const rimLight = new THREE.DirectionalLight(0xffffff, 0.4);
+    const rimLight = this.rimLight;
     rimLight.position.set(-0.03, 0.02, -0.02);
     this.scene.add(rimLight);
     this.scene.add(this.content);
@@ -623,6 +636,37 @@ export class Viewport {
     return { normalMap: this.dialSurfaceCache.map, normalScale: new THREE.Vector2(1, 1) };
   }
 
+  /** Glow-in-the-dark lume: a pale paint by day, an emissive glow at night (ASM-0095); it follows the night amount. */
+  private lumeMaterial(): THREE.MeshStandardMaterial {
+    const lume = material(NIGHT_MODE.lumeDayColour, {
+      metalness: 0,
+      roughness: 0.6,
+      emissive: NIGHT_MODE.lumeGlowColour,
+      emissiveIntensity: lumeGlow(this.nightAmount),
+    });
+    this.lumeMaterials.push(lume);
+    return lume;
+  }
+
+  /** Night mode: the view darkens slightly and the lume glows (a view setting, not part of the design, ASM-0095). */
+  setNightMode(on: boolean): void {
+    this.nightTarget = on ? 1 : 0;
+  }
+
+  get nightMode(): boolean {
+    return this.nightTarget === 1;
+  }
+
+  /** Sets the lights, the background and the lume's glow for the current night amount. */
+  private applyNight(): void {
+    const amount = this.nightAmount;
+    this.ambientLight.intensity = nightLightIntensity(DAY_LIGHT.ambient, amount);
+    this.keyLight.intensity = nightLightIntensity(DAY_LIGHT.key, amount);
+    this.rimLight.intensity = nightLightIntensity(DAY_LIGHT.rim, amount);
+    (this.scene.background as THREE.Color).setHex(nightBackground(DAY_BACKGROUND, amount));
+    for (const lume of this.lumeMaterials) lume.emissiveIntensity = lumeGlow(amount);
+  }
+
   private addPickable(parent: THREE.Object3D, mesh: THREE.Mesh, pick: Omit<Pickable, "baseRenderOrder" | "baseDepthWrite">): void {
     const firstMaterial = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
     mesh.userData = {
@@ -649,6 +693,7 @@ export class Viewport {
     this.dateJumperLinkages.clear();
     this.yearDigitSpins.clear();
     this.pickables.length = 0;
+    this.lumeMaterials = [];
     this.cappableSolids.length = 0;
     this.sectionCapMeshes.length = 0;
   }
@@ -1228,14 +1273,20 @@ export class Viewport {
       for (const dial of Object.values(movement.dials)) {
         const look = movement.appearance;
         const dialColour = look.dial === null ? COLORS.dial : hexToNumber(look.dial);
+        const surface = this.dialSurface(look.dialTexture);
         const built = buildDialMeshes(dial, analysis.placement, (z) => this.displayZ(z), {
-          // The texture is a normal map: relief only, no colour, so it takes the dial's colour (ASM-0094).
-          disc: material(dialColour, { metalness: 0.05, roughness: 0.8, ...this.dialSurface(look.dialTexture) }),
-          marker: material(look.hourMarkers === null ? COLORS.dialMarker : hexToNumber(look.hourMarkers), { metalness: 0.2, roughness: 0.5 }),
+          disc: material(dialColour, { metalness: 0.05, roughness: 0.8 }),
+          // The texture is a normal map: relief only, no colour, so it takes the dial's colour (ASM-0094). It is on the
+          // dial's face only; the rim, back and window walls use the smooth material above.
+          ...(look.dialTexture.kind === "NONE" ? {} : { discFace: material(dialColour, { metalness: 0.05, roughness: 0.8, ...surface }) }),
+          // The applied indices: a metal body, and a top layer that is the hour marker colour, or lume that glows at night.
+          indexMetal: material(DIAL_VISUALIZATION.indexMetalColor, { metalness: 0.85, roughness: 0.25 }),
+          marker: look.hourMarkerLume ? this.lumeMaterial() : material(look.hourMarkers === null ? COLORS.dialMarker : hexToNumber(look.hourMarkers), { metalness: 0.2, roughness: 0.5 }),
           // The printed triangles, marks and frames, and the printed text, follow the dial print colour when one is chosen.
           print: material(look.dialPrint === null ? COLORS.dialMarker : hexToNumber(look.dialPrint), { metalness: 0.2, roughness: 0.5 }),
           ...(look.dialPrint === null ? {} : { printText: look.dialPrint }),
-          ...(look.hourMarkerDigits === null ? {} : { markerDigits: look.hourMarkerDigits }),
+          // The numerals are pale on a dark top layer; on lume (pale) they are dark, unless a colour was chosen.
+          ...(look.hourMarkerDigits !== null ? { markerDigits: look.hourMarkerDigits } : look.hourMarkerLume ? { markerDigits: DIAL_VISUALIZATION.numeralColor } : {}),
         }, Object.values(movement.dialWindows), moonImageCounts, secondsScale);
         if (built === null) continue;
         this.content.add(built.root);
@@ -1244,7 +1295,7 @@ export class Viewport {
           entityId: dial.id,
           baseColor: dialColour,
           baseRenderOrder: built.disc.renderOrder,
-          baseDepthWrite: (built.disc.material as THREE.MeshStandardMaterial).depthWrite,
+          baseDepthWrite: (Array.isArray(built.disc.material) ? built.disc.material[0] : built.disc.material)?.depthWrite ?? true,
         } satisfies Pickable;
         this.pickables.push(built.disc);
         const centre = positions.get(dial.centreShaftId);
@@ -1834,6 +1885,10 @@ export class Viewport {
     const elapsedSeconds = this.lastTimestampMs === null ? 0 : (timestampMs - this.lastTimestampMs) / 1000;
     this.lastTimestampMs = timestampMs;
 
+    if (this.nightAmount !== this.nightTarget) {
+      this.nightAmount = nightStep(this.nightAmount, this.nightTarget, elapsedSeconds);
+      this.applyNight();
+    }
     this.applyPendingWheelDrag();
     this.store.tick(elapsedSeconds);
     this.applyKinematicRotation();

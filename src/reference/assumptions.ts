@@ -573,6 +573,18 @@ export const ASSUMPTIONS = {
     scope: "src/geometry/dialTexture.ts, the Colours panel's dial texture menu, viewport dial material (visual/L0 display only)",
     status: "Active",
   },
+  "ASM-0095": {
+    summary:
+      "Applied hour markers, glow-in-the-dark lume and night mode (Phase 8.15 follow-up 51), presentation only (L0 visual, ASM-0004): the dial's hour markers are drawn as applied indices, a raised metal body standing 0.3 mm above the dial face with a thinner, inset top layer on it (the same circle or triangle shape, 0.72 of its size). The Hour markers colour changes only the top layer; the metal body keeps its own finish. A switch beside that colour button changes the top layer from the chosen colour to glow-in-the-dark lume: a pale cream-green paint by day. A Night mode button in the view controls dims the scene's lights to 0.4 of their strength and darkens the background to 0.45, over about 0.6 s, and the lume then glows (an emissive colour). The glow is a picture of phosphorescence: it does not fade over time like a real charged lume, and no luminance, charge or decay is modelled or claimed. The lume switch is part of the saved design (schema v38; older files have it off), is kept by 'Reset all colours', and is never read by validation, kinematics or any export. Night mode is a view setting like the Explode slider: it is not saved with the design.",
+    scope: "src/geometry/assemblyGeometry3d.ts (DIAL_VISUALIZATION), src/viewport/keylessMeshes.ts, src/viewport/nightMode.ts, the Colours panel (visual/L0 display only)",
+    status: "Active",
+  },
+  "ASM-0096": {
+    summary:
+      "Splash tilt without jumps, a wider gear field and a steady layout (Phase 8.15 follow-up 51), presentation only (L0 visual, ASM-0004; the tilt numbers refine ASM-0092): the phone's three orientation angles are turned into a rotation matrix (the W3C order: about z, then x, then y), the rotation from the first reading to the current one is taken, and the view follows that rotation's turns about the phone's own two axes (22 degrees for a full pan, 1.5 degrees ignored), instead of the raw gamma and beta, which flip by large amounts near the upright pose and made the view jump. The pan follows its target with a critically damped spring (about 9 rad/s), so it glides and smooths the sensor's noise. The gear field is a train of 30 decorative gears (the six of the old centrepiece first, still centred on arrival) laid along the screen's long side, with larger gears on a phone that tilts, so that no point of the view at any pan is more than a quarter of the shorter screen side from a gear (a test checks six phone and tablet sizes and three desktop ones); the complication parts still wait beyond the edges. While the splash is up the page is locked (no scrolling or overflow), the gear canvas is exactly the screen, and a finger on it cannot scroll or zoom the page. Not tested on a physical phone: the browser tests send synthetic readings and the real sensor's noise, rate and drift are unknown. Nothing here is read by validation, kinematics or any export.",
+    scope: "src/app/splash/*, src/app/style.css (visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;
