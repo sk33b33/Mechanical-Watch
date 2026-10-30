@@ -79,12 +79,16 @@ test("tilting the phone pans the start screen to reveal complication parts beyon
   await page.reload();
   const splash = page.locator(".splash");
   await expect(splash).toBeVisible();
-  await expect(page.locator(".splash-tilt-note")).toBeVisible();
+  // A hint, or (where the browser asks first) the Enable tilt button, shows until readings arrive.
+  await expect(page.locator(".splash-tilt-note:not([hidden]), .splash-tilt:not([hidden])")).toHaveCount(1);
   // At rest none of the parts is on screen.
   await expect(splash).toHaveAttribute("data-parts-visible", "0");
   const tilt = (gamma: number, beta: number) =>
     page.evaluate(`window.dispatchEvent(new DeviceOrientationEvent("deviceorientation", { gamma: ${String(gamma)}, beta: ${String(beta)}, alpha: 0 }))`);
   await tilt(0, 55); // the first reading is "level", however the phone is held
+  // Readings arriving, the Enable tilt button is gone and the hint is up.
+  await expect(page.locator(".splash-tilt")).toBeHidden();
+  await expect(page.locator(".splash-tilt-note")).toBeVisible();
   await tilt(-25, 55); // tilted to the left: the view pans to reveal what is on the left
   await expect.poll(async () => Number(await splash.getAttribute("data-pan-x"))).toBeGreaterThan(100);
   await expect(splash).not.toHaveAttribute("data-parts-visible", "0");

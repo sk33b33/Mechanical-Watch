@@ -4,6 +4,11 @@ Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
 ## Phase 8.15 follow-up 50: 3D dial textures
 
+(Also fixed here: the start screen's tilt listener is now always attached on a touch device. Current Chrome has a
+`requestPermission` for orientation like iOS, which follow-up 44 took to mean "wait for a tap", so tilt would have waited
+for the Enable tilt button on Chrome too. Now the button only shows until the first reading arrives; on iOS it is still
+how permission is asked.)
+
 The Colours flyout has a **dial texture button** under the Dial colour button. Pressed, it drops a list: **Smooth
 (none)** and eleven built-in textures (Brushed, Sunburst, Concentric rings, Clous de Paris, Hobnail domes, Fine grain,
 Linen weave, Carbon twill, Honeycomb, Waves, Barleycorn), each with a small swatch, and at the bottom **Import image…**.

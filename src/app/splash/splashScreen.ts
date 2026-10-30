@@ -397,6 +397,11 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
   /** The first reading is "level", whatever the way the phone is held; turning the screen starts again. */
   const onTilt = (event: DeviceOrientationEvent): void => {
     if (event.gamma === null || event.beta === null) return;
+    // Readings are arriving, so no permission is needed (or it was given): the button has done its job.
+    if (!tiltButton.hidden) {
+      tiltButton.hidden = true;
+      if (!tiltActive) tiltNote.hidden = false;
+    }
     const reading: TiltReading = { gamma: event.gamma, beta: event.beta };
     if (level === null) { level = reading; return; }
     const input = tiltInput(reading, level, screenAngle());
@@ -408,12 +413,16 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
       tiltButton.hidden = true;
     }
   };
+  let tiltStarted = false;
   const startTilt = (): void => {
+    if (tiltStarted) return;
+    tiltStarted = true;
     window.addEventListener("deviceorientation", onTilt);
     window.screen.orientation.addEventListener("change", () => { level = null; });
   };
 
-  // iOS only delivers orientation after the user allows it, from a tap on a control; elsewhere it just starts.
+  // The listener is always attached on a touch device. iOS (and recent Chrome, which also has `requestPermission`) may
+  // deliver nothing until the user allows it from a tap on a control, so a button asks; the first reading hides it.
   const tiltSupported = typeof window.DeviceOrientationEvent !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
   const askPermission = (window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> } | undefined)?.requestPermission;
   const tiltNote = el("div", "splash-tilt-note", "Tilt your phone to look around");
@@ -466,7 +475,9 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
   if (!reduced) {
     window.addEventListener("pointermove", onPointer);
     if (tiltSupported) {
-      if (askPermission === undefined) { startTilt(); tiltNote.hidden = false; } else tiltButton.hidden = false;
+      startTilt();
+      if (askPermission === undefined) tiltNote.hidden = false;
+      else tiltButton.hidden = false;
     }
     frame = requestAnimationFrame(tick);
   }
