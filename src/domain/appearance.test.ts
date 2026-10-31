@@ -28,7 +28,7 @@ describe("appearance (ASM-0090)", () => {
     expect(teaching.appearance.dial).toBeNull();
     expect(setDialColour(set, "dial", null).appearance.dial).toBeNull();
     expect(() => setDialColour(teaching, "dial", "blue")).toThrow();
-    for (const key of ["hourMarkers", "hourMarkerDigits", "dialPrint", "secondsHand", "minuteHand", "hourHand"] as const) {
+    for (const key of ["hourMarkers", "dialPrint", "secondsHand", "minuteHand", "hourHand"] as const) {
       expect(setDialColour(teaching, key, "#aabbcc").appearance[key]).toBe("#aabbcc");
     }
   });
@@ -71,7 +71,7 @@ describe("appearance (ASM-0090)", () => {
   });
 });
 
-describe("appearance in a saved design (schema v38, ASM-0090, ASM-0094, ASM-0095)", () => {
+describe("appearance in a saved design (schema v39, ASM-0090, ASM-0094, ASM-0095)", () => {
   it("round-trips every chosen colour", () => {
     const date = Object.values(teaching.dateComplications)[0];
     let m = setDialColour(teaching, "dial", "#101010");
@@ -83,7 +83,7 @@ describe("appearance in a saved design (schema v38, ASM-0090, ASM-0094, ASM-0095
   });
 
   it("an older (v34) file opens with nothing chosen", () => {
-    expect(DESIGN_SCHEMA_VERSION).toBe(38);
+    expect(DESIGN_SCHEMA_VERSION).toBe(39);
     const doc = JSON.parse(encodeDesign(teaching)) as { schemaVersion: number; movement: Record<string, unknown> };
     Reflect.deleteProperty(doc.movement, "appearance");
     const loaded = decodeDesign(JSON.stringify({ ...doc, schemaVersion: 34 }));
@@ -190,5 +190,16 @@ describe("hour marker lume (follow-up 51, ASM-0095)", () => {
     const bad = JSON.parse(encodeDesign(teaching)) as { movement: { appearance: { hourMarkerLume: unknown } } };
     bad.movement.appearance.hourMarkerLume = "yes";
     expect(() => decodeDesign(JSON.stringify(bad))).toThrow();
+  });
+});
+
+describe("hour markers carry no numerals (follow-up 52)", () => {
+  it("a v38 file that chose a colour for the numerals still opens: that colour is dropped, the rest kept", () => {
+    const doc = JSON.parse(encodeDesign(setDialColour(teaching, "hourMarkers", "#aa2200"))) as { schemaVersion: number; movement: { appearance: Record<string, unknown> } };
+    doc.movement.appearance.hourMarkerDigits = "#ff00ff";
+    const loaded = decodeDesign(JSON.stringify({ ...doc, schemaVersion: 38 }));
+    expect(loaded.appearance.hourMarkers).toBe("#aa2200");
+    expect("hourMarkerDigits" in loaded.appearance).toBe(false);
+    expect(JSON.stringify(JSON.parse(encodeDesign(loaded)))).not.toContain("hourMarkerDigits");
   });
 });

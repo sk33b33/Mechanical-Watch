@@ -22,7 +22,6 @@ import {
   DIAL_VISUALIZATION,
   createDialWindowBezelGeometry,
   dialBrandPlacement,
-  dialHourNumeralPlacements,
   dialMarkerPlacements,
   setDialPlanarUv,
   withDialFaceGroups,
@@ -1503,67 +1502,6 @@ describe("equilateral window pointers (ASM-0076)", () => {
   it("is shorter than the old 0.04-tall triangle", () => {
     const R = 14e-3;
     expect(dialWindowPointerSize(R).height).toBeLessThan(R * 0.04);
-  });
-});
-
-describe("hour numerals (follow-up 21, follow-up 46)", () => {
-  const R = 14.2e-3;
-  const numerals = dialHourNumeralPlacements(R);
-  const markers = dialMarkerPlacements(R);
-
-  it("every hour has a numeral, 12 first then 1 to 11, so the hours that had none now have one", () => {
-    expect(numerals.map((n) => n.text)).toEqual(["12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"]);
-    expect(numerals.map((n) => n.hour)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-  });
-
-  /** The numeral's box: half its width (a two-digit numeral is wider) and half its height about its centre. */
-  const corners = (n: { text: string; x: number; y: number; height: number }): { x: number; y: number }[] => {
-    const hw = (n.text.length * DIAL_VISUALIZATION.hourNumeralWidthPerHeight * n.height) / 2;
-    const hh = n.height / 2;
-    return [{ x: n.x - hw, y: n.y - hh }, { x: n.x + hw, y: n.y - hh }, { x: n.x - hw, y: n.y + hh }, { x: n.x + hw, y: n.y + hh }];
-  };
-
-  it("each numeral is inside its own circle: all four corners of its box are within the circle's radius", () => {
-    for (const n of numerals) {
-      const marker = markers.find((m) => m.hour === n.hour);
-      if (marker?.shape !== "CIRCLE") continue;
-      for (const c of corners(n)) expect(Math.hypot(c.x - marker.x, c.y - marker.y), `numeral ${n.text}`).toBeLessThan(marker.radiusMetres);
-    }
-  });
-
-  it("the 12 numeral is inside the upside-down triangle: all four corners of its box are inside it", () => {
-    const marker = markers.find((m) => m.hour === 0);
-    const numeral = numerals.find((n) => n.hour === 0);
-    if (marker === undefined || numeral === undefined) throw new Error("missing 12");
-    // Centred: on the triangle's centre, the centre of the circle it is inscribed in.
-    expect(numeral.x).toBeCloseTo(marker.x, 12);
-    expect(numeral.y).toBeCloseTo(marker.y, 12);
-    const Rt = marker.radiusMetres;
-    // Apex straight down at (0, -Rt), base corners at (±Rt sqrt(3) / 2, +Rt / 2), all about the marker's centre.
-    const apex = { x: 0, y: -Rt };
-    const left = { x: -Rt * Math.sqrt(3) / 2, y: Rt / 2 };
-    const right = { x: Rt * Math.sqrt(3) / 2, y: Rt / 2 };
-    const side = (a: { x: number; y: number }, b: { x: number; y: number }, p: { x: number; y: number }): number => (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
-    for (const c of corners(numeral)) {
-      const p = { x: c.x - marker.x, y: c.y - marker.y };
-      const signs = [side(apex, left, p), side(left, right, p), side(right, apex, p)];
-      expect(signs.every((v) => v > 0) || signs.every((v) => v < 0), `12 corner ${String(p.x)},${String(p.y)}`).toBe(true);
-    }
-  });
-
-  it("no two numerals overlap each other", () => {
-    for (let i = 0; i < numerals.length; i += 1) {
-      for (let j = i + 1; j < numerals.length; j += 1) {
-        const a = numerals[i];
-        const b = numerals[j];
-        if (a === undefined || b === undefined) continue;
-        const wa = (a.text.length * DIAL_VISUALIZATION.hourNumeralWidthPerHeight * a.height) / 2;
-        const wb = (b.text.length * DIAL_VISUALIZATION.hourNumeralWidthPerHeight * b.height) / 2;
-        const separatedX = Math.abs(a.x - b.x) > wa + wb;
-        const separatedY = Math.abs(a.y - b.y) > (a.height + b.height) / 2;
-        expect(separatedX || separatedY, `${a.text} and ${b.text}`).toBe(true);
-      }
-    }
   });
 });
 

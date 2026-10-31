@@ -20,7 +20,7 @@ test.describe("Colours flyout (ASM-0090)", () => {
     await expect(app.locator(".panel-frame-colours")).toBeVisible();
     const rows = app.locator(".colour-row");
     expect(await rows.count()).toBeGreaterThan(6);
-    for (const key of ["dial", "hourMarkers", "hourMarkerDigits", "dialPrint", "secondsHand", "minuteHand", "hourHand"]) {
+    for (const key of ["dial", "hourMarkers", "dialPrint", "secondsHand", "minuteHand", "hourHand"]) {
       await expect(app.getByTestId(`colour-dial-${key}`)).toBeVisible();
     }
     await expect(app.locator('[data-testid^="colour-wheel-text-"]').first()).toBeVisible();

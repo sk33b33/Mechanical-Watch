@@ -1285,8 +1285,6 @@ export class Viewport {
           // The printed triangles, marks and frames, and the printed text, follow the dial print colour when one is chosen.
           print: material(look.dialPrint === null ? COLORS.dialMarker : hexToNumber(look.dialPrint), { metalness: 0.2, roughness: 0.5 }),
           ...(look.dialPrint === null ? {} : { printText: look.dialPrint }),
-          // The numerals are pale on a dark top layer; on lume (pale) they are dark, unless a colour was chosen.
-          ...(look.hourMarkerDigits !== null ? { markerDigits: look.hourMarkerDigits } : look.hourMarkerLume ? { markerDigits: DIAL_VISUALIZATION.numeralColor } : {}),
         }, Object.values(movement.dialWindows), moonImageCounts, secondsScale);
         if (built === null) continue;
         this.content.add(built.root);

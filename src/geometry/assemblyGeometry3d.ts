@@ -84,8 +84,6 @@ export const DIAL_VISUALIZATION = {
   indexTopLayerFraction: 0.72,
   indexTopLayerThicknessMetres: 0.05e-3,
   indexMetalColor: 0xc9ccd2,
-  /** How far in front of an index's top layer its numeral is drawn. */
-  indexNumeralLiftMetres: 0.01e-3,
   /**
    * Seconds-scale numerals printed on the dial around the seconds hand's own pivot (Phase 8.15
    * follow-up 19: first placed on the big hour circles, then moved to the small seconds hand at
@@ -100,22 +98,6 @@ export const DIAL_VISUALIZATION = {
   ] as readonly { text: string; dx: number; dy: number }[],
   /** How far from the seconds hand's pivot the numerals sit, as a fraction of that hand's own length: just inside its tip. */
   secondsNumeralRingFraction: 0.95,
-  /**
-   * The hour numerals, one per marker (follow-up 21 printed four inside the big circles; follow-up 46 prints all
-   * twelve just inside their markers, because the markers are now too small to hold a numeral). `hour` is the
-   * marker's position, 0 at 12 o'clock going clockwise as read from the dial.
-   */
-  hourNumerals: [
-    { hour: 0, text: "12" }, { hour: 1, text: "1" }, { hour: 2, text: "2" }, { hour: 3, text: "3" },
-    { hour: 4, text: "4" }, { hour: 5, text: "5" }, { hour: 6, text: "6" }, { hour: 7, text: "7" },
-    { hour: 8, text: "8" }, { hour: 9, text: "9" }, { hour: 10, text: "10" }, { hour: 11, text: "11" },
-  ] as readonly { hour: number; text: string }[],
-  /** Hour numeral text height as a fraction of the dial radius: small enough for a circle and the 12 triangle to hold. */
-  hourNumeralHeightFraction: 0.032,
-  /** How wide a character is as a multiple of the text height (a two-digit numeral is two of these). */
-  hourNumeralWidthPerHeight: 0.62,
-  /** The numerals' default colour: pale on the dark markers (the year digits' own text colour, as in follow-up 21). The Colours menu can change it. */
-  hourNumeralColor: "#e8e2d0",
   /**
    * The small printed brand line under the big 6 circle (follow-up 30, ASM-0083): black, tiny, on the
    * dial's south axis, with its text centred this fraction of the dial radius from the centre and the
@@ -154,33 +136,6 @@ export interface SecondsNumeralPlacement {
  */
 export function secondsNumeralPlacements(pivot: { x: number; y: number }, ringRadius: number): SecondsNumeralPlacement[] {
   return DIAL_VISUALIZATION.secondsNumerals.map((n) => ({ text: n.text, x: pivot.x + n.dx * ringRadius, y: pivot.y + n.dy * ringRadius }));
-}
-
-export interface DialHourNumeralPlacement {
-  readonly hour: number;
-  readonly text: string;
-  /** Centre in the dial plane relative to the dial's own centre (same frame as the markers). */
-  readonly x: number;
-  readonly y: number;
-  /** Text height, metres. */
-  readonly height: number;
-}
-
-/**
- * Where each hour numeral is printed (ASM-0093): upright, centred in its marker. The 12 triangle's centre is its
- * centroid, which is the centre of the circle it is inscribed in, the same point a circle's numeral uses; the
- * triangle is big enough that a two-digit numeral there stays inside it (a test checks every corner of the box).
- * Pure geometry, no THREE dependency.
- */
-export function dialHourNumeralPlacements(dialRadius: number): DialHourNumeralPlacement[] {
-  const v = DIAL_VISUALIZATION;
-  const height = dialRadius * v.hourNumeralHeightFraction;
-  const markers = dialMarkerPlacements(dialRadius);
-  return v.hourNumerals.map((numeral) => {
-    const marker = markers.find((m) => m.hour === numeral.hour);
-    if (marker === undefined) throw new Error(`no hour marker for the numeral ${numeral.text}`);
-    return { hour: numeral.hour, text: numeral.text, x: marker.x, y: marker.y, height };
-  });
 }
 
 /** Where the brand line is printed: centre and text height in metres, relative to the dial's centre. */

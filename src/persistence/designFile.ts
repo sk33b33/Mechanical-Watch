@@ -48,7 +48,7 @@ export const DESIGN_FORMAT = "mechanical-watchmaker-3d.design";
  * Bump when the saved shape of Movement changes, and add a migration from
  * the previous version to MIGRATIONS so older files still open.
  */
-export const DESIGN_SCHEMA_VERSION = 38;
+export const DESIGN_SCHEMA_VERSION = 39;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -520,6 +520,14 @@ const MIGRATIONS: Record<number, (doc: Record<string, unknown>) => Record<string
     const movement = doc.movement;
     if (!isRecord(movement) || !isRecord(movement.appearance)) return doc;
     return { ...doc, schemaVersion: 38, movement: { ...movement, appearance: { ...movement.appearance, hourMarkerLume: false } } };
+  },
+  /** v38 → v39: the hour markers no longer carry numerals (follow-up 52), so the colour chosen for them is dropped. */
+  38: (doc) => {
+    const movement = doc.movement;
+    if (!isRecord(movement) || !isRecord(movement.appearance)) return doc;
+    const appearance = { ...movement.appearance };
+    delete appearance.hourMarkerDigits;
+    return { ...doc, schemaVersion: 39, movement: { ...movement, appearance } };
   },
 };
 
@@ -1008,7 +1016,6 @@ const appearance: Decoder<Appearance> = (value, path) => {
   return {
     dial: field(o, "dial", nullable(hexColour), path),
     hourMarkers: field(o, "hourMarkers", nullable(hexColour), path),
-    hourMarkerDigits: field(o, "hourMarkerDigits", nullable(hexColour), path),
     dialPrint: field(o, "dialPrint", nullable(hexColour), path),
     secondsHand: field(o, "secondsHand", nullable(hexColour), path),
     minuteHand: field(o, "minuteHand", nullable(hexColour), path),

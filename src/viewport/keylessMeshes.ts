@@ -20,7 +20,6 @@ import {
   createDialWindowCaptionTexture,
   createDialWindowPointerGeometry,
   dialBrandPlacement,
-  dialHourNumeralPlacements,
   setDialPlanarUv,
   withDialFaceGroups,
   dialMarkerPlacements,
@@ -142,11 +141,10 @@ export function buildDialMeshes(
   displayZ: (z: number) => number,
   /**
    * `marker` is the top layer of the twelve applied indices and `indexMetal` their metal body; `print` the triangles, moon-phase marks and window frames printed on the dial;
-   * `printText` the colour of the dial's printed text and numerals (the captions, the seconds numerals, the brand line)
-   * and `markerDigits` that of the numerals inside the four big hour circles. A text colour left out is the built-in
-   * one (follow-up 39, ASM-0090).
+   * `printText` the colour of the dial's printed text and numerals (the captions, the seconds numerals, the brand line).
+   * A text colour left out is the built-in one (follow-up 39, ASM-0090). The indices carry no numerals (follow-up 52).
    */
-  materials: { disc: THREE.Material; discFace?: THREE.Material; marker: THREE.Material; indexMetal: THREE.Material; print: THREE.Material; printText?: string; markerDigits?: string },
+  materials: { disc: THREE.Material; discFace?: THREE.Material; marker: THREE.Material; indexMetal: THREE.Material; print: THREE.Material; printText?: string },
   windows: readonly DialWindow[] = [],
   /** Moon-image count (1 or 2) of each window's own moon-phase disc, for windows with `phaseMarks` (ASM-0072). */
   moonImageCounts: ReadonlyMap<string, number> = new Map(),
@@ -210,19 +208,6 @@ export function buildDialMeshes(
     const top = new THREE.Mesh(cylinder(marker.radiusMetres * inset, layer), materials.marker);
     top.position.set(marker.x, marker.y, face - indexHeight - layer / 2);
     root.add(top);
-  }
-  // The twelve hour numerals, printed on the indices' top layers (follow-up 46, 47, 51), in the numerals' own colour.
-  for (const numeral of dialHourNumeralPlacements(r)) {
-    const builtHour = createDialWindowCaptionTexture(numeral.text, materials.markerDigits ?? d.hourNumeralColor);
-    if (builtHour === null) continue;
-    const hourPlane = new THREE.Mesh(
-      new THREE.PlaneGeometry(numeral.height * builtHour.aspect, numeral.height),
-      new THREE.MeshBasicMaterial({ map: builtHour.texture, transparent: true, depthWrite: false, side: THREE.DoubleSide }),
-    );
-    // Read from the dial's −Z side: half a turn about Y so the text reads left to right.
-    hourPlane.rotation.y = Math.PI;
-    hourPlane.position.set(numeral.x, numeral.y, face - indexHeight - layer - d.indexNumeralLiftMetres);
-    root.add(hourPlane);
   }
   // The small black brand line under the big 6 circle, just inside the dial's edge (follow-up 30, ASM-0083).
   const brand = dialBrandPlacement(r);

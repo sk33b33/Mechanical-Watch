@@ -2,6 +2,14 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 52: no numbers on the hour markers
+
+The twelve hour numerals printed on the indices are gone, and with them the **Hour marker digits** colour button (it
+would change nothing). The markers are plain applied indices: metal body, colourable top layer, optional lume. The
+numeral placements and their tests were removed from the code, not just hidden. Designs saved with a numeral colour
+still open: schema v39 drops that colour from older files (nothing else changes). The seconds-scale numbers and the
+dial's printed text are untouched. ASM-0093 notes the removal.
+
 ## Phase 8.15 follow-up 51: smooth tilt, face-only texture, applied indices, glow in the dark, night mode
 
 **Start screen (tilt).** Three causes of the jumps and the empty screen were found and fixed (ASM-0096):
