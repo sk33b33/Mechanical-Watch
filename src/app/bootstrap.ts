@@ -4,6 +4,7 @@ import { Viewport } from "@/viewport/viewport";
 import { mountViewportControls } from "@/viewport/viewportControls";
 import { mountMeasurementPanel } from "./panels/measurementPanel";
 import { mountProjectsDialog } from "./panels/projectsDialog";
+import { mountCarousel } from "./carousel/carouselView";
 import { mountOutputsDialog } from "./panels/outputsDialog";
 import { mountFixChainDialog } from "./panels/fixChainDialog";
 import { mountChainDiagramDialog } from "./panels/chainDiagramDialog";
@@ -67,6 +68,12 @@ export function bootstrapApp(root: HTMLElement, plainStart = false): Bootstrappe
 
   const projects = mountProjectsDialog(root, store, storage, (message, kind) => { toolbar.notify(message, kind); });
   toolbar.addFileAction("Projects…", "Designs saved in this browser", () => { projects.open(); });
+  const carousel = mountCarousel(viewportEl, store, storage, {
+    suspendViewport: () => { viewport.suspend(); },
+    resumeViewport: () => { viewport.resume(); },
+    notify: (message, kind) => { toolbar.notify(message, kind); },
+  });
+  toolbar.addFileAction("Carousel", "Every design saved in this browser on a spinning carousel: flick to spin, tap the centre one to open it", () => { carousel.open(); }, undefined, "carousel-open");
   const outputs = mountOutputsDialog(root, store, (message, kind) => { toolbar.notify(message, kind); });
   const fixChainDialog = mountFixChainDialog(root, store, (message, kind) => { toolbar.notify(message, kind); });
   openFixChain = () => { fixChainDialog.open(); };

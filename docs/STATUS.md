@@ -2,6 +2,34 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 53: edge tabs always on screen, and a carousel of saved movements
+
+**Edge tabs.** The tabs of the Components, Inspector, Colours and Validation flyouts could end up off the screen on a
+phone: the page itself overflowed by 25 px, which made a phone's layout viewport wider than the screen (415 px on a 390 px
+phone), and tabs fixed to that viewport's edges sat outside the visible one (the Validation tab was 55 px below the
+bottom). The page no longer scrolls or overflows, so the layout viewport is the screen and each tab hugs its own edge:
+left for Components, right for Inspector and Colours, bottom for Validation. A browser test checks this on a laptop window
+(also in Focus view) and on a phone, upright and on its side, and with the carousel open.
+
+**Carousel.** A **Carousel** button in the toolbar (next to Projects…) opens a view of every design saved in this browser:
+a ring of cards, each with a picture of that design's dial.
+- *Hover.* Each card floats up and down a few pixels (8 px), each out of step with its neighbour.
+- *Spin.* Drag the ring, or flick it: it turns the way it was flicked, left or right, at a speed taken from the last
+  tenth of a second of the drag (at most 12 rad/s).
+- *Slow to a halt, locked in the centre.* The spin dies away gradually (friction) and, as it slows, a magnet (a damped
+  spring) pulls the nearest card to the centre and holds it there. A gentle nudge is pulled to the nearest card too; it
+  never rests between two.
+- *Open.* Tapping the locked centre card opens that design for editing (Undo brings back the one that was open) while the
+  other cards disappear and the chosen one grows to fill the view. Tapping a card at the side only turns it to the centre.
+  Arrow keys turn the ring, Enter opens the centre card, Escape closes.
+- *Empty and broken entries.* With nothing saved it says so, and **Save current design** puts the open movement there. A
+  design that cannot be opened (for example saved by a newer version) is shown with the reason and does not open.
+- *Honest limits (ASM-0097).* The pictures are drawn from each saved design's own data (dial size and colour, hour
+  markers with their top layer colour or lume, dial windows, hands in their own colours, at 10:10:35), not rendered by the
+  3D viewport, so they show the dial and not the gear train. The motion numbers are a feel, not a physical model. The
+  pictures are decoded and drawn one per frame when the carousel opens. The 3D drawing is paused while the carousel is up.
+  Tested with mouse drags only; touch flicks use the same pointer events but have not been tried on a real phone.
+
 ## Phase 8.15 follow-up 52: no numbers on the hour markers
 
 The twelve hour numerals printed on the indices are gone, and with them the **Hour marker digits** colour button (it

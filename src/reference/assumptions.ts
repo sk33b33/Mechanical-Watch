@@ -585,6 +585,12 @@ export const ASSUMPTIONS = {
     scope: "src/app/splash/*, src/app/style.css (visual/L0 display only)",
     status: "Active",
   },
+  "ASM-0097": {
+    summary:
+      "Carousel of saved movements and always-visible edge tabs (Phase 8.15 follow-up 53), presentation only (L0 visual, ASM-0004): (1) The Carousel view shows every design saved in this browser (Projects) as a card on a ring that turns like a carousel. Each card is a picture drawn from the saved design's own data (dial size and colour, hour markers with their top layer colour or lume, dial windows, hands in their own colours, shown at 10:10:35); it is not a render by the 3D viewport and shows nothing the design does not say. Cards hover up and down by 8 px, out of step with each other. Dragging turns the ring; letting go while moving flicks it (the speed of the last 0.1 s of the drag, at most 12 rad/s), either way; the spin decays by friction (about a second to lose two thirds) and, as it slows below 2.2 rad/s, a magnet (a damped spring towards the nearest slot) locks the nearest card at the front. These numbers are a feel, not a physical model. Tapping the locked front card opens that design in the editor (Undo brings back the one that was open) while the other cards fade away; tapping another card turns it to the front. A design that cannot be opened (saved by a newer version) is shown and says why. (2) The page no longer scrolls or overflows, so on a phone the layout viewport is the screen and the flyout panels' edge tabs sit on the visible screen edges (they were pushed off it by 25 px). None of it is read by validation, kinematics or any export; the carousel opens nothing and saves nothing by itself.",
+    scope: "src/app/carousel/*, src/app/style.css (visual/L0 display only)",
+    status: "Active",
+  },
 } as const satisfies Record<string, Omit<Assumption, "id">>;
 
 export type AssumptionId = keyof typeof ASSUMPTIONS;

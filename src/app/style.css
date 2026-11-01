@@ -22,6 +22,15 @@
   box-sizing: border-box;
 }
 
+/* The workspace is exactly the window; the page itself never scrolls. Without this a phone's layout viewport grew past the
+   screen (415 px on a 390 px phone) and the flyout tabs, fixed to the layout viewport's edges, sat off the visible
+   screen (follow-up 53). */
+html,
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 html,
 body,
 #app {
@@ -1736,4 +1745,168 @@ html.splash-open #app {
 }
 .colour-hex.invalid {
   border-color: var(--error);
+}
+
+/* ---- Carousel of saved movements (follow-up 53, ASM-0097) --------------------------------------
+   Presentation only: a ring of cards in 3D, over the viewport but under the flyout panels and their edge tabs. */
+.carousel {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 42%, rgba(70, 120, 160, 0.28), transparent 70%),
+    linear-gradient(180deg, #0b0f14 0%, #10161d 55%, #080b0f 100%);
+  transition: opacity 0.25s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.carousel[hidden] {
+  display: none;
+}
+.carousel-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding: 10px 14px 6px 40px; /* leaves the left edge tab clear */
+}
+.carousel-title {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+.carousel-hint {
+  flex: 1 1 200px;
+  font-size: 11px;
+}
+.carousel-stage {
+  --card-w: clamp(150px, 52vw, 230px);
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  perspective: 1100px;
+  perspective-origin: 50% 45%;
+  cursor: grab;
+  touch-action: none;
+  outline: none;
+}
+.carousel-stage.dragging {
+  cursor: grabbing;
+}
+.carousel-ring {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+}
+.carousel-card {
+  position: absolute;
+  left: calc(var(--card-w) / -2);
+  top: calc(var(--card-w) * -0.62);
+  width: var(--card-w);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 10px 12px;
+  font: inherit;
+  color: var(--text-0);
+  text-align: left;
+  cursor: inherit;
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03) 45%, rgba(92, 200, 255, 0.06));
+  border: 1px solid rgba(170, 225, 255, 0.28);
+  border-radius: 14px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), inset 0 0 24px rgba(92, 200, 255, 0.06);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  will-change: transform, opacity;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.carousel-card.front {
+  border-color: rgba(92, 200, 255, 0.9);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), 0 0 26px rgba(92, 200, 255, 0.45), inset 0 0 24px rgba(92, 200, 255, 0.12);
+}
+.carousel-art {
+  width: 100%;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.carousel-portrait {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.5));
+}
+.carousel-no-dial {
+  padding: 8px;
+  font-size: 11px;
+  text-align: center;
+  color: var(--text-1);
+}
+.carousel-name {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.carousel-date {
+  font-size: 10px;
+  pointer-events: none;
+}
+.carousel-badge {
+  font-size: 10px;
+  line-height: 1.3;
+}
+.carousel-empty {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  max-width: min(440px, 80%);
+  margin: 0;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-1);
+}
+.carousel-empty[hidden] {
+  display: none;
+}
+/* Read out by assistive tools when the front card changes; the card itself already shows the name and date. */
+.carousel-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* Opening a card: the chosen one grows to fill the view and fades while every other card is gone at once. */
+.carousel.expanding .carousel-card:not(.chosen) {
+  opacity: 0 !important;
+  transition: opacity 0.2s ease;
+}
+.carousel.expanding .carousel-card.chosen {
+  z-index: 1000 !important;
+  transform: translateZ(var(--grow-z, 0px)) scale(var(--grow, 3)) !important;
+  opacity: 0 !important;
+  transition: transform 0.5s ease-in, opacity 0.5s ease-in;
+}
+.carousel.expanding .carousel-bar {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .carousel,
+  .carousel-card,
+  .carousel.expanding .carousel-card.chosen {
+    transition: none;
+  }
 }
