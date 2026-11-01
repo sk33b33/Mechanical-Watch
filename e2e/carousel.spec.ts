@@ -122,7 +122,7 @@ test.describe("carousel of saved movements (ASM-0097)", () => {
     expect(Math.abs(c - b)).toBeLessThanOrEqual(Math.abs(b - a) + 0.02);
     await locked(app);
     const end = await num(app, "angle");
-    const step = (2 * Math.PI) / 6;
+    const step = (2 * Math.PI) / 8; // the ring has at least eight places
     expect(Math.abs(end / step - Math.round(end / step)), "locked exactly on a slot").toBeLessThan(0.01);
     expect(end).toBeGreaterThan(start + 0.5);
     // The other way.
@@ -146,7 +146,7 @@ test.describe("carousel of saved movements (ASM-0097)", () => {
     await app.mouse.up();
     await expect(carousel(app)).toHaveAttribute("data-locked", "true", { timeout: 10000 });
     const angle = await num(app, "angle");
-    const step = (2 * Math.PI) / 5;
+    const step = (2 * Math.PI) / 8; // the ring has at least eight places
     expect(Math.abs(angle / step - Math.round(angle / step))).toBeLessThan(0.01);
   });
 

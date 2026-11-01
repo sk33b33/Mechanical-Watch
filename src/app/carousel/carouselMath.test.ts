@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { angleForIndex, CAROUSEL, cardOpacity, clampSpeed, displayAngle, flickVelocity, frontIndex, hoverOffset, isLocked, magnetStrength, ringRadius, slotStep, snapTarget, stepRing, type RingState } from "./carouselMath";
+import { angleForIndex, CAROUSEL, cardOpacity, clampSpeed, displayAngle, flickVelocity, frontIndex, hoverOffset, isLocked, magnetStrength, ringRadius, slotCount, slotStep, snapTarget, stepRing, type RingState } from "./carouselMath";
 
 /** Runs the ring until it locks (or 30 s pass), at 60 frames per second. */
 function spinDown(start: RingState, count: number): { state: RingState; seconds: number } {
@@ -13,26 +13,46 @@ function spinDown(start: RingState, count: number): { state: RingState; seconds:
 }
 
 describe("carousel slots", () => {
-  it("cards stand 2 pi / n apart and card i is at the front when the ring is at -i steps", () => {
-    expect(slotStep(8)).toBeCloseTo(Math.PI / 4, 12);
+  it("cards stand 2 pi / n apart on a ring of at least eight places, and card i is at the front when the ring is at -i steps", () => {
+    expect(slotStep(12)).toBeCloseTo(Math.PI / 6, 12);
     expect(slotStep(0)).toBe(0);
+    expect(slotCount(3)).toBe(CAROUSEL.minSlots);
+    expect(slotCount(20)).toBe(20);
     for (const i of [0, 1, 4, 7]) expect(frontIndex(angleForIndex(i, 8), 8)).toBe(i);
+    for (const i of [0, 1, 2]) expect(frontIndex(angleForIndex(i, 3), 3)).toBe(i);
   });
 
   it("the front card is the nearest to the front, wrapping around the ring", () => {
-    const step = slotStep(6);
-    expect(frontIndex(0.4 * step, 6)).toBe(0);
-    expect(frontIndex(-0.6 * step, 6)).toBe(1);
-    expect(frontIndex(0.6 * step, 6)).toBe(5);
-    expect(frontIndex(-7 * step, 6)).toBe(1); // a full turn and one more
+    const step = slotStep(10);
+    expect(frontIndex(0.4 * step, 10)).toBe(0);
+    expect(frontIndex(-0.6 * step, 10)).toBe(1);
+    expect(frontIndex(0.6 * step, 10)).toBe(9);
+    expect(frontIndex(-11 * step, 10)).toBe(1); // a full turn and one more
     expect(frontIndex(0, 0)).toBe(-1);
   });
 
+  it("a few cards stand side by side: neighbours are 45 degrees apart, and empty places are skipped to the nearest card", () => {
+    const step = slotStep(3);
+    expect(step).toBeCloseTo(Math.PI / 4, 12);
+    // Between the last card and the first, across the empty places, the nearer of the two is in front.
+    expect(frontIndex(-2.4 * step, 3)).toBe(2);
+    expect(frontIndex(-5.5 * step, 3)).toBe(0); // 5.5 places on: nearer card 0 (at 8) than card 2 (at 2)
+    expect(frontIndex(-4.4 * step, 3)).toBe(2);
+    expect(snapTarget(-2.4 * step, 3)).toBeCloseTo(-2 * step, 12);
+    // Only cards are slots: the magnet never rests the ring on an empty place.
+    for (let a = -9; a <= 9; a += 0.37) {
+      const index = frontIndex(a, 3);
+      expect(index).toBeGreaterThanOrEqual(0);
+      expect(index).toBeLessThanOrEqual(2);
+      expect(Math.abs(snapTarget(a, 3) - angleForIndex(index, 3, a))).toBeLessThan(1e-9);
+    }
+  });
+
   it("snaps to the nearest slot, and picks the way round that is nearest to where the ring is", () => {
-    const step = slotStep(5);
-    expect(snapTarget(0.3 * step, 5)).toBeCloseTo(0, 12);
-    expect(snapTarget(-0.7 * step, 5)).toBeCloseTo(-step, 12);
-    expect(angleForIndex(1, 5, -10 * Math.PI)).toBeCloseTo(-step - 10 * Math.PI, 9);
+    const step = slotStep(10);
+    expect(snapTarget(0.3 * step, 10)).toBeCloseTo(0, 12);
+    expect(snapTarget(-0.7 * step, 10)).toBeCloseTo(-step, 12);
+    expect(angleForIndex(1, 10, -10 * Math.PI)).toBeCloseTo(-step - 10 * Math.PI, 9);
   });
 });
 
@@ -127,10 +147,12 @@ describe("flicks from a drag", () => {
 describe("ring layout and hover", () => {
   it("the radius makes neighbouring cards touch edge to edge; it grows with the number of cards", () => {
     const width = 200;
-    for (const n of [3, 6, 12]) {
+    for (const n of [8, 10, 12]) {
       const r = ringRadius(n, width, 0);
       expect(2 * r * Math.sin(Math.PI / n)).toBeCloseTo(width, 9);
     }
+    // A handful of cards use the minimum of eight places, so they stand side by side rather than across the ring.
+    expect(ringRadius(3, width, 0)).toBeCloseTo(ringRadius(8, width, 0), 9);
     expect(ringRadius(12, 200, 20)).toBeGreaterThan(ringRadius(6, 200, 20));
     expect(ringRadius(1, 200, 20)).toBe(0);
   });
@@ -157,10 +179,11 @@ describe("ring layout and hover", () => {
   });
 
   it("a card's displayed angle wraps to the front-centred range", () => {
-    expect(displayAngle(0, 4, 0)).toBe(0);
-    expect(displayAngle(1, 4, 0)).toBeCloseTo(Math.PI / 2, 12);
-    expect(displayAngle(3, 4, 0)).toBeCloseTo(-Math.PI / 2, 12);
-    expect(displayAngle(2, 4, 0)).toBeCloseTo(Math.PI, 12);
-    expect(displayAngle(0, 4, 7 * Math.PI)).toBeCloseTo(Math.PI, 12);
+    expect(displayAngle(0, 8, 0)).toBe(0);
+    expect(displayAngle(2, 8, 0)).toBeCloseTo(Math.PI / 2, 12);
+    expect(displayAngle(6, 8, 0)).toBeCloseTo(-Math.PI / 2, 12);
+    expect(displayAngle(4, 8, 0)).toBeCloseTo(Math.PI, 12);
+    expect(displayAngle(0, 8, 7 * Math.PI)).toBeCloseTo(Math.PI, 12);
+    expect(displayAngle(1, 3, 0)).toBeCloseTo(Math.PI / 4, 12); // a few cards stand 45 degrees apart
   });
 });

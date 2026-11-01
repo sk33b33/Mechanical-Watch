@@ -13,6 +13,8 @@ left for Components, right for Inspector and Colours, bottom for Validation. A b
 
 **Carousel.** A **Carousel** button in the toolbar (next to Projects…) opens a view of every design saved in this browser:
 a ring of cards, each with a picture of that design's dial.
+- *Ring.* The ring has at least eight places (45 degrees apart); with fewer saved designs they stand side by side and
+  the places beyond them are empty, so every card can be seen. The ring only ever locks on a card.
 - *Hover.* Each card floats up and down a few pixels (8 px), each out of step with its neighbour.
 - *Spin.* Drag the ring, or flick it: it turns the way it was flicked, left or right, at a speed taken from the last
   tenth of a second of the drag (at most 12 rad/s).

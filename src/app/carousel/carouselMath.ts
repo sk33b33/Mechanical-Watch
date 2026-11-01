@@ -5,7 +5,9 @@ import type { AssumptionId } from "@/reference/assumptions";
  * testable. It is presentation only (L0 visual, ASM-0004, ASM-0097): the carousel decides how a ring of cards looks and
  * moves, never anything about a movement.
  *
- * Model: n cards stand on a ring, `step = 2 pi / n` apart. The ring has an angle; a card's place on screen is its own
+ * Model: n cards stand on a ring with `slots = max(n, minSlots)` places, `step = 2 pi / slots` apart (a library of two or
+ * three designs would otherwise sit on opposite sides of the ring, out of sight; with the minimum they stand side by side
+ * with empty places beyond them). The ring has an angle; a card's place on screen is its own
  * ring angle plus that angle (0 is the front, facing the viewer, positive turns towards the viewer's right). Card i sits at
  * the front when `angle = -i * step` (modulo a full turn).
  *
@@ -22,6 +24,8 @@ export const CAROUSEL = {
   magnetDamping: 12,
   /** Below this spin speed (rad/s) the magnet is fully on; above it, it fades out so a fast spin is free. */
   captureSpeed: 2.2,
+  /** The fewest places on the ring, so that a few cards stand side by side and can all be seen (45 degrees apart). */
+  minSlots: 8,
   /** The fastest spin a flick can give (rad/s). */
   maxSpeed: 12,
   /** The ring counts as locked when this close (radians) to a slot and this slow (rad/s). */
@@ -50,9 +54,14 @@ export interface RingState {
   readonly velocity: number;
 }
 
-/** Angle between neighbouring cards. */
+/** The places on the ring for `count` cards. */
+export function slotCount(count: number): number {
+  return count <= 0 ? 0 : Math.max(count, CAROUSEL.minSlots);
+}
+
+/** Angle between neighbouring places. */
 export function slotStep(count: number): number {
-  return count <= 0 ? 0 : (2 * Math.PI) / count;
+  return count <= 0 ? 0 : (2 * Math.PI) / slotCount(count);
 }
 
 /** The ring angle at which card `index` is at the front and nearest to `near`. */
@@ -64,18 +73,28 @@ export function angleForIndex(index: number, count: number, near = 0): number {
   return base + turns * 2 * Math.PI;
 }
 
-/** The index of the card nearest the front at this ring angle. */
+/** The card nearest the front at this ring angle (in places, round the ring), or -1 for none. */
 export function frontIndex(angle: number, count: number): number {
   if (count <= 0) return -1;
-  const step = slotStep(count);
-  const raw = Math.round(-angle / step);
-  return ((raw % count) + count) % count;
+  const places = slotCount(count);
+  const at = -angle / slotStep(count);
+  let best = 0;
+  let bestDistance = Infinity;
+  for (let i = 0; i < count; i += 1) {
+    const around = (((at - i) % places) + places) % places;
+    const distance = Math.min(around, places - around);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = i;
+    }
+  }
+  return best;
 }
 
-/** The nearest slot's ring angle (continuous: not wrapped to one turn). */
+/** The nearest card's front angle (continuous: not wrapped to one turn). */
 export function snapTarget(angle: number, count: number): number {
-  const step = slotStep(count);
-  return step === 0 ? 0 : -Math.round(-angle / step) * step;
+  const nearest = frontIndex(angle, count);
+  return nearest < 0 ? 0 : angleForIndex(nearest, count, angle);
 }
 
 /** The magnet's strength, 0 (a fast spin, free) to 1 (slow enough to lock). */
@@ -128,10 +147,10 @@ export function flickVelocity(samples: readonly DragSample[], releasedAt: number
   return clampSpeed((last.angle - first.angle) / (last.time - first.time));
 }
 
-/** The ring's radius so that neighbouring cards of `cardWidth` (plus `gap`) just fit side by side on it. */
+/** The ring's radius so that neighbouring places of `cardWidth` (plus `gap`) just fit side by side on it. */
 export function ringRadius(count: number, cardWidth: number, gap: number): number {
   if (count <= 1) return 0;
-  return (cardWidth + gap) / (2 * Math.sin(Math.PI / count));
+  return (cardWidth + gap) / (2 * Math.sin(Math.PI / slotCount(count)));
 }
 
 /** How far a card hovers from its resting height (px, positive down) at time `seconds`; cards are out of step with each other. */
