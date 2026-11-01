@@ -2,6 +2,28 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 54: the carousel is the way in
+
+- **Tap to enter meets the carousel.** It fills the whole window and shows nothing else: no header, toolbar, panels or edge
+  tabs (the editor is behind it and cannot be reached). The UI appears the moment a movement is chosen. Its one control is
+  a small **Exit carousel** button (Escape also leaves); the toolbar's **Carousel** button enters it again. Its first entry
+  from the start screen sets the browser's date and time and the dial view when you leave, as entering always did.
+- **Eight places.** Each is a design you put on the carousel, or an **Empty** square (translucent, the word in the middle).
+  Tapping an empty place that is locked in front starts a new project and the UI appears; a tapped place at the side only
+  turns to the front first. A design that cannot be opened is shown with the reason.
+- **Putting designs on it.** In **Projects…**: **Save and add to carousel** saves the open design and puts it in the first
+  empty place; every saved design has **Add to carousel** or **Remove from carousel**. Eight at most: a ninth is refused
+  with a message until you remove one. Deleting a saved design empties its place. The places are kept in browser storage
+  (`mw3d.carousel`), apart from the library itself.
+- **Open-at-startup removed.** The button, the star and the stored setting are gone (ASM-0088 superseded). The app holds the
+  teaching movement behind the carousel until one is chosen.
+- **Edge tabs in Android's desktop mode.** The flyout panels, their tabs and the tick switch are placed from the browser's
+  visual viewport (its size, offset and pinch zoom) and drawn at the inverse of the zoom, so zoomed in or out they stay
+  at the edges of what is on the screen and the same size on it. Unzoomed nothing changes.
+- **Limits (ASM-0098).** Not tried on a real phone: the browser tests set the zoom through Chromium's testing protocol and
+  send mouse drags. The carousel's cards are still pictures drawn from each design's dial data, not live 3D renders.
+  Without browser storage (a private window that blocks it) the carousel shows eight empty places and says so.
+
 ## Phase 8.15 follow-up 53: edge tabs always on screen, and a carousel of saved movements
 
 **Edge tabs.** The tabs of the Components, Inspector, Colours and Validation flyouts could end up off the screen on a

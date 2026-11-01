@@ -455,6 +455,8 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
   const dismiss = (): void => {
     if (left) return;
     left = true;
+    // The app is reachable again before `onEnter` runs: it may cover it with the carousel, which makes it inert in turn.
+    appRoot.inert = false;
     options.onEnter();
     unlockAudio(); // the tap is the user gesture that lets the second-hand tick play
     if (soundOn) playEntryClick();
@@ -466,7 +468,6 @@ export function mountSplash(options: SplashOptions): { dismiss: () => void } {
     document.removeEventListener("keydown", onKey, true);
     // A plain fade: the splash goes and the app is simply there (no zoom, follow-up 44).
     root.classList.add("splash-leaving");
-    appRoot.inert = false;
     const finish = (): void => { root.remove(); };
     if (reduced) finish();
     else window.setTimeout(finish, LEAVE_MILLISECONDS);

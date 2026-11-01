@@ -19,6 +19,11 @@ test("the start screen shows on load, is honest about validation, and a key pres
   await expect(page.locator("#app")).toHaveJSProperty("inert", true);
   await page.keyboard.press("Space");
   await expect(splash).toHaveCount(0);
+  // Entering meets the carousel of saved movements, with no other control on screen (follow-up 54).
+  await expect(page.getByTestId("carousel")).toBeVisible();
+  await expect(page.locator("#app")).toHaveJSProperty("inert", true);
+  await page.getByRole("button", { name: "Exit carousel" }).click();
+  await expect(page.getByTestId("carousel")).toBeHidden();
   await expect(page.locator("#app")).toHaveJSProperty("inert", false);
   await expect(page.locator("canvas").first()).toBeVisible();
   expect(errors, "uncaught page errors").toEqual([]);
@@ -35,6 +40,8 @@ test("a tap on the start screen enters, and the sound choice is remembered", asy
   await expect(page.getByRole("button", { name: "Sound off" })).toBeVisible();
   await page.getByRole("button", { name: "Tap to enter" }).click();
   await expect(page.locator(".splash")).toHaveCount(0);
+  await expect(page.getByTestId("carousel")).toBeVisible();
+  await expect(page.locator(".carousel-card")).toHaveCount(8);
 });
 
 test("?splash=off skips the start screen", async ({ page }) => {
@@ -43,12 +50,23 @@ test("?splash=off skips the start screen", async ({ page }) => {
   await expect(page.locator(".splash")).toHaveCount(0);
 });
 
-test("entering opens the teaching movement at the browser's time, in the dial view (follow-up 31, ASM-0085)", async ({ page }) => {
-  await page.goto("/");
+test("entering meets the carousel; choosing a movement on it opens that movement at the browser's time, in the dial view (follow-up 31, 54, ASM-0085)", async ({ page }) => {
+  // Put the teaching movement on the carousel (from a session without the start screen), then start afresh with it.
+  await page.goto("/?splash=off&start=plain");
   await page.evaluate(() => { localStorage.clear(); });
   await page.reload();
+  await page.getByRole("button", { name: "Projects…" }).click();
+  await page.getByTestId("projects-save-carousel").click();
+  await page.locator("dialog[open]").getByRole("button", { name: "Close", exact: true }).click();
+  await page.goto("/");
   await page.getByRole("button", { name: "Tap to enter" }).click();
   await expect(page.locator(".splash")).toHaveCount(0);
+  const carousel = page.getByTestId("carousel");
+  await expect(carousel).toBeVisible();
+  await expect(carousel).toHaveAttribute("data-locked", "true", { timeout: 15000 });
+  await expect(page.locator(".carousel-card.front")).toContainText("Teaching movement");
+  await page.locator(".carousel-card.front").click({ force: true });
+  await expect(carousel).toBeHidden({ timeout: 10000 });
   await expect(page.locator("header, .header").first()).toContainText("Teaching movement");
   const clockText = (d: Date): string => `${String(d.getHours() % 12 === 0 ? 12 : d.getHours() % 12)}:${String(d.getMinutes()).padStart(2, "0")}`;
   const now = new Date();
@@ -63,7 +81,7 @@ test("entering fades the start screen away with no zoom (follow-up 44)", async (
   await page.evaluate(() => { localStorage.clear(); });
   await page.reload();
   await page.getByRole("button", { name: "Tap to enter" }).click();
-  // The app behind it is simply there: no zoom-in animation class.
+  // Nothing zooms in: no zoom-in animation class, and the splash is simply gone.
   await expect(page.locator("#app")).not.toHaveClass(/app-zoom-in/);
   await expect(page.locator(".splash")).toHaveCount(0);
 });

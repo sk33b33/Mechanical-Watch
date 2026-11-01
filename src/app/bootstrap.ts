@@ -4,7 +4,7 @@ import { Viewport } from "@/viewport/viewport";
 import { mountViewportControls } from "@/viewport/viewportControls";
 import { mountMeasurementPanel } from "./panels/measurementPanel";
 import { mountProjectsDialog } from "./panels/projectsDialog";
-import { mountCarousel } from "./carousel/carouselView";
+import { mountCarousel, type CarouselView } from "./carousel/carouselView";
 import { mountOutputsDialog } from "./panels/outputsDialog";
 import { mountFixChainDialog } from "./panels/fixChainDialog";
 import { mountChainDiagramDialog } from "./panels/chainDiagramDialog";
@@ -19,7 +19,8 @@ import { mountTutorialBanner } from "./panels/tutorialBanner";
 import { mountTickSound } from "./audio/tickSound";
 import { mountFloatingControl } from "./layout/floatingControl";
 import { unlockAudioOnFirstGesture } from "./audio/audioContext";
-import { chooseStartupMovement } from "./startup";
+import { applyStartup, chooseStartupMovement } from "./startup";
+import { createEmptyMovement } from "@/domain/editing";
 import { PanelLayout } from "./layout/panelWindows";
 import { mountLayoutControls } from "./layout/layoutControls";
 
@@ -33,6 +34,7 @@ function panel(parent: HTMLElement, className: string): HTMLDivElement {
 export interface BootstrappedApp {
   store: AppStore;
   viewport: Viewport;
+  carousel: CarouselView;
 }
 
 export function bootstrapApp(root: HTMLElement, plainStart = false): BootstrappedApp {
@@ -68,12 +70,19 @@ export function bootstrapApp(root: HTMLElement, plainStart = false): Bootstrappe
 
   const projects = mountProjectsDialog(root, store, storage, (message, kind) => { toolbar.notify(message, kind); });
   toolbar.addFileAction("Projects…", "Designs saved in this browser", () => { projects.open(); });
-  const carousel = mountCarousel(viewportEl, store, storage, {
+  // The carousel covers the whole window and hides every control; leaving it (by a choice or Exit) brings the editor back.
+  const carousel = mountCarousel(document.body, store, storage, {
     suspendViewport: () => { viewport.suspend(); },
     resumeViewport: () => { viewport.resume(); },
     notify: (message, kind) => { toolbar.notify(message, kind); },
+    appRoot: root,
+    startNewProject: () => { store.load(createEmptyMovement()); },
+    left: ({ entering }) => {
+      // The first entry (from the start screen) sets the browser's time and the dial view, as entering always did.
+      if (entering && !plainStart) applyStartup(store, viewport);
+    },
   });
-  toolbar.addFileAction("Carousel", "Every design saved in this browser on a spinning carousel: flick to spin, tap the centre one to open it", () => { carousel.open(); }, undefined, "carousel-open");
+  toolbar.addFileAction("Carousel", "Enter carousel mode: the movements you put on the carousel on a spinning ring, with no other controls. Tap the centre one to open it, or an empty place to start a new project.", () => { carousel.open(); }, undefined, "carousel-open");
   const outputs = mountOutputsDialog(root, store, (message, kind) => { toolbar.notify(message, kind); });
   const fixChainDialog = mountFixChainDialog(root, store, (message, kind) => { toolbar.notify(message, kind); });
   openFixChain = () => { fixChainDialog.open(); };
@@ -93,16 +102,13 @@ export function bootstrapApp(root: HTMLElement, plainStart = false): Bootstrappe
   toolbar.addFileAction("Tutorial…", "Guided walkthrough: build a movement from scratch", () => { store.startTutorial(); });
 
   const notes: string[] = [];
-  if (choice.startupProjectName !== null) notes.push(`Opened “${choice.startupProjectName}”, your startup layout.`);
-  if (choice.startupProblem !== null) notes.push(`Your startup layout could not be opened (${choice.startupProblem}), so the teaching movement opened instead.`);
   if (choice.preserved !== null) {
     const name = choice.preserved.movement.name;
     if (choice.preserveProblem !== null) notes.push(`Your last session's design “${name}” could not be kept in Projects: ${choice.preserveProblem}`);
     else if (choice.preserved.kept === "UNSAVED_COPY") notes.push(`Your last session's unsaved edits are kept in Projects… as “${name} (unsaved edits)”; the saved design itself is untouched.`);
-    else if (choice.startupProjectName === null) notes.push(`Opened the teaching movement. Your last session's design “${name}” is kept in Projects…`);
-    else notes.push(`Your last session's design “${name}” is kept in Projects…`);
+    else notes.push(`Opened the teaching movement. Your last session's design “${name}” is kept in Projects…`);
   }
-  if (notes.length > 0) toolbar.notify(notes.join(" "), choice.preserveProblem !== null || choice.startupProblem !== null ? "error" : "info");
+  if (notes.length > 0) toolbar.notify(notes.join(" "), choice.preserveProblem !== null ? "error" : "info");
   if (saved.status === "UNREADABLE") {
     toolbar.notify(
       `Your autosaved design could not be read and was set aside, not deleted. Showing the teaching movement instead. (${saved.reason})`,
@@ -113,5 +119,5 @@ export function bootstrapApp(root: HTMLElement, plainStart = false): Bootstrappe
   store.onDesignChange((movement) => {
     toolbar.setAutosaveStatus(writeAutosave(storage, movement) ? "Autosaved" : "Autosave failed");
   });
-  return { store, viewport };
+  return { store, viewport, carousel };
 }

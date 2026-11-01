@@ -4,7 +4,14 @@ import { createDemoMovement } from "@/app/demoMovement";
 import type { KeyValueStore } from "./autosave";
 import { encodeDesign } from "./designFile";
 import {
+  addToCarousel,
+  CAROUSEL_KEY,
+  CAROUSEL_SLOTS,
+  carouselSlots,
   deleteProject,
+  isOnCarousel,
+  readCarouselIds,
+  removeFromCarousel,
   LIBRARY_KEY,
   LIBRARY_RECOVERY_KEY,
   listProjects,
@@ -82,5 +89,91 @@ describe("project library", () => {
     expect(listProjects(null).ok).toBe(false);
     const full: KeyValueStore = { getItem: () => null, setItem: () => { throw new Error("quota"); }, removeItem: () => undefined };
     expect(saveProject(full, createDemoMovement()).ok).toBe(false);
+  });
+});
+
+describe("the carousel's eight places (follow-up 54, ASM-0098)", () => {
+  /** Saves `count` designs with distinct ids and returns their ids, oldest first. */
+  function saveMany(store: ReturnType<typeof memoryStore>, count: number): string[] {
+    const ids: string[] = [];
+    for (let i = 0; i < count; i += 1) {
+      const m = { ...createTeachingMovement(), name: `Design ${String(i)}` };
+      unwrap(saveProject(store, m, new Date(2026, 0, 1, 10, i)));
+      ids.push(m.id);
+    }
+    return ids;
+  }
+
+  it("starts with eight empty places, even with nothing saved or no storage at all", () => {
+    expect(CAROUSEL_SLOTS).toBe(8);
+    expect(readCarouselIds(memoryStore())).toEqual(Array.from({ length: 8 }, () => null));
+    expect(readCarouselIds(null)).toEqual(Array.from({ length: 8 }, () => null));
+  });
+
+  it("adding fills the first empty place; adding the same one again changes nothing", () => {
+    const store = memoryStore();
+    const [a, b, c] = saveMany(store, 3);
+    expect(unwrap(addToCarousel(store, a ?? ""))).toBe(0);
+    expect(unwrap(addToCarousel(store, b ?? ""))).toBe(1);
+    expect(unwrap(addToCarousel(store, a ?? ""))).toBe(0);
+    expect(readCarouselIds(store).slice(0, 3)).toEqual([a, b, null]);
+    // A removed place is the next one filled.
+    unwrap(removeFromCarousel(store, a ?? ""));
+    expect(readCarouselIds(store).slice(0, 2)).toEqual([null, b]);
+    expect(unwrap(addToCarousel(store, c ?? ""))).toBe(0);
+    expect(isOnCarousel(store, c ?? "")).toBe(true);
+    expect(isOnCarousel(store, a ?? "")).toBe(false);
+  });
+
+  it("holds only eight: the ninth is refused with the reason, and nothing changes", () => {
+    const store = memoryStore();
+    const ids = saveMany(store, 9);
+    for (const id of ids.slice(0, 8)) unwrap(addToCarousel(store, id));
+    const before = readCarouselIds(store);
+    const ninth = addToCarousel(store, ids[8] ?? "");
+    expect(ninth.ok).toBe(false);
+    if (!ninth.ok) expect(ninth.reason).toContain("full");
+    expect(readCarouselIds(store)).toEqual(before);
+    // Making room lets it in.
+    unwrap(removeFromCarousel(store, ids[3] ?? ""));
+    expect(unwrap(addToCarousel(store, ids[8] ?? ""))).toBe(3);
+  });
+
+  it("only a saved design can be added", () => {
+    const store = memoryStore();
+    const result = addToCarousel(store, "movement_nothing");
+    expect(result.ok).toBe(false);
+    expect(addToCarousel(null, "x").ok).toBe(false);
+  });
+
+  it("deleting a design empties its place, and a place naming something no longer saved reads as empty", () => {
+    const store = memoryStore();
+    const [a, b] = saveMany(store, 2);
+    unwrap(addToCarousel(store, a ?? ""));
+    unwrap(addToCarousel(store, b ?? ""));
+    unwrap(deleteProject(store, a ?? ""));
+    expect(readCarouselIds(store).slice(0, 2)).toEqual([null, b]);
+    // A stale id left in the stored list (say, by another tab) reads as empty too.
+    store.data[CAROUSEL_KEY] = JSON.stringify({ slots: ["movement_gone", b, b, 5, null, null, null, null] });
+    expect(readCarouselIds(store)).toEqual([null, b, null, null, null, null, null, null]);
+  });
+
+  it("lists the places as summaries, empty ones as null, in place order", () => {
+    const store = memoryStore();
+    const [a, b] = saveMany(store, 2);
+    unwrap(addToCarousel(store, b ?? ""));
+    unwrap(addToCarousel(store, a ?? ""));
+    const slots = unwrap(carouselSlots(store));
+    expect(slots).toHaveLength(8);
+    expect(slots[0]?.name).toBe("Design 1");
+    expect(slots[1]?.name).toBe("Design 0");
+    expect(slots.slice(2).every((slot) => slot === null)).toBe(true);
+  });
+
+  it("an unreadable stored list reads as empty rather than throwing", () => {
+    const store = memoryStore({ [CAROUSEL_KEY]: "{not json" });
+    expect(readCarouselIds(store)).toEqual(Array.from({ length: 8 }, () => null));
+    const wrongShape = memoryStore({ [CAROUSEL_KEY]: JSON.stringify({ slots: "nope" }) });
+    expect(readCarouselIds(wrongShape)).toEqual(Array.from({ length: 8 }, () => null));
   });
 });

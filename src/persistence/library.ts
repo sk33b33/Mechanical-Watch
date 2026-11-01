@@ -125,28 +125,82 @@ export function openProject(store: KeyValueStore | null, id: string): LibraryRes
   }
 }
 
-/** Which saved project opens when the app starts (follow-up 36), or null for the teaching movement. */
-export const STARTUP_PROJECT_KEY = "mw3d.startup.project";
+/**
+ * The carousel (follow-up 54, ASM-0098): the designs saved in this browser that stand on the carousel, in eight fixed
+ * places. A place holds the id of a saved design or is empty; "Add to carousel" fills the first empty place, "Remove" empties
+ * one, and deleting a design empties its place. Which designs are in the library is separate from which are on the carousel.
+ */
+export const CAROUSEL_KEY = "mw3d.carousel";
+export const CAROUSEL_SLOTS = 8;
 
-export function getStartupProjectId(store: KeyValueStore | null): string | null {
-  if (store === null) return null;
+/** The eight places, each a saved design's id or null. Places naming a design that is no longer in the library read as empty. */
+export function readCarouselIds(store: KeyValueStore | null): (string | null)[] {
+  const empty = (): (string | null)[] => Array.from({ length: CAROUSEL_SLOTS }, () => null);
+  if (store === null) return empty();
+  let parsed: unknown;
   try {
-    const value = store.getItem(STARTUP_PROJECT_KEY);
-    return value === null || value === "" ? null : value;
+    const text = store.getItem(CAROUSEL_KEY);
+    parsed = text === null ? null : JSON.parse(text);
   } catch {
-    return null;
+    return empty();
   }
+  const stored = typeof parsed === "object" && parsed !== null ? (parsed as { slots?: unknown }).slots : null;
+  const slots = empty();
+  if (!Array.isArray(stored)) return slots;
+  const library = readLibrary(store);
+  const known = library.ok ? library.value.entries : {};
+  const seen = new Set<string>();
+  for (let i = 0; i < CAROUSEL_SLOTS; i += 1) {
+    const id: unknown = stored[i];
+    if (typeof id === "string" && Object.hasOwn(known, id) && !seen.has(id)) {
+      slots[i] = id;
+      seen.add(id);
+    }
+  }
+  return slots;
 }
 
-export function setStartupProjectId(store: KeyValueStore | null, id: string | null): LibraryResult<null> {
-  if (store === null) return { ok: false, reason: "Browser storage is not available." };
+function writeCarouselIds(store: KeyValueStore, slots: readonly (string | null)[]): LibraryResult<null> {
   try {
-    if (id === null) store.removeItem(STARTUP_PROJECT_KEY);
-    else store.setItem(STARTUP_PROJECT_KEY, id);
+    store.setItem(CAROUSEL_KEY, JSON.stringify({ slots }));
     return { ok: true, value: null };
   } catch {
     return { ok: false, reason: "Browser storage refused the write (it may be full or blocked)." };
   }
+}
+
+/** The eight places as saved-design summaries, or null for an empty place. */
+export function carouselSlots(store: KeyValueStore | null): LibraryResult<(ProjectSummary | null)[]> {
+  const list = listProjects(store);
+  if (!list.ok) return list;
+  const byId = new Map(list.value.map((p) => [p.id, p]));
+  return { ok: true, value: readCarouselIds(store).map((id) => (id === null ? null : byId.get(id) ?? null)) };
+}
+
+export function isOnCarousel(store: KeyValueStore | null, id: string): boolean {
+  return readCarouselIds(store).includes(id);
+}
+
+/** Puts a saved design in the first empty place. Already there is fine; a full carousel is refused with the reason. */
+export function addToCarousel(store: KeyValueStore | null, id: string): LibraryResult<number> {
+  if (store === null) return { ok: false, reason: "Browser storage is not available." };
+  const library = readLibrary(store);
+  if (!library.ok) return library;
+  if (!Object.hasOwn(library.value.entries, id)) return { ok: false, reason: "That project is no longer in the library." };
+  const slots = readCarouselIds(store);
+  const already = slots.indexOf(id);
+  if (already >= 0) return { ok: true, value: already };
+  const free = slots.indexOf(null);
+  if (free < 0) return { ok: false, reason: `The carousel is full (${String(CAROUSEL_SLOTS)} movements). Remove one first.` };
+  slots[free] = id;
+  const written = writeCarouselIds(store, slots);
+  return written.ok ? { ok: true, value: free } : written;
+}
+
+export function removeFromCarousel(store: KeyValueStore | null, id: string): LibraryResult<null> {
+  if (store === null) return { ok: false, reason: "Browser storage is not available." };
+  const slots = readCarouselIds(store).map((slot) => (slot === id ? null : slot));
+  return writeCarouselIds(store, slots);
 }
 
 export type PreviousSessionKept = "OWN_ENTRY" | "UNSAVED_COPY" | "ALREADY_SAVED";
@@ -180,7 +234,9 @@ export function deleteProject(store: KeyValueStore | null, id: string): LibraryR
   if (store === null) return { ok: false, reason: "Browser storage is not available." };
   const library = readLibrary(store);
   if (!library.ok) return library;
-  if (getStartupProjectId(store) === id) setStartupProjectId(store, null);
   const entries = Object.fromEntries(Object.entries(library.value.entries).filter(([key]) => key !== id));
-  return writeLibrary(store, { ...library.value, entries });
+  const written = writeLibrary(store, { ...library.value, entries });
+  // A deleted design leaves its carousel place empty.
+  if (written.ok) removeFromCarousel(store, id);
+  return written;
 }

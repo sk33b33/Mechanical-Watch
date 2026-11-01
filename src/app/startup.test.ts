@@ -3,7 +3,7 @@ import { createTeachingMovement } from "@/app/teachingMovement";
 import { AppStore } from "@/app/store";
 import { createMovement, type Movement } from "@/domain/movement";
 import { decodeDesign, encodeDesign } from "@/persistence/designFile";
-import { deleteProject, getStartupProjectId, listProjects, saveProject, setStartupProjectId } from "@/persistence/library";
+import { listProjects, saveProject } from "@/persistence/library";
 import type { KeyValueStore } from "@/persistence/autosave";
 import { readHand } from "@/kinematics/timeDisplay";
 import { applyStartup, chooseStartupMovement, startupPlain } from "./startup";
@@ -73,34 +73,21 @@ describe("startup (follow-up 31, ASM-0085)", () => {
     }
   });
 
-  describe("a saved project set to open at startup (follow-up 36)", () => {
+  describe("the design the last session left behind (follow-up 36, kept in follow-up 54)", () => {
     const layout = (): Movement => ({ ...createTeachingMovement(), name: "My dial layout" });
 
-    it("opens that project exactly as saved instead of the teaching movement", () => {
+    it("an autosave identical to its saved entry is not saved again, and one with unsaved edits goes to a separate copy, leaving the saved design untouched", () => {
       const storage = memoryStore();
       const mine = layout();
       saveProject(storage, mine);
-      setStartupProjectId(storage, mine.id);
-      const choice = chooseStartupMovement({ status: "NONE" }, storage, createTeachingMovement, false);
-      expect(choice.startupProjectName).toBe("My dial layout");
-      expect(choice.startupProblem).toBeNull();
-      expect(choice.movement.id).toBe(mine.id);
-      expect(choice.movement.name).toBe("My dial layout");
-    });
-
-    it("an autosave identical to the saved layout is not saved again, and one with unsaved edits goes to a separate copy, leaving the saved layout untouched", () => {
-      const storage = memoryStore();
-      const mine = layout();
-      saveProject(storage, mine);
-      setStartupProjectId(storage, mine.id);
       // Same as saved (the autosave is read back from storage, like a real one): nothing kept, nothing duplicated.
       const same = decodeDesign(encodeDesign(mine));
       expect(chooseStartupMovement({ status: "LOADED", movement: same }, storage, createTeachingMovement, false).preserved).toBeNull();
-      // Edited since: a separate "(unsaved edits)" entry; the saved layout is still what opens.
+      // Edited since: a separate "(unsaved edits)" entry; the saved design is untouched, and the teaching movement is what is held.
       const edited: Movement = { ...same, drive: null };
       const choice = chooseStartupMovement({ status: "LOADED", movement: edited }, storage, createTeachingMovement, false);
       expect(choice.preserved?.kept).toBe("UNSAVED_COPY");
-      expect(choice.movement.drive).toEqual(mine.drive);
+      expect(choice.movement.isTeachingDemo).toBe(true);
       const names = listProjects(storage);
       expect(names.ok && names.value.map((p) => p.name).sort()).toEqual(["My dial layout", "My dial layout (unsaved edits)"]);
       // A second session replaces that copy rather than piling them up.
@@ -109,26 +96,17 @@ describe("startup (follow-up 31, ASM-0085)", () => {
       expect(again.ok && again.value).toHaveLength(2);
     });
 
-    it("falls back to the teaching movement and says why when the startup project is gone", () => {
-      const storage = memoryStore();
-      setStartupProjectId(storage, "missing");
-      const choice = chooseStartupMovement({ status: "NONE" }, storage, createTeachingMovement, false);
-      expect(choice.movement.isTeachingDemo).toBe(true);
-      expect(choice.startupProjectName).toBeNull();
-      expect(choice.startupProblem).toContain("no longer in the library");
-    });
-
-    it("deleting the startup project clears the setting; plain startup ignores it", () => {
+    it("there is no longer a project that opens at startup: a leftover setting from an older version is ignored", () => {
       const storage = memoryStore();
       const mine = layout();
       saveProject(storage, mine);
-      setStartupProjectId(storage, mine.id);
-      expect(chooseStartupMovement({ status: "NONE" }, storage, createTeachingMovement, true).movement.isTeachingDemo).toBe(true);
-      deleteProject(storage, mine.id);
-      expect(getStartupProjectId(storage)).toBeNull();
+      storage.setItem("mw3d.startup.project", mine.id);
+      const choice = chooseStartupMovement({ status: "NONE" }, storage, createTeachingMovement, false);
+      expect(choice.movement.isTeachingDemo).toBe(true);
+      expect(choice.movement.id).not.toBe(mine.id);
     });
 
-    it("applyStartup still sets the browser time and dial view for the saved layout", () => {
+    it("applyStartup still sets the browser time and dial view for whichever design is chosen", () => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date(2026, 9, 20, 15, 5, 30));
       try {

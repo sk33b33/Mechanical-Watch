@@ -5,15 +5,20 @@ import { mountSplash } from "./splash/splashScreen";
 import { splashChips, splashNote } from "./splash/splashContent";
 import { splashDisabled } from "./splash/splashGears";
 import { applyStartup, startupPlain } from "./startup";
+import { installVisualViewportVariables } from "./layout/visualViewport";
 
 const root = document.querySelector<HTMLDivElement>("#app");
 if (root === null) {
   throw new Error("Root element #app not found");
 }
 
+// Keeps the flyout panels' edge tabs on the screen's edges whatever the pinch zoom (Android's desktop mode, follow-up 54).
+installVisualViewportVariables();
+
 const plain = startupPlain(window.location.search);
-const { store, viewport } = bootstrapApp(root, plain);
-// On entry the app shows the teaching movement at the browser's date and time, dial view, centred.
+const { store, viewport, carousel } = bootstrapApp(root, plain);
+// Without the start screen the app opens straight onto the movement it holds (the teaching movement, or the restored
+// autosave with `?start=plain`), at the browser's date and time, in the dial view, centred.
 const enter = (): void => {
   if (!plain) applyStartup(store, viewport);
   viewport.resume();
@@ -31,6 +36,7 @@ if (splashDisabled(window.location.search)) {
     storage: browserStore(),
     chips: splashChips(store.movement),
     note: splashNote(store.movement),
-    onEnter: enter,
+    // Tapping to enter meets the carousel of saved movements; the editor appears when one is chosen (follow-up 54).
+    onEnter: () => { carousel.open({ entering: true }); },
   });
 }

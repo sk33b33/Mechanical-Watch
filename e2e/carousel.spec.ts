@@ -11,18 +11,26 @@ const openCarousel = async (page: Page): Promise<void> => {
   await expect(carousel(page)).toBeVisible();
 };
 const num = async (page: Page, key: string): Promise<number> => Number(await carousel(page).getAttribute(`data-${key}`));
+const locked = async (page: Page): Promise<void> => {
+  await expect(carousel(page)).toHaveAttribute("data-locked", "true", { timeout: 15000 });
+};
+const SLOT_STEP = (2 * Math.PI) / 8; // the ring has eight places
 
-/** Fills the library with designs of different colours (cloned from the teaching movement), then reloads the page. */
-async function seed(page: Page, names: readonly string[]): Promise<void> {
-  await openCarousel(page);
-  await page.getByTestId("carousel-save").click();
-  await page.getByTestId("carousel-close").click();
+/**
+ * Saves the open design in the library, clones it into `names.length` differently coloured designs, puts the first
+ * `onCarousel` of them on the carousel (in places 0, 1, 2, ...), then reloads the page.
+ */
+async function seed(page: Page, names: readonly string[], onCarousel = names.length): Promise<void> {
+  await page.getByRole("button", { name: "Projects…" }).click();
+  await page.getByTestId("projects-save").click();
+  await page.locator("dialog[open]").getByRole("button", { name: "Close", exact: true }).click();
   await page.evaluate(`(() => {
     const names = ${JSON.stringify(names)};
     const lib = JSON.parse(localStorage.getItem("mw3d.library"));
     const doc = JSON.parse(Object.values(lib.entries)[0].design);
     const dials = ["#1f3a5f", "#d9a38c", "#2f5d3a", "#4a525c", "#f0ead6", "#6b3f5c", "#c9b458", "#233d3a"];
     const entries = {};
+    const slots = [null, null, null, null, null, null, null, null];
     names.forEach((name, i) => {
       const d = JSON.parse(JSON.stringify(doc));
       d.movement.id = "movement_demo_" + i;
@@ -30,8 +38,10 @@ async function seed(page: Page, names: readonly string[]): Promise<void> {
       d.movement.appearance.dial = dials[i % dials.length];
       d.movement.appearance.hourMarkerLume = i % 2 === 1;
       entries["movement_demo_" + i] = { name, savedAt: new Date(Date.now() - i * 3600000).toISOString(), design: JSON.stringify(d) };
+      if (i < ${String(onCarousel)}) slots[i] = "movement_demo_" + i;
     });
     localStorage.setItem("mw3d.library", JSON.stringify({ format: "mechanical-watchmaker-3d.library", entries }));
+    localStorage.setItem("mw3d.carousel", JSON.stringify({ slots }));
   })()`);
   await page.reload();
   await expect(page.locator("canvas")).toBeVisible();
@@ -41,7 +51,7 @@ async function seed(page: Page, names: readonly string[]): Promise<void> {
 async function flick(page: Page, dx: number, ms = 90): Promise<void> {
   const box = await page.getByTestId("carousel").locator(".carousel-stage").boundingBox();
   if (box === null) throw new Error("no stage");
-  const y = box.y + box.height * 0.5;
+  const y = box.y + box.height * 0.8;
   const x0 = box.x + box.width * 0.5 - dx / 2;
   await page.mouse.move(x0, y);
   await page.mouse.down();
@@ -53,37 +63,66 @@ async function flick(page: Page, dx: number, ms = 90): Promise<void> {
   await page.mouse.up();
 }
 
-const locked = async (page: Page): Promise<void> => {
-  await expect(carousel(page)).toHaveAttribute("data-locked", "true", { timeout: 15000 });
-};
-
-test.describe("carousel of saved movements (ASM-0097)", () => {
-  test("with nothing saved it says so, and Save current design puts the open movement on the carousel", async ({ app }) => {
+test.describe("carousel of saved movements (ASM-0097, ASM-0098)", () => {
+  test("the carousel shows no other control: the toolbar, header and edge tabs are all behind it and cannot be reached", async ({ app }) => {
     await openCarousel(app);
-    await expect(app.getByTestId("carousel-empty")).toContainText("Nothing is saved");
-    await expect(app.getByTestId("carousel-card")).toHaveCount(0);
-    await app.getByTestId("carousel-save").click();
-    await expect(app.getByTestId("carousel-card")).toHaveCount(1);
-    await expect(app.getByTestId("carousel-empty")).toBeHidden();
-    await expect(app.getByTestId("carousel-card").first()).toContainText("Teaching movement");
-    // A single card cannot spin: it stays locked in the middle.
     await locked(app);
-    await flick(app, 300);
-    await locked(app);
-    expect(await num(app, "angle")).toBe(0);
-    await app.getByTestId("carousel-close").click();
-    await expect(carousel(app)).toBeHidden();
+    // Whatever is at the places of the header, toolbar and each edge tab is the carousel, not the editor.
+    const covered = await app.evaluate<boolean[]>(`(() => {
+      const points = [[200, 20], [200, 58], [900, 20], [4, 360], [1096, 360], [1096, 560], [550, 714]];
+      return points.map(([x, y]) => { const el = document.elementFromPoint(x, y); return !!el && !!el.closest(".carousel"); });
+    })()`);
+    expect(covered).toEqual([true, true, true, true, true, true, true]);
+    expect(await app.evaluate<boolean>(`document.querySelector("#app").inert`)).toBe(true);
+    // The only control on it is the small Exit button.
+    await expect(carousel(app).getByRole("button", { name: "Exit carousel" })).toBeVisible();
+    await expect(carousel(app).locator("button:not(.carousel-card):not(.carousel-exit)")).toHaveCount(0);
   });
 
-  test("every saved movement is a card showing a picture of its dial; the open one starts in front", async ({ app }) => {
-    await seed(app, ["Alpha", "Bravo", "Charlie", "Delta", "Echo"]);
+  test("it has eight places; with nothing on it every one is a translucent square saying Empty", async ({ app }) => {
     await openCarousel(app);
+    await expect(app.locator(".carousel-card")).toHaveCount(8);
+    await expect(app.getByTestId("carousel-empty-slot")).toHaveCount(8);
+    for (const slot of await app.getByTestId("carousel-empty-slot").all()) await expect(slot).toContainText("Empty");
+    await locked(app);
+    await expect(carousel(app)).toHaveAttribute("data-front-empty", "true");
+  });
+
+  test("tapping the empty place in front starts a new project and the editor appears; the carousel is gone", async ({ app }) => {
+    await openCarousel(app);
+    await locked(app);
+    await app.locator(".carousel-card.front").click({ force: true }); // (force: the cards hover, so never stand still)
+    await expect(carousel(app)).toHaveClass(/expanding/);
+    await expect(carousel(app)).toBeHidden({ timeout: 10000 });
+    await expect(app.locator(".header-title")).toContainText("Untitled movement");
+    expect(await app.evaluate<boolean>(`document.querySelector("#app").inert`)).toBe(false);
+    await expect(app.getByRole("button", { name: "Undo", exact: true })).toBeEnabled();
+  });
+
+  test("a tap on an empty place at the side turns it to the front first, and only a tap on the locked front one starts the project", async ({ app }) => {
+    await seed(app, ["Alpha"], 1);
+    await openCarousel(app);
+    await locked(app);
+    await expect(app.locator(".carousel-card.front")).toContainText("Alpha");
+    // The next place round the ring is empty and stands to the right; tap it.
+    await app.locator(".carousel-card.empty").first().click({ force: true });
+    await expect(carousel(app)).toHaveAttribute("data-locked", "true", { timeout: 10000 });
+    await expect(carousel(app)).toHaveAttribute("data-front-empty", "true");
+    await expect(carousel(app)).toBeVisible();
+    await expect(app.locator(".header-title")).not.toContainText("Untitled");
+  });
+
+  test("the movements on the carousel are cards with a picture of their dial, in their places, among the empty ones", async ({ app }) => {
+    await seed(app, ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot"], 5);
+    await openCarousel(app);
+    await expect(app.locator(".carousel-card")).toHaveCount(8);
     await expect(app.getByTestId("carousel-card")).toHaveCount(5);
-    // Each card gets a drawn dial (SVG), never a second canvas.
+    await expect(app.getByTestId("carousel-empty-slot")).toHaveCount(3);
+    // A saved design that is not put on the carousel is not on it.
+    await expect(app.locator(".carousel-card", { hasText: "Foxtrot" })).toHaveCount(0);
     await expect(app.locator(".carousel-card .carousel-portrait")).toHaveCount(5, { timeout: 15000 });
     expect(await app.locator("canvas").count()).toBe(1);
     await locked(app);
-    // Newest first: Alpha is in front.
     await expect(app.locator(".carousel-card.front")).toContainText("Alpha");
     await expect(app.getByTestId("carousel-caption")).toContainText("Alpha");
   });
@@ -97,9 +136,7 @@ test.describe("carousel of saved movements (ASM-0097)", () => {
     await app.waitForTimeout(900);
     const second = await ys();
     expect(second.some((v, i) => Math.abs(v - (first[i] ?? 0)) > 1), "some card moved vertically").toBe(true);
-    // They are not all at the same height at once.
     expect(new Set(second.map((v) => Math.round(v))).size).toBeGreaterThan(1);
-    // And never by more than a few pixels.
     for (const v of [...first, ...second]) expect(Math.abs(v)).toBeLessThanOrEqual(10);
   });
 
@@ -110,9 +147,7 @@ test.describe("carousel of saved movements (ASM-0097)", () => {
     const start = await num(app, "angle");
     await flick(app, 360);
     await app.waitForTimeout(250);
-    const early = await num(app, "angle");
-    expect(early, "dragging right turns the ring right").toBeGreaterThan(start + 0.3);
-    // Still turning some time after the release, with the speed falling.
+    expect(await num(app, "angle"), "dragging right turns the ring right").toBeGreaterThan(start + 0.3);
     await expect(carousel(app)).toHaveAttribute("data-locked", "false");
     const a = await num(app, "angle");
     await app.waitForTimeout(150);
@@ -122,32 +157,28 @@ test.describe("carousel of saved movements (ASM-0097)", () => {
     expect(Math.abs(c - b)).toBeLessThanOrEqual(Math.abs(b - a) + 0.02);
     await locked(app);
     const end = await num(app, "angle");
-    const step = (2 * Math.PI) / 8; // the ring has at least eight places
-    expect(Math.abs(end / step - Math.round(end / step)), "locked exactly on a slot").toBeLessThan(0.01);
+    expect(Math.abs(end / SLOT_STEP - Math.round(end / SLOT_STEP)), "locked exactly on a place").toBeLessThan(0.01);
     expect(end).toBeGreaterThan(start + 0.5);
-    // The other way.
     const before = await num(app, "angle");
     await flick(app, -360);
     await locked(app);
     expect(await num(app, "angle")).toBeLessThan(before - 0.5);
   });
 
-  test("a gentle nudge is pulled to the nearest card rather than left between two", async ({ app }) => {
-    await seed(app, ["Alpha", "Bravo", "Charlie", "Delta", "Echo"]);
+  test("a gentle nudge is pulled to the nearest place rather than left between two", async ({ app }) => {
+    await seed(app, ["Alpha", "Bravo", "Charlie"]);
     await openCarousel(app);
     await locked(app);
-    // Drag a little and hold still before letting go: no flick, but the ring is off a slot.
     const box = await app.locator(".carousel-stage").boundingBox();
     if (box === null) throw new Error("no stage");
-    await app.mouse.move(box.x + 300, box.y + 200);
+    await app.mouse.move(box.x + 300, box.y + 560);
     await app.mouse.down();
-    await app.mouse.move(box.x + 330, box.y + 200, { steps: 3 });
+    await app.mouse.move(box.x + 330, box.y + 560, { steps: 3 });
     await app.waitForTimeout(400);
     await app.mouse.up();
     await expect(carousel(app)).toHaveAttribute("data-locked", "true", { timeout: 10000 });
     const angle = await num(app, "angle");
-    const step = (2 * Math.PI) / 8; // the ring has at least eight places
-    expect(Math.abs(angle / step - Math.round(angle / step))).toBeLessThan(0.01);
+    expect(Math.abs(angle / SLOT_STEP - Math.round(angle / SLOT_STEP))).toBeLessThan(0.01);
   });
 
   test("tapping a card at the side turns it to the centre; tapping the locked centre card opens it, and the rest disappear", async ({ app }) => {
@@ -155,40 +186,20 @@ test.describe("carousel of saved movements (ASM-0097)", () => {
     await openCarousel(app);
     await locked(app);
     const frontId = await carousel(app).getAttribute("data-front-id");
-    // Bravo is the next one round the ring; tap it where it shows.
-    const bravo = app.getByTestId("carousel-card").filter({ hasText: "Bravo" });
-    await bravo.click({ force: true });
+    await app.getByTestId("carousel-card").filter({ hasText: "Bravo" }).click({ force: true });
     await expect(carousel(app)).toHaveAttribute("data-locked", "true", { timeout: 10000 });
     await expect(app.locator(".carousel-card.front")).toContainText("Bravo");
     expect(await carousel(app).getAttribute("data-front-id")).not.toBe(frontId);
-    // The carousel is still up: tapping a side card only turned it.
     await expect(carousel(app)).toBeVisible();
-    // Tap the locked centre card: it expands to be customised and the others disappear.
-    // (force: the cards never stand still, they hover, so the usual wait for a steady element would never end)
     await app.locator(".carousel-card.front").click({ force: true });
     await expect(carousel(app)).toHaveClass(/expanding/);
-    const others = app.locator(".carousel-card:not(.chosen)");
-    await expect(others.first()).toHaveCSS("opacity", "0");
+    await expect(app.locator(".carousel-card:not(.chosen)").first()).toHaveCSS("opacity", "0");
     await expect(carousel(app)).toBeHidden({ timeout: 10000 });
-    // The movement is open for editing, and Undo brings back the one that was open.
-    await expect(app.locator(".header, header").first()).toContainText("Bravo");
+    // The UI appears the moment the movement is chosen, and Undo brings back the one that was open.
+    await expect(app.locator(".header-title")).toContainText("Bravo");
+    expect(await app.evaluate<boolean>(`document.querySelector("#app").inert`)).toBe(false);
     await expect(app.getByRole("button", { name: "Undo", exact: true })).toBeEnabled();
     await expect(app.locator("canvas")).toBeVisible();
-  });
-
-  test("the edge tabs stay on the screen edges over the carousel and still open their panels", async ({ app }) => {
-    await seed(app, ["Alpha", "Bravo", "Charlie"]);
-    await openCarousel(app);
-    await locked(app);
-    for (const id of ["tree", "inspector", "colours", "console"]) await expect(app.getByTestId(`flyout-tab-${id}`)).toBeVisible();
-    const tree = await app.getByTestId("flyout-tab-tree").boundingBox();
-    expect(tree?.x ?? 99).toBeLessThanOrEqual(2);
-    const inspector = await app.getByTestId("flyout-tab-inspector").boundingBox();
-    expect((inspector?.x ?? 0) + (inspector?.width ?? 0)).toBeGreaterThanOrEqual(1098);
-    await app.getByTestId("flyout-tab-colours").click();
-    await expect(app.locator(".panel-frame-colours[data-open='true']")).toBeVisible();
-    // The carousel is still there underneath.
-    await expect(carousel(app)).toBeVisible();
   });
 
   test("a design that cannot be opened is shown with the reason and does not open", async ({ app }) => {
@@ -207,21 +218,80 @@ test.describe("carousel of saved movements (ASM-0097)", () => {
     await locked(app);
     await app.locator(".carousel-card", { hasText: "Bravo" }).click({ force: true });
     await expect(carousel(app)).toHaveAttribute("data-locked", "true", { timeout: 10000 });
-    // (force: the cards never stand still, they hover, so the usual wait for a steady element would never end)
     await app.locator(".carousel-card.front").click({ force: true });
-    await expect(app.locator(".toolbar-notice")).toContainText("cannot be opened");
     await expect(carousel(app)).toBeVisible();
+    await expect(carousel(app)).not.toHaveClass(/expanding/);
   });
 
-  test("Escape and Close leave the carousel, and the movement behind it is unchanged", async ({ app }) => {
-    await seed(app, ["Alpha", "Bravo"]);
-    const before = await app.locator(".header, header").first().innerText();
+  test("the button enters carousel mode, Exit and Escape leave it, and the movement behind is unchanged", async ({ app }) => {
+    const before = await app.locator(".header-title").innerText();
     await openCarousel(app);
     await app.keyboard.press("Escape");
     await expect(carousel(app)).toBeHidden();
+    expect(await app.evaluate<boolean>(`document.querySelector("#app").inert`)).toBe(false);
     await openCarousel(app);
-    await app.getByTestId("carousel-close").click();
+    await carousel(app).getByRole("button", { name: "Exit carousel" }).click();
     await expect(carousel(app)).toBeHidden();
-    expect(await app.locator(".header, header").first().innerText()).toBe(before);
+    await expect(app.getByTestId("carousel-open")).toBeVisible();
+    expect(await app.locator(".header-title").innerText()).toBe(before);
+    await expect(app.getByRole("button", { name: "Undo", exact: true })).toBeDisabled();
+  });
+});
+
+test.describe("putting movements on the carousel from Projects (ASM-0098)", () => {
+  const openProjects = async (page: Page): Promise<void> => { await page.getByRole("button", { name: "Projects…" }).click(); };
+  const closeProjects = async (page: Page): Promise<void> => { await page.locator("dialog[open]").getByRole("button", { name: "Close", exact: true }).click(); };
+
+  test("there is no longer a button to open one design at startup", async ({ app }) => {
+    await openProjects(app);
+    await app.getByTestId("projects-save").click();
+    await expect(app.locator(".projects-table")).toContainText("Teaching movement");
+    await expect(app.getByTestId("startup-on")).toHaveCount(0);
+    await expect(app.getByTestId("startup-off")).toHaveCount(0);
+    await expect(app.locator("dialog[open]")).not.toContainText("startup");
+    await expect(app.locator("dialog[open]")).not.toContainText("★");
+  });
+
+  test("Save and add to carousel saves the design and puts it in the first place; Remove takes it off; it appears on the carousel", async ({ app }) => {
+    await openProjects(app);
+    await app.getByTestId("projects-save-carousel").click();
+    await expect(app.locator(".projects-table")).toContainText("on the carousel, place 1");
+    await expect(app.getByTestId("carousel-remove")).toBeVisible();
+    await expect(app.locator("dialog[open]")).toContainText("1 of 8 places used");
+    await closeProjects(app);
+    await openCarousel(app);
+    await expect(app.getByTestId("carousel-card")).toHaveCount(1);
+    await expect(app.locator(".carousel-card.front")).toContainText("Teaching movement");
+    await app.getByRole("button", { name: "Exit carousel" }).click();
+    await openProjects(app);
+    await app.getByTestId("carousel-remove").click();
+    await expect(app.locator(".projects-table")).not.toContainText("on the carousel");
+    await expect(app.getByTestId("carousel-add")).toBeVisible();
+    await app.getByTestId("carousel-add").click();
+    await expect(app.locator(".projects-table")).toContainText("place 1");
+  });
+
+  test("the carousel holds eight: a ninth is refused, and room made lets it in", async ({ app }) => {
+    await seed(app, ["D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9"], 8);
+    await openProjects(app);
+    await expect(app.locator("dialog[open]")).toContainText("8 of 8 places used");
+    const ninth = app.locator(".projects-table tr", { hasText: "D9" });
+    await ninth.getByTestId("carousel-add").click();
+    await expect(app.getByTestId("toolbar-notice")).toContainText("full");
+    await expect(ninth).not.toContainText("on the carousel");
+    await app.locator(".projects-table tr", { hasText: "D4" }).getByTestId("carousel-remove").click();
+    await app.locator(".projects-table tr", { hasText: "D9" }).getByTestId("carousel-add").click();
+    await expect(app.locator(".projects-table tr", { hasText: "D9" })).toContainText("place 4");
+    await expect(app.locator("dialog[open]")).toContainText("8 of 8 places used");
+  });
+
+  test("deleting a saved design empties its place on the carousel", async ({ app }) => {
+    await seed(app, ["D1", "D2"]);
+    await openProjects(app);
+    await app.locator(".projects-table tr", { hasText: "D1" }).getByRole("button", { name: "Delete" }).click();
+    await closeProjects(app);
+    await openCarousel(app);
+    await expect(app.getByTestId("carousel-card")).toHaveCount(1);
+    await expect(app.getByTestId("carousel-empty-slot")).toHaveCount(7);
   });
 });
