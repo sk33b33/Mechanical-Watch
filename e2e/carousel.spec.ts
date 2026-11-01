@@ -79,11 +79,15 @@ test.describe("carousel of saved movements (ASM-0097, ASM-0098)", () => {
     await expect(carousel(app).locator("button:not(.carousel-card):not(.carousel-exit)")).toHaveCount(0);
   });
 
-  test("it has eight places; with nothing on it every one is a translucent square saying Empty", async ({ app }) => {
+  test("it has eight places; with nothing on it every one is a translucent square with a plus sign (and no word)", async ({ app }) => {
     await openCarousel(app);
     await expect(app.locator(".carousel-card")).toHaveCount(8);
     await expect(app.getByTestId("carousel-empty-slot")).toHaveCount(8);
-    for (const slot of await app.getByTestId("carousel-empty-slot").all()) await expect(slot).toContainText("Empty");
+    for (const slot of await app.getByTestId("carousel-empty-slot").all()) {
+      await expect(slot.locator(".carousel-plus")).toHaveCount(1);
+      expect((await slot.innerText()).trim(), "no word on the tile").toBe("");
+      await expect(slot).toHaveAttribute("aria-label", /new project/);
+    }
     await locked(app);
     await expect(carousel(app)).toHaveAttribute("data-front-empty", "true");
   });
@@ -97,6 +101,24 @@ test.describe("carousel of saved movements (ASM-0097, ASM-0098)", () => {
     await expect(app.locator(".header-title")).toContainText("Untitled movement");
     expect(await app.evaluate<boolean>(`document.querySelector("#app").inert`)).toBe(false);
     await expect(app.getByRole("button", { name: "Undo", exact: true })).toBeEnabled();
+  });
+
+  test("a finger's wobble during a tap does not stop it opening: the empty place in front starts a new project (follow-up 57)", async ({ app }) => {
+    await openCarousel(app);
+    await locked(app);
+    const box = await app.locator(".carousel-card.front").boundingBox();
+    if (box === null) throw new Error("no front card");
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    // Press, wobble by a few pixels, and let go quickly: a tap, as a finger makes it.
+    await app.mouse.move(x, y);
+    await app.mouse.down();
+    await app.mouse.move(x + 5, y + 1, { steps: 2 });
+    await app.mouse.move(x - 3, y, { steps: 2 });
+    await app.mouse.up();
+    await expect(carousel(app)).toHaveClass(/expanding/);
+    await expect(carousel(app)).toBeHidden({ timeout: 10000 });
+    await expect(app.locator(".header-title")).toContainText("Untitled movement");
   });
 
   test("a tap on an empty place at the side turns it to the front first, and only a tap on the locked front one starts the project", async ({ app }) => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { angleForIndex, CAROUSEL, cardOpacity, clampSpeed, displayAngle, flickVelocity, frontIndex, hoverOffset, isLocked, magnetStrength, ringRadius, slotCount, slotStep, snapTarget, stepRing, type RingState } from "./carouselMath";
+import { angleForIndex, CAROUSEL, cardOpacity, clampSpeed, displayAngle, flickVelocity, frontIndex, hoverOffset, isLocked, magnetStrength, ringRadius, slotCount, slotStep, snapTarget, stepRing, tapAction, type RingState } from "./carouselMath";
 
 /** Runs the ring until it locks (or 30 s pass), at 60 frames per second. */
 function spinDown(start: RingState, count: number): { state: RingState; seconds: number } {
@@ -185,5 +185,32 @@ describe("ring layout and hover", () => {
     expect(displayAngle(4, 8, 0)).toBeCloseTo(Math.PI, 12);
     expect(displayAngle(0, 8, 7 * Math.PI)).toBeCloseTo(Math.PI, 12);
     expect(displayAngle(1, 3, 0)).toBeCloseTo(Math.PI / 4, 12); // a few cards stand 45 degrees apart
+  });
+});
+
+describe("what a tap does (follow-up 57)", () => {
+  it("opens the card in front when the ring was at rest on it, and turns any other card to the front", () => {
+    const rest = angleForIndex(3, 8);
+    expect(tapAction(rest, 3, 8)).toBe("OPEN");
+    expect(tapAction(rest, 4, 8)).toBe("TURN");
+    expect(tapAction(rest, 2, 8)).toBe("TURN");
+  });
+
+  it("still opens it when the ring was a little off, as a settling ring is, but not when it was between two places", () => {
+    const step = slotStep(8);
+    expect(tapAction(angleForIndex(0, 8) + 0.1 * step, 0, 8)).toBe("OPEN");
+    expect(tapAction(angleForIndex(0, 8) - 0.25 * step, 0, 8)).toBe("OPEN");
+    // Nearly half way to the next place: the card in front is only just in front, so a tap turns rather than opens.
+    expect(tapAction(angleForIndex(0, 8) - 0.45 * step, 0, 8)).toBe("TURN");
+  });
+
+  it("is judged from the ring when the finger came down, so a finger's wobble during a tap makes no difference", () => {
+    // The press began at rest on card 5; whatever the ring did while the finger wobbled, only this angle is asked about.
+    expect(tapAction(angleForIndex(5, 8), 5, 8)).toBe("OPEN");
+  });
+
+  it("a card that does not exist is never opened", () => {
+    expect(tapAction(0, -1, 8)).toBe("TURN");
+    expect(tapAction(0, 0, 0)).toBe("TURN");
   });
 });

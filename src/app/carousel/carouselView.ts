@@ -3,7 +3,7 @@ import type { KeyValueStore } from "@/persistence/autosave";
 import { carouselSlots, CAROUSEL_SLOTS, openProject, type ProjectSummary } from "@/persistence/library";
 import { springStep } from "@/app/splash/splashGears";
 import {
-  angleForIndex, CAROUSEL, cardOpacity, displayAngle, flickVelocity, frontIndex, hoverOffset, isLocked, ringRadius, stepRing,
+  angleForIndex, CAROUSEL, cardOpacity, displayAngle, flickVelocity, frontIndex, hoverOffset, isLocked, ringRadius, stepRing, tapAction,
   type DragSample, type RingState,
 } from "./carouselMath";
 import { movementPortrait, portraitSvg } from "./movementPortrait";
@@ -216,10 +216,13 @@ export function mountCarousel(host: HTMLElement, store: AppStore, storage: KeyVa
       element.dataset.testid = summary === null ? "carousel-empty-slot" : "carousel-card";
       element.dataset.id = summary?.id ?? "";
       element.dataset.index = String(index);
-      element.setAttribute("aria-label", summary === null ? "Empty place" : summary.problem === null ? summary.name : `${summary.name} (cannot be opened)`);
+      element.setAttribute("aria-label", summary === null ? "Empty place: start a new project" : summary.problem === null ? summary.name : `${summary.name} (cannot be opened)`);
       const art = el("div", "carousel-art");
       if (summary === null) {
-        art.appendChild(el("div", "carousel-empty-word", "Empty"));
+        // A plus sign: a new project can be started on this tile. (Drawn, not a word; the button's label says what it is.)
+        const plus = el("div", "carousel-plus");
+        plus.setAttribute("aria-hidden", "true");
+        art.appendChild(plus);
         element.appendChild(art);
       } else {
         art.appendChild(el("div", "carousel-no-dial", summary.problem === null ? "Drawing…" : "Cannot be opened"));
@@ -295,12 +298,12 @@ export function mountCarousel(host: HTMLElement, store: AppStore, storage: KeyVa
   };
 
   // --- gestures ----------------------------------------------------------------------------------
-  let pressed: { x: number; startAngle: number; time: number; target: Element | null; samples: DragSample[]; pointer: number } | null = null;
+  let pressed: { x: number; startAngle: number; time: number; target: Element | null; samples: DragSample[]; pointer: number; dragged: boolean } | null = null;
   const seconds = (): number => performance.now() / 1000;
 
   stage.addEventListener("pointerdown", (event) => {
     if (expanding || cards.length === 0 || (event.pointerType === "mouse" && event.button !== 0)) return;
-    pressed = { x: event.clientX, startAngle: state.angle, time: seconds(), target: event.target instanceof Element ? event.target : null, samples: [{ time: seconds(), angle: state.angle }], pointer: event.pointerId };
+    pressed = { x: event.clientX, startAngle: state.angle, time: seconds(), target: event.target instanceof Element ? event.target : null, samples: [{ time: seconds(), angle: state.angle }], pointer: event.pointerId, dragged: false };
     goingTo = null;
     state = { angle: state.angle, velocity: 0 };
     dragging = true;
@@ -309,6 +312,9 @@ export function mountCarousel(host: HTMLElement, store: AppStore, storage: KeyVa
   });
   stage.addEventListener("pointermove", (event) => {
     if (pressed?.pointer !== event.pointerId || cards.length < 2) return;
+    // A finger always wobbles a little; the ring only follows once it has moved further than a tap may.
+    if (!pressed.dragged && Math.abs(event.clientX - pressed.x) <= CAROUSEL.tapMaxMovePixels) return;
+    pressed.dragged = true;
     const angle = pressed.startAngle + (event.clientX - pressed.x) * CAROUSEL.dragRadiansPerPixel;
     state = { angle, velocity: 0 };
     pressed.samples.push({ time: seconds(), angle });
@@ -325,13 +331,15 @@ export function mountCarousel(host: HTMLElement, store: AppStore, storage: KeyVa
     const moved = Math.abs(event.clientX - press.x);
     const elapsed = (seconds() - press.time) * 1000;
     if (moved <= CAROUSEL.tapMaxMovePixels && elapsed <= CAROUSEL.tapMaxMilliseconds) {
+      // A tap: the ring goes back to where it was when the finger came down (the finger's wobble moved it a little), and what
+      // the tap does is judged from there.
+      state = { angle: press.startAngle, velocity: 0 };
       const tapped = press.target?.closest<HTMLElement>(".carousel-card");
       const index = tapped === null || tapped === undefined ? -1 : Number(tapped.dataset.index);
       const card = cardAt(index);
       if (card === undefined) return;
-      // The locked card in front opens (or starts a new project); any other card turns to the front first.
-      if (index === frontIndex(state.angle, cards.length) && isLocked(state, cards.length)) openCard(card);
-      else goingTo = angleForIndex(index, cards.length, state.angle);
+      if (tapAction(press.startAngle, index, cards.length) === "OPEN") openCard(card);
+      else goingTo = angleForIndex(index, cards.length, press.startAngle);
       return;
     }
     state = { angle: state.angle, velocity: flickVelocity(press.samples, seconds()) };

@@ -32,12 +32,8 @@
   box-sizing: border-box;
 }
 
-/* Zoomed in (the root carries vv-zoomed, visualViewport.ts; follow-up 55): the 3D view stops taking one-finger drags to turn
-   the model and lets the browser pan the zoomed screen with them, and pinch the zoom; zoomed out again, the model turns
-   as before. Without this nothing over the 3D view could move a zoomed-in screen. */
-html.vv-zoomed .viewport canvas {
-  touch-action: pan-x pan-y pinch-zoom !important;
-}
+/* The 3D view keeps its touch handling when the page is zoomed (follow-up 57): a pinch over the movement zooms the movement
+   only, and a pinch over a panel or its tab zooms the page, as it does unzoomed. */
 /* A flyout's title bar and tab never scroll, so a drag that starts on them always moves the screen: they are made wide
    enough to grab. Its body scrolls its own content, as a panel must. */
 html.vv-zoomed .panel-frame[data-mode="FLYOUT"] .panel-titlebar {
@@ -1903,11 +1899,34 @@ html.splash-open #app {
   height: 100%;
   aspect-ratio: auto;
 }
-.carousel-empty-word {
-  font-size: 15px;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: rgba(214, 238, 252, 0.75);
+.carousel-plus {
+  position: relative;
+  width: 34%;
+  aspect-ratio: 1;
+  opacity: 0.8;
+}
+.carousel-plus::before,
+.carousel-plus::after {
+  content: "";
+  position: absolute;
+  background: rgba(214, 238, 252, 0.85);
+  border-radius: 2px;
+  box-shadow: 0 0 12px rgba(92, 200, 255, 0.45);
+}
+.carousel-plus::before {
+  left: 0;
+  right: 0;
+  top: calc(50% - 2px);
+  height: 4px;
+}
+.carousel-plus::after {
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 2px);
+  width: 4px;
+}
+.carousel-card.empty.front .carousel-plus {
+  opacity: 1;
 }
 .carousel-art {
   width: 100%;

@@ -37,7 +37,10 @@ export const CAROUSEL = {
   flickWindowSeconds: 0.1,
   /** A press shorter than this (ms) and moving less than this (px) is a tap, not a drag. */
   tapMaxMilliseconds: 450,
-  tapMaxMovePixels: 8,
+  /** A finger always wobbles a little; a press that moved less than this (px) is a tap. */
+  tapMaxMovePixels: 12,
+  /** A tap opens the front card if the ring was within this fraction of a place's width of resting on it when the press began. */
+  tapOpensWithinPlaces: 0.3,
   /** Cards hover this far (px) up and down, one full cycle per this many seconds, each offset in phase from the next. */
   hoverAmplitudePixels: 8,
   hoverPeriodSeconds: 3.4,
@@ -132,6 +135,18 @@ export function stepRing(state: RingState, count: number, seconds: number): Ring
 /** Whether the ring is at rest locked on a slot. */
 export function isLocked(state: RingState, count: number): boolean {
   return count <= 1 || (state.velocity === 0 && Math.abs(state.angle - snapTarget(state.angle, count)) < CAROUSEL.settleAngle);
+}
+
+/**
+ * What a tap on the card at `index` does, judged from the ring as it was when the press began (the finger's own small
+ * movement during the tap has nothing to do with it): open it if it is the card in front and the ring was at rest on it or
+ * nearly, otherwise turn it to the front first.
+ */
+export function tapAction(angleAtPress: number, index: number, count: number): "OPEN" | "TURN" {
+  if (count <= 0 || index < 0) return "TURN";
+  const front = frontIndex(angleAtPress, count);
+  const error = Math.abs(angleAtPress - snapTarget(angleAtPress, count));
+  return index === front && error <= CAROUSEL.tapOpensWithinPlaces * slotStep(count) ? "OPEN" : "TURN";
 }
 
 export interface DragSample { readonly time: number; readonly angle: number }

@@ -2,6 +2,23 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 57: pinch zoom, a tap on a tile, a plus sign
+
+- **Pinch zoom goes where the fingers are.** A pinch over the movement zooms only the movement (the 3D camera), as it did
+  before follow-up 55; a pinch over a pop-out panel or its tab zooms the page and the UI with it. Follow-up 55 had handed the
+  3D view's touches to the browser while the page was zoomed, which made a pinch over the movement zoom the page too; that is
+  undone. The cost: with the page zoomed in, a one-finger drag over the 3D view turns the model again, so to move a zoomed
+  screen drag a panel's title bar or its tab (the root clip from follow-up 55 stays, so those drags do pan).
+- **Tapping an empty tile starts a new project.** On a finger the ring wobbled a few pixels during the tap, so the tap was
+  judged "not at rest" and only turned the tile instead of opening it (it did not show with a mouse). A tap is now judged from
+  where the ring was when the finger came down, the ring does not follow a finger until it has moved clearly further than
+  a tap (12 px), and the card in front opens when the ring was resting on it or nearly. A browser test taps with a wobble.
+- **A plus sign instead of the word.** Empty tiles show a plus sign in the translucent square, no word; a screen reader
+  still hears "Empty place: start a new project".
+- **Limits.** The wobble is tested with a mouse that moves a few pixels, not a real finger; pinch is not tested by the
+  browser tests (the test browser does not turn two emulated touches into a pinch), only that the 3D view keeps its own
+  touch handling zoomed or not.
+
 ## Phase 8.15 follow-up 56: the Inspector and Colours tabs, always
 
 **Why they could be missing.** An edge tab only existed while its panel was a *flyout*. Press a panel's own Hide (the
@@ -35,9 +52,8 @@ a drag turned the model rather than moving the screen.
 **What changed.**
 - The root is now clipped with `overflow: clip`, which clips the same way but is not a scroll container. The phone layout
   still fits the screen (the edge-tab tests still pass), and a drag over the page pans it. Browsers without `clip` keep `hidden`.
-- While zoomed in (above 1.05x) the 3D view hands one-finger drags to the browser: they pan the zoomed screen and two
-  fingers pinch it, instead of turning the model. Zoom back out and the model turns as before. A panel's title bar and
-  its tab, which never scroll, are made wider to grab when zoomed in.
+- (Undone in follow-up 57: the 3D view keeps its touch handling.) A panel's title bar and its tab, which never scroll, are
+  made wider to grab when zoomed in, so a drag on them pans the screen.
 - A browser test sends touch drags to a zoomed page: over the 3D view (sideways and up/down), the open panel's title bar and
   its tab all move the screen; zoomed out, the 3D view is back to turning the model.
 
