@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { viewportVariables, type ViewportBox } from "./visualViewport";
+import { isZoomedIn, viewportVariables, ZOOMED_IN_ABOVE, type ViewportBox } from "./visualViewport";
 
 const unzoomed: ViewportBox = { offsetLeft: 0, offsetTop: 0, width: 980, height: 600, scale: 1, layoutWidth: 980, layoutHeight: 600 };
 
@@ -41,5 +41,16 @@ describe("visual viewport variables (follow-up 54, ASM-0098)", () => {
   it("a nonsense zoom is treated as no zoom", () => {
     expect(viewportVariables({ ...unzoomed, scale: 0 })["--vv-s"]).toBe("1");
     expect(viewportVariables({ ...unzoomed, scale: Number.NaN })["--vv-inv"]).toBe("1");
+  });
+});
+
+describe("when a drag should move the zoomed screen (follow-up 55)", () => {
+  it("is zoomed in only clearly above 1x, never for a nonsense zoom", () => {
+    expect(isZoomedIn(1)).toBe(false);
+    expect(isZoomedIn(ZOOMED_IN_ABOVE)).toBe(false);
+    expect(isZoomedIn(1.5)).toBe(true);
+    expect(isZoomedIn(0.8)).toBe(false);
+    expect(isZoomedIn(Number.NaN)).toBe(false);
+    expect(isZoomedIn(Number.POSITIVE_INFINITY)).toBe(false);
   });
 });

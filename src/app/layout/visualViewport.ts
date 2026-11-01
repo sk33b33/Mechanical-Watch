@@ -42,7 +42,19 @@ export function viewportVariables(box: ViewportBox): Record<string, string> {
   };
 }
 
-/** Publishes the visual viewport's variables on the page root now and whenever it zooms, pans or the window changes. */
+/** The pinch zoom above which the page counts as zoomed in (a little over 1, so a settling zoom of 1.0x does not flicker). */
+export const ZOOMED_IN_ABOVE = 1.05;
+
+/** Whether the page is pinch-zoomed in far enough that a drag should move the screen rather than something on it. */
+export function isZoomedIn(scale: number): boolean {
+  return Number.isFinite(scale) && scale > ZOOMED_IN_ABOVE;
+}
+
+/**
+ * Publishes the visual viewport's variables on the page root now and whenever it zooms, pans or the window changes, and
+ * marks the root `vv-zoomed` while zoomed in: the stylesheet then lets one-finger drags over the 3D view pan the zoomed
+ * screen instead of turning the model (follow-up 55, ASM-0098).
+ */
 export function installVisualViewportVariables(doc: Document = document, win: Window = window): () => void {
   const vv = win.visualViewport;
   const root = doc.documentElement;
@@ -53,6 +65,7 @@ export function installVisualViewportVariables(doc: Document = document, win: Wi
       ? { offsetLeft: 0, offsetTop: 0, width: root.clientWidth, height: root.clientHeight, scale: 1, layoutWidth: root.clientWidth, layoutHeight: root.clientHeight }
       : { offsetLeft: vv.offsetLeft, offsetTop: vv.offsetTop, width: vv.width, height: vv.height, scale: vv.scale, layoutWidth: root.clientWidth, layoutHeight: root.clientHeight };
     for (const [name, value] of Object.entries(viewportVariables(box))) root.style.setProperty(name, value);
+    root.classList.toggle("vv-zoomed", isZoomedIn(box.scale));
   };
   const schedule = (): void => {
     if (pending) return;

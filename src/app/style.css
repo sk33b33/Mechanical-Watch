@@ -32,12 +32,31 @@
   box-sizing: border-box;
 }
 
+/* Zoomed in (the root carries vv-zoomed, visualViewport.ts; follow-up 55): the 3D view stops taking one-finger drags to turn
+   the model and lets the browser pan the zoomed screen with them, and pinch the zoom; zoomed out again, the model turns
+   as before. Without this nothing over the 3D view could move a zoomed-in screen. */
+html.vv-zoomed .viewport canvas {
+  touch-action: pan-x pan-y pinch-zoom !important;
+}
+/* A flyout's title bar and tab never scroll, so a drag that starts on them always moves the screen: they are made wide
+   enough to grab. Its body scrolls its own content, as a panel must. */
+html.vv-zoomed .panel-frame[data-mode="FLYOUT"] .panel-titlebar {
+  min-height: 30px;
+  touch-action: pan-x pan-y pinch-zoom;
+}
+html.vv-zoomed .flyout-tab {
+  touch-action: pan-x pan-y pinch-zoom;
+}
+
 /* The workspace is exactly the window; the page itself never scrolls. Without this a phone's layout viewport grew past the
    screen (415 px on a 390 px phone) and the flyout tabs, fixed to the layout viewport's edges, sat off the visible
    screen (follow-up 53). */
 html,
 body {
   overflow: hidden;
+  /* `clip` clips the same but is not a scroll container: with `hidden` a pinch-zoomed page could not be panned by a finger
+     drag over most of the screen (follow-up 55). Browsers without `clip` keep `hidden`. */
+  overflow: clip;
   overscroll-behavior: none;
 }
 
@@ -1176,6 +1195,7 @@ button.active {
 html.splash-open,
 html.splash-open body {
   overflow: hidden;
+  overflow: clip;
   overscroll-behavior: none;
 }
 html.splash-open #app {

@@ -102,3 +102,69 @@ test("pinch-zoomed in (Android's desktop mode) the tabs stay on the visible scre
   expect(zoomed.tabs["flyout-tab-console"].bottom).toBeGreaterThanOrEqual(zoomed.vv.top + zoomed.vv.height - 2);
   await context.close();
 });
+
+test("pinch-zoomed in, a finger drag moves the screen: on the 3D view, on a panel's title bar and on its tab; zoomed out the 3D view still turns the model (follow-up 55)", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 980, height: 600 }, hasTouch: true, isMobile: true });
+  const page = await context.newPage();
+  await page.goto("/?splash=off&start=plain");
+  await page.evaluate(() => { localStorage.clear(); });
+  await page.reload();
+  await expect(page.locator("canvas")).toBeVisible();
+  const session = await context.newCDPSession(page);
+  const offset = (): Promise<{ x: number; y: number; scale: number }> => page.evaluate(`({ x: Math.round(visualViewport.offsetLeft), y: Math.round(visualViewport.offsetTop), scale: visualViewport.scale })`);
+  const touch = (type: "touchStart" | "touchMove" | "touchEnd", x: number, y: number): Promise<unknown> =>
+    session.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y }] });
+  /** A finger drag of (dx, dy) from (x, y), in 15 moves. */
+  const drag = async (x: number, y: number, dx: number, dy: number): Promise<void> => {
+    await touch("touchStart", x, y);
+    for (let i = 1; i <= 15; i += 1) {
+      await touch("touchMove", x + (dx * i) / 15, y + (dy * i) / 15);
+      await page.waitForTimeout(16);
+    }
+    await touch("touchEnd", x + dx, y + dy);
+    await page.waitForTimeout(500);
+  };
+  const zoom = async (factor: number): Promise<void> => {
+    await session.send("Emulation.setPageScaleFactor", { pageScaleFactor: 1 });
+    await page.waitForTimeout(200);
+    await session.send("Emulation.setPageScaleFactor", { pageScaleFactor: factor });
+    await expect.poll(async () => (await offset()).scale).toBeCloseTo(factor, 1);
+    await page.waitForTimeout(300);
+  };
+
+  // Zoomed in: the root says so, and the 3D view hands its drags to the browser.
+  await zoom(2);
+  await expect(page.locator("html")).toHaveClass(/vv-zoomed/);
+  expect(await page.evaluate<string>(`getComputedStyle(document.querySelector(".viewport canvas")).touchAction`)).toBe("manipulation"); // (pan and pinch zoom)
+  await drag(300, 240, -120, 0);
+  const sideways = await offset();
+  expect(sideways.x, "a drag on the 3D view moved the zoomed screen sideways").toBeGreaterThan(40);
+  await drag(300, 240, 0, -100);
+  expect((await offset()).y, "and up and down").toBeGreaterThan(30);
+
+  // The open panel: its title bar and its tab pan the screen too, up and down as well as sideways.
+  await zoom(2);
+  await page.getByTestId("flyout-tab-inspector").click();
+  await expect(page.locator(".panel-frame-inspector[data-open='true']")).toBeVisible();
+  await page.waitForTimeout(500);
+  const spots = await page.evaluate<{ bar: [number, number]; tab: [number, number] }>(`(() => {
+    const v = visualViewport;
+    const mid = (e) => { const b = e.getBoundingClientRect(); return [Math.round((b.left + b.right) / 2 - v.offsetLeft), Math.round((b.top + b.bottom) / 2 - v.offsetTop)]; };
+    return { bar: mid(document.querySelector(".panel-frame-inspector .panel-titlebar")), tab: mid(document.querySelector('[data-testid="flyout-tab-inspector"]')) };
+  })()`);
+  const beforeBar = await offset();
+  await drag(spots.bar[0], spots.bar[1], 0, -100);
+  expect((await offset()).y, "a drag up on the title bar moved the screen").toBeGreaterThan(beforeBar.y + 30);
+  await zoom(2);
+  if (!(await page.locator(".panel-frame-inspector[data-open='true']").isVisible())) await page.getByTestId("flyout-tab-inspector").click();
+  await page.waitForTimeout(500);
+  const beforeTab = await offset();
+  await drag(spots.tab[0], spots.tab[1], 0, -100);
+  expect((await offset()).y, "a drag up on the tab moved the screen").toBeGreaterThan(beforeTab.y + 30);
+
+  // Zoomed back out, the 3D view takes one-finger drags again (to turn the model), so the screen is not panned by them.
+  await zoom(1);
+  await expect(page.locator("html")).not.toHaveClass(/vv-zoomed/);
+  expect(await page.evaluate<string>(`getComputedStyle(document.querySelector(".viewport canvas")).touchAction`)).toBe("none");
+  await context.close();
+});

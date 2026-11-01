@@ -2,6 +2,28 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 55: panning a zoomed-in screen
+
+**What was wrong.** With the page pinch-zoomed in, dragging a finger did not move the screen. Found by sending real touch
+drags to a zoomed page in the test browser (not a guess): (1) the page's root was `overflow: hidden` (added in follow-up
+53 to stop a phone's layout growing past the screen), and a root that is a scroll container swallowed the pan, so a drag
+over most of the page went nowhere; (2) the 3D view takes one-finger drags to turn the model, so over most of the screen
+a drag turned the model rather than moving the screen.
+
+**What changed.**
+- The root is now clipped with `overflow: clip`, which clips the same way but is not a scroll container. The phone layout
+  still fits the screen (the edge-tab tests still pass), and a drag over the page pans it. Browsers without `clip` keep `hidden`.
+- While zoomed in (above 1.05x) the 3D view hands one-finger drags to the browser: they pan the zoomed screen and two
+  fingers pinch it, instead of turning the model. Zoom back out and the model turns as before. A panel's title bar and
+  its tab, which never scroll, are made wider to grab when zoomed in.
+- A browser test sends touch drags to a zoomed page: over the 3D view (sideways and up/down), the open panel's title bar and
+  its tab all move the screen; zoomed out, the 3D view is back to turning the model.
+
+**Limits.** Tested with the browser's touch emulation, not a real Android phone. Vertical drags that start in the *body*
+of an open panel scroll that panel's own content (as a panel must) rather than the screen; drag its title bar or tab, or
+the 3D view, to move the screen. Not what you described if the panel's body was where you dragged: tell me and I will
+look again.
+
 ## Phase 8.15 follow-up 54: the carousel is the way in
 
 - **Tap to enter meets the carousel.** It fills the whole window and shows nothing else: no header, toolbar, panels or edge
