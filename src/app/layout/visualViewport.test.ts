@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isZoomedIn, viewportVariables, ZOOMED_IN_ABOVE, type ViewportBox } from "./visualViewport";
+import { effectiveZoom, isZoomedIn, viewportDebugWanted, viewportVariables, ZOOMED_IN_ABOVE, type ViewportBox } from "./visualViewport";
 
 const unzoomed: ViewportBox = { offsetLeft: 0, offsetTop: 0, width: 980, height: 600, scale: 1, layoutWidth: 980, layoutHeight: 600 };
 
@@ -52,5 +52,40 @@ describe("when a drag should move the zoomed screen (follow-up 55)", () => {
     expect(isZoomedIn(0.8)).toBe(false);
     expect(isZoomedIn(Number.NaN)).toBe(false);
     expect(isZoomedIn(Number.POSITIVE_INFINITY)).toBe(false);
+  });
+});
+
+describe("the zoom is what the screen shows of the page, not what the browser calls its scale (follow-up 56)", () => {
+  it("a phone in desktop mode that fits the whole page to the screen is not zoomed, whatever scale the browser reports", () => {
+    // Some browsers report the fit-to-screen scale (here 0.42) as the visual viewport's scale; the whole 980 px page is in view.
+    const fitted: ViewportBox = { offsetLeft: 0, offsetTop: 0, width: 980, height: 2177, scale: 0.42, layoutWidth: 980, layoutHeight: 2177 };
+    expect(effectiveZoom(fitted)).toBe(1);
+    expect(viewportVariables(fitted)).toEqual({ "--vv-s": "1", "--vv-inv": "1", "--vv-left": "0px", "--vv-top": "0px", "--vv-right": "0px", "--vv-bottom": "0px" });
+    expect(isZoomedIn(effectiveZoom(fitted))).toBe(false);
+  });
+
+  it("pinch zoomed in from that fitted state it is the ratio of page to screen that counts, not the reported scale", () => {
+    // Zoomed 2x into the fitted page: the screen now shows 490 of the 980 px, and the browser says 0.84.
+    const zoomed: ViewportBox = { offsetLeft: 200, offsetTop: 100, width: 490, height: 1088, scale: 0.84, layoutWidth: 980, layoutHeight: 2177 };
+    expect(effectiveZoom(zoomed)).toBeCloseTo(2, 9);
+    const v = viewportVariables(zoomed);
+    expect(v["--vv-inv"]).toBe("0.5");
+    expect(v["--vv-right"]).toBe(`${String((980 - 200 - 490) * 2)}px`);
+    expect(isZoomedIn(effectiveZoom(zoomed))).toBe(true);
+  });
+
+  it("a screen that shows more than the page (or a missing size) needs no compensation", () => {
+    expect(effectiveZoom({ ...unzoomed, width: 1200 })).toBe(1);
+    expect(effectiveZoom({ ...unzoomed, width: 0, scale: 1 })).toBe(1);
+    expect(effectiveZoom({ ...unzoomed, width: 0, scale: 3 })).toBe(3);
+  });
+});
+
+describe("the viewport read-out is only for ?debug=viewport", () => {
+  it("is off by default", () => {
+    expect(viewportDebugWanted("")).toBe(false);
+    expect(viewportDebugWanted("?splash=off")).toBe(false);
+    expect(viewportDebugWanted("?debug=other")).toBe(false);
+    expect(viewportDebugWanted("?splash=off&debug=viewport")).toBe(true);
   });
 });

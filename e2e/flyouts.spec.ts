@@ -81,4 +81,49 @@ test.describe("flyout panels (the default layout)", () => {
     await expect(frame(app, "inspector")).toHaveAttribute("data-mode", "FLYOUT");
     await expect(frame(app, "inspector")).toBeHidden();
   });
+
+  test("a panel hidden with its own button keeps its edge tab, and the tab brings it back as a flyout (follow-up 56)", async ({ app }) => {
+    for (const id of ["inspector", "colours"]) {
+      await tab(app, id).click();
+      await expect(frame(app, id)).toBeVisible();
+      await frame(app, id).getByRole("button", { name: `Hide the ${id === "inspector" ? "Inspector" : "Colours"} panel` }).click();
+      // Hidden: the panel is gone, but its tab is still on the screen edge.
+      await expect(frame(app, id)).toBeHidden();
+      await expect(tab(app, id)).toBeVisible();
+      await expect(tab(app, id)).toHaveAttribute("aria-expanded", "false");
+      const box = await tab(app, id).boundingBox();
+      expect((box?.x ?? 0) + (box?.width ?? 0), `${id} tab at the right edge`).toBeGreaterThan(1100 - 2);
+      // It stays after a reload (the hidden state is remembered).
+      await app.reload();
+      await expect(tab(app, id)).toBeVisible();
+      // Pressing it brings the panel back, slid out as a flyout.
+      await tab(app, id).click();
+      await expect(frame(app, id)).toBeVisible();
+      await expect(frame(app, id)).toHaveAttribute("data-mode", "FLYOUT");
+      await expect(frame(app, id)).toHaveAttribute("data-parked", "false");
+      await tab(app, id).click();
+      await expect(frame(app, id)).toBeHidden();
+    }
+  });
+
+  test("the header button still reopens a hidden panel where it was, and the tab is the same tab", async ({ app }) => {
+    await tab(app, "inspector").click();
+    await frame(app, "inspector").getByRole("button", { name: "Hide the Inspector panel" }).click();
+    await expect(tab(app, "inspector")).toBeVisible();
+    await app.getByTestId("toggle-inspector").click();
+    await expect(frame(app, "inspector")).toBeVisible();
+    await expect(tab(app, "inspector")).toBeVisible();
+  });
+
+  test("in focus view the docked panels' tabs are on the edges too, and press to open them", async ({ app }) => {
+    // Dock the inspector, then go to focus view: docked panels are hidden there, but their tab remains.
+    await tab(app, "inspector").click();
+    await frame(app, "inspector").getByRole("button", { name: "Dock the Inspector panel" }).click();
+    await expect(tab(app, "inspector")).toBeHidden(); // docked and on screen: no tab needed
+    await app.getByTestId("focus-view").click();
+    await expect(frame(app, "inspector")).toBeHidden();
+    await expect(tab(app, "inspector")).toBeVisible();
+    await tab(app, "inspector").click();
+    await expect(frame(app, "inspector")).toBeVisible();
+  });
 });

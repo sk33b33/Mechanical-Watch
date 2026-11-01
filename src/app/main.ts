@@ -5,7 +5,7 @@ import { mountSplash } from "./splash/splashScreen";
 import { splashChips, splashNote } from "./splash/splashContent";
 import { splashDisabled } from "./splash/splashGears";
 import { applyStartup, startupPlain } from "./startup";
-import { installVisualViewportVariables } from "./layout/visualViewport";
+import { installViewportDebug, installVisualViewportVariables, viewportDebugWanted } from "./layout/visualViewport";
 
 const root = document.querySelector<HTMLDivElement>("#app");
 if (root === null) {
@@ -14,6 +14,7 @@ if (root === null) {
 
 // Keeps the flyout panels' edge tabs on the screen's edges whatever the pinch zoom (Android's desktop mode, follow-up 54).
 installVisualViewportVariables();
+if (viewportDebugWanted(window.location.search)) installViewportDebug();
 
 const plain = startupPlain(window.location.search);
 const { store, viewport, carousel } = bootstrapApp(root, plain);

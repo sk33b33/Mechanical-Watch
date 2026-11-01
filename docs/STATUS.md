@@ -2,6 +2,28 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 56: the Inspector and Colours tabs, always
+
+**Why they could be missing.** An edge tab only existed while its panel was a *flyout*. Press a panel's own Hide (the
+cross in its title bar), or put the panel in Focus view while docked, and the panel's whole frame was removed with its
+tab inside it, so the tab was gone and only the header button could bring the panel back. On a touch screen the
+title-bar buttons sit close together (and close to where you drag to move the screen when zoomed in), so a stray tap
+on Hide is easy, and the hidden state is remembered across reloads. This is my best explanation for tabs that "don't show"
+on your device; I could not look at the device itself.
+
+**What changed.**
+- A hidden panel (Hide, or docked while in Focus view) keeps its tab on its screen edge, drawn as a closed flyout. Pressing
+  the tab brings the panel back, slid out as a flyout; the header button still reopens it where it was. A panel that is
+  on screen (docked or floating) needs no tab and has none.
+- Whether the screen is zoomed is now taken from how much of the page it shows (the page's width over the visible width),
+  not from the browser's reported scale: some browsers report the fit-to-screen scale (about 0.4) on a phone in desktop mode
+  although the whole page is in view, which was being taken for a zoom.
+- `?debug=viewport` on the address shows a small read-out of the screen size, zoom and where each tab is, so a screenshot
+  from the device says exactly what the page sees.
+
+**Limits.** Not confirmed on the device: if the tabs are still missing after this, open the app with `?debug=viewport` and
+send a screenshot.
+
 ## Phase 8.15 follow-up 55: panning a zoomed-in screen
 
 **What was wrong.** With the page pinch-zoomed in, dragging a finger did not move the screen. Found by sending real touch

@@ -110,6 +110,12 @@ export class PanelLayout {
     return this.slidOut.has(id) && effectiveMode(this.state, id) === "FLYOUT";
   }
 
+  /** The edge tab: slides a flyout out or back; on a panel that is hidden it brings the panel back as a flyout, slid out. */
+  pressTab(id: PanelId): void {
+    if (effectiveMode(this.state, id) === "HIDDEN") this.setMode(id, "FLYOUT");
+    else this.toggleFlyout(id);
+  }
+
   /** Slides a flyout panel out or back (its edge tab, or the header button). */
   toggleFlyout(id: PanelId): void {
     if (effectiveMode(this.state, id) !== "FLYOUT") return;
@@ -191,7 +197,7 @@ export class PanelLayout {
     tabArrow.className = "flyout-tab-arrow";
     tabArrow.setAttribute("aria-hidden", "true");
     tab.append(tabLabel, tabArrow);
-    tab.addEventListener("click", () => { this.toggleFlyout(id); });
+    tab.addEventListener("click", () => { this.pressTab(id); });
     frame.append(bar, body, this.createResizer(id), tab);
     this.workspace.appendChild(frame);
 
@@ -267,22 +273,28 @@ export class PanelLayout {
       const mode = effectiveMode(this.state, id);
       if (mode !== "WINDOW") this.closePopup(id);
       const { frame } = win;
-      frame.dataset.mode = mode;
-      frame.hidden = mode === "HIDDEN";
-      const open = mode === "FLYOUT" && this.slidOut.has(id);
+      // A panel that is not on screen at all (hidden by its own button, or docked while in focus view) keeps its edge tab, drawn
+      // as a closed flyout: pressing the tab brings the panel back, sliding out (follow-up 56). Its state stays "hidden", so the
+      // header button still reopens it where it was.
+      const parked = mode === "HIDDEN";
+      frame.dataset.mode = parked ? "FLYOUT" : mode;
+      frame.dataset.parked = String(parked);
+      frame.hidden = false;
+      const shownAs = parked ? "FLYOUT" : mode;
+      const open = shownAs === "FLYOUT" && !parked && this.slidOut.has(id);
       frame.dataset.open = String(open);
       // A flyout slid away must not take focus or be read by assistive technology; its edge tab stays live.
-      win.bar.inert = mode === "FLYOUT" && !open;
-      win.body.inert = mode === "FLYOUT" && !open;
+      win.bar.inert = shownAs === "FLYOUT" && !open;
+      win.body.inert = shownAs === "FLYOUT" && !open;
       win.tab.setAttribute("aria-expanded", String(open));
-      win.tab.title = `${PANEL_TITLES[id]}: ${open ? "slide back" : "slide out"} (Esc closes flyouts)`;
+      win.tab.title = parked ? `${PANEL_TITLES[id]}: hidden. Press to bring it back as a flyout` : `${PANEL_TITLES[id]}: ${open ? "slide back" : "slide out"} (Esc closes flyouts)`;
       win.tabArrow.textContent = FLYOUT_ARROWS[FLYOUT_EDGE[id]][open ? 1 : 0];
-      if (mode === "FLYOUT") frame.style.setProperty("--flyout-size", `${String(flyoutSize(this.state, id, bounds))}px`);
+      if (shownAs === "FLYOUT") frame.style.setProperty("--flyout-size", `${String(flyoutSize(this.state, id, bounds))}px`);
       if (mode === "FLOATING") {
         const rect = clampRect(this.state.panels[id].rect ?? defaultRect(id, bounds), bounds);
         this.state = withRect(this.state, id, rect);
         this.place(frame, rect);
-      } else if (mode === "DOCKED" || mode === "FLYOUT") {
+      } else if (mode === "DOCKED" || shownAs === "FLYOUT") {
         frame.style.removeProperty("left");
         frame.style.removeProperty("top");
         frame.style.removeProperty("width");
