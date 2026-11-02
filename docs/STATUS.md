@@ -2,6 +2,19 @@
 
 Validation levels use the L0–L5 scale from REF-ENG §15 (confirmed).
 
+## Phase 8.15 follow-up 58: the pop-out tabs zoom with a pinch on them
+
+Follow-up 54 drew the flyout tabs (and panels) at a fixed size on the screen whatever the zoom, by cancelling the page's
+zoom on them. So a pinch on a tab zoomed the page but the tab stayed the same size. That cancelling is removed: the tabs and
+panels are part of the page and grow with a pinch on them, like the rest of the UI. They are still placed at the edges of what
+the screen shows (visual viewport), so they stay on the screen's edges when zoomed in and panned; a panel is capped to what
+the screen shows (less room for its tab) so it can not outgrow it. The tick switch at the bottom right follows the same rule.
+Unzoomed nothing changes. A pinch over the movement still zooms only the movement (follow-up 57).
+
+**Limits.** Pinch is not tested by the browser tests (the test browser does not turn two emulated touches into a pinch):
+the tests set the page zoom directly and check the tabs stay on the visible edges and are the same size on the page, so
+twice as big on the screen at twice the zoom.
+
 ## Phase 8.15 follow-up 57: pinch zoom, a tap on a tile, a plus sign
 
 - **Pinch zoom goes where the fingers are.** A pinch over the movement zooms only the movement (the 3D camera), as it did

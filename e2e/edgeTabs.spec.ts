@@ -64,7 +64,7 @@ test("on a phone every edge tab is on the visible screen (the page does not grow
   await context.close();
 });
 
-test("pinch-zoomed in (Android's desktop mode) the tabs stay on the visible screen's edges, at the same size on the screen", async ({ browser }) => {
+test("pinch-zoomed in (Android's desktop mode) the tabs stay on the visible screen's edges and zoom with the page, as the rest of the UI does (follow-up 58)", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 980, height: 600 }, hasTouch: true, isMobile: true });
   const page = await context.newPage();
   await page.goto("/?splash=off&start=plain");
@@ -93,9 +93,10 @@ test("pinch-zoomed in (Android's desktop mode) the tabs stay on the visible scre
     expect(box.right, id).toBeLessThanOrEqual(zoomed.vv.left + zoomed.vv.width + 2);
     expect(box.top, id).toBeGreaterThanOrEqual(zoomed.vv.top - 2);
     expect(box.bottom, id).toBeLessThanOrEqual(zoomed.vv.top + zoomed.vv.height + 2);
-    // The same size on the screen as unzoomed: half the page size at twice the zoom.
+    // Part of the page, so the same size on the page as unzoomed and therefore twice as big on the screen at twice the zoom.
     const before = flat.tabs[id];
-    expect((box.right - box.left) * zoomed.vv.scale, id).toBeCloseTo(before.right - before.left, -1);
+    expect(box.right - box.left, id).toBeCloseTo(before.right - before.left, -1);
+    expect((box.right - box.left) * zoomed.vv.scale, id).toBeGreaterThan((before.right - before.left) * 1.7);
   }
   // Each still hugs its own side of what is visible.
   expect(zoomed.tabs["flyout-tab-inspector"].right).toBeGreaterThanOrEqual(zoomed.vv.left + zoomed.vv.width - 2);

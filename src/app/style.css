@@ -18,14 +18,17 @@
     sans-serif;
 }
 
-/* The visual viewport's edges and zoom (visualViewport.ts, follow-up 54). Unzoomed they are the page's own edges. */
+/* The visual viewport's edges (visualViewport.ts, follow-ups 54 and 58): how far the page's edges are from the edges of what
+   the screen shows. Unzoomed they are the page's own edges (0). Width and height are of what the screen shows; 100vw and 100vh
+   stand in until the script has run. */
 :root {
   --vv-s: 1;
-  --vv-inv: 1;
   --vv-left: 0px;
   --vv-top: 0px;
   --vv-right: 0px;
   --vv-bottom: 0px;
+  --vv-width: 100vw;
+  --vv-height: 100vh;
 }
 
 * {
@@ -321,8 +324,6 @@ button.panel-control:hover:not(:disabled) {
  */
 .panel-frame[data-mode="FLYOUT"] {
   position: fixed;
-  /* Cancels a pinch zoom, so the panel and its tab keep their size on the screen, and the edges below are the screen's. */
-  zoom: var(--vv-inv);
   overflow: visible;
   z-index: 45;
   border-radius: 0;
@@ -364,6 +365,17 @@ button.panel-control:hover:not(:disabled) {
 
 .panel-frame-tree[data-mode="FLYOUT"][data-open="true"] {
   z-index: 47;
+}
+
+/* Zoomed in, a flyout is part of the page and grows with it, but never wider (or taller) than what the screen shows, leaving
+   room for its tab (follow-up 58). */
+.panel-frame-tree[data-mode="FLYOUT"],
+.panel-frame-inspector[data-mode="FLYOUT"],
+.panel-frame-colours[data-mode="FLYOUT"] {
+  max-width: calc(var(--vv-width) - 40px);
+}
+.panel-frame-console[data-mode="FLYOUT"] {
+  max-height: calc(var(--vv-height) - 100px);
 }
 
 .panel-frame[data-mode="FLYOUT"] > .panel {
@@ -453,7 +465,6 @@ button.panel-control:hover:not(:disabled) {
  */
 .floating-control {
   position: fixed;
-  zoom: var(--vv-inv);
   right: calc(var(--vv-right) + 12px);
   bottom: calc(var(--vv-bottom) + 12px);
   z-index: 40;

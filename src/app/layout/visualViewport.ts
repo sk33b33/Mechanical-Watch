@@ -1,10 +1,11 @@
 /**
- * Keeps the flyout panels' edge tabs on the screen's edges whatever the zoom (follow-up 54, ASM-0098). On a phone in
- * desktop mode (or any pinch-zoomed page) the screen shows only part of the page, the "visual viewport": zoomed in, a
- * control fixed to the page's own edges is carried off the screen. The browser reports the visual viewport's size, offset
- * and zoom; this module publishes them as CSS variables on the page root, and the flyout styles use them to put each panel
- * and its tab at the visual viewport's edges and to cancel the zoom, so they stay the same size and at the same place on
- * the screen. Unzoomed (zoom 1, no offset) the variables are the page's own edges and nothing changes. Presentation only.
+ * Keeps the flyout panels' edge tabs on the screen's edges whatever the zoom (follow-up 54, ASM-0098; reworked in follow-up
+ * 58). On a phone in desktop mode (or any pinch-zoomed page) the screen shows only part of the page, the "visual viewport":
+ * zoomed in, a control fixed to the page's own edges is carried off the screen. The browser reports the visual viewport's
+ * size, offset and zoom; this module publishes the edges as CSS variables on the page root, and the flyout styles use them to
+ * put each panel and its tab at the visual viewport's edges. They are NOT drawn at a fixed size on the screen: they are part of
+ * the page and grow with a pinch, as the rest of the UI does (follow-up 58). Unzoomed, the edges are the page's own and nothing
+ * changes. Presentation only.
  */
 export interface ViewportBox {
   /** The visual viewport's offset from the layout viewport's top left, in CSS px. */
@@ -33,9 +34,10 @@ export function effectiveZoom(box: ViewportBox): number {
 }
 
 /**
- * The variables for a viewport box. `--vv-s` is the zoom and `--vv-inv` its inverse (the `zoom` that cancels it). The
- * edge distances are stored multiplied by the zoom because they are used inside an element that is itself zoomed by
- * `--vv-inv`: there a length L is drawn as L / zoom layout px, so L = distance * zoom puts the edge where it should be.
+ * The variables for a viewport box: `--vv-s` the zoom (what the screen shows of the page), `--vv-left`, `--vv-top`,
+ * `--vv-right` and `--vv-bottom` the distances, in page (CSS) pixels, from the page's edges to the edges of what the screen
+ * shows, and `--vv-width` and `--vv-height` the size of what it shows. A panel fixed `right: var(--vv-right)` sits at the
+ * screen's right edge however far the page is zoomed and panned.
  */
 export function viewportVariables(box: ViewportBox): Record<string, string> {
   const scale = effectiveZoom(box);
@@ -43,14 +45,15 @@ export function viewportVariables(box: ViewportBox): Record<string, string> {
   const top = Math.max(0, box.offsetTop);
   const right = Math.max(0, box.layoutWidth - box.offsetLeft - box.width);
   const bottom = Math.max(0, box.layoutHeight - box.offsetTop - box.height);
-  const px = (value: number): string => `${String(Math.round(value * scale * 1000) / 1000)}px`;
+  const px = (value: number): string => `${String(Math.round(value * 1000) / 1000)}px`;
   return {
     "--vv-s": String(scale),
-    "--vv-inv": String(1 / scale),
     "--vv-left": px(left),
     "--vv-top": px(top),
     "--vv-right": px(right),
     "--vv-bottom": px(bottom),
+    "--vv-width": px(Math.max(0, box.width)),
+    "--vv-height": px(Math.max(0, box.height)),
   };
 }
 
@@ -114,7 +117,7 @@ export function installViewportDebug(doc: Document = document, win: Window = win
       const id = tab.dataset.testid?.replace("flyout-tab-", "") ?? "?";
       return `${id}: ${String(Math.round(r.left))},${String(Math.round(r.top))} to ${String(Math.round(r.right))},${String(Math.round(r.bottom))}`;
     });
-    const vars = ["--vv-inv", "--vv-left", "--vv-top", "--vv-right", "--vv-bottom"].map((name) => `${name.slice(5)}=${root.style.getPropertyValue(name)}`);
+    const vars = ["--vv-s", "--vv-left", "--vv-top", "--vv-right", "--vv-bottom"].map((name) => `${name.slice(5)}=${root.style.getPropertyValue(name)}`);
     box.textContent = [
       `window ${String(win.innerWidth)}x${String(win.innerHeight)}, page ${String(root.clientWidth)}x${String(root.clientHeight)}, dpr ${String(win.devicePixelRatio)}`,
       vv === null ? "no visualViewport" : `screen shows ${String(Math.round(vv.width))}x${String(Math.round(vv.height))} at ${String(Math.round(vv.offsetLeft))},${String(Math.round(vv.offsetTop))}, reported scale ${vv.scale.toFixed(2)}`,
